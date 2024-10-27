@@ -1,5 +1,36 @@
 import Image from "next/image";
 import styles from "./page.module.css";
+import Pusher from "pusher-js";
+
+
+// Initialize Channels client
+let channels = new Pusher('0de6906930ddbfcf4c81', {
+  cluster: 'us2'
+});
+
+// Subscribe to the appropriate channel
+let channel = channels.subscribe('hello-channel');
+
+// Receive data
+// Bind a callback function to an event within the subscribed channel
+channel.bind('hello-event', function (data: any) {
+  console.log(data)
+  // Do what you wish with the data from the event
+});
+
+// Push data
+async function pushData(data: any) {
+  const res = await fetch('/api/channels-event', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    console.error('failed to push data');
+  }
+}
 
 export default function Home() {
   return (
