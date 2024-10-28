@@ -1,31 +1,41 @@
+'use client';
 import Image from "next/image";
 import styles from "./page.module.css";
 import Pusher from "pusher-js";
+import { useState, useEffect } from 'react';
 
+interface PusherMessage {
+  message: string;
+  timestamp: string;
+}
 
 // Initialize Channels client
-let channels = new Pusher('0de6906930ddbfcf4c81', {
+const channels = new Pusher('0de6906930ddbfcf4c81', {
   cluster: 'us2'
 });
 
 // Subscribe to the appropriate channel
-let channel = channels.subscribe('hello-channel');
+const channel = channels.subscribe('hello-channel');
 
 // Receive data
 // Bind a callback function to an event within the subscribed channel
-channel.bind('hello-event', function (data: any) {
+channel.bind('hello-event', function (data: PusherMessage) {
   console.log(data)
   // Do what you wish with the data from the event
 });
 
 // Push data
-async function pushData(data: any) {
-  const res = await fetch('/api/channels-event', {
+async function pushData(message: string) {
+  if (!process.env.NEXT_PUBLIC_BASE_URL) {
+    throw new Error('Missing Pusher environment variables');
+  }
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  const res = await fetch(`${baseUrl}/api/channels-event`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(data),
+    body: JSON.stringify(message),
   });
   if (!res.ok) {
     console.error('failed to push data');
@@ -33,6 +43,27 @@ async function pushData(data: any) {
 }
 
 export default function Home() {
+  pushData('testing')
+  const [message, setMessage] = useState<string>('');
+
+  useEffect(() => {
+    const pusher = new Pusher('0de6906930ddbfcf4c81', {
+      cluster: 'us2'
+    });
+
+    const channel = pusher.subscribe('my-channel');
+
+    channel.bind('my-event', (data: PusherMessage) => {
+      setMessage(data.message);
+    });
+
+    return () => {
+      channel.unbind_all();
+      channel.unsubscribe();
+      pusher.disconnect();
+    };
+  }, []);
+
   return (
     <div className={styles.page}>
       <main className={styles.main}>
@@ -44,6 +75,7 @@ export default function Home() {
           height={38}
           priority
         />
+        {message}
         <ol>
           <li>
             Get started by editing <code>app/page.tsx</code>.
