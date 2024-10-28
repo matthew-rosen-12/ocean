@@ -1,6 +1,6 @@
 import Pusher from "pusher";
 import { NextRequest, NextResponse } from 'next/server';
-import { config } from './lib/config';
+import { config } from '../lib/config';
 
 const pusher = new Pusher(config.pusher);
 
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
 
     await pusher.trigger('my-channel', 'my-event', {
       response_message,
-      timestamp: new Date().toISOString()
+      timestamp: 'irrelevant'
     });
 
     return NextResponse.json({ message: 'Message sent' });
