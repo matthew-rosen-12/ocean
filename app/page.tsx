@@ -9,21 +9,6 @@ interface PusherMessage {
   timestamp: string;
 }
 
-// Initialize Channels client
-const channels = new Pusher('0de6906930ddbfcf4c81', {
-  cluster: 'us2'
-});
-
-// Subscribe to the appropriate channel
-const channel = channels.subscribe('hello-channel');
-
-// Receive data
-// Bind a callback function to an event within the subscribed channel
-channel.bind('hello-event', function (data: PusherMessage) {
-  console.log(data)
-  // Do what you wish with the data from the event
-});
-
 // Push data
 async function pushData(message: string) {
   if (!process.env.NEXT_PUBLIC_BASE_URL) {
