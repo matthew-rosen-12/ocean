@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { GuestUser } from '../types/user';
 import { getPusherInstance } from "../utils/pusher-client";
+import type { Members } from 'pusher-js';
 
 interface Props {
   onLogin: (user: GuestUser) => void;
@@ -19,7 +20,7 @@ export default function GuestLogin({ onLogin }: Props) {
       // Connect to presence channel
       const channel = pusher.subscribe('presence-chat');
       
-      channel.bind('pusher:subscription_succeeded', (members: any) => {
+      channel.bind('pusher:subscription_succeeded', (members: Members) => {
         const response = members.me;
         const user: GuestUser = {
           id: response.id,
