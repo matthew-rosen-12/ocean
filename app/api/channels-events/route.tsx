@@ -1,25 +1,22 @@
-import Pusher from "pusher";
 import { NextRequest, NextResponse } from 'next/server';
-import { config } from './lib/config';
+import { getPusherInstance } from '../utils/pusher-client';
 
-const pusher = new Pusher(config.pusher);
+const pusher = getPusherInstance();
 
 interface MessageRequest {
   message: string;
   // add other fields you expect from the request
 }
 
-let count = 0
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { message } = body as MessageRequest;
-    const response_message = count
-    count = message == 'testing' ? count + 1 : -1
+    const message = body.message + 's'
 
-    await pusher.trigger('my-channel', 'my-event', {
-      response_message,
+    console.log(message), 
+
+    await pusher.trigger('generic-channel', 'generic-event', {
+      message,
       timestamp: new Date().toISOString()
     });
 
