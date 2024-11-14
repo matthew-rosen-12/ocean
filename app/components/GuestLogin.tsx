@@ -1,8 +1,8 @@
 // components/GuestLogin.tsx
-import { useState } from 'react';
-import { GuestUser } from '../types/user';
+import { useState } from "react";
+import { GuestUser } from "../types/user";
 import { getPusherInstance } from "../utils/pusher-client";
-import type { Members } from 'pusher-js';
+import type { Members } from "pusher-js";
 
 interface Props {
   onLogin: (user: GuestUser) => void;
@@ -15,12 +15,12 @@ export default function GuestLogin({ onLogin }: Props) {
     setLoading(true);
     try {
       // Initialize Pusher
-      const pusher = getPusherInstance()
+      const pusher = getPusherInstance();
 
       // Connect to presence channel
-      const channel = pusher.subscribe('presence-chat');
-      
-      channel.bind('pusher:subscription_succeeded', (members: Members) => {
+      const channel = pusher.subscribe("presence-chat");
+
+      channel.bind("pusher:subscription_succeeded", (members: Members) => {
         const response = members.me;
         const user: GuestUser = {
           id: response.id,
@@ -29,9 +29,8 @@ export default function GuestLogin({ onLogin }: Props) {
         };
         onLogin(user);
       });
-
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
     } finally {
       setLoading(false);
     }
@@ -49,7 +48,7 @@ export default function GuestLogin({ onLogin }: Props) {
           disabled={loading}
           className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 disabled:opacity-50"
         >
-          {loading ? 'Joining...' : 'Join as Guest'}
+          {loading ? "Joining..." : "Join as Guest"}
         </button>
       </div>
     </div>
