@@ -1,5 +1,5 @@
 export interface GuestUser {
-    id: string;
-    animal: string;
-    createdAt: Date;
-  }
+  id: string;
+  animal: string;
+  createdAt: Date;
+}
