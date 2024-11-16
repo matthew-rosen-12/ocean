@@ -2,6 +2,11 @@
 import { useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, ThreeElements } from "@react-three/fiber";
+import { UserInfo } from "../types/user";
+
+interface Props {
+  users: Map<string, UserInfo>;
+}
 
 function Box(props: ThreeElements["mesh"]) {
   const meshRef = useRef<THREE.Mesh>(null!);
@@ -23,7 +28,7 @@ function Box(props: ThreeElements["mesh"]) {
   );
 }
 
-export default function Scene() {
+export default function Scene({ users }: Props) {
   return (
     <Canvas>
       <ambientLight intensity={Math.PI / 2} />
@@ -35,8 +40,9 @@ export default function Scene() {
         intensity={Math.PI}
       />
       <pointLight position={[-10, -10, -10]} decay={0} intensity={Math.PI} />
-      <Box position={[-1.2, 0, 0]} />
-      <Box position={[1.2, 0, 0]} />
+      {Array.from(users.values()).map((user) => (
+        <Box key={user.id} position={[...user.position, 0]} />
+      ))}
     </Canvas>
   );
 }

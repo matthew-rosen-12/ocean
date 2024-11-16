@@ -1,14 +1,29 @@
 // components/GuestLogin.tsx
 import { useState } from "react";
-import { GuestUser } from "../types/user";
+import { UserInfo } from "../types/user";
 import { getPusherInstance } from "../utils/pusher-client";
 import type { Members } from "pusher-js";
 
 interface Props {
-  onLogin: (user: GuestUser) => void;
+  setUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
+  setUsers: React.Dispatch<React.SetStateAction<Map<string, UserInfo>>>;
 }
 
-export default function GuestLogin({ onLogin }: Props) {
+type Member = {
+  id: string;
+  info: UserInfo;
+};
+
+function MemberToUser(member: Member) {
+  return {
+    id: member.id,
+    animal: member.info.animal,
+    position: member.info.position,
+    createdAt: member.info.createdAt,
+  };
+}
+
+export default function GuestLogin({ setUser, setUsers }: Props) {
   const [loading, setLoading] = useState(false);
 
   const handleGuestLogin = async () => {
@@ -21,13 +36,32 @@ export default function GuestLogin({ onLogin }: Props) {
       const channel = pusher.subscribe("presence-chat");
 
       channel.bind("pusher:subscription_succeeded", (members: Members) => {
-        const response = members.me;
-        const user: GuestUser = {
-          id: response.id,
-          animal: response.info.animal,
-          createdAt: new Date(),
-        };
-        onLogin(user);
+        const usersMap = new Map();
+
+        members.each((member: Member) => {
+          usersMap.set(member.id, MemberToUser(member));
+        });
+        const user = MemberToUser(members.me);
+        setUsers(usersMap);
+        setUser(user);
+      });
+
+      // Handle member additions
+      channel.bind("pusher:member_added", (member: Member) => {
+        setUsers((prevUsers) => {
+          const newUsers = new Map(prevUsers);
+          newUsers.set(member.id, MemberToUser(member));
+          return newUsers;
+        });
+      });
+
+      // Handle member removals
+      channel.bind("pusher:member_removed", (member: Member) => {
+        setUsers((prevUsers) => {
+          const newUsers = new Map(prevUsers);
+          newUsers.delete(member.id);
+          return newUsers;
+        });
       });
     } catch (error) {
       console.error("Login error:", error);

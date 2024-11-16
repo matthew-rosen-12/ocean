@@ -1,6 +1,10 @@
 import { getPusherInstance } from "../utils/pusher-client";
-import { generateGuestId, getRandomAnimal } from "../utils/user-info";
-import { GuestUser } from "../../types/user";
+import {
+  generateGuestId,
+  getRandomAnimal,
+  getPosition,
+} from "../utils/user-info";
+import { UserInfo } from "../../types/user";
 import { NextRequest, NextResponse } from "next/server";
 
 const pusher = getPusherInstance();
@@ -14,9 +18,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const guestUser: GuestUser = {
+    const guestUser: UserInfo = {
       id: generateGuestId(),
       animal: getRandomAnimal(),
+      position: getPosition(),
       createdAt: new Date(),
     };
 
@@ -36,6 +41,8 @@ export async function POST(req: NextRequest) {
       user_id: guestUser.id,
       user_info: {
         animal: guestUser.animal,
+        position: guestUser.position,
+        createdAt: guestUser.createdAt,
       },
     });
 
