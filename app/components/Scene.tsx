@@ -48,5 +48,6 @@ export default function Scene({ users }: Props) {
 }
 
 // TODO: create multiroom, update README
+//  use webhook to track client leaving, create rooms based on user count, track which room guest is in
 // TODO: send message to update position of one user to all users
 // TOOD: create content
