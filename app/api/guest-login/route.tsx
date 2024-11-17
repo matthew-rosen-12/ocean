@@ -6,6 +6,7 @@ import {
 } from "../utils/user-info";
 import { UserInfo } from "../../types/user";
 import { NextRequest, NextResponse } from "next/server";
+import getChannel from "../utils/rooms";
 
 const pusher = getPusherInstance();
 
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
     // Generate auth token for Pusher
     const body = await req.formData();
     const socketId = body.get("socket_id")?.toString();
-    const channel = `presence-chat`;
+    const channel = getChannel();
 
     if (!socketId || !channel) {
       return NextResponse.json(

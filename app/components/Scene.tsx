@@ -46,3 +46,7 @@ export default function Scene({ users }: Props) {
     </Canvas>
   );
 }
+
+// TODO: create multiroom, update README
+// TODO: send message to update position of one user to all users
+// TOOD: create content
