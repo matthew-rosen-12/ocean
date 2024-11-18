@@ -3,13 +3,19 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql" // or "mysql" or "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model Stats {
+  id            String    @id @default("global")  // Single row for global stats
+  totalUsers    Int       @default(0)
+  updatedAt     DateTime  @updatedAt
 }
 
 model Room {
   id          String    @id @default(cuid())
-  numUsers    Number    @default(0)
+  numUsers    Int       @default(0)
   channelName String    @unique
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
