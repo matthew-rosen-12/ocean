@@ -1,7 +1,7 @@
 // components/GuestLogin.tsx
 import { useState } from "react";
-import { UserInfo } from "../types/user";
-import { getPusherInstance } from "../utils/pusher-client";
+import { UserInfo } from "../utils/types/user";
+import { getPusherInstance } from "../utils/pusher-instance";
 import type { Members } from "pusher-js";
 
 interface Props {

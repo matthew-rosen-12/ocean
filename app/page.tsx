@@ -1,7 +1,7 @@
 "use client";
 import GuestLogin from "./components/GuestLogin";
 import Scene from "./components/Scene";
-import { UserInfo } from "./types/user";
+import { UserInfo } from "./utils/types/user";
 import { useState } from "react";
 
 export default function Home() {

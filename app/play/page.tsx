@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import styles from "../page.module.css";
-import { getPusherInstance } from "../utils/pusher-client";
+import { getPusherInstance } from "../utils/pusher-instance";
 
 interface PusherMessage {
   message: string;

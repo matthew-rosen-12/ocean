@@ -1,7 +1,6 @@
-// pages/api/pusher/webhook.ts
 import { NextApiRequest, NextApiResponse } from "next";
-import { prisma } from "@/lib/prisma";
-import { getPusherInstance } from "../utils/pusher-client";
+import { prisma } from "@/prisma/prisma";
+import { getPusherInstance } from "./pusher-instance";
 
 export default async function handler(
   req: NextApiRequest,

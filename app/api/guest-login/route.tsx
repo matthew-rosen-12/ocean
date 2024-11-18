@@ -1,14 +1,11 @@
-import { getPusherInstance } from "../utils/pusher-client";
 import {
   generateGuestId,
   getRandomAnimal,
   getPosition,
 } from "../utils/user-info";
-import { UserInfo } from "../../types/user";
+import { UserInfo } from "../../utils/types/user";
 import { NextRequest, NextResponse } from "next/server";
-import getChannel from "../utils/rooms";
-
-const pusher = getPusherInstance();
+import { joinRoom } from "../utils/pusher/join-room";
 
 export async function POST(req: NextRequest) {
   if (req.method !== "POST") {
@@ -18,39 +15,26 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const guestUser: UserInfo = {
+    id: generateGuestId(),
+    animal: getRandomAnimal(),
+    position: getPosition(),
+    createdAt: new Date(),
+  };
+
+  // Generate auth token for Pusher
+  const body = await req.formData();
+  const socketId = body.get("socket_id")?.toString();
+
+  if (!socketId) {
+    return NextResponse.json(
+      { message: "Missing required fields" },
+      { status: 400 }
+    );
+  }
+
   try {
-    const guestUser: UserInfo = {
-      id: generateGuestId(),
-      animal: getRandomAnimal(),
-      position: getPosition(),
-      createdAt: new Date(),
-    };
-
-    // Generate auth token for Pusher
-    const body = await req.formData();
-    const socketId = body.get("socket_id")?.toString();
-    const channel = getChannel();
-
-    if (!socketId || !channel) {
-      return NextResponse.json(
-        { message: "Missing required fields" },
-        { status: 400 }
-      );
-    }
-
-    const authResponse = pusher.authorizeChannel(socketId, channel, {
-      user_id: guestUser.id,
-      user_info: {
-        animal: guestUser.animal,
-        position: guestUser.position,
-        createdAt: guestUser.createdAt,
-      },
-    });
-
-    return NextResponse.json({
-      ...authResponse,
-      user: guestUser,
-    });
+    return joinRoom(socketId, guestUser);
   } catch (error) {
     console.error("Guest login error:", error);
     return NextResponse.json({ message: "Internal server error", status: 500 });

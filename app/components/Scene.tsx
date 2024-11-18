@@ -2,7 +2,7 @@
 import { useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, ThreeElements } from "@react-three/fiber";
-import { UserInfo } from "../types/user";
+import { UserInfo } from "../utils/types/user";
 
 interface Props {
   users: Map<string, UserInfo>;
