@@ -47,7 +47,16 @@ export default function Scene({ users }: Props) {
   );
 }
 
-// TODO: create multiroom, update README
-//  use webhook to track client leaving, create rooms based on user count, track which room guest is in
-// TODO: send message to update position of one user to all users
-// TOOD: create content
+/* TODO: 
+- create multiroom, update README
+  - add webhook from pusher to both production and local testing (with grok) https://dashboard.pusher.com/apps/1886450/webhooks
+    - TEST rooms created based on user count
+- send message to update position of one user to all users
+- create content
+  - LLM for interactions
+  - it's education!
+  - start with few number of organisms
+
+sometime:
+- enter channel vieweable on someone else's profile to join channel
+*/

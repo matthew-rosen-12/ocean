@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@paralleldrive/cuid2": "^2.2.2",
     "@prisma/client": "^5.22.0",
     "@react-three/fiber": "^8.17.10",
     "next": "^14.2.18",

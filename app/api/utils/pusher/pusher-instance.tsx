@@ -1,5 +1,5 @@
 import Pusher from "pusher";
-import { config } from "../../lib/config";
+import { config } from "./config";
 
 let pusherInstance: Pusher | null = null;
 

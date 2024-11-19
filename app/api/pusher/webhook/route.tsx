@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { prisma } from "@/prisma/prisma";
-import { getPusherInstance } from "./pusher-instance";
+import { getPusherInstance } from "../../utils/pusher/pusher-instance";
 
 export default async function handler(
   req: NextApiRequest,
