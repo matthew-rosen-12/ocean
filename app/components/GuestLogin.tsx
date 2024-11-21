@@ -36,14 +36,11 @@ export default function GuestLogin({ setUser, setUsers }: Props) {
       if (!response.ok) throw new Error(data.error);
 
       const channel_name = data.channel_name;
-      console.log("DEBUG1");
-      console.log(channel_name);
 
       const channel = pusher.subscribe(channel_name);
 
       channel.bind("pusher:subscription_succeeded", (members: Members) => {
         const usersMap = new Map();
-
         members.each((member: Member) => {
           usersMap.set(member.id, MemberToUser(member));
         });

@@ -5,12 +5,9 @@ import {
 } from "../utils/user-info";
 import { UserInfo } from "../../utils/types/user";
 import { getPusherInstance } from "../utils/pusher/pusher-instance";
-import { NextApiRequest, NextApiResponse } from "next";
+import { NextRequest, NextResponse } from "next/server";
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+export async function POST(request: NextRequest) {
   const pusher = getPusherInstance();
 
   const guestUser: UserInfo = {
@@ -20,11 +17,9 @@ export default async function handler(
     createdAt: new Date(),
   };
 
-  const rawBody = await getRawBody(req);
-  const data = new URLSearchParams(rawBody.toString());
-
-  const socketId = data.get("socket_id");
-  const channelName = data.get("channel_name");
+  const formData = await request.formData();
+  const socketId = formData.get("socket_id");
+  const channelName = formData.get("channel_name");
 
   if (
     !socketId ||
@@ -32,7 +27,7 @@ export default async function handler(
     typeof socketId !== "string" ||
     typeof channelName !== "string"
   ) {
-    return res.status(400).json({
+    return NextResponse.json({
       message: "Missing or invalid socket_id or channel_name",
     });
   }
@@ -46,15 +41,8 @@ export default async function handler(
     },
   });
 
-  return res.json(authResponse);
-}
-
-async function getRawBody(req: NextApiRequest): Promise<Buffer> {
-  const chunks: Buffer[] = [];
-
-  for await (const chunk of req) {
-    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
-  }
-
-  return Buffer.concat(chunks);
+  return NextResponse.json({
+    ...authResponse,
+    user: guestUser,
+  });
 }

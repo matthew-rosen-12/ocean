@@ -1,6 +1,6 @@
 import { prisma } from "@/prisma/prisma";
 
-const MAX_USERS = 100;
+const MAX_USERS = 1;
 
 export default async function getChannel(): Promise<string> {
   const smallestRoom = await prisma.room.findFirst({
@@ -18,19 +18,19 @@ export default async function getChannel(): Promise<string> {
   });
 
   if (smallestRoom == null || smallestRoom.numUsers >= MAX_USERS) {
-    const room = await prisma.$transaction(async (prisma) => {
-      const newRoom = prisma.room.create({
+    const room = await prisma.$transaction(async (tx) => {
+      const newRoom = await tx.room.create({
         data: {
           numUsers: 1,
         },
       });
-      prisma.room.update({
-        where: { id: (await newRoom).id },
+
+      return await tx.room.update({
+        where: { id: newRoom.id },
         data: {
-          channelName: `presence-chat-${(await newRoom).id}`,
+          channelName: `presence-chat-${newRoom.id}`,
         },
       });
-      return newRoom;
     });
 
     return room.channelName;
@@ -38,7 +38,7 @@ export default async function getChannel(): Promise<string> {
   await prisma.room.update({
     where: { id: smallestRoom.id },
     data: {
-      numUsers: { increment: 1 }, // Note: use snake_case
+      numUsers: { increment: 1 },
       lastActive: new Date(),
     },
   });
