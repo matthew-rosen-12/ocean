@@ -1,8 +1,8 @@
 // components/GuestLogin.tsx
 import { useState } from "react";
 import { UserInfo } from "../utils/types/user";
-import { getPusherInstance } from "../utils/pusher-instance";
 import type { Members } from "pusher-js";
+import { getPusherInstance } from "../utils/pusher-instance";
 
 interface Props {
   setUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
@@ -25,15 +25,21 @@ function MemberToUser(member: Member) {
 
 export default function GuestLogin({ setUser, setUsers }: Props) {
   const [loading, setLoading] = useState(false);
+  const pusher = getPusherInstance();
 
   const handleGuestLogin = async () => {
     setLoading(true);
     try {
-      // Initialize Pusher
-      const pusher = getPusherInstance();
+      const response = await fetch("/api/find-room");
+      const data = await response.json();
 
-      // Connect to presence channel
-      const channel = pusher.subscribe("presence-chat");
+      if (!response.ok) throw new Error(data.error);
+
+      const channel_name = data.channel_name;
+      console.log("DEBUG1");
+      console.log(channel_name);
+
+      const channel = pusher.subscribe(channel_name);
 
       channel.bind("pusher:subscription_succeeded", (members: Members) => {
         const usersMap = new Map();

@@ -6,7 +6,7 @@ export function getPusherInstance(): Pusher {
   if (!pusherInstance) {
     pusherInstance = new Pusher("0de6906930ddbfcf4c81", {
       cluster: "us2",
-      authEndpoint: "/api/guest-login",
+      authEndpoint: "/api/auth",
     });
   }
   return pusherInstance;

@@ -16,7 +16,7 @@ model Stats {
 model Room {
   id          String    @id @default(cuid())
   numUsers    Int       @default(0)
-  channelName String    @default("presenc-chat")
+  channelName String    @default("presence-chat")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   lastActive  DateTime  @default(now())
