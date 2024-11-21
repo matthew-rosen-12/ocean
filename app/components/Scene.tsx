@@ -2,7 +2,7 @@
 import { useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, ThreeElements } from "@react-three/fiber";
-import { UserInfo } from "../types/user";
+import { UserInfo } from "../utils/types/user";
 
 interface Props {
   users: Map<string, UserInfo>;
@@ -18,9 +18,9 @@ function Box(props: ThreeElements["mesh"]) {
       {...props}
       ref={meshRef}
       scale={active ? 1.5 : 1}
-      onClick={(event) => setActive(!active)}
-      onPointerOver={(event) => setHover(true)}
-      onPointerOut={(event) => setHover(false)}
+      onClick={() => setActive(!active)}
+      onPointerOver={() => setHover(true)}
+      onPointerOut={() => setHover(false)}
     >
       <boxGeometry args={[1, 1, 1]} />
       <meshStandardMaterial color={hovered ? "hotpink" : "#2f74c0"} />
@@ -46,3 +46,15 @@ export default function Scene({ users }: Props) {
     </Canvas>
   );
 }
+
+/* TODO: 
+- send message to update position of one user to all users
+- create content
+  - LLM for interactions
+  - it's education!
+  - start with few number of organisms
+
+sometime:
+- enter channel vieweable on someone else's profile to join channel
+- time stamped tokens for routes
+*/

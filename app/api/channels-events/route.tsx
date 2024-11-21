@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPusherInstance } from "../utils/pusher-client";
+import { getPusherInstance } from "../utils/pusher/pusher-instance";
 
 const pusher = getPusherInstance();
 
