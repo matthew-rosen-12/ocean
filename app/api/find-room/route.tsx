@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import getChannel from "../utils/pusher/find-room";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const channel_name = await getChannel();
