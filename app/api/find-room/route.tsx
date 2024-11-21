@@ -1,10 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getPusherInstance } from "../utils/pusher/pusher-instance";
+import { NextResponse } from "next/server";
 import getChannel from "../utils/pusher/find-room";
 
-const pusher = getPusherInstance();
-
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const channel_name = await getChannel();
 

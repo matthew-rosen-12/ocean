@@ -48,9 +48,6 @@ export default function Scene({ users }: Props) {
 }
 
 /* TODO: 
-- create multiroom, update README
-  - add webhook from pusher to both production and local testing (with grok) https://dashboard.pusher.com/apps/1886450/webhooks
-    - TEST rooms created based on user count
 - send message to update position of one user to all users
 - create content
   - LLM for interactions
@@ -59,4 +56,5 @@ export default function Scene({ users }: Props) {
 
 sometime:
 - enter channel vieweable on someone else's profile to join channel
+- time stamped tokens for routes
 */
