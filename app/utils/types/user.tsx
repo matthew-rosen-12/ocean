@@ -1,6 +1,6 @@
 export interface UserInfo {
   id: string;
   animal: string;
-  position: [number, number];
+  position: { x: number; y: number };
   createdAt: Date;
 }
