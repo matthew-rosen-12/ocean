@@ -16,6 +16,16 @@ body {
   overflow-x: hidden;
 }
 
+html,
+body {
+  height: 100%;
+}
+
+/* If using Next.js, you might also need this for the root div */
+#__next {
+  height: 100%;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);

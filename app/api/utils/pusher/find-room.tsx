@@ -1,6 +1,6 @@
 import { prisma } from "@/prisma/prisma";
 
-const MAX_USERS = 1;
+const MAX_USERS = 2;
 
 export default async function getChannel(): Promise<string> {
   const smallestRoom = await prisma.room.findFirst({

@@ -5,11 +5,18 @@ import Animal from "./Animal";
 
 interface Props {
   users: Map<string, UserInfo>;
+  myUser: UserInfo;
 }
 
-export default function Scene({ users }: Props) {
+export default function Scene({ users, myUser }: Props) {
   return (
-    <Canvas>
+    <Canvas
+      style={{
+        border: "1px solid white",
+        width: "100%",
+        height: "100%",
+      }}
+    >
       <ambientLight intensity={Math.PI / 2} />
       <spotLight
         position={[10, 10, 10]}
@@ -20,7 +27,7 @@ export default function Scene({ users }: Props) {
       />
       <pointLight position={[-10, -10, -10]} decay={0} intensity={Math.PI} />
       {Array.from(users.values()).map((user) => (
-        <Animal key={user.id} user={user} />
+        <Animal key={user.id} user={user} myUser={myUser} />
       ))}
     </Canvas>
   );
@@ -28,7 +35,9 @@ export default function Scene({ users }: Props) {
 
 /* TODO: 
 - send message to update position of one user to all users
-- why are graphics halfway off the screen?
+- is database broken? (ngrok forwarding is not constant)
+- (relative scaling)
+- zooming
 - create content
   - education
   - travel around the world

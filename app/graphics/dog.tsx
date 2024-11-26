@@ -100,5 +100,6 @@ export default function Dog() {
     { x: 1.1, y: 2.9, color: "#663300" }, // Tail shadow
   ];
 
-  return [...dogCoords, ...dogShadingCoords];
+  const coords = [...dogCoords, ...dogShadingCoords];
+  return { coords: coords, scale: 1 };
 }

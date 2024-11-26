@@ -71,5 +71,6 @@ export default function Dolphin() {
     { x: 5, y: 4.7, color: "#0077be" },
     { x: 6, y: 4.6, color: "#0077be" },
   ];
-  return [...dolphinCoords, ...dolphinFillCoords];
+  const coords = [...dolphinCoords, ...dolphinFillCoords];
+  return { coords: coords, scale: 5 };
 }

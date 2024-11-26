@@ -1,10 +1,11 @@
 "use client";
 import { useRef, useState } from "react";
 import * as THREE from "three";
-import { useFrame, MeshProps } from "@react-three/fiber";
+import { MeshProps } from "@react-three/fiber";
 import { UserInfo } from "../utils/types/user";
 import Dolphin from "../graphics/dolphin";
 import Dog from "../graphics/dog";
+import interpolateAnimal from "../graphics/interpolate-animal";
 
 interface AnimatedSquareProps extends MeshProps {
   color: string;
@@ -18,7 +19,7 @@ function AnimatedSquare({ color, ...props }: AnimatedSquareProps) {
     <mesh
       {...props}
       ref={meshRef}
-      scale={active ? 0.75 : 0.5}
+      scale={active ? 0.3 : 0.4}
       onClick={() => setActive(!active)}
       onPointerOver={() => setHover(true)}
       onPointerOut={() => setHover(false)}
@@ -29,11 +30,41 @@ function AnimatedSquare({ color, ...props }: AnimatedSquareProps) {
   );
 }
 
-export default function Animal({ user }: { user: UserInfo }) {
-  const animalCoords = user.animal.length % 2 == 1 ? Dolphin() : Dog();
+function GraphicFromAnimal(animal: string) {
+  let animalGraphic;
+  switch (animal) {
+    case "dolphin":
+      animalGraphic = Dolphin();
+      break;
+    case "dog":
+      animalGraphic = Dog();
+    // Add other cases as needed
+    default:
+      animalGraphic = Dog(); // or some default graphic
+  }
+  return animalGraphic;
+}
+
+export default function Animal({
+  user,
+  myUser,
+}: {
+  user: UserInfo;
+  myUser: UserInfo;
+}) {
+  // TODO render myUser at constant scale, other users at relative scale
+  // TODO user current position only used for interaction with other objects, should always be rendered at center
+  // TODO maybe use camera and set camera to current position always
+  const animalGraphic = GraphicFromAnimal(user.animal);
+  const myUserAnimalGraphic = GraphicFromAnimal(myUser.animal);
+  const relativeScale = animalGraphic.scale / myUserAnimalGraphic.scale;
+  const scaledAndInterpolatedAnimalGraphic = interpolateAnimal(
+    animalGraphic.coords,
+    relativeScale
+  );
   return (
     <group>
-      {animalCoords.map(
+      {scaledAndInterpolatedAnimalGraphic.map(
         (coord: { x: number; y: number; color: string }, index: number) => (
           <AnimatedSquare
             key={index}
