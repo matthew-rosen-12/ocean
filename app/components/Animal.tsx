@@ -1,48 +1,74 @@
-"use client";
-import { useRef, useState } from "react";
-import * as THREE from "three";
-import { MeshProps } from "@react-three/fiber";
+import React, { useMemo, useEffect } from "react";
 import { UserInfo } from "../utils/types/user";
-import Dolphin from "../graphics/dolphin";
-import Dog from "../graphics/dog";
-import interpolateAnimal from "../graphics/interpolate-animal";
+import * as THREE from "three";
+import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
 
-interface AnimatedSquareProps extends MeshProps {
-  color: string;
-}
+type Animal = "dolphin" | "wolf";
 
-function AnimatedSquare({ color, ...props }: AnimatedSquareProps) {
-  const meshRef = useRef<THREE.Mesh>(null!);
-  const [hovered, setHover] = useState(false);
-  const [active, setActive] = useState(false);
-  return (
-    <mesh
-      {...props}
-      ref={meshRef}
-      scale={active ? 0.3 : 0.4}
-      onClick={() => setActive(!active)}
-      onPointerOver={() => setHover(true)}
-      onPointerOut={() => setHover(false)}
-    >
-      <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial color={hovered ? "hotpink" : color} />
-    </mesh>
-  );
-}
+const ANIMAL_SCALES: Record<Animal, number> = {
+  dolphin: 15,
+  wolf: 1.0,
+};
 
-function GraphicFromAnimal(animal: string) {
-  let animalGraphic;
-  switch (animal) {
-    case "dolphin":
-      animalGraphic = Dolphin();
-      break;
-    case "dog":
-      animalGraphic = Dog();
-    // Add other cases as needed
-    default:
-      animalGraphic = Dog(); // or some default graphic
-  }
-  return animalGraphic;
+function AnimalSprite({
+  animal,
+  scale = 1,
+}: {
+  animal: Animal;
+  scale?: number;
+}) {
+  const group = useMemo(() => new THREE.Group(), []);
+
+  useEffect(() => {
+    const loader = new SVGLoader();
+
+    loader.load(
+      `/animals/${animal}.svg`,
+      (data) => {
+        const paths = data.paths;
+
+        paths.forEach((path) => {
+          const material = new THREE.MeshBasicMaterial({
+            color: path.color || 0x000000, // Use original SVG colors
+            side: THREE.DoubleSide,
+            depthWrite: false,
+            transparent: true, // Enable transparency if SVG has it
+          });
+
+          const shapes = SVGLoader.createShapes(path);
+          shapes.forEach((shape) => {
+            const geometry = new THREE.ShapeGeometry(shape);
+            geometry.scale(1, -1, 1);
+            const mesh = new THREE.Mesh(geometry, material);
+            group.add(mesh);
+          });
+        });
+
+        // Scale and center
+        const box = new THREE.Box3().setFromObject(group);
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y);
+        const normalizeScale = 1 / maxDim;
+
+        group.scale.multiplyScalar(normalizeScale * scale);
+
+        // Center the geometry
+        box.setFromObject(group);
+        const center = box.getCenter(new THREE.Vector3());
+        group.position.sub(center);
+      },
+      undefined,
+      (error) => {
+        console.error("Error loading SVG:", error);
+      }
+    );
+
+    return () => {
+      group.clear();
+    };
+  }, [animal, scale, group]);
+
+  return <primitive object={group} />;
 }
 
 export default function Animal({
@@ -52,27 +78,21 @@ export default function Animal({
   user: UserInfo;
   myUser: UserInfo;
 }) {
-  // TODO render myUser at constant scale, other users at relative scale
-  // TODO user current position only used for interaction with other objects, should always be rendered at center
-  // TODO maybe use camera and set camera to current position always
-  const animalGraphic = GraphicFromAnimal(user.animal);
-  const myUserAnimalGraphic = GraphicFromAnimal(myUser.animal);
-  const relativeScale = animalGraphic.scale / myUserAnimalGraphic.scale;
-  const scaledAndInterpolatedAnimalGraphic = interpolateAnimal(
-    animalGraphic.coords,
-    relativeScale
+  const getRelativeScale = (userAnimal: Animal, myUserAnimal: Animal) => {
+    const userScale = ANIMAL_SCALES[userAnimal] || 1.0;
+    const myUserScale = ANIMAL_SCALES[myUserAnimal] || 1.0;
+    return userScale / myUserScale;
+  };
+
+  const relativeScale = getRelativeScale(
+    user.animal as Animal,
+    myUser.animal as Animal
   );
+  const finalSize = relativeScale; // Scale relative to normalized size
+
   return (
-    <group>
-      {scaledAndInterpolatedAnimalGraphic.map(
-        (coord: { x: number; y: number; color: string }, index: number) => (
-          <AnimatedSquare
-            key={index}
-            position={[user.position.x + coord.x, user.position.y + coord.y, 0]}
-            color={coord.color}
-          />
-        )
-      )}
+    <group position={[user.position.x, user.position.y, 0]}>
+      <AnimalSprite animal={user.animal as Animal} scale={finalSize} />
     </group>
   );
 }
