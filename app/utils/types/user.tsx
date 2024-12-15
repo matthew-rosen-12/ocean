@@ -1,6 +1,8 @@
+import { Vector3 } from "three";
+
 export interface UserInfo {
   id: string;
   animal: string;
-  position: { x: number; y: number };
+  position: Vector3;
   createdAt: Date;
 }

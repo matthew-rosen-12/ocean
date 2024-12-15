@@ -1,3 +1,5 @@
+import { Vector3 } from "three";
+
 const ANIMALS = ["dolphin", "wolf"];
 
 export function getRandomAnimal(): string {
@@ -9,7 +11,7 @@ export function generateGuestId(): string {
 }
 
 export function getPosition(): { x: number; y: number } {
-  const x = Math.floor(Math.random() * 60) - 30;
-  const y = Math.floor(Math.random() * 100) - 50;
-  return { x, y };
+  const x = Math.floor(Math.random()) * 2;
+  const y = Math.floor(Math.random()) * 2;
+  return new Vector3(x, y, 0);
 }

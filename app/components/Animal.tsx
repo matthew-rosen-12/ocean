@@ -1,3 +1,5 @@
+// ocean/app/components/Animal.tsx
+
 import React, { useMemo, useEffect } from "react";
 import { UserInfo } from "../utils/types/user";
 import * as THREE from "three";
@@ -13,9 +15,11 @@ const ANIMAL_SCALES: Record<Animal, number> = {
 function AnimalSprite({
   animal,
   scale = 1,
+  position,
 }: {
   animal: Animal;
   scale?: number;
+  position: THREE.Vector3;
 }) {
   const group = useMemo(() => new THREE.Group(), []);
 
@@ -55,7 +59,13 @@ function AnimalSprite({
         // Center the geometry
         box.setFromObject(group);
         const center = box.getCenter(new THREE.Vector3());
-        group.position.sub(center);
+        group.children.forEach((child) => {
+          child.position.sub(center);
+        });
+        // Apply position if provided
+        if (position) {
+          group.position.copy(position);
+        }
       },
       undefined,
       (error) => {
@@ -66,7 +76,7 @@ function AnimalSprite({
     return () => {
       group.clear();
     };
-  }, [animal, scale, group]);
+  }, [animal, scale, position, group]);
 
   return <primitive object={group} />;
 }
@@ -88,11 +98,17 @@ export default function Animal({
     user.animal as Animal,
     myUser.animal as Animal
   );
-  const finalSize = relativeScale; // Scale relative to normalized size
-
+  const relativePosition = new THREE.Vector3().subVectors(
+    user.position,
+    myUser.position
+  );
   return (
-    <group position={[user.position.x, user.position.y, 0]}>
-      <AnimalSprite animal={user.animal as Animal} scale={finalSize} />
+    <group>
+      <AnimalSprite
+        animal={user.animal as Animal}
+        scale={relativeScale}
+        position={relativePosition}
+      />
     </group>
   );
 }

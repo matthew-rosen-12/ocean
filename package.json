@@ -12,6 +12,7 @@
   "dependencies": {
     "@paralleldrive/cuid2": "^2.2.2",
     "@prisma/client": "^5.22.0",
+    "@react-three/drei": "^9.120.4",
     "@react-three/fiber": "^8.17.10",
     "next": "^14.2.18",
     "prisma": "^5.22.0",
