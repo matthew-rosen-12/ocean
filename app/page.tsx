@@ -12,10 +12,5 @@ export default function Home() {
     return <GuestLogin setUser={setUser} setUsers={setUsers} />;
   }
 
-  return (
-    <div className="p-4">
-      <h1>Welcome, {user.animal}!</h1>
-      <Scene users={users} />
-    </div>
-  );
+  return <Scene users={users} myUser={user} />;
 }
