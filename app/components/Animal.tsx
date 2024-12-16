@@ -1,27 +1,35 @@
 // ocean/app/components/Animal.tsx
 
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo, useEffect, useRef } from "react";
 import { UserInfo } from "../utils/types/user";
 import * as THREE from "three";
 import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
+import { useFrame } from "@react-three/fiber";
 
 type Animal = "dolphin" | "wolf";
 
 const ANIMAL_SCALES: Record<Animal, number> = {
-  dolphin: 15,
+  dolphin: 1.5,
   wolf: 1.0,
 };
 
 function AnimalSprite({
   animal,
   scale = 1,
-  position,
+  positionRef,
 }: {
   animal: Animal;
   scale?: number;
-  position: THREE.Vector3;
+  positionRef: React.MutableRefObject<THREE.Vector3>;
 }) {
   const group = useMemo(() => new THREE.Group(), []);
+  const currentPosition = useMemo(() => new THREE.Vector3(), []);
+
+  useFrame(() => {
+    // Smoothly interpolate to target position
+    currentPosition.lerp(positionRef.current, 0.01);
+    group.position.copy(currentPosition);
+  });
 
   useEffect(() => {
     const loader = new SVGLoader();
@@ -33,10 +41,10 @@ function AnimalSprite({
 
         paths.forEach((path) => {
           const material = new THREE.MeshBasicMaterial({
-            color: path.color || 0x000000, // Use original SVG colors
+            color: path.color || 0x000000,
             side: THREE.DoubleSide,
             depthWrite: false,
-            transparent: true, // Enable transparency if SVG has it
+            transparent: true,
           });
 
           const shapes = SVGLoader.createShapes(path);
@@ -62,10 +70,10 @@ function AnimalSprite({
         group.children.forEach((child) => {
           child.position.sub(center);
         });
-        // Apply position if provided
-        if (position) {
-          group.position.copy(position);
-        }
+
+        // Set initial position
+        currentPosition.copy(positionRef.current);
+        group.position.copy(currentPosition);
       },
       undefined,
       (error) => {
@@ -76,7 +84,7 @@ function AnimalSprite({
     return () => {
       group.clear();
     };
-  }, [animal, scale, position, group]);
+  }, [animal, scale, group, currentPosition, positionRef]);
 
   return <primitive object={group} />;
 }
@@ -88,27 +96,32 @@ export default function Animal({
   user: UserInfo;
   myUser: UserInfo;
 }) {
-  const getRelativeScale = (userAnimal: Animal, myUserAnimal: Animal) => {
-    const userScale = ANIMAL_SCALES[userAnimal] || 1.0;
-    const myUserScale = ANIMAL_SCALES[myUserAnimal] || 1.0;
-    return userScale / myUserScale;
-  };
+  const positionRef = useRef(
+    new THREE.Vector3(user.position.x, user.position.y, user.position.z)
+  );
 
-  const relativeScale = getRelativeScale(
-    user.animal as Animal,
-    myUser.animal as Animal
-  );
-  const relativePosition = new THREE.Vector3().subVectors(
-    user.position,
-    myUser.position
-  );
-  return (
-    <group>
+  // Update the ref when position changes without causing a re-render
+  useEffect(() => {
+    positionRef.current.set(user.position.x, user.position.y, user.position.z);
+  }, [user.position.x, user.position.y, user.position.z]);
+
+  const relativeScale = useMemo(() => {
+    const userScale = ANIMAL_SCALES[user.animal as Animal] || 1.0;
+    const myUserScale = ANIMAL_SCALES[myUser.animal as Animal] || 1.0;
+    return userScale / myUserScale;
+  }, [user.animal, myUser.animal]);
+
+  // Memoize the sprite to prevent remounting
+  const sprite = useMemo(
+    () => (
       <AnimalSprite
         animal={user.animal as Animal}
         scale={relativeScale}
-        position={relativePosition}
+        positionRef={positionRef}
       />
-    </group>
+    ),
+    [user.animal, relativeScale]
   );
+
+  return sprite;
 }
