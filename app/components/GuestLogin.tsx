@@ -1,23 +1,19 @@
 // components/GuestLogin.tsx
 import { useState } from "react";
-import { UserInfo } from "../utils/types/user";
+import { Member, UserInfo } from "../utils/types/user";
 import type { Members } from "pusher-js";
-import { getPusherInstance } from "../utils/pusher-instance";
+import { getChannel } from "../utils/pusher-instance";
 
 interface Props {
   setUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
   setUsers: React.Dispatch<React.SetStateAction<Map<string, UserInfo>>>;
 }
 
-type Member = {
-  id: string;
-  info: UserInfo;
-};
-
 function MemberToUser(member: Member) {
   return {
     id: member.id,
     animal: member.info.animal,
+    channel_name: member.info.channel_name,
     position: member.info.position,
     createdAt: member.info.createdAt,
   };
@@ -25,7 +21,6 @@ function MemberToUser(member: Member) {
 
 export default function GuestLogin({ setUser, setUsers }: Props) {
   const [loading, setLoading] = useState(false);
-  const pusher = getPusherInstance();
 
   const handleGuestLogin = async () => {
     setLoading(true);
@@ -37,7 +32,7 @@ export default function GuestLogin({ setUser, setUsers }: Props) {
 
       const channel_name = data.channel_name;
 
-      const channel = pusher.subscribe(channel_name);
+      const channel = getChannel(channel_name);
 
       channel.bind("pusher:subscription_succeeded", (members: Members) => {
         const usersMap = new Map();
@@ -63,6 +58,14 @@ export default function GuestLogin({ setUser, setUsers }: Props) {
         setUsers((prevUsers) => {
           const newUsers = new Map(prevUsers);
           newUsers.delete(member.id);
+          return newUsers;
+        });
+      });
+
+      channel.bind("client-user-modified", (member: Member) => {
+        setUsers((prevUsers) => {
+          const newUsers = new Map(prevUsers);
+          newUsers.set(member.id, MemberToUser(member));
           return newUsers;
         });
       });

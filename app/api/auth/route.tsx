@@ -10,13 +10,6 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(request: NextRequest) {
   const pusher = getPusherInstance();
 
-  const guestUser: UserInfo = {
-    id: generateGuestId(),
-    animal: getRandomAnimal(),
-    position: getPosition(),
-    createdAt: new Date(),
-  };
-
   const formData = await request.formData();
   const socketId = formData.get("socket_id");
   const channelName = formData.get("channel_name");
@@ -32,10 +25,19 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  const guestUser: UserInfo = {
+    id: generateGuestId(),
+    animal: getRandomAnimal(),
+    channel_name: channelName,
+    position: getPosition(),
+    createdAt: new Date(),
+  };
+
   const authResponse = pusher.authorizeChannel(socketId, channelName, {
     user_id: guestUser.id,
     user_info: {
       animal: guestUser.animal,
+      channel_name: guestUser.channel_name,
       position: guestUser.position,
       createdAt: guestUser.createdAt,
     },

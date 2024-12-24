@@ -1,11 +1,12 @@
 // ocean/app/components/Scene.tsx
 "use client";
 import { Canvas, useThree } from "@react-three/fiber";
-import { UserInfo } from "../utils/types/user";
+import { Member, UserInfo } from "../utils/types/user";
 import Animal from "./Animal";
 import { useEffect, useState, useRef } from "react";
 import { Vector3 } from "three";
 import { useFrame } from "@react-three/fiber";
+import { getChannel } from "../utils/pusher-instance";
 
 // Speed of movement per keypress/frame
 const MOVE_SPEED = 1;
@@ -107,6 +108,11 @@ export default function Scene({ users, myUser }: Props) {
     myUser.position.x = position.x;
     myUser.position.y = position.y;
     myUser.position.z = position.z;
+    const channel = getChannel(myUser.channel_name);
+    channel.trigger("client-user-modified", {
+      id: myUser.id,
+      info: myUser,
+    } as Member);
   }, [position, myUser]);
 
   return (
@@ -138,6 +144,8 @@ export default function Scene({ users, myUser }: Props) {
 
 /*
 TODO:
+
+make sure actual domains works as expected (might have DB issues)
 
 graphics improvements:
   update other user positions based on Pusher messages
