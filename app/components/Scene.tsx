@@ -3,6 +3,7 @@
 import { Canvas, useThree } from "@react-three/fiber";
 import { Member, UserInfo } from "../utils/types/user";
 import Animal from "./Animal";
+import { TitleBox, StatsBox } from "./Boxes";
 import { useEffect, useState, useRef } from "react";
 import { Vector3 } from "three";
 import { useFrame } from "@react-three/fiber";
@@ -134,6 +135,10 @@ export default function Scene({ users, myUser }: Props) {
         intensity={Math.PI}
       />
       <pointLight position={[-10, -10, -10]} decay={0} intensity={Math.PI} />
+
+      <TitleBox user={myUser} />
+
+      <StatsBox user={myUser} />
 
       {Array.from(users.values()).map((user) => (
         <Animal key={user.id} user={user} myUser={myUser} />
