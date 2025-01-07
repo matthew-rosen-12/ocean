@@ -153,8 +153,6 @@ TODO:
 make sure actual domains works as expected (might have DB issues)
 
 graphics improvements:
-  update other user positions based on Pusher messages
   increase default scale
   only render non-black part of SVG
-
 */

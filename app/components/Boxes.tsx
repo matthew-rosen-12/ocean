@@ -6,20 +6,23 @@ import { useFrame } from "@react-three/fiber";
 
 export function TitleBox({ user }: { user: UserInfo }) {
   const groupRef = useRef<THREE.Group>(null);
+  const offset = new THREE.Vector3(4, 6, 0);
+
   const currentPosition = useRef(
-    new THREE.Vector3(user.position.x, user.position.y + 2, user.position.z)
+    new THREE.Vector3(user.position.x, user.position.y, user.position.z).add(
+      offset
+    )
   );
+
+  const targetPosition = new THREE.Vector3(
+    user.position.x,
+    user.position.y,
+    user.position.z
+  ).add(offset);
 
   useFrame(() => {
     if (groupRef.current) {
-      currentPosition.current.lerp(
-        new THREE.Vector3(
-          user.position.x,
-          user.position.y + 2,
-          user.position.z
-        ),
-        0.01
-      );
+      currentPosition.current.lerp(targetPosition, 0.01);
       groupRef.current.position.copy(currentPosition.current);
     }
   });
@@ -44,20 +47,23 @@ export function TitleBox({ user }: { user: UserInfo }) {
 
 export function StatsBox({ user }: { user: UserInfo }) {
   const groupRef = useRef<THREE.Group>(null);
+  const offset = new THREE.Vector3(5, 6, 0);
+
   const currentPosition = useRef(
-    new THREE.Vector3(user.position.x, user.position.y + 3, user.position.z)
+    new THREE.Vector3(user.position.x, user.position.y, user.position.z).add(
+      offset
+    )
   );
+
+  const targetPosition = new THREE.Vector3(
+    user.position.x,
+    user.position.y,
+    user.position.z
+  ).add(offset);
 
   useFrame(() => {
     if (groupRef.current) {
-      currentPosition.current.lerp(
-        new THREE.Vector3(
-          user.position.x,
-          user.position.y + 3,
-          user.position.z
-        ),
-        0.01
-      );
+      currentPosition.current.lerp(targetPosition, 0.01);
       groupRef.current.position.copy(currentPosition.current);
     }
   });
@@ -73,7 +79,7 @@ export function StatsBox({ user }: { user: UserInfo }) {
           outlineWidth={0.1}
           outlineColor="black"
         >
-          Dolphin has 4 flippers
+          {user.animal}
         </Text>
       </Billboard>
     </group>
