@@ -8,6 +8,7 @@ import { useEffect, useState, useRef } from "react";
 import { Vector3 } from "three";
 import { useFrame } from "@react-three/fiber";
 import { getChannel } from "../utils/pusher-instance";
+import WaveGrid from "./WaveGrid";
 
 // Speed of movement per keypress/frame
 const MOVE_SPEED = 1;
@@ -135,7 +136,7 @@ export default function Scene({ users, myUser }: Props) {
         intensity={Math.PI}
       />
       <pointLight position={[-10, -10, -10]} decay={0} intensity={Math.PI} />
-
+      <WaveGrid />
       <TitleBox user={myUser} />
 
       <StatsBox user={myUser} />
