@@ -2,7 +2,7 @@
 "use client";
 import { Canvas, useThree } from "@react-three/fiber";
 import { Member, UserInfo } from "../utils/types/user";
-import Animal from "./Animal";
+import AnimalGraphic from "./AnimalGraphic";
 import { TitleBox, StatsBox } from "./Boxes";
 import { useEffect, useState, useRef } from "react";
 import { Vector3 } from "three";
@@ -141,7 +141,7 @@ export default function Scene({ users, myUser }: Props) {
       <StatsBox user={myUser} />
 
       {Array.from(users.values()).map((user) => (
-        <Animal key={user.id} user={user} myUser={myUser} />
+        <AnimalGraphic key={user.id} user={user} myUser={myUser} />
       ))}
     </Canvas>
   );
@@ -153,7 +153,6 @@ TODO:
 land and sea
 
 graphics improvements:
-  increase default scale
   only render non-black part of SVG
 
 __EDUCATIONAL__

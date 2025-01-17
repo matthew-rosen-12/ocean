@@ -1,9 +1,10 @@
+import { Animal } from "@/app/utils/types/user";
 import { Vector3 } from "three";
 
 const ANIMALS = ["dolphin", "wolf"];
 
-export function getRandomAnimal(): string {
-  return ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
+export function getRandomAnimal(): Animal {
+  return ANIMALS[Math.floor(Math.random() * ANIMALS.length)] as Animal;
 }
 
 export function generateGuestId(): string {

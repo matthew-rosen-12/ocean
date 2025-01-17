@@ -5,11 +5,10 @@ import { UserInfo } from "../utils/types/user";
 import * as THREE from "three";
 import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
 import { useFrame } from "@react-three/fiber";
-
-type Animal = "dolphin" | "wolf";
+import { Animal } from "../utils/types/user";
 
 const ANIMAL_SCALES: Record<Animal, number> = {
-  dolphin: 1.5,
+  dolphin: 3.0,
   wolf: 1.0,
 };
 
@@ -60,7 +59,7 @@ function AnimalSprite({
         const box = new THREE.Box3().setFromObject(group);
         const size = box.getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y);
-        const normalizeScale = 1 / maxDim;
+        const normalizeScale = 5 / maxDim;
 
         group.scale.multiplyScalar(normalizeScale * scale);
 
@@ -89,7 +88,7 @@ function AnimalSprite({
   return <primitive object={group} />;
 }
 
-export default function Animal({
+export default function AnimalGraphic({
   user,
   myUser,
 }: {

@@ -1,4 +1,3 @@
-// components/GuestLogin.tsx
 import { useState } from "react";
 import { Member, UserInfo } from "../utils/types/user";
 import type { Members } from "pusher-js";
@@ -79,16 +78,15 @@ export default function GuestLogin({ setUser, setUsers }: Props) {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
       <div className="p-8 bg-white rounded-lg shadow-md">
-        <h1 className="text-2xl font-bold mb-4 text-center">Welcome to Chat</h1>
-        <p className="mb-6 text-gray-600 text-center">
-          Click below to join as a guest and get your animal avatar!
-        </p>
+        <h1 className="text-2xl font-bold mb-4 text-center text-black">
+          Welcome to Dolphin and Wolf
+        </h1>
         <button
           onClick={handleGuestLogin}
           disabled={loading}
-          className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 disabled:opacity-50"
+          className="w-full bg-blue-500 text-white py-4 px-8 rounded-lg hover:bg-blue-600 disabled:opacity-50 text-xl h-16"
         >
-          {loading ? "Joining..." : "Join as Guest"}
+          {loading ? "Joining..." : "Join"}
         </button>
       </div>
     </div>
