@@ -3,10 +3,11 @@ import { UserInfo } from "../utils/types/user";
 import * as THREE from "three";
 import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
+import { ANIMAL_FACTS } from "@/public/facts";
 
 export function TitleBox({ user }: { user: UserInfo }) {
   const groupRef = useRef<THREE.Group>(null);
-  const offset = new THREE.Vector3(4, 6, 0);
+  const offset = new THREE.Vector3(8, 7, 0);
 
   const currentPosition = useRef(
     new THREE.Vector3(user.position.x, user.position.y, user.position.z).add(
@@ -47,7 +48,7 @@ export function TitleBox({ user }: { user: UserInfo }) {
 
 export function StatsBox({ user }: { user: UserInfo }) {
   const groupRef = useRef<THREE.Group>(null);
-  const offset = new THREE.Vector3(5, 6, 0);
+  const offset = new THREE.Vector3(6, 7, 0);
 
   const currentPosition = useRef(
     new THREE.Vector3(user.position.x, user.position.y, user.position.z).add(
@@ -79,7 +80,7 @@ export function StatsBox({ user }: { user: UserInfo }) {
           outlineWidth={0.1}
           outlineColor="black"
         >
-          {user.animal}
+          {ANIMAL_FACTS[user.animal]}
         </Text>
       </Billboard>
     </group>

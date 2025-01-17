@@ -150,9 +150,15 @@ export default function Scene({ users, myUser }: Props) {
 /*
 TODO:
 
-make sure actual domains works as expected (might have DB issues)
+land and sea
 
 graphics improvements:
   increase default scale
   only render non-black part of SVG
+
+__EDUCATIONAL__
+crab, dolphin, wolf, 
+
+basic world interactions between them
+lots of facts throughout the day
 */
