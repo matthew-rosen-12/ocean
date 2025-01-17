@@ -11,3 +11,21 @@ export function getPusherInstance(): Pusher {
   }
   return pusherInstance;
 }
+
+import type { Channel } from "pusher-js";
+
+const channels: Map<string, Channel> = new Map();
+
+export function getChannel(channelName: string): Channel {
+  const pusher = getPusherInstance();
+
+  // Check if channel already exists
+  const existingChannel = channels.get(channelName);
+  if (existingChannel) {
+    return existingChannel;
+  }
+  // Create new channel
+  const newChannel = pusher.subscribe(channelName);
+  channels.set(channelName, newChannel);
+  return newChannel;
+}
