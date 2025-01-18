@@ -1,3 +1,4 @@
+// ocean/app/components/GuestLogin.tsx
 import { useState } from "react";
 import { Member, UserInfo } from "../utils/types/user";
 import type { Members } from "pusher-js";
@@ -19,6 +20,7 @@ function MemberToUser(member: Member) {
 }
 
 export default function GuestLogin({ setUser, setUsers }: Props) {
+  let currentUser: UserInfo | null = null;
   const [loading, setLoading] = useState(false);
 
   const handleGuestLogin = async () => {
@@ -41,7 +43,36 @@ export default function GuestLogin({ setUser, setUsers }: Props) {
         const user = MemberToUser(members.me);
         setUsers(usersMap);
         setUser(user);
+        currentUser = user;
+
+        channel.trigger("client-request-state", {
+          id: members.me.id,
+        });
       });
+
+      // Handle state requests from new players
+      channel.bind("client-request-state", () => {
+        // Don't respond to our own request
+        if (currentUser) {
+          channel.trigger("client-send-state", {
+            id: currentUser.id,
+            info: currentUser,
+          });
+        }
+      });
+
+      // Handle received states
+      channel.bind(
+        "client-send-state",
+        (data: { id: string; info: UserInfo }) => {
+          console.log("RECEIVING STATE");
+          setUsers((prev) => {
+            const newUsers = new Map(prev);
+            newUsers.set(data.id, data.info);
+            return newUsers;
+          });
+        }
+      );
 
       // Handle member additions
       channel.bind("pusher:member_added", (member: Member) => {
