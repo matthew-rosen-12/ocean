@@ -6,11 +6,7 @@ import * as THREE from "three";
 import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
 import { useFrame } from "@react-three/fiber";
 import { Animal } from "../utils/types/user";
-
-const ANIMAL_SCALES: Record<Animal, number> = {
-  dolphin: 3.0,
-  wolf: 1.0,
-};
+import { ANIMAL_SCALES } from "../api/utils/user-info";
 
 function AnimalSprite({
   animal,
@@ -88,13 +84,7 @@ function AnimalSprite({
   return <primitive object={group} />;
 }
 
-export default function AnimalGraphic({
-  user,
-  myUser,
-}: {
-  user: UserInfo;
-  myUser: UserInfo;
-}) {
+export default function AnimalGraphic({ user }: { user: UserInfo }) {
   const positionRef = useRef(
     new THREE.Vector3(user.position.x, user.position.y, user.position.z)
   );
@@ -104,22 +94,16 @@ export default function AnimalGraphic({
     positionRef.current.set(user.position.x, user.position.y, user.position.z);
   }, [user.position.x, user.position.y, user.position.z]);
 
-  const relativeScale = useMemo(() => {
-    const userScale = ANIMAL_SCALES[user.animal as Animal] || 1.0;
-    const myUserScale = ANIMAL_SCALES[myUser.animal as Animal] || 1.0;
-    return userScale / myUserScale;
-  }, [user.animal, myUser.animal]);
-
   // Memoize the sprite to prevent remounting
   const sprite = useMemo(
     () => (
       <AnimalSprite
         animal={user.animal as Animal}
-        scale={relativeScale}
+        scale={ANIMAL_SCALES[user.animal as Animal]}
         positionRef={positionRef}
       />
     ),
-    [user.animal, relativeScale]
+    [user.animal]
   );
 
   return sprite;

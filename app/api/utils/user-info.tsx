@@ -2,6 +2,10 @@ import { Animal } from "@/app/utils/types/user";
 import { Vector3 } from "three";
 
 const ANIMALS = ["dolphin", "wolf"];
+export const ANIMAL_SCALES: Record<Animal, number> = {
+  dolphin: 3.0,
+  wolf: 1.0,
+};
 
 export function getRandomAnimal(): Animal {
   return ANIMALS[Math.floor(Math.random() * ANIMALS.length)] as Animal;

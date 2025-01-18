@@ -3,25 +3,36 @@
 import { Canvas, useThree } from "@react-three/fiber";
 import { Member, UserInfo } from "../utils/types/user";
 import AnimalGraphic from "./AnimalGraphic";
-import { TitleBox, StatsBox } from "./Boxes";
 import { useEffect, useState, useRef } from "react";
 import { Vector3 } from "three";
 import { useFrame } from "@react-three/fiber";
 import { getChannel } from "../utils/pusher-instance";
 import WaveGrid from "./WaveGrid";
+import { Html } from "@react-three/drei"; // Add this import
+import { ANIMAL_SCALES } from "../api/utils/user-info";
+import { ANIMAL_FACTS } from "@/public/facts";
 
 // Speed of movement per keypress/frame
 const MOVE_SPEED = 1;
+interface CameraControllerProps {
+  targetPosition: Vector3;
+  animalScale: number;
+}
 
-function CameraController({ targetPosition }: { targetPosition: Vector3 }) {
+function CameraController({
+  targetPosition,
+  animalScale,
+}: CameraControllerProps) {
   const { camera } = useThree();
+  const baseDistance = 10;
+  const zdistance = baseDistance * animalScale;
   const currentPosition = useRef(
-    new Vector3(targetPosition.x, targetPosition.y, 10)
+    new Vector3(targetPosition.x, targetPosition.y, zdistance)
   );
 
   useFrame(() => {
     currentPosition.current.lerp(
-      new Vector3(targetPosition.x, targetPosition.y, 10),
+      new Vector3(targetPosition.x, targetPosition.y, zdistance),
       0.01
     );
     camera.position.copy(currentPosition.current);
@@ -125,7 +136,10 @@ export default function Scene({ users, myUser }: Props) {
         height: "100%",
       }}
     >
-      <CameraController targetPosition={position} />
+      <CameraController
+        targetPosition={position}
+        animalScale={ANIMAL_SCALES[myUser.animal]}
+      />
 
       <ambientLight intensity={Math.PI / 2} />
       <spotLight
@@ -137,12 +151,8 @@ export default function Scene({ users, myUser }: Props) {
       />
       <pointLight position={[-10, -10, -10]} decay={0} intensity={Math.PI} />
       <WaveGrid />
-      <TitleBox user={myUser} />
-
-      <StatsBox user={myUser} />
-
       {Array.from(users.values()).map((user) => (
-        <AnimalGraphic key={user.id} user={user} myUser={myUser} />
+        <AnimalGraphic key={user.id} user={user} />
       ))}
     </Canvas>
   );
