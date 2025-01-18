@@ -187,6 +187,8 @@ land and sea, make grid infinite (or not)
 center the animal sprite within the camera view
 finish loading and immediately go to game
 debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)
+check the initial positions of existing members are set correctly
+debug db rows not being deleted properly
 
 __EDUCATIONAL__
 crab, dolphin, wolf, 
