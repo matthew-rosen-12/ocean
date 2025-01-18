@@ -1,16 +1,14 @@
 // ocean/app/components/Scene.tsx
 "use client";
 import { Canvas, useThree } from "@react-three/fiber";
-import { Member, UserInfo } from "../utils/types/user";
+import { UserInfo } from "../utils/types/user";
 import AnimalGraphic from "./AnimalGraphic";
 import { useEffect, useState, useRef } from "react";
 import { Vector3 } from "three";
 import { useFrame } from "@react-three/fiber";
 import { getChannel } from "../utils/pusher-instance";
 import WaveGrid from "./WaveGrid";
-import { Html } from "@react-three/drei"; // Add this import
 import { ANIMAL_SCALES } from "../api/utils/user-info";
-import { ANIMAL_FACTS } from "@/public/facts";
 
 // Speed of movement per keypress/frame
 const MOVE_SPEED = 1;
@@ -68,10 +66,10 @@ function useKeyboardMovement(initialPosition: Vector3) {
         change.y -= MOVE_SPEED;
       }
       if (keysPressed.has("ArrowLeft") || keysPressed.has("a")) {
-        change.x -= MOVE_SPEED; // Inverted x-axis movement
+        change.x -= MOVE_SPEED;
       }
       if (keysPressed.has("ArrowRight") || keysPressed.has("d")) {
-        change.x += MOVE_SPEED; // Inverted x-axis movement
+        change.x += MOVE_SPEED;
       }
 
       if (change.x !== 0 || change.y !== 0) {
@@ -98,7 +96,7 @@ function useKeyboardMovement(initialPosition: Vector3) {
     };
   }, [keysPressed]);
 
-  return position;
+  return { position, keysPressed };
 }
 
 interface Props {
@@ -114,19 +112,43 @@ export default function Scene({ users, myUser }: Props) {
     myUser.position.z
   );
 
-  const position = useKeyboardMovement(initialPosition);
+  const { position, keysPressed } = useKeyboardMovement(initialPosition);
+  const lastSentPosition = useRef(new Vector3());
+  const lastDirection = useRef<string>("none");
+  const DISTANCE_THRESHOLD = 2;
 
-  // Update myUser position whenever it changes
   useEffect(() => {
+    let currentDirection = "none";
+    const keys = Array.from(keysPressed);
+    if (keys.length > 0) {
+      currentDirection = keys.sort().join("-");
+    }
+
     myUser.position.x = position.x;
     myUser.position.y = position.y;
     myUser.position.z = position.z;
-    const channel = getChannel(myUser.channel_name);
-    channel.trigger("client-user-modified", {
-      id: myUser.id,
-      info: myUser,
-    } as Member);
-  }, [position, myUser]);
+
+    const distance = lastSentPosition.current.distanceTo(position);
+    if (
+      distance > DISTANCE_THRESHOLD ||
+      currentDirection !== lastDirection.current
+    ) {
+      const channel = getChannel(myUser.channel_name);
+      channel.trigger("client-user-modified", {
+        id: myUser.id,
+        info: {
+          ...myUser,
+          position: {
+            x: position.x,
+            y: position.y,
+            z: position.z,
+          },
+        },
+      });
+      lastSentPosition.current.copy(position);
+      lastDirection.current = currentDirection;
+    }
+  }, [position, myUser, keysPressed]);
 
   return (
     <Canvas
@@ -163,6 +185,8 @@ TODO:
 
 land and sea, make grid infinite (or not)
 center the animal sprite within the camera view
+finish loading and immediately go to game
+debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)
 
 __EDUCATIONAL__
 crab, dolphin, wolf, 
