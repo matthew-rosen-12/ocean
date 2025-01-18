@@ -161,10 +161,8 @@ export default function Scene({ users, myUser }: Props) {
 /*
 TODO:
 
-land and sea
-
-graphics improvements:
-  only render non-black part of SVG
+land and sea, make grid infinite (or not)
+center the animal sprite within the camera view
 
 __EDUCATIONAL__
 crab, dolphin, wolf, 
