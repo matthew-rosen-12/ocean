@@ -98,7 +98,7 @@ function AnimalSprite({
     return () => {
       group.clear();
     };
-  }, [animal, scale, group, currentPosition, positionRef]);
+  }, [animal, scale, group, currentPosition, positionRef, isLocalPlayer]);
 
   return <primitive object={group} />;
 }
