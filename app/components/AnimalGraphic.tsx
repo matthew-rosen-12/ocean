@@ -12,18 +12,35 @@ function AnimalSprite({
   animal,
   scale = 1,
   positionRef,
+  isLocalPlayer,
 }: {
   animal: Animal;
   scale?: number;
   positionRef: React.MutableRefObject<THREE.Vector3>;
+  isLocalPlayer: boolean;
 }) {
   const group = useMemo(() => new THREE.Group(), []);
   const currentPosition = useMemo(() => new THREE.Vector3(), []);
+  const MOVE_SPEED = 0.5; // Adjust this to match local player movement feel
 
   useFrame(() => {
-    // Smoothly interpolate to target position
-    currentPosition.lerp(positionRef.current, 0.01);
-    group.position.copy(currentPosition);
+    if (isLocalPlayer) {
+      // Local player: direct positioning
+      group.position.copy(positionRef.current);
+    } else {
+      // Non-local players: move at constant speed toward target
+      const direction = new THREE.Vector3()
+        .subVectors(positionRef.current, currentPosition)
+        .normalize();
+      const distance = currentPosition.distanceTo(positionRef.current);
+
+      if (distance > 0.01) {
+        // Only move if we're not basically there
+        const movement = Math.min(MOVE_SPEED, distance); // Don't overshoot
+        currentPosition.addScaledVector(direction, movement);
+        group.position.copy(currentPosition);
+      }
+    }
   });
 
   useEffect(() => {
@@ -47,6 +64,8 @@ function AnimalSprite({
             const geometry = new THREE.ShapeGeometry(shape);
             geometry.scale(1, -1, 1);
             const mesh = new THREE.Mesh(geometry, material);
+            // Set higher renderOrder for local player
+            mesh.renderOrder = isLocalPlayer ? 1 : 0;
             group.add(mesh);
           });
         });
@@ -79,31 +98,37 @@ function AnimalSprite({
     return () => {
       group.clear();
     };
-  }, [animal, scale, group, currentPosition, positionRef]);
+  }, [animal, scale, group, currentPosition, positionRef, isLocalPlayer]);
 
   return <primitive object={group} />;
 }
 
-export default function AnimalGraphic({ user }: { user: UserInfo }) {
+export default function AnimalGraphic({
+  user,
+  isLocalPlayer = false,
+}: {
+  user: UserInfo;
+  isLocalPlayer?: boolean;
+}) {
   const positionRef = useRef(
     new THREE.Vector3(user.position.x, user.position.y, user.position.z)
   );
 
-  // Update the ref when position changes without causing a re-render
+  // Update the ref for ALL players when position changes
   useEffect(() => {
     positionRef.current.set(user.position.x, user.position.y, user.position.z);
   }, [user.position.x, user.position.y, user.position.z]);
 
-  // Memoize the sprite to prevent remounting
   const sprite = useMemo(
     () => (
       <AnimalSprite
         animal={user.animal as Animal}
         scale={ANIMAL_SCALES[user.animal as Animal]}
         positionRef={positionRef}
+        isLocalPlayer={isLocalPlayer}
       />
     ),
-    [user.animal]
+    [user.animal, isLocalPlayer]
   );
 
   return sprite;

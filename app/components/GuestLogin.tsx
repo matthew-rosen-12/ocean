@@ -37,22 +37,19 @@ export default function GuestLogin({ setUser, setUsers }: Props) {
 
       channel.bind("pusher:subscription_succeeded", (members: Members) => {
         const usersMap = new Map();
-        members.each((member: Member) => {
-          usersMap.set(member.id, MemberToUser(member));
-        });
         const user = MemberToUser(members.me);
-        setUsers(usersMap);
         setUser(user);
         currentUser = user;
-
+        usersMap.set(members.me.id, MemberToUser(members.me));
+        setUsers(usersMap);
         channel.trigger("client-request-state", {
           id: members.me.id,
         });
+        setLoading(false);
       });
 
       // Handle state requests from new players
       channel.bind("client-request-state", () => {
-        // Don't respond to our own request
         if (currentUser) {
           channel.trigger("client-send-state", {
             id: currentUser.id,
@@ -65,7 +62,6 @@ export default function GuestLogin({ setUser, setUsers }: Props) {
       channel.bind(
         "client-send-state",
         (data: { id: string; info: UserInfo }) => {
-          console.log("RECEIVING STATE");
           setUsers((prev) => {
             const newUsers = new Map(prev);
             newUsers.set(data.id, data.info);
@@ -102,7 +98,6 @@ export default function GuestLogin({ setUser, setUsers }: Props) {
     } catch (error) {
       console.error("Login error:", error);
     } finally {
-      setLoading(false);
     }
   };
 
