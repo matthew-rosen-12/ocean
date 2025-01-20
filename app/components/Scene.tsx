@@ -188,13 +188,12 @@ export default function Scene({ users, myUser }: Props) {
 
 /*
 TODO:
-finish loading and immediately go to game
 refractor
-
 land and sea, make grid infinite (or not)
+
 center the animal sprite within the camera view
 debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)
-debug db rows not being deleted properly
+debug db rows not being deleted properly (likely same issue as previous)
 
 __EDUCATIONAL__
 crab, dolphin, wolf, 
