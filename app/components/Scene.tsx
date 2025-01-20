@@ -11,7 +11,7 @@ import WaveGrid from "./WaveGrid";
 import { ANIMAL_SCALES } from "../api/utils/user-info";
 
 // Speed of movement per keypress/frame
-const MOVE_SPEED = 1;
+const MOVE_SPEED = 0.5;
 interface CameraControllerProps {
   targetPosition: Vector3;
   animalScale: number;
@@ -24,16 +24,9 @@ function CameraController({
   const { camera } = useThree();
   const baseDistance = 10;
   const zdistance = baseDistance * animalScale;
-  const currentPosition = useRef(
-    new Vector3(targetPosition.x, targetPosition.y, zdistance)
-  );
 
   useFrame(() => {
-    currentPosition.current.lerp(
-      new Vector3(targetPosition.x, targetPosition.y, zdistance),
-      0.01
-    );
-    camera.position.copy(currentPosition.current);
+    camera.position.set(targetPosition.x, targetPosition.y, zdistance);
   });
 
   return null;
@@ -115,7 +108,7 @@ export default function Scene({ users, myUser }: Props) {
   const { position, keysPressed } = useKeyboardMovement(initialPosition);
   const lastSentPosition = useRef(new Vector3());
   const lastDirection = useRef<string>("none");
-  const DISTANCE_THRESHOLD = 2;
+  const DISTANCE_THRESHOLD = 0.5;
 
   useEffect(() => {
     let currentDirection = "none";
@@ -134,6 +127,7 @@ export default function Scene({ users, myUser }: Props) {
       currentDirection !== lastDirection.current
     ) {
       const channel = getChannel(myUser.channel_name);
+      console.log("SEND CLIENT USER MODIFIED");
       channel.trigger("client-user-modified", {
         id: myUser.id,
         info: {
@@ -174,7 +168,11 @@ export default function Scene({ users, myUser }: Props) {
       <pointLight position={[-10, -10, -10]} decay={0} intensity={Math.PI} />
       <WaveGrid />
       {Array.from(users.values()).map((user) => (
-        <AnimalGraphic key={user.id} user={user} />
+        <AnimalGraphic
+          key={user.id}
+          user={user}
+          isLocalPlayer={user.id === myUser.id}
+        />
       ))}
     </Canvas>
   );
@@ -182,10 +180,13 @@ export default function Scene({ users, myUser }: Props) {
 
 /*
 TODO:
+maybe send previous position and current position so that lerping is consistent OR just get rid of lerping
+make arrangement (foward / back) of sprites global
+finish loading and immediately go to game
+refractor
 
 land and sea, make grid infinite (or not)
 center the animal sprite within the camera view
-finish loading and immediately go to game
 debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)
 check the initial positions of existing members are set correctly
 debug db rows not being deleted properly

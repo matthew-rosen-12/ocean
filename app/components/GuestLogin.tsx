@@ -93,6 +93,7 @@ export default function GuestLogin({ setUser, setUsers }: Props) {
       });
 
       channel.bind("client-user-modified", (member: Member) => {
+        console.log("RECEIVED CLIENT USER MODIFIED");
         setUsers((prevUsers) => {
           const newUsers = new Map(prevUsers);
           newUsers.set(member.id, MemberToUser(member));
