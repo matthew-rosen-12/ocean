@@ -188,15 +188,12 @@ export default function Scene({ users, myUser }: Props) {
 
 /*
 TODO:
-maybe send previous position and current position so that lerping is consistent OR just get rid of lerping
-make arrangement (foward / back) of sprites global
 finish loading and immediately go to game
 refractor
 
 land and sea, make grid infinite (or not)
 center the animal sprite within the camera view
 debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)
-check the initial positions of existing members are set correctly
 debug db rows not being deleted properly
 
 __EDUCATIONAL__

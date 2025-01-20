@@ -45,6 +45,7 @@ export default function GuestLogin({ setUser, setUsers }: Props) {
         channel.trigger("client-request-state", {
           id: members.me.id,
         });
+        setLoading(false);
       });
 
       // Handle state requests from new players
@@ -97,7 +98,6 @@ export default function GuestLogin({ setUser, setUsers }: Props) {
     } catch (error) {
       console.error("Login error:", error);
     } finally {
-      setLoading(false);
     }
   };
 
