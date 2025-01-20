@@ -21,15 +21,25 @@ function AnimalSprite({
 }) {
   const group = useMemo(() => new THREE.Group(), []);
   const currentPosition = useMemo(() => new THREE.Vector3(), []);
+  const MOVE_SPEED = 0.5; // Adjust this to match local player movement feel
 
   useFrame(() => {
     if (isLocalPlayer) {
       // Local player: direct positioning
       group.position.copy(positionRef.current);
     } else {
-      // Other players: lerped positioning
-      currentPosition.lerp(positionRef.current, 0.1); // Increased lerp factor for smoother movement
-      group.position.copy(currentPosition);
+      // Non-local players: move at constant speed toward target
+      const direction = new THREE.Vector3()
+        .subVectors(positionRef.current, currentPosition)
+        .normalize();
+      const distance = currentPosition.distanceTo(positionRef.current);
+
+      if (distance > 0.01) {
+        // Only move if we're not basically there
+        const movement = Math.min(MOVE_SPEED, distance); // Don't overshoot
+        currentPosition.addScaledVector(direction, movement);
+        group.position.copy(currentPosition);
+      }
     }
   });
 
@@ -54,6 +64,8 @@ function AnimalSprite({
             const geometry = new THREE.ShapeGeometry(shape);
             geometry.scale(1, -1, 1);
             const mesh = new THREE.Mesh(geometry, material);
+            // Set higher renderOrder for local player
+            mesh.renderOrder = isLocalPlayer ? 1 : 0;
             group.add(mesh);
           });
         });

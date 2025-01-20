@@ -98,7 +98,6 @@ interface Props {
 }
 
 export default function Scene({ users, myUser }: Props) {
-  // Initialize position from myUser
   const initialPosition = new Vector3(
     myUser.position.x,
     myUser.position.y,
@@ -108,41 +107,50 @@ export default function Scene({ users, myUser }: Props) {
   const { position, keysPressed } = useKeyboardMovement(initialPosition);
   const lastSentPosition = useRef(new Vector3());
   const lastDirection = useRef<string>("none");
-  const DISTANCE_THRESHOLD = 0.5;
+  const DISTANCE_THRESHOLD = 0.1;
+  const UPDATES_PER_SECOND = 10;
+  const UPDATE_INTERVAL_MS = 1000 / UPDATES_PER_SECOND;
 
+  // Effect to update myUser position continuously
   useEffect(() => {
-    let currentDirection = "none";
-    const keys = Array.from(keysPressed);
-    if (keys.length > 0) {
-      currentDirection = keys.sort().join("-");
-    }
-
     myUser.position.x = position.x;
     myUser.position.y = position.y;
     myUser.position.z = position.z;
+  }, [position, myUser]);
 
-    const distance = lastSentPosition.current.distanceTo(position);
-    if (
-      distance > DISTANCE_THRESHOLD ||
-      currentDirection !== lastDirection.current
-    ) {
-      const channel = getChannel(myUser.channel_name);
-      console.log("SEND CLIENT USER MODIFIED");
-      channel.trigger("client-user-modified", {
-        id: myUser.id,
-        info: {
-          ...myUser,
-          position: {
-            x: position.x,
-            y: position.y,
-            z: position.z,
+  // Separate effect for rate-limited position broadcasting
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      let currentDirection = "none";
+      const keys = Array.from(keysPressed);
+      if (keys.length > 0) {
+        currentDirection = keys.sort().join("-");
+      }
+
+      const distance = lastSentPosition.current.distanceTo(position);
+      if (
+        distance > DISTANCE_THRESHOLD ||
+        currentDirection !== lastDirection.current
+      ) {
+        const channel = getChannel(myUser.channel_name);
+        channel.trigger("client-user-modified", {
+          id: myUser.id,
+          info: {
+            ...myUser,
+            position: {
+              x: position.x,
+              y: position.y,
+              z: position.z,
+            },
           },
-        },
-      });
-      lastSentPosition.current.copy(position);
-      lastDirection.current = currentDirection;
-    }
-  }, [position, myUser, keysPressed]);
+        });
+        lastSentPosition.current.copy(position);
+        lastDirection.current = currentDirection;
+      }
+    }, UPDATE_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [position, keysPressed, UPDATE_INTERVAL_MS, myUser]);
 
   return (
     <Canvas
