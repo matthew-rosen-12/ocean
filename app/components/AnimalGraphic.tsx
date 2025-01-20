@@ -8,44 +8,6 @@ import { useFrame } from "@react-three/fiber";
 import { Animal } from "../utils/types/user";
 import { ANIMAL_SCALES } from "../api/utils/user-info";
 
-export default function AnimalGraphic({
-  user,
-  isLocalPlayer = false,
-}: {
-  user: UserInfo;
-  isLocalPlayer?: boolean;
-}) {
-  const positionRef = useRef(
-    new THREE.Vector3(user.position.x, user.position.y, user.position.z)
-  );
-
-  // Update the ref when position changes without causing a re-render
-  useEffect(() => {
-    if (isLocalPlayer) {
-      // For local player, update position immediately
-      positionRef.current.set(
-        user.position.x,
-        user.position.y,
-        user.position.z
-      );
-    }
-  }, [user.position.x, user.position.y, user.position.z, isLocalPlayer]);
-
-  const sprite = useMemo(
-    () => (
-      <AnimalSprite
-        animal={user.animal as Animal}
-        scale={ANIMAL_SCALES[user.animal as Animal]}
-        positionRef={positionRef}
-        isLocalPlayer={isLocalPlayer}
-      />
-    ),
-    [user.animal, isLocalPlayer]
-  );
-
-  return sprite;
-}
-
 function AnimalSprite({
   animal,
   scale = 1,
@@ -127,4 +89,35 @@ function AnimalSprite({
   }, [animal, scale, group, currentPosition, positionRef]);
 
   return <primitive object={group} />;
+}
+
+export default function AnimalGraphic({
+  user,
+  isLocalPlayer = false,
+}: {
+  user: UserInfo;
+  isLocalPlayer?: boolean;
+}) {
+  const positionRef = useRef(
+    new THREE.Vector3(user.position.x, user.position.y, user.position.z)
+  );
+
+  // Update the ref for ALL players when position changes
+  useEffect(() => {
+    positionRef.current.set(user.position.x, user.position.y, user.position.z);
+  }, [user.position.x, user.position.y, user.position.z]);
+
+  const sprite = useMemo(
+    () => (
+      <AnimalSprite
+        animal={user.animal as Animal}
+        scale={ANIMAL_SCALES[user.animal as Animal]}
+        positionRef={positionRef}
+        isLocalPlayer={isLocalPlayer}
+      />
+    ),
+    [user.animal, isLocalPlayer]
+  );
+
+  return sprite;
 }
