@@ -9,10 +9,10 @@ import { Animal } from "../utils/types/user";
 import { ANIMAL_SCALES } from "../api/utils/user-info";
 import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js";
 
-// Define base rotations for each animal type
-const ANIMAL_BASE_ROTATIONS = {
-  wolf: Math.PI, // 0 degrees - facing left by default
-  dolphin: 0, // 0 degrees - facing right by default
+// Initial orientation configuration to make animals face right
+const ANIMAL_ORIENTATION = {
+  wolf: { rotation: 0, flipY: true },
+  dolphin: { rotation: 0, flipY: false },
   // Add other animals as needed
 };
 
@@ -34,9 +34,8 @@ function AnimalSprite({
   const lastDirection = useRef<THREE.Vector3>(new THREE.Vector3(1, 0, 0));
   const currentRotation = useRef(0);
   const targetRotation = useRef(0);
-  const MOVE_SPEED = 0.5;
+  const MOVE_SPEED = isLocalPlayer ? 0 : 0.5;
   const ROTATION_SPEED = 0.15;
-  const baseRotation = ANIMAL_BASE_ROTATIONS[animal] || 0;
   const targetFlipY = useRef(1);
   const initialScale = useRef<THREE.Vector3 | null>(null);
   const svgLoaded = useRef(false);
@@ -44,6 +43,10 @@ function AnimalSprite({
   const isFlipping = useRef(false);
   const FLIP_SPEED = 0.1;
   const currentFlipState = useRef(1); // Track current flip state (1 or -1)
+  const initialOrientation = useRef(
+    ANIMAL_ORIENTATION[animal] || { rotation: 0, flipY: false }
+  );
+  const facingLeft = useRef(false);
 
   useEffect(() => {
     const loader = new SVGLoader();
@@ -120,11 +123,32 @@ function AnimalSprite({
 
         group.scale.multiplyScalar(normalizeScale * scale);
 
-        // NOW store the initial scale after everything is loaded and scaled
+        // Apply initial orientation to make the animal face right
+        const orientation = ANIMAL_ORIENTATION[animal] || {
+          rotation: 0,
+          flipY: false,
+        };
+        initialOrientation.current = orientation;
+
+        // Apply initial rotation
+        group.rotation.z = orientation.rotation;
+
+        // Apply initial flip if needed
+        if (orientation.flipY) {
+          group.scale.x = -group.scale.x;
+        }
+
+        // Store the initial scale AFTER applying orientation flips
         initialScale.current = group.scale.clone();
-        console.log(
-          `Initial scale set after loading: ${initialScale.current.x}, ${initialScale.current.y}, ${initialScale.current.z}`
-        );
+
+        // Reset rotation references to 0 after applying initial orientation
+        // This makes the resulting orientation the new "zero" rotation
+        currentRotation.current = 0;
+        targetRotation.current = 0;
+
+        // Reset the facing direction reference based on the initial state
+        facingLeft.current = false; // After orientation, animal is facing right
+
         svgLoaded.current = true;
 
         // Set initial position
@@ -173,10 +197,7 @@ function AnimalSprite({
           lastDirection.current = direction;
 
           // Calculate angle between direction and base direction (1,0,0)
-          let angle = Math.atan2(direction.y, direction.x);
-
-          // Apply base rotation offset
-          angle -= baseRotation;
+          const angle = Math.atan2(direction.y, direction.x);
 
           // Set target rotation
           targetRotation.current = angle;
@@ -296,10 +317,7 @@ function AnimalSprite({
           lastDirection.current = direction;
 
           // Calculate angle between direction and base direction (1,0,0)
-          let angle = Math.atan2(direction.y, direction.x);
-
-          // Apply base rotation offset
-          angle -= baseRotation;
+          const angle = Math.atan2(direction.y, direction.x);
 
           // Set target rotation
           targetRotation.current = angle;
