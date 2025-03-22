@@ -166,6 +166,28 @@ function AnimalSprite({
     };
   }, [animal, scale, group, currentPosition, positionRef, isLocalPlayer]);
 
+  function setRotation(direction: THREE.Vector3) {
+    if (direction.length() > 0) {
+      direction.normalize();
+
+      // Calculate angle between direction and base direction (1,0,0)
+      const angle = Math.atan2(direction.y, direction.x);
+
+      // Set target rotation
+      targetRotation.current = angle;
+
+      // Check if we need to flip
+      const needsFlip =
+        (direction.x < 0 && currentFlipState.current > 0) ||
+        (direction.x > 0 && currentFlipState.current < 0);
+
+      if (needsFlip) {
+        isFlipping.current = true;
+        // Set target flip direction
+        targetFlipY.current = direction.x < 0 ? -1 : 1;
+      }
+    }
+  }
   useFrame(() => {
     // Skip if SVG isn't loaded yet
     if (!svgLoaded.current || !initialScale.current) return;
@@ -191,27 +213,7 @@ function AnimalSprite({
           direction.x += 1;
         }
 
-        // Only update direction if actually moving
-        if (direction.length() > 0) {
-          direction.normalize();
-
-          // Calculate angle between direction and base direction (1,0,0)
-          const angle = Math.atan2(direction.y, direction.x);
-
-          // Set target rotation
-          targetRotation.current = angle;
-
-          // Check if we need to flip
-          const needsFlip =
-            (direction.x < 0 && currentFlipState.current > 0) ||
-            (direction.x > 0 && currentFlipState.current < 0);
-
-          if (needsFlip) {
-            isFlipping.current = true;
-            // Set target flip direction
-            targetFlipY.current = direction.x < 0 ? -1 : 1;
-          }
-        }
+        setRotation(direction);
       }
     } else {
       // Non-local players: smooth position interpolation
@@ -221,10 +223,32 @@ function AnimalSprite({
       );
       const distance = currentPosition.distanceTo(positionRef.current);
 
+      // Handle movement with adaptive approach
       if (distance > 0.01) {
-        // Smooth movement toward target position
-        const movement = Math.min(MOVE_SPEED, distance);
-        currentPosition.addScaledVector(positionDelta.normalize(), movement);
+        const LERP_FACTOR = 0.1; // How fast to lerp (0-1)
+
+        // Calculate how far we would move with LERP
+        const lerpPosition = currentPosition
+          .clone()
+          .lerp(positionRef.current, LERP_FACTOR);
+        const lerpDistance = currentPosition.distanceTo(lerpPosition);
+
+        // Calculate how far we would move with constant speed
+        const constantSpeedDistance = Math.min(MOVE_SPEED, distance);
+
+        // Use whichever method moves us farther
+        if (lerpDistance > constantSpeedDistance) {
+          // LERP is faster - use it
+          currentPosition.copy(lerpPosition);
+        } else {
+          // Constant speed is faster - use it
+          currentPosition.addScaledVector(
+            positionDelta.normalize(),
+            constantSpeedDistance
+          );
+        }
+
+        // Apply the calculated position
         group.position.copy(currentPosition);
       }
 
@@ -232,23 +256,7 @@ function AnimalSprite({
       if (directionRef.current.length() > 0.01) {
         // For diagonal movement, both x and y will have values
         // Calculate the rotation angle directly from the x,y components
-        const angle = Math.atan2(
-          directionRef.current.y,
-          directionRef.current.x
-        );
-
-        targetRotation.current = angle;
-
-        // For flipping, we'll still use the x component
-        const needsFlip =
-          (directionRef.current.x < 0 && currentFlipState.current > 0) ||
-          (directionRef.current.x > 0 && currentFlipState.current < 0);
-
-        if (needsFlip) {
-          isFlipping.current = true;
-          // Set target flip direction
-          targetFlipY.current = directionRef.current.x < 0 ? -1 : 1;
-        }
+        setRotation(directionRef.current);
       }
     }
 
@@ -260,8 +268,8 @@ function AnimalSprite({
       while (delta > Math.PI) delta -= Math.PI * 2;
       while (delta < -Math.PI) delta += Math.PI * 2;
 
-      if (delta == Math.PI) {
-        delta = currentFlipState.current;
+      if (Math.abs(delta) == Math.PI && currentFlipState.current == -1) {
+        delta *= -1;
       }
 
       // Apply rotation with much faster speed for non-local players
