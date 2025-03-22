@@ -1,3 +1,5 @@
+// route for pusher to find a room for a guest user
+
 import { NextResponse } from "next/server";
 import getChannel from "../utils/pusher/find-room";
 

@@ -1,3 +1,5 @@
+// generic route for testing pusher channels and events
+
 import { NextRequest, NextResponse } from "next/server";
 import { getPusherInstance } from "../utils/pusher/pusher-instance";
 
