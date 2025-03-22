@@ -217,8 +217,9 @@ export default function Scene({ users, myUser }: Props) {
 
 /*
 TODO:
-broadcast direction of player to all other players instead of calcuating based on position
-debug why messages are slow
+retry broadcasting a message if there is rate limiting
+make local and non local player orientation after rotation the same
+possibly include direction and orientation (if flipped) in addition to just direction
 
 center the animal sprite within the camera view
 debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)
