@@ -4,6 +4,7 @@ import {
   generateGuestId,
   getRandomAnimal,
   getPosition,
+  getDirection,
 } from "../utils/user-info";
 import { UserInfo } from "../../utils/types/user";
 import { getPusherInstance } from "../utils/pusher/pusher-instance";
@@ -32,6 +33,7 @@ export async function POST(request: NextRequest) {
     animal: getRandomAnimal(),
     channel_name: channelName,
     position: getPosition(),
+    direction: getDirection(),
     createdAt: new Date(),
   };
 
@@ -41,6 +43,7 @@ export async function POST(request: NextRequest) {
       animal: guestUser.animal,
       channel_name: guestUser.channel_name,
       position: guestUser.position,
+      direction: guestUser.direction,
       createdAt: guestUser.createdAt,
     },
   });

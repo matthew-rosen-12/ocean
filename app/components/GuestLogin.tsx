@@ -15,6 +15,7 @@ function MemberToUser(member: Member) {
     animal: member.info.animal,
     channel_name: member.info.channel_name,
     position: member.info.position,
+    direction: member.info.direction,
     createdAt: member.info.createdAt,
   };
 }
@@ -70,7 +71,6 @@ export default function GuestLogin({ setUser, setUsers }: Props) {
         }
       );
 
-      // Handle member additions
       channel.bind("pusher:member_added", (member: Member) => {
         setUsers((prevUsers) => {
           const newUsers = new Map(prevUsers);
@@ -79,7 +79,6 @@ export default function GuestLogin({ setUser, setUsers }: Props) {
         });
       });
 
-      // Handle member removals
       channel.bind("pusher:member_removed", (member: Member) => {
         setUsers((prevUsers) => {
           const newUsers = new Map(prevUsers);

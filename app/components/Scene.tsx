@@ -34,6 +34,7 @@ function CameraController({
 
 function useKeyboardMovement(initialPosition: Vector3) {
   const [position, setPosition] = useState(initialPosition);
+  const [direction, setDirection] = useState<Direction>({ x: 1, y: 0 });
   const [keysPressed, setKeysPressed] = useState(new Set<string>());
 
   useEffect(() => {
@@ -51,22 +52,35 @@ function useKeyboardMovement(initialPosition: Vector3) {
 
     const updatePosition = () => {
       const change = new Vector3(0, 0, 0);
+      const newDirection = { x: 0, y: 0 };
 
       if (keysPressed.has("ArrowUp") || keysPressed.has("w")) {
         change.y += MOVE_SPEED;
+        newDirection.y += 1;
       }
       if (keysPressed.has("ArrowDown") || keysPressed.has("s")) {
         change.y -= MOVE_SPEED;
+        newDirection.y -= 1;
       }
       if (keysPressed.has("ArrowLeft") || keysPressed.has("a")) {
         change.x -= MOVE_SPEED;
+        newDirection.x -= 1;
       }
       if (keysPressed.has("ArrowRight") || keysPressed.has("d")) {
         change.x += MOVE_SPEED;
+        newDirection.x += 1;
       }
 
       if (change.x !== 0 || change.y !== 0) {
         setPosition((current) => current.clone().add(change));
+
+        const length = Math.sqrt(
+          newDirection.x * newDirection.x + newDirection.y * newDirection.y
+        );
+        setDirection({
+          x: newDirection.x / length,
+          y: newDirection.y / length,
+        });
       }
     };
 
@@ -89,7 +103,7 @@ function useKeyboardMovement(initialPosition: Vector3) {
     };
   }, [keysPressed]);
 
-  return { position, keysPressed };
+  return { position, direction, keysPressed };
 }
 
 interface Props {
@@ -104,19 +118,21 @@ export default function Scene({ users, myUser }: Props) {
     myUser.position.z
   );
 
-  const { position, keysPressed } = useKeyboardMovement(initialPosition);
+  const { position, direction, keysPressed } =
+    useKeyboardMovement(initialPosition);
   const lastSentPosition = useRef(new Vector3());
   const lastDirection = useRef<string>("none");
   const DISTANCE_THRESHOLD = 0.1;
   const UPDATES_PER_SECOND = 10;
   const UPDATE_INTERVAL_MS = 1000 / UPDATES_PER_SECOND;
 
-  // Effect to update myUser position continuously
+  // Effect to update myUser position and direction continuously
   useEffect(() => {
     myUser.position.x = position.x;
     myUser.position.y = position.y;
     myUser.position.z = position.z;
-  }, [position, myUser]);
+    myUser.direction = direction;
+  }, [position, direction, myUser]);
 
   // Separate effect for rate-limited position broadcasting
   useEffect(() => {
@@ -142,6 +158,7 @@ export default function Scene({ users, myUser }: Props) {
               y: position.y,
               z: position.z,
             },
+            direction: direction,
           },
         });
         lastSentPosition.current.copy(position);
@@ -150,7 +167,7 @@ export default function Scene({ users, myUser }: Props) {
     }, UPDATE_INTERVAL_MS);
 
     return () => clearInterval(intervalId);
-  }, [position, keysPressed, UPDATE_INTERVAL_MS, myUser]);
+  }, [position, keysPressed, direction, UPDATE_INTERVAL_MS, myUser]);
 
   return (
     <Canvas
@@ -190,6 +207,7 @@ export default function Scene({ users, myUser }: Props) {
 /*
 TODO:
 broadcast direction of player to all other players instead of calcuating based on position
+debug why messages are slow
 
 center the animal sprite within the camera view
 debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)
