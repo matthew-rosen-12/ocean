@@ -180,6 +180,7 @@ export default function Scene({ users, myUser }: Props) {
           key={user.id}
           user={user}
           isLocalPlayer={user.id === myUser.id}
+          keysPressed={user.id === myUser.id ? keysPressed : undefined}
         />
       ))}
     </Canvas>

@@ -1,3 +1,5 @@
+// auth route for pusher to authorize guest user for any channel
+
 import {
   generateGuestId,
   getRandomAnimal,

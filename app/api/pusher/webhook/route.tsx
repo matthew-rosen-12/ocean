@@ -1,3 +1,5 @@
+// webhook for pusher in case of member_removed event
+
 import { prisma } from "@/prisma/prisma";
 import { getPusherInstance } from "../../utils/pusher/pusher-instance";
 import { NextRequest, NextResponse } from "next/server";
