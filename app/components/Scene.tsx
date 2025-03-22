@@ -1,9 +1,9 @@
 // ocean/app/components/Scene.tsx
 "use client";
 import { Canvas, useThree } from "@react-three/fiber";
-import { UserInfo } from "../utils/types/user";
+import { Direction, UserInfo } from "../utils/types/user";
 import AnimalGraphic from "./AnimalGraphic";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Vector3 } from "three";
 import { useFrame } from "@react-three/fiber";
 import { getChannel } from "../utils/pusher-instance";
@@ -120,11 +120,54 @@ export default function Scene({ users, myUser }: Props) {
 
   const { position, direction, keysPressed } =
     useKeyboardMovement(initialPosition);
-  const lastSentPosition = useRef(new Vector3());
-  const lastDirection = useRef<string>("none");
-  const DISTANCE_THRESHOLD = 0.1;
-  const UPDATES_PER_SECOND = 10;
-  const UPDATE_INTERVAL_MS = 1000 / UPDATES_PER_SECOND;
+  const lastBroadcastPosition = useRef(new Vector3().copy(initialPosition));
+  const lastBroadcastDirection = useRef({ x: direction.x, y: direction.y });
+  const POSITION_THRESHOLD = 0.01;
+
+  // Throttled broadcast function using useState and useCallback
+  const [isReady, setIsReady] = useState(true);
+  const THROTTLE_MS = 100;
+
+  const throttledBroadcast = useCallback(() => {
+    if (!isReady) return;
+
+    // Calculate if position changed enough to broadcast
+    const positionDelta = new Vector3()
+      .copy(position)
+      .sub(lastBroadcastPosition.current);
+    const positionChanged = positionDelta.length() >= POSITION_THRESHOLD;
+
+    // Check if direction changed since last broadcast
+    const directionChanged =
+      lastBroadcastDirection.current.x !== direction.x ||
+      lastBroadcastDirection.current.y !== direction.y;
+
+    if (positionChanged || directionChanged) {
+      const channel = getChannel(myUser.channel_name);
+
+      // Broadcast the current state
+      channel.trigger("client-user-modified", {
+        id: myUser.id,
+        info: {
+          ...myUser,
+          position: {
+            x: position.x,
+            y: position.y,
+            z: position.z,
+          },
+          direction: direction,
+        },
+      });
+
+      // Update what we last broadcast
+      lastBroadcastPosition.current.copy(position);
+      lastBroadcastDirection.current = { x: direction.x, y: direction.y };
+
+      // Start the cooldown
+      setIsReady(false);
+      setTimeout(() => setIsReady(true), THROTTLE_MS);
+    }
+  }, [position, direction, myUser, isReady]);
 
   // Effect to update myUser position and direction continuously
   useEffect(() => {
@@ -132,42 +175,10 @@ export default function Scene({ users, myUser }: Props) {
     myUser.position.y = position.y;
     myUser.position.z = position.z;
     myUser.direction = direction;
-  }, [position, direction, myUser]);
 
-  // Separate effect for rate-limited position broadcasting
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      let currentDirection = "none";
-      const keys = Array.from(keysPressed);
-      if (keys.length > 0) {
-        currentDirection = keys.sort().join("-");
-      }
-
-      const distance = lastSentPosition.current.distanceTo(position);
-      if (
-        distance > DISTANCE_THRESHOLD ||
-        currentDirection !== lastDirection.current
-      ) {
-        const channel = getChannel(myUser.channel_name);
-        channel.trigger("client-user-modified", {
-          id: myUser.id,
-          info: {
-            ...myUser,
-            position: {
-              x: position.x,
-              y: position.y,
-              z: position.z,
-            },
-            direction: direction,
-          },
-        });
-        lastSentPosition.current.copy(position);
-        lastDirection.current = currentDirection;
-      }
-    }, UPDATE_INTERVAL_MS);
-
-    return () => clearInterval(intervalId);
-  }, [position, keysPressed, direction, UPDATE_INTERVAL_MS, myUser]);
+    // Attempt to broadcast whenever position/direction changes
+    throttledBroadcast();
+  }, [position, direction, myUser, throttledBroadcast]);
 
   return (
     <Canvas

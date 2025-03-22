@@ -17,7 +17,7 @@ const ANIMAL_ORIENTATION = {
 };
 
 // Constants
-const MOVE_SPEED = 0.2;
+const MOVE_SPEED = 0.5;
 const DIRECTION_SPEED = 0.2;
 const ROTATION_SPEED = 0.25;
 const FLIP_SPEED = 0.5;
@@ -239,29 +239,28 @@ function AnimalSprite({
 
       // Direction handling for non-local players
       if (directionRef.current.length() > 0.01) {
-        // Calculate rotation directly from the target direction
-        const targetAngle = Math.atan2(
+        // For diagonal movement, both x and y will have values
+        // Calculate the rotation angle directly from the x,y components
+        const angle = Math.atan2(
           directionRef.current.y,
           directionRef.current.x
         );
-        targetRotation.current = targetAngle;
 
-        // Check if we need to flip directly from the target direction
-        // This makes flipping more responsive for non-local players
-        const isNowFacingLeft = directionRef.current.x < -0.1; // Lower threshold
-        const isNowFacingRight = directionRef.current.x > 0.1;
+        // For flipping, we'll still use the x component
+        const isNowFacingLeft = directionRef.current.x < 0;
 
-        if (
-          (isNowFacingLeft && !facingLeft.current) ||
-          (isNowFacingRight && facingLeft.current)
-        ) {
+        // Set the target rotation directly from the angle
+        targetRotation.current = angle;
+
+        // Handle flipping if direction changed horizontally
+        if (isNowFacingLeft !== facingLeft.current) {
           facingLeft.current = isNowFacingLeft;
           isFlipping.current = true;
           flipProgress.current = 0;
           targetFlipY.current = isNowFacingLeft ? -1 : 1;
         }
 
-        // Still update current direction for other purposes
+        // Update current direction for smooth transitions
         currentDirection.current.lerp(directionRef.current, DIRECTION_SPEED);
         if (currentDirection.current.length() > 0.01) {
           currentDirection.current.normalize();
