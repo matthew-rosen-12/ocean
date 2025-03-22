@@ -18,7 +18,6 @@ const ANIMAL_ORIENTATION = {
 
 // Constants
 const MOVE_SPEED = 0.5;
-const DIRECTION_SPEED = 0.2;
 const ROTATION_SPEED = 0.25;
 const FLIP_SPEED = 0.5;
 
@@ -39,7 +38,6 @@ function AnimalSprite({
 }) {
   const group = useMemo(() => new THREE.Group(), []);
   const currentPosition = useMemo(() => new THREE.Vector3(), []);
-  const lastDirection = useRef<THREE.Vector3>(new THREE.Vector3(1, 0, 0));
   const currentRotation = useRef(0);
   const targetRotation = useRef(0);
   const targetFlipY = useRef(1);
@@ -51,8 +49,6 @@ function AnimalSprite({
   const initialOrientation = useRef(
     ANIMAL_ORIENTATION[animal] || { rotation: 0, flipY: false }
   );
-  const facingLeft = useRef(false);
-  const currentDirection = useRef(new THREE.Vector3());
 
   useEffect(() => {
     const loader = new SVGLoader();
@@ -153,8 +149,6 @@ function AnimalSprite({
         targetRotation.current = 0;
 
         // Reset the facing direction reference based on the initial state
-        facingLeft.current = false; // After orientation, animal is facing right
-
         svgLoaded.current = true;
 
         // Set initial position
@@ -200,7 +194,6 @@ function AnimalSprite({
         // Only update direction if actually moving
         if (direction.length() > 0) {
           direction.normalize();
-          lastDirection.current = direction;
 
           // Calculate angle between direction and base direction (1,0,0)
           const angle = Math.atan2(direction.y, direction.x);
@@ -219,8 +212,6 @@ function AnimalSprite({
             targetFlipY.current = direction.x < 0 ? -1 : 1;
           }
         }
-      } else if (directionRef.current.length() > 0.01) {
-        // ... existing fallback code ...
       }
     } else {
       // Non-local players: smooth position interpolation
@@ -246,24 +237,17 @@ function AnimalSprite({
           directionRef.current.x
         );
 
-        // For flipping, we'll still use the x component
-        const isNowFacingLeft = directionRef.current.x < 0;
-
-        // Set the target rotation directly from the angle
         targetRotation.current = angle;
 
-        // Handle flipping if direction changed horizontally
-        if (isNowFacingLeft !== facingLeft.current) {
-          facingLeft.current = isNowFacingLeft;
-          isFlipping.current = true;
-          flipProgress.current = 0;
-          targetFlipY.current = isNowFacingLeft ? -1 : 1;
-        }
+        // For flipping, we'll still use the x component
+        const needsFlip =
+          (directionRef.current.x < 0 && currentFlipState.current > 0) ||
+          (directionRef.current.x > 0 && currentFlipState.current < 0);
 
-        // Update current direction for smooth transitions
-        currentDirection.current.lerp(directionRef.current, DIRECTION_SPEED);
-        if (currentDirection.current.length() > 0.01) {
-          currentDirection.current.normalize();
+        if (needsFlip) {
+          isFlipping.current = true;
+          // Set target flip direction
+          targetFlipY.current = directionRef.current.x < 0 ? -1 : 1;
         }
       }
     }
@@ -275,6 +259,10 @@ function AnimalSprite({
       // Normalize delta to [-PI, PI]
       while (delta > Math.PI) delta -= Math.PI * 2;
       while (delta < -Math.PI) delta += Math.PI * 2;
+
+      if (delta == Math.PI) {
+        delta = currentFlipState.current;
+      }
 
       // Apply rotation with much faster speed for non-local players
       const rotSpeed = ROTATION_SPEED;
