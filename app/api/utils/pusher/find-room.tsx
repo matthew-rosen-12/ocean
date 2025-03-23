@@ -1,4 +1,6 @@
 import { prisma } from "@/prisma/prisma";
+import { getPusherInstance } from "./pusher-instance";
+import { populateChannel } from "../../npc/service";
 
 const MAX_USERS = 2;
 
@@ -33,7 +35,26 @@ export default async function getChannel(): Promise<string> {
       });
     });
 
-    return room.channelName;
+    // Directly populate the new room with NPCs
+    const channelName = room.channelName;
+    try {
+      await populateChannel(channelName);
+      console.log(`Populated channel ${channelName} with NPCs`);
+    } catch (error) {
+      console.error(
+        `Failed to populate channel ${channelName} with NPCs:`,
+        error
+      );
+      // Continue even if NPC population fails
+    }
+
+    // Trigger event for room creation
+    const pusher = getPusherInstance();
+    await pusher.trigger("private-admin", "room-created", {
+      channelName: room.channelName,
+    });
+
+    return channelName;
   }
   await prisma.room.update({
     where: { id: smallestRoom.id },

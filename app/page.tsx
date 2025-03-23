@@ -5,18 +5,23 @@ import Scene from "./components/Scene";
 import { UserInfo } from "./utils/types/user";
 import { useState } from "react";
 import { ANIMAL_FACTS } from "@/public/facts";
+import { NPC } from "./utils/types/npc";
 
 export default function Home() {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [users, setUsers] = useState<Map<string, UserInfo>>(new Map());
+  // Add state for NPCs
+  const [npcs, setNPCs] = useState<Map<string, NPC>>(new Map());
 
   if (!user) {
-    return <GuestLogin setUser={setUser} setUsers={setUsers} />;
+    return (
+      <GuestLogin setUser={setUser} setUsers={setUsers} setNPCs={setNPCs} />
+    );
   }
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
-      <Scene users={users} myUser={user} />
+      <Scene users={users} myUser={user} npcs={npcs} />
 
       {/* Fixed overlay */}
       <div

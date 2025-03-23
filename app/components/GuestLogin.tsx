@@ -7,6 +7,7 @@ import { getChannel } from "../utils/pusher-instance";
 interface Props {
   setUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
   setUsers: React.Dispatch<React.SetStateAction<Map<string, UserInfo>>>;
+  setNPCs: React.Dispatch<React.SetStateAction<Map<string, NPC>>>;
 }
 
 function MemberToUser(member: Member) {
@@ -20,7 +21,7 @@ function MemberToUser(member: Member) {
   };
 }
 
-export default function GuestLogin({ setUser, setUsers }: Props) {
+export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
   let currentUser: UserInfo | null = null;
   const [loading, setLoading] = useState(false);
 
@@ -94,6 +95,19 @@ export default function GuestLogin({ setUser, setUsers }: Props) {
           return newUsers;
         });
       });
+
+      // Add listener for npcs-added event
+      channel.bind(
+        "npcs-added",
+        (data: { npcs: Array<{ id: string; info: any }> }) => {
+          const npcMap = new Map();
+          data.npcs.forEach((npc) => {
+            npcMap.set(npc.id, npc.info);
+          });
+          setNPCs(npcMap);
+          console.log("Received NPCs:", npcMap);
+        }
+      );
     } catch (error) {
       console.error("Login error:", error);
     } finally {

@@ -3,12 +3,14 @@
 import { Canvas, useThree } from "@react-three/fiber";
 import { Direction, UserInfo } from "../utils/types/user";
 import AnimalGraphic from "./AnimalGraphic";
+import NPCGraphic from "./NPCGraphic";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Vector3 } from "three";
 import { useFrame } from "@react-three/fiber";
 import { getChannel } from "../utils/pusher-instance";
 import WaveGrid from "./WaveGrid";
 import { ANIMAL_SCALES } from "../api/utils/user-info";
+import { NPC } from "../page";
 
 // Speed of movement per keypress/frame
 const MOVE_SPEED = 0.5;
@@ -112,9 +114,10 @@ function useKeyboardMovement(
 interface Props {
   users: Map<string, UserInfo>;
   myUser: UserInfo;
+  npcs: Map<string, NPC>;
 }
 
-export default function Scene({ users, myUser }: Props) {
+export default function Scene({ users, myUser, npcs }: Props) {
   const initialPosition = new Vector3(
     myUser.position.x,
     myUser.position.y,
@@ -243,6 +246,11 @@ export default function Scene({ users, myUser }: Props) {
           user={user}
           isLocalPlayer={user.id === myUser.id}
         />
+      ))}
+      {Array.from(npcs.values()).map((npc) => (
+        <NPCGraphic
+          key={npc.id}
+          npc={npc}
       ))}
     </Canvas>
   );
