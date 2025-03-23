@@ -268,7 +268,11 @@ function AnimalSprite({
       while (delta > Math.PI) delta -= Math.PI * 2;
       while (delta < -Math.PI) delta += Math.PI * 2;
 
-      if (Math.abs(delta) == Math.PI && currentFlipState.current == -1) {
+      if (
+        Math.abs(targetRotation.current) == Math.PI / 2 &&
+        Math.abs(delta) == Math.PI &&
+        currentFlipState.current == -1
+      ) {
         delta *= -1;
       }
 

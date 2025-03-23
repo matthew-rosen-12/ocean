@@ -126,10 +126,11 @@ export default function Scene({ users, myUser }: Props) {
 
   // Throttled broadcast function using useState and useCallback
   const [isReady, setIsReady] = useState(true);
+  const [isPending, setIsPending] = useState(false);
   const THROTTLE_MS = 100;
 
-  const throttledBroadcast = useCallback(() => {
-    if (!isReady) return;
+  const throttledBroadcast = useCallback(async () => {
+    if (!isReady || isPending) return;
 
     // Calculate if position changed enough to broadcast
     const positionDelta = new Vector3()
@@ -137,37 +138,55 @@ export default function Scene({ users, myUser }: Props) {
       .sub(lastBroadcastPosition.current);
     const positionChanged = positionDelta.length() >= POSITION_THRESHOLD;
 
-    // Check if direction changed since last broadcast
+    // Simply use the current direction - already calculated properly
     const directionChanged =
       lastBroadcastDirection.current.x !== direction.x ||
       lastBroadcastDirection.current.y !== direction.y;
 
     if (positionChanged || directionChanged) {
+      // Lock the system during this broadcast attempt
+      setIsReady(false);
+      setIsPending(true);
+
+      console.log("BROADCASTING DIRECTION:", direction);
+
+      // Ensure myUser direction stays in sync
+      myUser.direction = { ...direction };
+
+      // Get the channel
       const channel = getChannel(myUser.channel_name);
 
-      // Broadcast the current state
-      channel.trigger("client-user-modified", {
-        id: myUser.id,
-        info: {
-          ...myUser,
-          position: {
-            x: position.x,
-            y: position.y,
-            z: position.z,
+      try {
+        // Use the existing direction directly
+        await channel.trigger("client-user-modified", {
+          id: myUser.id,
+          info: {
+            ...myUser,
+            position: {
+              x: position.x,
+              y: position.y,
+              z: position.z,
+            },
+            direction: direction,
           },
-          direction: direction,
-        },
-      });
+        });
 
-      // Update what we last broadcast
-      lastBroadcastPosition.current.copy(position);
-      lastBroadcastDirection.current = { x: direction.x, y: direction.y };
+        // Update last broadcast values
+        lastBroadcastPosition.current.copy(position);
+        lastBroadcastDirection.current = { ...direction };
 
-      // Start the cooldown
-      setIsReady(false);
+        console.log("Broadcast successful with direction:", direction);
+      } catch (error) {
+        console.error("Broadcast failed:", error);
+      }
+
+      // Reset pending state
+      setIsPending(false);
+
+      // Start the cooldown timer to allow next broadcast
       setTimeout(() => setIsReady(true), THROTTLE_MS);
     }
-  }, [position, direction, myUser, isReady]);
+  }, [position, direction, myUser, isReady, isPending]);
 
   // Effect to update myUser position and direction continuously
   useEffect(() => {
