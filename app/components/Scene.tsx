@@ -118,8 +118,7 @@ export default function Scene({ users, myUser }: Props) {
     myUser.position.z
   );
 
-  const { position, direction, keysPressed } =
-    useKeyboardMovement(initialPosition);
+  const { position, direction } = useKeyboardMovement(initialPosition);
   const lastBroadcastPosition = useRef(new Vector3().copy(initialPosition));
   const lastBroadcastDirection = useRef({ x: direction.x, y: direction.y });
   const POSITION_THRESHOLD = 0.01;
