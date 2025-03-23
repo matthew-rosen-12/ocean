@@ -32,9 +32,12 @@ function CameraController({
   return null;
 }
 
-function useKeyboardMovement(initialPosition: Vector3) {
+function useKeyboardMovement(
+  initialPosition: Vector3,
+  initialDirection: Direction
+) {
   const [position, setPosition] = useState(initialPosition);
-  const [direction, setDirection] = useState<Direction>({ x: 1, y: 0 });
+  const [direction, setDirection] = useState<Direction>(initialDirection);
   const [keysPressed, setKeysPressed] = useState(new Set<string>());
 
   useEffect(() => {
@@ -118,9 +121,17 @@ export default function Scene({ users, myUser }: Props) {
     myUser.position.z
   );
 
-  const { position, direction } = useKeyboardMovement(initialPosition);
-  const lastBroadcastPosition = useRef(new Vector3().copy(initialPosition));
-  const lastBroadcastDirection = useRef({ x: direction.x, y: direction.y });
+  const initialDirection = {
+    x: myUser.direction.x,
+    y: myUser.direction.y,
+  };
+
+  const { position, direction } = useKeyboardMovement(
+    initialPosition,
+    initialDirection
+  );
+  const lastBroadcastPosition = useRef(initialPosition);
+  const lastBroadcastDirection = useRef(initialDirection);
   const POSITION_THRESHOLD = 0.01;
 
   // Throttled broadcast function using useState and useCallback
@@ -240,14 +251,8 @@ export default function Scene({ users, myUser }: Props) {
 /*
 TODO:
 add NPCs to capture
-
-center the animal sprite within the camera view
+refractor into more functions
 debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)
 debug db rows not being deleted properly (likely same issue as previous)
-
-add NPCs to capture
-
-
-basic world interactions between them
-lots of facts throughout the day
+center the animal sprite within the camera view
 */

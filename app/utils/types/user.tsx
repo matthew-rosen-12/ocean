@@ -12,7 +12,7 @@ export interface UserInfo {
   animal: Animal;
   channel_name: string;
   position: Vector3;
-  direction?: Direction;
+  direction: Direction;
   createdAt: Date;
 }
 
