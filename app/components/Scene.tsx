@@ -1,9 +1,9 @@
 // ocean/app/components/Scene.tsx
 "use client";
 import { Canvas, useThree } from "@react-three/fiber";
-import { UserInfo } from "../utils/types/user";
+import { Direction, UserInfo } from "../utils/types/user";
 import AnimalGraphic from "./AnimalGraphic";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Vector3 } from "three";
 import { useFrame } from "@react-three/fiber";
 import { getChannel } from "../utils/pusher-instance";
@@ -34,6 +34,7 @@ function CameraController({
 
 function useKeyboardMovement(initialPosition: Vector3) {
   const [position, setPosition] = useState(initialPosition);
+  const [direction, setDirection] = useState<Direction>({ x: 1, y: 0 });
   const [keysPressed, setKeysPressed] = useState(new Set<string>());
 
   useEffect(() => {
@@ -51,22 +52,35 @@ function useKeyboardMovement(initialPosition: Vector3) {
 
     const updatePosition = () => {
       const change = new Vector3(0, 0, 0);
+      const newDirection = { x: 0, y: 0 };
 
       if (keysPressed.has("ArrowUp") || keysPressed.has("w")) {
         change.y += MOVE_SPEED;
+        newDirection.y += 1;
       }
       if (keysPressed.has("ArrowDown") || keysPressed.has("s")) {
         change.y -= MOVE_SPEED;
+        newDirection.y -= 1;
       }
       if (keysPressed.has("ArrowLeft") || keysPressed.has("a")) {
         change.x -= MOVE_SPEED;
+        newDirection.x -= 1;
       }
       if (keysPressed.has("ArrowRight") || keysPressed.has("d")) {
         change.x += MOVE_SPEED;
+        newDirection.x += 1;
       }
 
       if (change.x !== 0 || change.y !== 0) {
         setPosition((current) => current.clone().add(change));
+
+        const length = Math.sqrt(
+          newDirection.x * newDirection.x + newDirection.y * newDirection.y
+        );
+        setDirection({
+          x: newDirection.x / length,
+          y: newDirection.y / length,
+        });
       }
     };
 
@@ -89,7 +103,7 @@ function useKeyboardMovement(initialPosition: Vector3) {
     };
   }, [keysPressed]);
 
-  return { position, keysPressed };
+  return { position, direction, keysPressed };
 }
 
 interface Props {
@@ -104,36 +118,41 @@ export default function Scene({ users, myUser }: Props) {
     myUser.position.z
   );
 
-  const { position, keysPressed } = useKeyboardMovement(initialPosition);
-  const lastSentPosition = useRef(new Vector3());
-  const lastDirection = useRef<string>("none");
-  const DISTANCE_THRESHOLD = 0.1;
-  const UPDATES_PER_SECOND = 10;
-  const UPDATE_INTERVAL_MS = 1000 / UPDATES_PER_SECOND;
+  const { position, direction } = useKeyboardMovement(initialPosition);
+  const lastBroadcastPosition = useRef(new Vector3().copy(initialPosition));
+  const lastBroadcastDirection = useRef({ x: direction.x, y: direction.y });
+  const POSITION_THRESHOLD = 0.01;
 
-  // Effect to update myUser position continuously
-  useEffect(() => {
-    myUser.position.x = position.x;
-    myUser.position.y = position.y;
-    myUser.position.z = position.z;
-  }, [position, myUser]);
+  // Throttled broadcast function using useState and useCallback
+  const [isReady, setIsReady] = useState(true);
+  const [isPending, setIsPending] = useState(false);
+  const THROTTLE_MS = 100;
 
-  // Separate effect for rate-limited position broadcasting
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      let currentDirection = "none";
-      const keys = Array.from(keysPressed);
-      if (keys.length > 0) {
-        currentDirection = keys.sort().join("-");
-      }
+  const throttledBroadcast = useCallback(async () => {
+    if (!isReady || isPending) return;
 
-      const distance = lastSentPosition.current.distanceTo(position);
-      if (
-        distance > DISTANCE_THRESHOLD ||
-        currentDirection !== lastDirection.current
-      ) {
-        const channel = getChannel(myUser.channel_name);
-        channel.trigger("client-user-modified", {
+    // Calculate if position changed enough to broadcast
+    const positionDelta = new Vector3()
+      .copy(position)
+      .sub(lastBroadcastPosition.current);
+    const positionChanged = positionDelta.length() >= POSITION_THRESHOLD;
+
+    // Simply use the current direction - already calculated properly
+    const directionChanged =
+      lastBroadcastDirection.current.x !== direction.x ||
+      lastBroadcastDirection.current.y !== direction.y;
+
+    if (positionChanged || directionChanged) {
+      // Lock the system during this broadcast attempt
+      setIsReady(false);
+      setIsPending(true);
+
+      // Get the channel
+      const channel = getChannel(myUser.channel_name);
+
+      try {
+        // Use the existing direction directly
+        await channel.trigger("client-user-modified", {
           id: myUser.id,
           info: {
             ...myUser,
@@ -142,15 +161,47 @@ export default function Scene({ users, myUser }: Props) {
               y: position.y,
               z: position.z,
             },
+            direction: direction,
           },
         });
-        lastSentPosition.current.copy(position);
-        lastDirection.current = currentDirection;
-      }
-    }, UPDATE_INTERVAL_MS);
 
-    return () => clearInterval(intervalId);
-  }, [position, keysPressed, UPDATE_INTERVAL_MS, myUser]);
+        // Update last broadcast values
+        lastBroadcastPosition.current.copy(position);
+        lastBroadcastDirection.current = { ...direction };
+      } catch (error) {
+        console.error("Broadcast failed:", error);
+      }
+
+      // Reset pending state
+      setIsPending(false);
+
+      // Start the cooldown timer to allow next broadcast
+      setTimeout(() => setIsReady(true), THROTTLE_MS);
+    }
+  }, [position, direction, myUser, isReady, isPending]);
+
+  // Effect to update myUser position and direction continuously
+  useEffect(() => {
+    myUser.position.x = position.x;
+    myUser.position.y = position.y;
+    myUser.position.z = position.z;
+    myUser.direction = direction;
+
+    // Also update the user in the users Map to keep it in sync
+    if (users.has(myUser.id)) {
+      const userInMap = users.get(myUser.id);
+      if (userInMap) {
+        userInMap.position.x = myUser.position.x;
+        userInMap.position.y = myUser.position.y;
+        userInMap.position.z = myUser.position.z;
+
+        userInMap.direction = { ...myUser.direction };
+      }
+    }
+
+    // Attempt to broadcast whenever position/direction changes
+    throttledBroadcast();
+  }, [position, direction, myUser, throttledBroadcast, users]);
 
   return (
     <Canvas
@@ -180,7 +231,6 @@ export default function Scene({ users, myUser }: Props) {
           key={user.id}
           user={user}
           isLocalPlayer={user.id === myUser.id}
-          keysPressed={user.id === myUser.id ? keysPressed : undefined}
         />
       ))}
     </Canvas>
@@ -189,7 +239,7 @@ export default function Scene({ users, myUser }: Props) {
 
 /*
 TODO:
-broadcast direction of player to all other players instead of calcuating based on position
+add NPCs to capture
 
 center the animal sprite within the camera view
 debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)

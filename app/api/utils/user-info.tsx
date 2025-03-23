@@ -20,3 +20,9 @@ export function getPosition(): Vector3 {
   const y = Math.random() * 2 - 1.5;
   return new Vector3(x, y, 0);
 }
+
+export function getDirection(): Vector3 {
+  const x = Math.random() * 2 - 0.5;
+  const y = Math.random() * 2 - 1.5;
+  return new Vector3(x, y, 0);
+}

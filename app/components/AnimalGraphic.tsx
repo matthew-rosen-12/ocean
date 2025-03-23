@@ -16,37 +16,37 @@ const ANIMAL_ORIENTATION = {
   // Add other animals as needed
 };
 
+// Constants
+const MOVE_SPEED = 0.5;
+const ROTATION_SPEED = 0.25;
+const FLIP_SPEED = 0.5;
+
 function AnimalSprite({
   animal,
   scale = 1,
   positionRef,
+  directionRef,
   isLocalPlayer,
-  keysPressed,
 }: {
   animal: Animal;
   scale?: number;
   positionRef: React.MutableRefObject<THREE.Vector3>;
+  directionRef: React.MutableRefObject<THREE.Vector3 | null>;
   isLocalPlayer: boolean;
-  keysPressed?: Set<string>;
 }) {
   const group = useMemo(() => new THREE.Group(), []);
   const currentPosition = useMemo(() => new THREE.Vector3(), []);
-  const lastDirection = useRef<THREE.Vector3>(new THREE.Vector3(1, 0, 0));
   const currentRotation = useRef(0);
   const targetRotation = useRef(0);
-  const MOVE_SPEED = isLocalPlayer ? 0 : 0.5;
-  const ROTATION_SPEED = 0.15;
   const targetFlipY = useRef(1);
   const initialScale = useRef<THREE.Vector3 | null>(null);
   const svgLoaded = useRef(false);
   const flipProgress = useRef(0);
   const isFlipping = useRef(false);
-  const FLIP_SPEED = 0.1;
   const currentFlipState = useRef(1); // Track current flip state (1 or -1)
   const initialOrientation = useRef(
     ANIMAL_ORIENTATION[animal] || { rotation: 0, flipY: false }
   );
-  const facingLeft = useRef(false);
 
   useEffect(() => {
     const loader = new SVGLoader();
@@ -147,8 +147,6 @@ function AnimalSprite({
         targetRotation.current = 0;
 
         // Reset the facing direction reference based on the initial state
-        facingLeft.current = false; // After orientation, animal is facing right
-
         svgLoaded.current = true;
 
         // Set initial position
@@ -166,190 +164,173 @@ function AnimalSprite({
     };
   }, [animal, scale, group, currentPosition, positionRef, isLocalPlayer]);
 
+  function setRotation(direction: THREE.Vector3) {
+    if (direction.length() > 0) {
+      direction.normalize();
+
+      // Calculate angle between direction and base direction (1,0,0)
+      const angle = Math.atan2(direction.y, direction.x);
+
+      // Set target rotation
+      targetRotation.current = angle;
+
+      // Check if we need to flip
+      const needsFlip =
+        (direction.x < 0 && currentFlipState.current > 0) ||
+        (direction.x > 0 && currentFlipState.current < 0);
+
+      if (needsFlip) {
+        isFlipping.current = true;
+        // Set target flip direction
+        targetFlipY.current = direction.x < 0 ? -1 : 1;
+      }
+    }
+  }
   useFrame(() => {
     // Skip if SVG isn't loaded yet
     if (!svgLoaded.current || !initialScale.current) return;
 
-    if (isLocalPlayer) {
-      // Local player: direct positioning
-      group.position.copy(positionRef.current);
+    // Position handling - same for local and non-local
+    group.position.copy(positionRef.current);
 
-      // Calculate movement direction from keys
-      if (keysPressed && keysPressed.size > 0) {
-        const direction = new THREE.Vector3(0, 0, 0);
+    // Direction handling - consistent for both local and non-local
+    if (directionRef.current && directionRef.current.length() > 0.01) {
+      // For all players, use the directionRef for rotation
+      setRotation(directionRef.current);
+    }
 
-        if (keysPressed.has("ArrowUp") || keysPressed.has("w")) {
-          direction.y += 1;
-        }
-        if (keysPressed.has("ArrowDown") || keysPressed.has("s")) {
-          direction.y -= 1;
-        }
-        if (keysPressed.has("ArrowLeft") || keysPressed.has("a")) {
-          direction.x -= 1;
-        }
-        if (keysPressed.has("ArrowRight") || keysPressed.has("d")) {
-          direction.x += 1;
-        }
-
-        // Only update direction if actually moving
-        if (direction.length() > 0) {
-          direction.normalize();
-          lastDirection.current = direction;
-
-          // Calculate angle between direction and base direction (1,0,0)
-          const angle = Math.atan2(direction.y, direction.x);
-
-          // Set target rotation
-          targetRotation.current = angle;
-
-          // Check if we need to flip
-          const needsFlip =
-            (direction.x < 0 && currentFlipState.current > 0) ||
-            (direction.x > 0 && currentFlipState.current < 0);
-
-          if (needsFlip) {
-            isFlipping.current = true;
-            // Set target flip direction
-            targetFlipY.current = direction.x < 0 ? -1 : 1;
-          }
-        }
-      }
-
-      // Handle flipping animation
-      if (isFlipping.current) {
-        // Progress the flip
-        if (targetFlipY.current < 0) {
-          // Flipping to negative (left-facing)
-          flipProgress.current = Math.min(1, flipProgress.current + FLIP_SPEED);
-
-          // Apply scale based on flip progress
-          if (flipProgress.current < 0.5) {
-            // First half of flip - scale down y
-            const scaleY =
-              initialScale.current.y * (1 - flipProgress.current * 2);
-            group.scale.setY(Math.max(0.01, scaleY));
-          } else {
-            // Second half of flip - scale up y with negative sign
-            const scaleY =
-              initialScale.current.y * ((flipProgress.current - 0.5) * 2) * -1;
-            group.scale.setY(scaleY);
-          }
-
-          // Complete the flip
-          if (flipProgress.current >= 1) {
-            isFlipping.current = false;
-            flipProgress.current = 0;
-            group.scale.set(
-              initialScale.current.x,
-              -initialScale.current.y,
-              initialScale.current.z
-            );
-
-            // Update current flip state
-            currentFlipState.current = -1;
-          }
-        } else {
-          // Flipping to positive (right-facing)
-          flipProgress.current = Math.min(1, flipProgress.current + FLIP_SPEED);
-
-          // Apply scale based on flip progress
-          if (flipProgress.current < 0.5) {
-            // First half of flip - scale down y
-            const scaleY =
-              initialScale.current.y * (1 - flipProgress.current * 2) * -1;
-            group.scale.setY(scaleY);
-          } else {
-            // Second half of flip - scale up y with positive sign
-            const scaleY =
-              initialScale.current.y * ((flipProgress.current - 0.5) * 2);
-            group.scale.setY(Math.max(0.01, scaleY));
-          }
-
-          // Complete the flip
-          if (flipProgress.current >= 1) {
-            isFlipping.current = false;
-            flipProgress.current = 0;
-            group.scale.set(
-              initialScale.current.x,
-              initialScale.current.y,
-              initialScale.current.z
-            );
-
-            // Update current flip state
-            currentFlipState.current = 1;
-          }
-        }
-      }
-
-      // Interpolate rotation
-      if (currentRotation.current !== targetRotation.current) {
-        // Find the shortest path to the target angle
-        let delta = targetRotation.current - currentRotation.current;
-
-        // Normalize delta to [-PI, PI]
-        while (delta > Math.PI) delta -= Math.PI * 2;
-        while (delta < -Math.PI) delta += Math.PI * 2;
-
-        // Apply rotation with easing
-        if (Math.abs(delta) < ROTATION_SPEED) {
-          currentRotation.current = targetRotation.current;
-        } else {
-          currentRotation.current += Math.sign(delta) * ROTATION_SPEED;
-        }
-
-        group.rotation.z = currentRotation.current;
-      }
-    } else {
-      // Non-local players: move at constant speed toward target
-      const direction = new THREE.Vector3()
-        .subVectors(positionRef.current, currentPosition)
-        .normalize();
+    // Handle position interpolation for non-local players
+    if (!isLocalPlayer) {
+      const positionDelta = new THREE.Vector3().subVectors(
+        positionRef.current,
+        currentPosition
+      );
       const distance = currentPosition.distanceTo(positionRef.current);
 
+      // Handle movement with adaptive approach
       if (distance > 0.01) {
-        // Only move if we're not basically there
-        const movement = Math.min(MOVE_SPEED, distance);
-        currentPosition.addScaledVector(direction, movement);
+        const LERP_FACTOR = 0.1; // How fast to lerp (0-1)
+
+        // Calculate how far we would move with LERP
+        const lerpPosition = currentPosition
+          .clone()
+          .lerp(positionRef.current, LERP_FACTOR);
+        const lerpDistance = currentPosition.distanceTo(lerpPosition);
+
+        // Calculate how far we would move with constant speed
+        const constantSpeedDistance = Math.min(MOVE_SPEED, distance);
+
+        // Use whichever method moves us farther
+        if (lerpDistance > constantSpeedDistance) {
+          // LERP is faster - use it
+          currentPosition.copy(lerpPosition);
+        } else {
+          // Constant speed is faster - use it
+          currentPosition.addScaledVector(
+            positionDelta.normalize(),
+            constantSpeedDistance
+          );
+        }
+
+        // Apply the calculated position
         group.position.copy(currentPosition);
+      }
+    }
 
-        // Update rotation for non-local players too
-        if (direction.length() > 0.01) {
-          lastDirection.current = direction;
+    // Rotation interpolation with faster non-local rotation
+    if (Math.abs(targetRotation.current - currentRotation.current) > 0.001) {
+      let delta = targetRotation.current - currentRotation.current;
 
-          // Calculate angle between direction and base direction (1,0,0)
-          const angle = Math.atan2(direction.y, direction.x);
+      // Normalize delta to [-PI, PI]
+      while (delta > Math.PI) delta -= Math.PI * 2;
+      while (delta < -Math.PI) delta += Math.PI * 2;
 
-          // Set target rotation
-          targetRotation.current = angle;
+      if (
+        Math.abs(targetRotation.current) == Math.PI / 2 &&
+        Math.abs(delta) == Math.PI &&
+        currentFlipState.current == -1
+      ) {
+        delta *= -1;
+      }
 
-          // Set target flip
-          if (direction.x < 0) {
-            targetFlipY.current = -1;
-          } else if (direction.x > 0) {
-            targetFlipY.current = 1;
-          }
+      // Apply rotation with much faster speed for non-local players
+      const rotSpeed = ROTATION_SPEED;
+
+      // Snap to target if close enough
+      if (Math.abs(delta) < rotSpeed) {
+        currentRotation.current = targetRotation.current;
+      } else {
+        currentRotation.current += Math.sign(delta) * rotSpeed;
+      }
+
+      group.rotation.z = currentRotation.current;
+    }
+
+    // Handle flipping animation with faster non-local flipping
+    if (isFlipping.current) {
+      // Use faster flip speed for non-local players
+      const flipSpeed = FLIP_SPEED;
+
+      // Progress the flip
+      if (targetFlipY.current < 0) {
+        // Flipping to negative (left-facing)
+        flipProgress.current = Math.min(1, flipProgress.current + flipSpeed);
+
+        // Apply scale based on flip progress
+        if (flipProgress.current < 0.5) {
+          // First half of flip - scale down y
+          const scaleY =
+            initialScale.current.y * (1 - flipProgress.current * 2);
+          group.scale.setY(Math.max(0.01, scaleY));
+        } else {
+          // Second half of flip - scale up y with negative sign
+          const scaleY =
+            initialScale.current.y * ((flipProgress.current - 0.5) * 2) * -1;
+          group.scale.setY(scaleY);
         }
 
-        // Interpolate rotation (same as for local player)
-        if (currentRotation.current !== targetRotation.current) {
-          let delta = targetRotation.current - currentRotation.current;
+        // Complete the flip
+        if (flipProgress.current >= 1) {
+          isFlipping.current = false;
+          flipProgress.current = 0;
+          group.scale.set(
+            initialScale.current.x,
+            -initialScale.current.y,
+            initialScale.current.z
+          );
 
-          // Normalize delta to [-PI, PI]
-          while (delta > Math.PI) delta -= Math.PI * 2;
-          while (delta < -Math.PI) delta += Math.PI * 2;
+          // Update current flip state
+          currentFlipState.current = -1;
+        }
+      } else {
+        // Flipping to positive (right-facing)
+        flipProgress.current = Math.min(1, flipProgress.current + flipSpeed);
 
-          if (Math.abs(delta) < ROTATION_SPEED) {
-            currentRotation.current = targetRotation.current;
-          } else {
-            currentRotation.current += Math.sign(delta) * ROTATION_SPEED;
-          }
-
-          group.rotation.z = currentRotation.current;
+        // Apply scale based on flip progress
+        if (flipProgress.current < 0.5) {
+          // First half of flip - scale down y
+          const scaleY =
+            initialScale.current.y * (1 - flipProgress.current * 2) * -1;
+          group.scale.setY(scaleY);
+        } else {
+          // Second half of flip - scale up y with positive sign
+          const scaleY =
+            initialScale.current.y * ((flipProgress.current - 0.5) * 2);
+          group.scale.setY(Math.max(0.01, scaleY));
         }
 
-        // Handle flipping - direct approach
-        if (Math.sign(group.scale.y) !== targetFlipY.current) {
-          group.scale.y = targetFlipY.current * initialScale.current.y;
+        // Complete the flip
+        if (flipProgress.current >= 1) {
+          isFlipping.current = false;
+          flipProgress.current = 0;
+          group.scale.set(
+            initialScale.current.x,
+            initialScale.current.y,
+            initialScale.current.z
+          );
+
+          // Update current flip state
+          currentFlipState.current = 1;
         }
       }
     }
@@ -361,20 +342,30 @@ function AnimalSprite({
 export default function AnimalGraphic({
   user,
   isLocalPlayer = false,
-  keysPressed,
 }: {
   user: UserInfo;
   isLocalPlayer?: boolean;
-  keysPressed?: Set<string>;
 }) {
+  // Create position ref as Vector3
   const positionRef = useRef(
     new THREE.Vector3(user.position.x, user.position.y, user.position.z)
   );
 
-  // Update the ref for ALL players when position changes
+  // Create direction ref as Vector3 (even if user.direction is Vector2-like)
+  const directionRef = useRef<THREE.Vector3 | null>(null);
+
+  // Update refs when user data changes
   useEffect(() => {
     positionRef.current.set(user.position.x, user.position.y, user.position.z);
-  }, [user.position.x, user.position.y, user.position.z]);
+
+    // Update direction ref if direction exists, preserving z=0
+    if (user.direction) {
+      if (!directionRef.current) {
+        directionRef.current = new THREE.Vector3();
+      }
+      directionRef.current.set(user.direction.x, user.direction.y, 0);
+    }
+  }, [user.position.x, user.position.y, user.position.z, user.direction]);
 
   const sprite = useMemo(
     () => (
@@ -382,11 +373,11 @@ export default function AnimalGraphic({
         animal={user.animal as Animal}
         scale={ANIMAL_SCALES[user.animal as Animal]}
         positionRef={positionRef}
+        directionRef={directionRef}
         isLocalPlayer={isLocalPlayer}
-        keysPressed={isLocalPlayer ? keysPressed : undefined}
       />
     ),
-    [user.animal, isLocalPlayer, keysPressed]
+    [user.animal, isLocalPlayer]
   );
 
   return sprite;
