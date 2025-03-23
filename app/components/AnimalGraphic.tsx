@@ -27,14 +27,12 @@ function AnimalSprite({
   positionRef,
   directionRef,
   isLocalPlayer,
-  keysPressed,
 }: {
   animal: Animal;
   scale?: number;
   positionRef: React.MutableRefObject<THREE.Vector3>;
-  directionRef: React.MutableRefObject<THREE.Vector3>;
+  directionRef: React.MutableRefObject<THREE.Vector3 | null>;
   isLocalPlayer: boolean;
-  keysPressed?: Set<string>;
 }) {
   const group = useMemo(() => new THREE.Group(), []);
   const currentPosition = useMemo(() => new THREE.Vector3(), []);
@@ -192,31 +190,17 @@ function AnimalSprite({
     // Skip if SVG isn't loaded yet
     if (!svgLoaded.current || !initialScale.current) return;
 
-    if (isLocalPlayer) {
-      // Local player: direct positioning
-      group.position.copy(positionRef.current);
+    // Position handling - same for local and non-local
+    group.position.copy(positionRef.current);
 
-      // Calculate movement direction from keys if pressed
-      if (keysPressed && keysPressed.size > 0) {
-        const direction = new THREE.Vector3(0, 0, 0);
+    // Direction handling - consistent for both local and non-local
+    if (directionRef.current && directionRef.current.length() > 0.01) {
+      // For all players, use the directionRef for rotation
+      setRotation(directionRef.current);
+    }
 
-        if (keysPressed.has("ArrowUp") || keysPressed.has("w")) {
-          direction.y += 1;
-        }
-        if (keysPressed.has("ArrowDown") || keysPressed.has("s")) {
-          direction.y -= 1;
-        }
-        if (keysPressed.has("ArrowLeft") || keysPressed.has("a")) {
-          direction.x -= 1;
-        }
-        if (keysPressed.has("ArrowRight") || keysPressed.has("d")) {
-          direction.x += 1;
-        }
-
-        setRotation(direction);
-      }
-    } else {
-      // Non-local players: smooth position interpolation
+    // Handle position interpolation for non-local players
+    if (!isLocalPlayer) {
       const positionDelta = new THREE.Vector3().subVectors(
         positionRef.current,
         currentPosition
@@ -250,13 +234,6 @@ function AnimalSprite({
 
         // Apply the calculated position
         group.position.copy(currentPosition);
-      }
-
-      // Direction handling for non-local players
-      if (directionRef.current.length() > 0.01) {
-        // For diagonal movement, both x and y will have values
-        // Calculate the rotation angle directly from the x,y components
-        setRotation(directionRef.current);
       }
     }
 
@@ -365,11 +342,9 @@ function AnimalSprite({
 export default function AnimalGraphic({
   user,
   isLocalPlayer = false,
-  keysPressed,
 }: {
   user: UserInfo;
   isLocalPlayer?: boolean;
-  keysPressed?: Set<string>;
 }) {
   // Create position ref as Vector3
   const positionRef = useRef(
@@ -377,13 +352,7 @@ export default function AnimalGraphic({
   );
 
   // Create direction ref as Vector3 (even if user.direction is Vector2-like)
-  const directionRef = useRef(
-    new THREE.Vector3(
-      user.direction?.x || 1,
-      user.direction?.y || 0,
-      0 // Always set z=0 for 2D movement
-    )
-  );
+  const directionRef = useRef<THREE.Vector3 | null>(null);
 
   // Update refs when user data changes
   useEffect(() => {
@@ -391,6 +360,9 @@ export default function AnimalGraphic({
 
     // Update direction ref if direction exists, preserving z=0
     if (user.direction) {
+      if (!directionRef.current) {
+        directionRef.current = new THREE.Vector3();
+      }
       directionRef.current.set(user.direction.x, user.direction.y, 0);
     }
   }, [user.position.x, user.position.y, user.position.z, user.direction]);
@@ -403,10 +375,9 @@ export default function AnimalGraphic({
         positionRef={positionRef}
         directionRef={directionRef}
         isLocalPlayer={isLocalPlayer}
-        keysPressed={isLocalPlayer ? keysPressed : undefined}
       />
     ),
-    [user.animal, isLocalPlayer, keysPressed]
+    [user.animal, isLocalPlayer]
   );
 
   return sprite;

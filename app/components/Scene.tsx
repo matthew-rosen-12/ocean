@@ -148,11 +148,6 @@ export default function Scene({ users, myUser }: Props) {
       setIsReady(false);
       setIsPending(true);
 
-      console.log("BROADCASTING DIRECTION:", direction);
-
-      // Ensure myUser direction stays in sync
-      myUser.direction = { ...direction };
-
       // Get the channel
       const channel = getChannel(myUser.channel_name);
 
@@ -174,8 +169,6 @@ export default function Scene({ users, myUser }: Props) {
         // Update last broadcast values
         lastBroadcastPosition.current.copy(position);
         lastBroadcastDirection.current = { ...direction };
-
-        console.log("Broadcast successful with direction:", direction);
       } catch (error) {
         console.error("Broadcast failed:", error);
       }
@@ -195,9 +188,21 @@ export default function Scene({ users, myUser }: Props) {
     myUser.position.z = position.z;
     myUser.direction = direction;
 
+    // Also update the user in the users Map to keep it in sync
+    if (users.has(myUser.id)) {
+      const userInMap = users.get(myUser.id);
+      if (userInMap) {
+        userInMap.position.x = myUser.position.x;
+        userInMap.position.y = myUser.position.y;
+        userInMap.position.z = myUser.position.z;
+
+        userInMap.direction = { ...myUser.direction };
+      }
+    }
+
     // Attempt to broadcast whenever position/direction changes
     throttledBroadcast();
-  }, [position, direction, myUser, throttledBroadcast]);
+  }, [position, direction, myUser, throttledBroadcast, users]);
 
   return (
     <Canvas
@@ -227,7 +232,6 @@ export default function Scene({ users, myUser }: Props) {
           key={user.id}
           user={user}
           isLocalPlayer={user.id === myUser.id}
-          keysPressed={user.id === myUser.id ? keysPressed : undefined}
         />
       ))}
     </Canvas>
@@ -236,9 +240,7 @@ export default function Scene({ users, myUser }: Props) {
 
 /*
 TODO:
-retry broadcasting a message if there is rate limiting
-make local and non local player orientation after rotation the same
-possibly include direction and orientation (if flipped) in addition to just direction
+add NPCs to capture
 
 center the animal sprite within the camera view
 debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)
