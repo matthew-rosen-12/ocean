@@ -1,6 +1,7 @@
 import { Animal } from "@/app/utils/types/user";
 import { Vector3 } from "three";
 
+export const DIRECTION_OFFSET = 0.001;
 const ANIMALS = ["dolphin", "wolf"];
 export const ANIMAL_SCALES: Record<Animal, number> = {
   dolphin: 3.0,
@@ -22,7 +23,6 @@ export function getPosition(): Vector3 {
 }
 
 export function getDirection(): Vector3 {
-  const x = Math.random() * 2 - 0.5;
-  const y = Math.random() * 2 - 1.5;
-  return new Vector3(x, y, 0);
+  // Pick a random number 0-3 to select a cardinal direction
+  return new Vector3(1 + DIRECTION_OFFSET, 0, 0);
 }

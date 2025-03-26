@@ -12,5 +12,4 @@ export type NPC = {
     x: number;
     y: number;
   };
-  createdAt: Date;
 };

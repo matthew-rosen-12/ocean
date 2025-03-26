@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import * as THREE from "three";
-import { useFrame, useThree } from "@react-three/fiber";
-import { NPC } from "../page";
+import { useFrame } from "@react-three/fiber";
+import { NPC } from "../utils/types/npc";
 
 interface NPCGraphicProps {
   npc: NPC;
@@ -27,11 +27,14 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({ npc }) => {
   useEffect(() => {
     const textureLoader = new THREE.TextureLoader();
 
+    // Store the current group reference for cleanup
+    const currentGroup = group.current;
+
     textureLoader.load(
       `/npcs/${npc.filename}`,
       (texture) => {
-        while (group.current.children.length > 0) {
-          group.current.remove(group.current.children[0]);
+        while (currentGroup.children.length > 0) {
+          currentGroup.remove(currentGroup.children[0]);
         }
 
         // Create a simple plane with the texture
@@ -49,7 +52,7 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({ npc }) => {
         const scale = 5; // Base scale factor
         mesh.scale.set(scale * imageAspect, scale, 1);
 
-        group.current.add(mesh);
+        currentGroup.add(mesh);
         textureLoaded.current = true;
       },
       undefined,
@@ -57,10 +60,10 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({ npc }) => {
     );
 
     return () => {
-      // Cleanup
-      if (group.current) {
-        while (group.current.children.length > 0) {
-          const child = group.current.children[0];
+      // Cleanup using the captured reference
+      if (currentGroup) {
+        while (currentGroup.children.length > 0) {
+          const child = currentGroup.children[0];
           if (child instanceof THREE.Mesh) {
             child.geometry.dispose();
             if (child.material instanceof THREE.Material) {
@@ -69,7 +72,7 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({ npc }) => {
               child.material.forEach((material) => material.dispose());
             }
           }
-          group.current.remove(child);
+          currentGroup.remove(child);
         }
       }
     };

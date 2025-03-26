@@ -1,8 +1,9 @@
 // ocean/app/components/GuestLogin.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Member, UserInfo } from "../utils/types/user";
 import type { Members } from "pusher-js";
 import { getChannel } from "../utils/pusher-instance";
+import { NPC } from "../utils/types/npc";
 
 interface Props {
   setUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
@@ -17,7 +18,6 @@ function MemberToUser(member: Member) {
     channel_name: member.info.channel_name,
     position: member.info.position,
     direction: member.info.direction,
-    createdAt: member.info.createdAt,
   };
 }
 
@@ -34,6 +34,20 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
       if (!response.ok) throw new Error(data.error);
 
       const channel_name = data.channel_name;
+
+      // Fetch NPCs directly inside the login handler - no useEffect needed here
+      fetch(`/api/npc?channel=${channel_name}`)
+        .then((res) => res.json())
+        .then((data) => {
+          const npcMap: Map<string, NPC> = new Map();
+          data.npcs.forEach((npc: NPC) => {
+            console.log("NPC found", npc.filename);
+            npcMap.set(npc.id, npc);
+          });
+          setNPCs(npcMap);
+          console.log("Fetched initial NPCs:", npcMap);
+        })
+        .catch((err) => console.error("Error fetching NPCs:", err));
 
       const channel = getChannel(channel_name);
 

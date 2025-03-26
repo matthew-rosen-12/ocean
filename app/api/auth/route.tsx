@@ -34,7 +34,6 @@ export async function POST(request: NextRequest) {
     channel_name: channelName,
     position: getPosition(),
     direction: getDirection(),
-    createdAt: new Date(),
   };
 
   const authResponse = pusher.authorizeChannel(socketId, channelName, {
@@ -44,7 +43,6 @@ export async function POST(request: NextRequest) {
       channel_name: guestUser.channel_name,
       position: guestUser.position,
       direction: guestUser.direction,
-      createdAt: guestUser.createdAt,
     },
   });
 

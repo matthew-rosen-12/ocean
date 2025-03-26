@@ -13,7 +13,6 @@ export interface UserInfo {
   channel_name: string;
   position: Vector3;
   direction: Direction;
-  createdAt: Date;
 }
 
 export interface Member {

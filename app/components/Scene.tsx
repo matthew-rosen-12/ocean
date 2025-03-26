@@ -9,8 +9,8 @@ import { Vector3 } from "three";
 import { useFrame } from "@react-three/fiber";
 import { getChannel } from "../utils/pusher-instance";
 import WaveGrid from "./WaveGrid";
-import { ANIMAL_SCALES } from "../api/utils/user-info";
-import { NPC } from "../page";
+import { ANIMAL_SCALES, DIRECTION_OFFSET } from "../api/utils/user-info";
+import { NPC } from "../utils/types/npc";
 
 // Speed of movement per keypress/frame
 const MOVE_SPEED = 0.5;
@@ -61,19 +61,19 @@ function useKeyboardMovement(
 
       if (keysPressed.has("ArrowUp") || keysPressed.has("w")) {
         change.y += MOVE_SPEED;
-        newDirection.y += 1;
+        newDirection.y += 1 + DIRECTION_OFFSET;
       }
       if (keysPressed.has("ArrowDown") || keysPressed.has("s")) {
         change.y -= MOVE_SPEED;
-        newDirection.y -= 1;
+        newDirection.y -= 1 + DIRECTION_OFFSET;
       }
       if (keysPressed.has("ArrowLeft") || keysPressed.has("a")) {
         change.x -= MOVE_SPEED;
-        newDirection.x -= 1;
+        newDirection.x -= 1 + DIRECTION_OFFSET;
       }
       if (keysPressed.has("ArrowRight") || keysPressed.has("d")) {
         change.x += MOVE_SPEED;
-        newDirection.x += 1;
+        newDirection.x += 1 + DIRECTION_OFFSET;
       }
 
       if (change.x !== 0 || change.y !== 0) {
@@ -248,9 +248,7 @@ export default function Scene({ users, myUser, npcs }: Props) {
         />
       ))}
       {Array.from(npcs.values()).map((npc) => (
-        <NPCGraphic
-          key={npc.id}
-          npc={npc}
+        <NPCGraphic key={npc.id} npc={npc} />
       ))}
     </Canvas>
   );
@@ -259,7 +257,6 @@ export default function Scene({ users, myUser, npcs }: Props) {
 /*
 TODO:
 add NPCs to capture
-refractor into more functions
 debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)
 debug db rows not being deleted properly (likely same issue as previous)
 center the animal sprite within the camera view

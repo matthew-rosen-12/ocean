@@ -48,12 +48,6 @@ export default async function getChannel(): Promise<string> {
       // Continue even if NPC population fails
     }
 
-    // Trigger event for room creation
-    const pusher = getPusherInstance();
-    await pusher.trigger("private-admin", "room-created", {
-      channelName: room.channelName,
-    });
-
     return channelName;
   }
   await prisma.room.update({

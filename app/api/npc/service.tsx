@@ -4,11 +4,15 @@ import { v4 as uuidv4 } from "uuid";
 import fs from "fs";
 import path from "path";
 import { NPC } from "../../utils/types/npc";
+import { getDirection, getPosition } from "../utils/npc-info";
 
 const NUM_NPCS = 2;
 
 // Cache for NPC filenames
 let npcFilenamesCache: string[] | null = null;
+
+// Store NPCs by channel name
+const channelNPCs = new Map<string, NPC[]>();
 
 // Function to get NPC filenames from directory
 function getNPCFilenames(): string[] {
@@ -35,15 +39,33 @@ function getNPCFilenames(): string[] {
   }
 }
 
+// Function to get NPCs for a specific channel
+export async function getNPCsForChannel(channelName: string): Promise<NPC[]> {
+  // If this channel doesn't have NPCs yet, populate it
+  if (!channelNPCs.has(channelName)) {
+    await populateChannel(channelName);
+  }
+  return channelNPCs.get(channelName) || [];
+}
+
 // Primary function to populate a specific channel with NPCs
 export async function populateChannel(channelName: string) {
-  // Create NPCs for this channel
-  const npcs = createNPCs(NUM_NPCS, channelName);
+  // Only create NPCs if they don't already exist for this channel
+  if (!channelNPCs.has(channelName)) {
+    // Create NPCs for this channel
+    const npcs = createNPCs(NUM_NPCS);
 
-  // Start updating NPCs for this channel
-  startNPCUpdatesForRoom(npcs, channelName);
+    // Store NPCs for this channel
+    channelNPCs.set(channelName, npcs);
 
-  return npcs;
+    // Start updating NPCs for this channel
+    startNPCUpdatesForRoom(npcs, channelName);
+
+    return npcs;
+  }
+
+  // Return existing NPCs if already populated
+  return channelNPCs.get(channelName);
 }
 
 function createNPCs(count: number): NPC[] {
@@ -60,16 +82,8 @@ function createNPCs(count: number): NPC[] {
       id: `npc-${uuidv4()}`,
       type: "npc",
       filename: filename,
-      position: {
-        x: Math.random() * 100 - 50, // Random position between -50 and 50
-        y: Math.random() * 100 - 50,
-        z: 0,
-      },
-      direction: {
-        x: Math.random() * 2 - 1, // Random direction
-        y: Math.random() * 2 - 1,
-      },
-      createdAt: new Date(),
+      position: getPosition(),
+      direction: getDirection(),
     };
 
     npcs.push(npc);
