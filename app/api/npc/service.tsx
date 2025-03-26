@@ -6,7 +6,7 @@ import path from "path";
 import { NPC } from "../../utils/types/npc";
 import { getDirection, getPosition } from "../utils/npc-info";
 
-const NUM_NPCS = 2;
+const NUM_NPCS = 4;
 
 // Cache for NPC filenames
 let npcFilenamesCache: string[] | null = null;
@@ -72,10 +72,13 @@ function createNPCs(count: number): NPC[] {
   const npcs: NPC[] = [];
   const npcFilenames = getNPCFilenames();
 
+  // Create a copy of filenames and shuffle it
+  const shuffledFilenames = [...npcFilenames].sort(() => Math.random() - 0.5);
+
   for (let i = 0; i < count; i++) {
-    // Choose a random NPC image
-    const filename =
-      npcFilenames[Math.floor(Math.random() * npcFilenames.length)];
+    // Use modulo to cycle through the array if we need more NPCs than filenames
+    const filenameIndex = i % shuffledFilenames.length;
+    const filename = shuffledFilenames[filenameIndex];
 
     // Create the NPC
     const npc: NPC = {
@@ -97,10 +100,7 @@ function startNPCUpdatesForRoom(npcs: NPC[], channelName: string) {
 
   // Broadcast all NPCs to the channel at once
   pusher.trigger(channelName, "npcs-added", {
-    npcs: npcs.map((npc) => ({
-      id: npc.id,
-      info: npc,
-    })),
+    npcs,
   });
 
   console.log(

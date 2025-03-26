@@ -41,11 +41,9 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
         .then((data) => {
           const npcMap: Map<string, NPC> = new Map();
           data.npcs.forEach((npc: NPC) => {
-            console.log("NPC found", npc.filename);
             npcMap.set(npc.id, npc);
           });
           setNPCs(npcMap);
-          console.log("Fetched initial NPCs:", npcMap);
         })
         .catch((err) => console.error("Error fetching NPCs:", err));
 
@@ -111,17 +109,14 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
       });
 
       // Add listener for npcs-added event
-      channel.bind(
-        "npcs-added",
-        (data: { npcs: Array<{ id: string; info: any }> }) => {
-          const npcMap = new Map();
-          data.npcs.forEach((npc) => {
-            npcMap.set(npc.id, npc.info);
-          });
-          setNPCs(npcMap);
-          console.log("Received NPCs:", npcMap);
-        }
-      );
+      channel.bind("npcs-added", (data: { npcs: Array<NPC> }) => {
+        const npcMap = new Map();
+        data.npcs.forEach((npc) => {
+          npcMap.set(npc.id, npc);
+        });
+        setNPCs(npcMap);
+        console.log("Received NPCs:", npcMap);
+      });
     } catch (error) {
       console.error("Login error:", error);
     } finally {

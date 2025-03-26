@@ -57,35 +57,56 @@ function useKeyboardMovement(
 
     const updatePosition = () => {
       const change = new Vector3(0, 0, 0);
-      const newDirection = { x: 0, y: 0 };
 
-      if (keysPressed.has("ArrowUp") || keysPressed.has("w")) {
-        change.y += MOVE_SPEED;
-        newDirection.y += 1 + DIRECTION_OFFSET;
-      }
-      if (keysPressed.has("ArrowDown") || keysPressed.has("s")) {
-        change.y -= MOVE_SPEED;
-        newDirection.y -= 1 + DIRECTION_OFFSET;
-      }
-      if (keysPressed.has("ArrowLeft") || keysPressed.has("a")) {
-        change.x -= MOVE_SPEED;
-        newDirection.x -= 1 + DIRECTION_OFFSET;
-      }
-      if (keysPressed.has("ArrowRight") || keysPressed.has("d")) {
-        change.x += MOVE_SPEED;
-        newDirection.x += 1 + DIRECTION_OFFSET;
+      // Start with current direction
+      let newDirection = { ...direction };
+
+      // Check which keys are pressed
+      const up = keysPressed.has("ArrowUp") || keysPressed.has("w");
+      const down = keysPressed.has("ArrowDown") || keysPressed.has("s");
+      const left = keysPressed.has("ArrowLeft") || keysPressed.has("a");
+      const right = keysPressed.has("ArrowRight") || keysPressed.has("d");
+
+      // Update position vector
+      if (up) change.y += MOVE_SPEED;
+      if (down) change.y -= MOVE_SPEED;
+      if (left) change.x -= MOVE_SPEED;
+      if (right) change.x += MOVE_SPEED;
+
+      // Primary movement logic
+      if (right && !left) {
+        // Moving right
+        newDirection = { x: 1, y: 0 };
+      } else if (left && !right) {
+        // Moving left
+        newDirection = { x: -1, y: 0 };
+      } else if (up && !down) {
+        // Moving up
+        if (Math.abs(direction.x) === 1 && direction.y === 0) {
+          // Was previously moving horizontally
+          newDirection = {
+            x: direction.x > 0 ? DIRECTION_OFFSET : -DIRECTION_OFFSET,
+            y: 1,
+          };
+        } else {
+          newDirection = { x: 0, y: 1 };
+        }
+      } else if (down && !up) {
+        // Moving down
+        if (Math.abs(direction.x) === 1 && direction.y === 0) {
+          // Was previously moving horizontally
+          newDirection = {
+            x: direction.x > 0 ? DIRECTION_OFFSET : -DIRECTION_OFFSET,
+            y: -1,
+          };
+        } else {
+          newDirection = { x: 0, y: -1 };
+        }
       }
 
       if (change.x !== 0 || change.y !== 0) {
         setPosition((current) => current.clone().add(change));
-
-        const length = Math.sqrt(
-          newDirection.x * newDirection.x + newDirection.y * newDirection.y
-        );
-        setDirection({
-          x: newDirection.x / length,
-          y: newDirection.y / length,
-        });
+        setDirection(newDirection);
       }
     };
 
@@ -257,6 +278,7 @@ export default function Scene({ users, myUser, npcs }: Props) {
 /*
 TODO:
 add NPCs to capture
+do not render non-local players until orientation is received
 debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)
 debug db rows not being deleted properly (likely same issue as previous)
 center the animal sprite within the camera view

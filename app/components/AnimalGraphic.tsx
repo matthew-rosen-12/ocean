@@ -353,6 +353,7 @@ export default function AnimalGraphic({
 
   // Create direction ref as Vector3 (even if user.direction is Vector2-like)
   const directionRef = useRef<THREE.Vector3 | null>(null);
+  console.log("user.direction", user.animal, user.direction);
 
   // Update refs when user data changes
   useEffect(() => {

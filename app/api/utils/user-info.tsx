@@ -1,7 +1,7 @@
 import { Animal } from "@/app/utils/types/user";
 import { Vector3 } from "three";
 
-export const DIRECTION_OFFSET = 0.001;
+export const DIRECTION_OFFSET = 0.01;
 const ANIMALS = ["dolphin", "wolf"];
 export const ANIMAL_SCALES: Record<Animal, number> = {
   dolphin: 3.0,
