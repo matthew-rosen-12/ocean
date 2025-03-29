@@ -35,7 +35,6 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
 
       const channel_name = data.channel_name;
 
-      // Fetch NPCs directly inside the login handler - no useEffect needed here
       fetch(`/api/npc?channel=${channel_name}`)
         .then((res) => res.json())
         .then((data) => {

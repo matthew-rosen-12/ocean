@@ -34,6 +34,27 @@ function CameraController({
   return null;
 }
 
+// When capturing an NPC
+async function updateServerAfterCapture(
+  npcId: string,
+  captorId: string,
+  channelName: string
+) {
+  try {
+    await fetch(`/api/npc/capture`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        npcId,
+        captorId,
+        channelName,
+      }),
+    });
+  } catch (error) {
+    console.error("Failed to update server about NPC capture:", error);
+  }
+}
+
 function useKeyboardMovement(
   initialPosition: Vector3,
   initialDirection: Direction
@@ -288,6 +309,9 @@ export default function Scene({ users, myUser, npcs }: Props) {
               captorId: user.id,
               npcData: npc,
             });
+
+            // When capturing an NPC
+            updateServerAfterCapture(npc.id, user.id, myUser.channel_name);
           }
         }
       }

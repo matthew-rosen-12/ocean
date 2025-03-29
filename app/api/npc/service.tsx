@@ -45,6 +45,8 @@ export async function getNPCsForChannel(channelName: string): Promise<NPC[]> {
   if (!channelNPCs.has(channelName)) {
     await populateChannel(channelName);
   }
+
+  // Return NPCs for this channel (already filtered because captured ones were removed)
   return channelNPCs.get(channelName) || [];
 }
 
@@ -102,4 +104,26 @@ function startNPCUpdatesForRoom(npcs: NPC[], channelName: string) {
   pusher.trigger(channelName, "npcs-added", {
     npcs,
   });
+}
+
+// Function to mark an NPC as captured
+export function captureNPC(
+  npcId: string,
+  captorId: string,
+  channelName: string
+): boolean {
+  // Get NPCs for the channel
+  const npcs = channelNPCs.get(channelName);
+  if (!npcs) return false;
+
+  // Find the NPC index
+  const npcIndex = npcs.findIndex((npc) => npc.id === npcId);
+  if (npcIndex === -1) return false;
+
+  npcs.splice(npcIndex, 1);
+
+  // Update the channel's NPC list
+  channelNPCs.set(channelName, npcs);
+
+  return true;
 }
