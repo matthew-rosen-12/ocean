@@ -116,6 +116,40 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
         });
         setNPCs(npcMap);
       });
+
+      // Add this with the other channel.bind statements
+      channel.bind(
+        "client-npc-captured",
+        (data: { npcId: string; captorId: string; npcData: NPC }) => {
+          // Remove the NPC from the general pool
+          setNPCs((prevNPCs) => {
+            const newNPCs = new Map(prevNPCs);
+            newNPCs.delete(data.npcId);
+            return newNPCs;
+          });
+
+          // Add the NPC to the captor's group
+          setUsers((prevUsers) => {
+            const newUsers = new Map(prevUsers);
+            const captor = newUsers.get(data.captorId);
+
+            if (captor) {
+              // Create npcGroup if it doesn't exist
+              if (!captor.npcGroup) {
+                captor.npcGroup = {
+                  npcs: [],
+                  captorId: data.captorId,
+                };
+              }
+
+              // Add the NPC to the captor's group
+              captor.npcGroup.npcs.push(data.npcData);
+            }
+
+            return newUsers;
+          });
+        }
+      );
     } catch (error) {
       console.error("Login error:", error);
     } finally {

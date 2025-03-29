@@ -58,9 +58,6 @@ function useKeyboardMovement(
     const updatePosition = () => {
       const change = new Vector3(0, 0, 0);
 
-      // Start with current direction
-      let newDirection = { ...direction };
-
       // Check which keys are pressed
       const up = keysPressed.has("ArrowUp") || keysPressed.has("w");
       const down = keysPressed.has("ArrowDown") || keysPressed.has("s");
@@ -73,17 +70,32 @@ function useKeyboardMovement(
       if (left) change.x -= MOVE_SPEED;
       if (right) change.x += MOVE_SPEED;
 
-      // Primary movement logic
-      if (right && !left) {
-        // Moving right
+      // Primary direction logic
+      let newDirection = { ...direction };
+
+      // True diagonal movement - both components active
+      if (right && !left && up && !down) {
+        // Up-right diagonal
+        newDirection = { x: 1, y: 1 };
+      } else if (left && !right && up && !down) {
+        // Up-left diagonal
+        newDirection = { x: -1, y: 1 };
+      } else if (right && !left && down && !up) {
+        // Down-right diagonal
+        newDirection = { x: 1, y: -1 };
+      } else if (left && !right && down && !up) {
+        // Down-left diagonal
+        newDirection = { x: -1, y: -1 };
+      } else if (right && !left) {
+        // Moving right only
         newDirection = { x: 1, y: 0 };
       } else if (left && !right) {
-        // Moving left
+        // Moving left only
         newDirection = { x: -1, y: 0 };
       } else if (up && !down) {
-        // Moving up
+        // Moving up only
         if (Math.abs(direction.x) === 1 && direction.y === 0) {
-          // Was previously moving horizontally
+          // Was previously moving horizontally - keep the DIRECTION_OFFSET
           newDirection = {
             x: direction.x > 0 ? DIRECTION_OFFSET : -DIRECTION_OFFSET,
             y: 1,
@@ -92,9 +104,9 @@ function useKeyboardMovement(
           newDirection = { x: 0, y: 1 };
         }
       } else if (down && !up) {
-        // Moving down
+        // Moving down only
         if (Math.abs(direction.x) === 1 && direction.y === 0) {
-          // Was previously moving horizontally
+          // Was previously moving horizontally - keep the DIRECTION_OFFSET
           newDirection = {
             x: direction.x > 0 ? DIRECTION_OFFSET : -DIRECTION_OFFSET,
             y: -1,
@@ -102,6 +114,15 @@ function useKeyboardMovement(
         } else {
           newDirection = { x: 0, y: -1 };
         }
+      }
+
+      // Normalize diagonal movement to maintain consistent speed
+      if (newDirection.x !== 0 && newDirection.y !== 0) {
+        const length = Math.sqrt(
+          newDirection.x * newDirection.x + newDirection.y * newDirection.y
+        );
+        newDirection.x /= length;
+        newDirection.y /= length;
       }
 
       if (change.x !== 0 || change.y !== 0) {
@@ -240,31 +261,38 @@ export default function Scene({ users, myUser, npcs }: Props) {
 
   const handleNPCCollision = useCallback(
     (user: UserInfo, npc: NPC) => {
-      console.log(
-        `Collision detected between user ${user.id} and NPC ${npc.id}`
-      );
-
-      // Only process if the NPC is still in the general pool
       if (npcs.has(npc.id)) {
         // Remove NPC from general pool
         npcs.delete(npc.id);
 
-        // Get the user from the map to ensure we're working with the latest version
-        // Create NPCGroup if it doesn't exist
-        if (!user.npcGroup) {
-          user.npcGroup = {
-            npcs: [],
-            captor: user,
-          };
+        // Get the user from the map
+        const currentUser = users.get(user.id);
+        if (currentUser) {
+          // Create NPCGroup if it doesn't exist
+          if (!currentUser.npcGroup) {
+            currentUser.npcGroup = {
+              npcs: [],
+              captorId: currentUser.id,
+            };
+          }
 
           // Add NPC to the user's group
-          user.npcGroup.npcs.push(npc);
+          currentUser.npcGroup.npcs.push({ ...npc });
 
-          console.log(`NPC ${npc.id} added to user ${user.id}'s group`);
+          // If this was the local player capturing an NPC
+          if (user.id === myUser.id) {
+            // Broadcast the capture to all other players
+            const channel = getChannel(myUser.channel_name);
+            channel.trigger("client-npc-captured", {
+              npcId: npc.id,
+              captorId: user.id,
+              npcData: npc,
+            });
+          }
         }
       }
     },
-    [npcs]
+    [npcs, users, myUser]
   );
 
   return (

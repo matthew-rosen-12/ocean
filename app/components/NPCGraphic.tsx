@@ -95,7 +95,7 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
       const normalizedDy = dy / dirLength;
 
       // Position behind the user
-      const offsetDistance = 2.5; // Distance behind user
+      const offsetDistance = 4.5; // Distance behind user
       const offsetIndex =
         followingUser.npcGroup?.npcs.findIndex((n) => n.id === npc.id) || 0;
       const lineOffset = (offsetIndex + 1) * offsetDistance;
@@ -114,25 +114,21 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
         posY += perpDy * spreadFactor;
       }
 
-      // Update position and NPC properties
+      // Update position
       positionRef.current.set(posX, posY, 0);
       npc.position.x = posX;
       npc.position.y = posY;
       npc.position.z = 0;
 
-      // Update direction to match user
-      directionRef.current.set(dx, dy);
-      npc.direction.x = dx;
-      npc.direction.y = dy;
+      // Don't update rotation or direction
+      // We'll keep the NPC's original direction
     }
 
-    // Update group position and rotation
+    // Update group position
     group.current.position.copy(positionRef.current);
 
-    if (directionRef.current.length() > 0) {
-      const angle = Math.atan2(directionRef.current.y, directionRef.current.x);
-      group.current.rotation.z = angle;
-    }
+    // Fixed upright rotation - NPCs don't rotate with captor
+    group.current.rotation.z = 0;
 
     // Only check for collisions if we're not already following a user
     if (!followingUser && onCollision) {

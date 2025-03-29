@@ -38,5 +38,5 @@ export type NPC = {
 
 export type NPCGroup = {
   npcs: NPC[];
-  captor?: UserInfo;
+  captorId?: string;
 };

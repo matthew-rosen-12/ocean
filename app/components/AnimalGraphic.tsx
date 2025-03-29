@@ -193,6 +193,7 @@ function AnimalSprite({
 
     // Position handling - same for local and non-local
     group.position.copy(positionRef.current);
+    // console.log("DIRECTION", directionRef.current);
 
     // Direction handling - consistent for both local and non-local
     if (directionRef.current && directionRef.current.length() > 0.01) {
