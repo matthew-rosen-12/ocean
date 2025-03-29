@@ -6,7 +6,7 @@ import {
   getPosition,
   getDirection,
 } from "../utils/user-info";
-import { UserInfo } from "../../utils/types/user";
+import { UserInfo } from "../../utils/types";
 import { getPusherInstance } from "../utils/pusher/pusher-instance";
 import { NextRequest, NextResponse } from "next/server";
 

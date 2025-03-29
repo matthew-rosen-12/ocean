@@ -1,8 +1,7 @@
 // ocean/app/components/Scene.tsx
 "use client";
 import { Canvas, useThree } from "@react-three/fiber";
-import { Direction, UserInfo } from "../utils/types/user";
-import AnimalGraphic from "./AnimalGraphic";
+import { Direction, UserInfo } from "../utils/types";
 import NPCGraphic from "./NPCGraphic";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Vector3 } from "three";
@@ -10,7 +9,8 @@ import { useFrame } from "@react-three/fiber";
 import { getChannel } from "../utils/pusher-instance";
 import WaveGrid from "./WaveGrid";
 import { ANIMAL_SCALES, DIRECTION_OFFSET } from "../api/utils/user-info";
-import { NPC } from "../utils/types/npc";
+import { NPC } from "../utils/types";
+import AnimalGraphic from "./AnimalGraphic";
 
 // Speed of movement per keypress/frame
 const MOVE_SPEED = 0.5;
@@ -127,7 +127,7 @@ function useKeyboardMovement(
       window.removeEventListener("keyup", handleKeyUp);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [keysPressed, direction]);
+  }, [keysPressed]);
 
   return { position, direction, keysPressed };
 }
@@ -238,13 +238,34 @@ export default function Scene({ users, myUser, npcs }: Props) {
     throttledBroadcast();
   }, [position, direction, myUser, throttledBroadcast, users]);
 
-  const handleNPCCollision = useCallback((userId: string, npcId: string) => {
-    console.log(`Collision detected between user ${userId} and NPC ${npcId}`);
-    // You can add the logic to make the NPC follow the user here
+  const handleNPCCollision = useCallback(
+    (user: UserInfo, npc: NPC) => {
+      console.log(
+        `Collision detected between user ${user.id} and NPC ${npc.id}`
+      );
 
-    // For example, you might want to track which NPCs are following which users
-    // and implement the following behavior in the NPCGraphic component
-  }, []);
+      // Only process if the NPC is still in the general pool
+      if (npcs.has(npc.id)) {
+        // Remove NPC from general pool
+        npcs.delete(npc.id);
+
+        // Get the user from the map to ensure we're working with the latest version
+        // Create NPCGroup if it doesn't exist
+        if (!user.npcGroup) {
+          user.npcGroup = {
+            npcs: [],
+            captor: user,
+          };
+
+          // Add NPC to the user's group
+          user.npcGroup.npcs.push(npc);
+
+          console.log(`NPC ${npc.id} added to user ${user.id}'s group`);
+        }
+      }
+    },
+    [npcs]
+  );
 
   return (
     <Canvas
@@ -269,13 +290,18 @@ export default function Scene({ users, myUser, npcs }: Props) {
       />
       <pointLight position={[-10, -10, -10]} decay={0} intensity={Math.PI} />
       <WaveGrid />
+
+      {/* Render all users with their NPCs */}
       {Array.from(users.values()).map((user) => (
         <AnimalGraphic
           key={user.id}
           user={user}
           isLocalPlayer={user.id === myUser.id}
+          users={users}
         />
       ))}
+
+      {/* Render free NPCs that haven't been captured */}
       {Array.from(npcs.values()).map((npc) => (
         <NPCGraphic
           key={npc.id}

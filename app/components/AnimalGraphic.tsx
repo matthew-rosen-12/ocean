@@ -1,13 +1,14 @@
 // ocean/app/components/Animal.tsx
 
 import React, { useMemo, useEffect, useRef } from "react";
-import { UserInfo } from "../utils/types/user";
+import { UserInfo } from "../utils/types";
 import * as THREE from "three";
 import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
 import { useFrame } from "@react-three/fiber";
-import { Animal } from "../utils/types/user";
+import { Animal } from "../utils/types";
 import { ANIMAL_SCALES } from "../api/utils/user-info";
 import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js";
+import NPCGraphic from "./NPCGraphic";
 
 // Initial orientation configuration to make animals face right
 const ANIMAL_ORIENTATION = {
@@ -342,18 +343,19 @@ function AnimalSprite({
 export default function AnimalGraphic({
   user,
   isLocalPlayer = false,
+  users,
 }: {
   user: UserInfo;
   isLocalPlayer?: boolean;
+  users: Map<string, UserInfo>;
 }) {
   // Create position ref as Vector3
   const positionRef = useRef(
     new THREE.Vector3(user.position.x, user.position.y, user.position.z)
   );
 
-  // Create direction ref as Vector3 (even if user.direction is Vector2-like)
+  // Create direction ref as Vector3
   const directionRef = useRef<THREE.Vector3 | null>(null);
-  console.log("user.direction", user.animal, user.direction);
 
   // Update refs when user data changes
   useEffect(() => {
@@ -368,8 +370,9 @@ export default function AnimalGraphic({
     }
   }, [user.position.x, user.position.y, user.position.z, user.direction]);
 
-  const sprite = useMemo(
-    () => (
+  return (
+    <>
+      {/* Render the animal sprite */}
       <AnimalSprite
         animal={user.animal as Animal}
         scale={ANIMAL_SCALES[user.animal as Animal]}
@@ -377,9 +380,16 @@ export default function AnimalGraphic({
         directionRef={directionRef}
         isLocalPlayer={isLocalPlayer}
       />
-    ),
-    [user.animal, isLocalPlayer]
-  );
 
-  return sprite;
+      {/* Render NPCs belonging to this user */}
+      {user.npcGroup?.npcs.map((npc) => (
+        <NPCGraphic
+          key={`following-${npc.id}`}
+          npc={npc}
+          users={users}
+          followingUser={user}
+        />
+      ))}
+    </>
+  );
 }

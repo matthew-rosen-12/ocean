@@ -3,7 +3,7 @@ import { getPusherInstance } from "../utils/pusher/pusher-instance";
 import { v4 as uuidv4 } from "uuid";
 import fs from "fs";
 import path from "path";
-import { NPC } from "../../utils/types/npc";
+import { NPC } from "../../utils/types";
 import { getDirection, getPosition } from "../utils/npc-info";
 
 const NUM_NPCS = 4;
@@ -102,8 +102,4 @@ function startNPCUpdatesForRoom(npcs: NPC[], channelName: string) {
   pusher.trigger(channelName, "npcs-added", {
     npcs,
   });
-
-  console.log(
-    `Started NPC updates for channel ${channelName} with ${npcs.length} NPCs`
-  );
 }

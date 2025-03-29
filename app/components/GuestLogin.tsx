@@ -1,9 +1,9 @@
 // ocean/app/components/GuestLogin.tsx
-import { useEffect, useState } from "react";
-import { Member, UserInfo } from "../utils/types/user";
+import { useState } from "react";
+import { Member, UserInfo } from "../utils/types";
 import type { Members } from "pusher-js";
 import { getChannel } from "../utils/pusher-instance";
-import { NPC } from "../utils/types/npc";
+import { NPC } from "../utils/types";
 
 interface Props {
   setUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
@@ -115,7 +115,6 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
           npcMap.set(npc.id, npc);
         });
         setNPCs(npcMap);
-        console.log("Received NPCs:", npcMap);
       });
     } catch (error) {
       console.error("Login error:", error);

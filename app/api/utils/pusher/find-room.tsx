@@ -1,5 +1,4 @@
 import { prisma } from "@/prisma/prisma";
-import { getPusherInstance } from "./pusher-instance";
 import { populateChannel } from "../../npc/service";
 
 const MAX_USERS = 2;
@@ -39,7 +38,6 @@ export default async function getChannel(): Promise<string> {
     const channelName = room.channelName;
     try {
       await populateChannel(channelName);
-      console.log(`Populated channel ${channelName} with NPCs`);
     } catch (error) {
       console.error(
         `Failed to populate channel ${channelName} with NPCs:`,

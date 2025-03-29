@@ -1,4 +1,4 @@
-import { Animal } from "@/app/utils/types/user";
+import { Animal } from "@/app/utils/types";
 import { Vector3 } from "three";
 
 export const DIRECTION_OFFSET = 0.01;

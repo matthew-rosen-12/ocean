@@ -1,21 +1,29 @@
 import React, { useRef, useEffect } from "react";
+import { NPC, UserInfo } from "../utils/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
-import { NPC } from "../utils/types/npc";
-import { UserInfo } from "../utils/types/user";
 
 interface NPCGraphicProps {
   npc: NPC;
   users: Map<string, UserInfo>;
-  onCollision?: (userId: string, npcId: string) => void;
+  followingUser?: UserInfo; // The user this NPC is following (if any)
+  onCollision?: (user: UserInfo, npc: NPC) => void;
 }
 
-const NPCGraphic: React.FC<NPCGraphicProps> = ({ npc, users, onCollision }) => {
-  const group = useRef<THREE.Group>(null!);
+const NPCGraphic: React.FC<NPCGraphicProps> = ({
+  npc,
+  users,
+  followingUser,
+  onCollision,
+}) => {
+  const group = useRef<THREE.Group>(new THREE.Group());
+  const texture = useRef<THREE.Texture | null>(null);
+  const material = useRef<THREE.MeshBasicMaterial | null>(null);
+  const mesh = useRef<THREE.Mesh | null>(null);
   const positionRef = useRef(new THREE.Vector3());
   const directionRef = useRef(new THREE.Vector2());
+  const collisionSet = useRef<Set<string>>(new Set());
   const textureLoaded = useRef(false);
-  const collisionState = useRef<Record<string, boolean>>({});
 
   // Set initial position and direction
   useEffect(() => {
@@ -27,110 +35,135 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({ npc, users, onCollision }) => {
     }
   }, [npc]);
 
-  // Load the texture for the NPC
+  // Load texture
   useEffect(() => {
     const textureLoader = new THREE.TextureLoader();
 
-    // Store the current group reference for cleanup
-    const currentGroup = group.current;
-
     textureLoader.load(
       `/npcs/${npc.filename}`,
-      (texture) => {
-        while (currentGroup.children.length > 0) {
-          currentGroup.remove(currentGroup.children[0]);
-        }
+      (loadedTexture) => {
+        texture.current = loadedTexture;
 
-        // Create a simple plane with the texture
-        const material = new THREE.MeshBasicMaterial({
-          map: texture,
+        // Create material and mesh
+        material.current = new THREE.MeshBasicMaterial({
+          map: loadedTexture,
           transparent: true,
           side: THREE.DoubleSide,
         });
 
         const geometry = new THREE.PlaneGeometry(1, 1);
-        const mesh = new THREE.Mesh(geometry, material);
+        mesh.current = new THREE.Mesh(geometry, material.current);
 
-        // Scale the mesh based on texture size
-        const imageAspect = texture.image.width / texture.image.height;
-        const scale = 5; // Base scale factor
-        mesh.scale.set(scale * imageAspect, scale, 1);
+        // Scale based on texture aspect ratio
+        const imageAspect =
+          loadedTexture.image.width / loadedTexture.image.height;
+        const scale = 3; // Base scale
+        mesh.current.scale.set(scale * imageAspect, scale, 1);
 
-        currentGroup.add(mesh);
-        textureLoaded.current = true;
+        if (group.current) {
+          group.current.add(mesh.current);
+          textureLoaded.current = true;
+        }
       },
       undefined,
-      (error) => console.error("Error loading NPC texture:", error)
+      (error) => {
+        console.error("Error loading NPC texture:", error);
+      }
     );
 
     return () => {
-      // Cleanup using the captured reference
-      if (currentGroup) {
-        while (currentGroup.children.length > 0) {
-          const child = currentGroup.children[0];
-          if (child instanceof THREE.Mesh) {
-            child.geometry.dispose();
-            if (child.material instanceof THREE.Material) {
-              child.material.dispose();
-            } else if (Array.isArray(child.material)) {
-              child.material.forEach((material) => material.dispose());
-            }
-          }
-          currentGroup.remove(child);
-        }
-      }
+      if (texture.current) texture.current.dispose();
+      if (material.current) material.current.dispose();
+      if (mesh.current && mesh.current.geometry)
+        mesh.current.geometry.dispose();
     };
   }, [npc.filename]);
 
-  // Check for collisions on every frame
+  // Handle updates and collisions
   useFrame(() => {
-    if (!group.current) return;
+    if (!group.current || !textureLoaded.current) return;
 
-    // Update position and rotation
+    // If following a user, update position to follow
+    if (followingUser && followingUser.position && followingUser.direction) {
+      // Get user direction
+      const dx = followingUser.direction.x;
+      const dy = followingUser.direction.y;
+
+      // Normalize direction
+      const dirLength = Math.sqrt(dx * dx + dy * dy);
+      const normalizedDx = dx / dirLength;
+      const normalizedDy = dy / dirLength;
+
+      // Position behind the user
+      const offsetDistance = 2.5; // Distance behind user
+      const offsetIndex =
+        followingUser.npcGroup?.npcs.findIndex((n) => n.id === npc.id) || 0;
+      const lineOffset = (offsetIndex + 1) * offsetDistance;
+
+      // Calculate base position
+      let posX = followingUser.position.x - normalizedDx * lineOffset;
+      let posY = followingUser.position.y - normalizedDy * lineOffset;
+
+      // For staggered formation, use perpendicular vector
+      if (offsetIndex > 0) {
+        const perpDx = -normalizedDy;
+        const perpDy = normalizedDx;
+        const spreadFactor =
+          (offsetIndex % 2 === 0 ? 1 : -1) * Math.ceil(offsetIndex / 2) * 1.2;
+        posX += perpDx * spreadFactor;
+        posY += perpDy * spreadFactor;
+      }
+
+      // Update position and NPC properties
+      positionRef.current.set(posX, posY, 0);
+      npc.position.x = posX;
+      npc.position.y = posY;
+      npc.position.z = 0;
+
+      // Update direction to match user
+      directionRef.current.set(dx, dy);
+      npc.direction.x = dx;
+      npc.direction.y = dy;
+    }
+
+    // Update group position and rotation
     group.current.position.copy(positionRef.current);
 
     if (directionRef.current.length() > 0) {
       const angle = Math.atan2(directionRef.current.y, directionRef.current.x);
-      group.current.rotation.z = angle + Math.PI / 2;
+      group.current.rotation.z = angle;
     }
 
-    // Define collision distance threshold
-    const COLLISION_THRESHOLD = 2.5; // Adjust based on your needs
+    // Only check for collisions if we're not already following a user
+    if (!followingUser && onCollision) {
+      const COLLISION_THRESHOLD = 2.5;
+      const currentlyColliding = new Set<string>();
 
-    // Check for collisions with all users
-    Array.from(users.entries()).forEach(([userId, user]) => {
-      if (!user.position) return;
+      Array.from(users.entries()).forEach(([userId, user]) => {
+        if (!user.position) return;
 
-      // Get user position
-      const userPos = new THREE.Vector3(
-        user.position.x,
-        user.position.y,
-        user.position.z
-      );
+        const userPos = new THREE.Vector3(
+          user.position.x,
+          user.position.y,
+          user.position.z
+        );
 
-      // Calculate distance between NPC and user
-      const distance = positionRef.current.distanceTo(userPos);
+        const distance = positionRef.current.distanceTo(userPos);
 
-      // Check if collision occurs
-      const isColliding = distance < COLLISION_THRESHOLD;
+        if (distance < COLLISION_THRESHOLD) {
+          currentlyColliding.add(userId);
 
-      // Only trigger collision event when state changes
-      if (isColliding && !collisionState.current[userId]) {
-        // Set state to colliding
-        collisionState.current[userId] = true;
-
-        // Trigger collision callback
-        if (onCollision) {
-          onCollision(userId, npc.id);
+          if (!collisionSet.current.has(userId)) {
+            onCollision(user, npc);
+          }
         }
-      } else if (!isColliding) {
-        // Reset collision state when not colliding
-        collisionState.current[userId] = false;
-      }
-    });
+      });
+
+      collisionSet.current = currentlyColliding;
+    }
   });
 
-  return <group ref={group} />;
+  return <primitive object={group.current} />;
 };
 
 export default NPCGraphic;
