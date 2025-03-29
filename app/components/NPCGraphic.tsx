@@ -2,16 +2,20 @@ import React, { useRef, useEffect } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { NPC } from "../utils/types/npc";
+import { UserInfo } from "../utils/types/user";
 
 interface NPCGraphicProps {
   npc: NPC;
+  users: Map<string, UserInfo>;
+  onCollision?: (userId: string, npcId: string) => void;
 }
 
-const NPCGraphic: React.FC<NPCGraphicProps> = ({ npc }) => {
+const NPCGraphic: React.FC<NPCGraphicProps> = ({ npc, users, onCollision }) => {
   const group = useRef<THREE.Group>(null!);
   const positionRef = useRef(new THREE.Vector3());
   const directionRef = useRef(new THREE.Vector2());
   const textureLoaded = useRef(false);
+  const collisionState = useRef<Record<string, boolean>>({});
 
   // Set initial position and direction
   useEffect(() => {
@@ -78,18 +82,52 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({ npc }) => {
     };
   }, [npc.filename]);
 
-  // Update position and rotation every frame
+  // Check for collisions on every frame
   useFrame(() => {
     if (!group.current) return;
 
-    // Update position from positionRef
+    // Update position and rotation
     group.current.position.copy(positionRef.current);
 
-    // Update rotation based on direction
     if (directionRef.current.length() > 0) {
       const angle = Math.atan2(directionRef.current.y, directionRef.current.x);
-      group.current.rotation.z = angle + Math.PI / 2; // Add 90 degrees to face forward
+      group.current.rotation.z = angle + Math.PI / 2;
     }
+
+    // Define collision distance threshold
+    const COLLISION_THRESHOLD = 2.5; // Adjust based on your needs
+
+    // Check for collisions with all users
+    Array.from(users.entries()).forEach(([userId, user]) => {
+      if (!user.position) return;
+
+      // Get user position
+      const userPos = new THREE.Vector3(
+        user.position.x,
+        user.position.y,
+        user.position.z
+      );
+
+      // Calculate distance between NPC and user
+      const distance = positionRef.current.distanceTo(userPos);
+
+      // Check if collision occurs
+      const isColliding = distance < COLLISION_THRESHOLD;
+
+      // Only trigger collision event when state changes
+      if (isColliding && !collisionState.current[userId]) {
+        // Set state to colliding
+        collisionState.current[userId] = true;
+
+        // Trigger collision callback
+        if (onCollision) {
+          onCollision(userId, npc.id);
+        }
+      } else if (!isColliding) {
+        // Reset collision state when not colliding
+        collisionState.current[userId] = false;
+      }
+    });
   });
 
   return <group ref={group} />;

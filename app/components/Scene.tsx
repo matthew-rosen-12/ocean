@@ -127,7 +127,7 @@ function useKeyboardMovement(
       window.removeEventListener("keyup", handleKeyUp);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [keysPressed]);
+  }, [keysPressed, direction]);
 
   return { position, direction, keysPressed };
 }
@@ -238,6 +238,14 @@ export default function Scene({ users, myUser, npcs }: Props) {
     throttledBroadcast();
   }, [position, direction, myUser, throttledBroadcast, users]);
 
+  const handleNPCCollision = useCallback((userId: string, npcId: string) => {
+    console.log(`Collision detected between user ${userId} and NPC ${npcId}`);
+    // You can add the logic to make the NPC follow the user here
+
+    // For example, you might want to track which NPCs are following which users
+    // and implement the following behavior in the NPCGraphic component
+  }, []);
+
   return (
     <Canvas
       style={{
@@ -269,7 +277,12 @@ export default function Scene({ users, myUser, npcs }: Props) {
         />
       ))}
       {Array.from(npcs.values()).map((npc) => (
-        <NPCGraphic key={npc.id} npc={npc} />
+        <NPCGraphic
+          key={npc.id}
+          npc={npc}
+          users={users}
+          onCollision={handleNPCCollision}
+        />
       ))}
     </Canvas>
   );
@@ -278,7 +291,10 @@ export default function Scene({ users, myUser, npcs }: Props) {
 /*
 TODO:
 add NPCs to capture
-do not render non-local players until orientation is received
+  - bounding boxes for interactions
+  - split into grid for faster rendering
+  - push around, throw to cause health damage
+do not render *ANY* players until all states are received
 debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)
 debug db rows not being deleted properly (likely same issue as previous)
 center the animal sprite within the camera view
