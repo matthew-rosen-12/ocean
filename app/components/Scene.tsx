@@ -322,7 +322,8 @@ add NPCs to capture
   - split into grid for faster rendering
   - push around, throw to cause health damage
 
-debug NPCs sometimes being laggy when following local player (probably just decrease render rate)
+* refractor / cleanup
+* debug NPCs sometimes being laggy when following local player (probably just decrease render rate)
 debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)
 debug db rows not being deleted properly (likely same issue as previous)
 center the animal sprite within the camera view
