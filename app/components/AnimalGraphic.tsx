@@ -153,6 +153,32 @@ function AnimalSprite({
         // Set initial position
         currentPosition.copy(positionRef.current);
         group.position.copy(currentPosition);
+        console.log("animal graphic effect", isLocalPlayer);
+
+        // Apply initial rotation based on directionRef if available
+        if (directionRef.current && directionRef.current.length() > 0.01) {
+          // Calculate angle between direction and base direction (1,0,0)
+          const direction = directionRef.current.clone().normalize();
+          const angle = Math.atan2(direction.y, direction.x);
+
+          // Set current and target rotation immediately to avoid initial jump
+          currentRotation.current = angle;
+          targetRotation.current = angle;
+          group.rotation.z = angle;
+
+          // Set initial flip state based on x direction
+          if (direction.x < 0 && initialScale.current) {
+            // If facing left and not already flipped
+            if (currentFlipState.current > 0) {
+              currentFlipState.current = -1;
+              group.scale.set(
+                initialScale.current.x,
+                -initialScale.current.y,
+                initialScale.current.z
+              );
+            }
+          }
+        }
       },
       undefined,
       (error) => {
@@ -163,7 +189,15 @@ function AnimalSprite({
     return () => {
       group.clear();
     };
-  }, [animal, scale, group, currentPosition, positionRef, isLocalPlayer]);
+  }, [
+    animal,
+    scale,
+    group,
+    currentPosition,
+    positionRef,
+    isLocalPlayer,
+    directionRef,
+  ]);
 
   function setRotation(direction: THREE.Vector3) {
     if (direction.length() > 0) {

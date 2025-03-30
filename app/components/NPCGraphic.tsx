@@ -39,12 +39,45 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
     }
   }, [followingUser, npc]);
 
-  // Load texture
+  // Modify the useEffect that sets up the mesh
   useEffect(() => {
     const textureLoader = new THREE.TextureLoader();
-    currentPosition.copy(positionRef.current);
-    group.position.copy(currentPosition);
 
+    // Check if this is the first setup by looking at currentPosition
+    const isFirstSetup = currentPosition.lengthSq() === 0; // Will be 0 if x,y,z are all 0
+
+    // If this is the first setup and NPC is following someone
+    if (isFirstSetup && followingUser && followingUser.position) {
+      const offsetDistance = 4.0;
+      const offsetIndex =
+        followingUser.npcGroup?.npcs.findIndex((n) => n.id === npc.id) || 0;
+      const dx = followingUser.direction?.x || 0;
+      const dy = followingUser.direction?.y || 0;
+
+      // Normalize direction
+      const dirLength = Math.sqrt(dx * dx + dy * dy) || 1;
+      const normalizedDx = dx / dirLength;
+      const normalizedDy = dy / dirLength;
+
+      // Calculate initial position behind player
+      const posX =
+        followingUser.position.x -
+        normalizedDx * offsetDistance * (offsetIndex + 1);
+      const posY =
+        followingUser.position.y -
+        normalizedDy * offsetDistance * (offsetIndex + 1);
+
+      // Set initial position directly
+      positionRef.current.set(posX, posY, 0);
+      currentPosition.copy(positionRef.current);
+      group.position.copy(currentPosition);
+    } else {
+      // Default behavior for uncaptured NPCs or subsequent updates
+      currentPosition.copy(positionRef.current);
+      group.position.copy(currentPosition);
+    }
+
+    // Load texture
     textureLoader.load(
       `/npcs/${npc.filename}`,
       (loadedTexture) => {
@@ -81,7 +114,7 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
       if (mesh.current && mesh.current.geometry)
         mesh.current.geometry.dispose();
     };
-  }, [currentPosition, group, npc.filename]);
+  }, [currentPosition, group, npc.filename, followingUser, npc.id]);
 
   // Handle updates and collisions
   useFrame(() => {
