@@ -1,13 +1,14 @@
 // ocean/app/components/Animal.tsx
 
 import React, { useMemo, useEffect, useRef } from "react";
-import { UserInfo } from "../utils/types/user";
+import { UserInfo } from "../utils/types";
 import * as THREE from "three";
 import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
 import { useFrame } from "@react-three/fiber";
-import { Animal } from "../utils/types/user";
+import { Animal } from "../utils/types";
 import { ANIMAL_SCALES } from "../api/utils/user-info";
 import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js";
+import NPCGraphic from "./NPCGraphic";
 
 // Initial orientation configuration to make animals face right
 const ANIMAL_ORIENTATION = {
@@ -17,7 +18,7 @@ const ANIMAL_ORIENTATION = {
 };
 
 // Constants
-const MOVE_SPEED = 0.5;
+export const MOVE_SPEED = 0.5;
 const ROTATION_SPEED = 0.25;
 const FLIP_SPEED = 0.5;
 
@@ -152,6 +153,31 @@ function AnimalSprite({
         // Set initial position
         currentPosition.copy(positionRef.current);
         group.position.copy(currentPosition);
+
+        // Apply initial rotation based on directionRef if available
+        if (directionRef.current && directionRef.current.length() > 0.01) {
+          // Calculate angle between direction and base direction (1,0,0)
+          const direction = directionRef.current.clone().normalize();
+          const angle = Math.atan2(direction.y, direction.x);
+
+          // Set current and target rotation immediately to avoid initial jump
+          currentRotation.current = angle;
+          targetRotation.current = angle;
+          group.rotation.z = angle;
+
+          // Set initial flip state based on x direction
+          if (direction.x < 0 && initialScale.current) {
+            // If facing left and not already flipped
+            if (currentFlipState.current > 0) {
+              currentFlipState.current = -1;
+              group.scale.set(
+                initialScale.current.x,
+                -initialScale.current.y,
+                initialScale.current.z
+              );
+            }
+          }
+        }
       },
       undefined,
       (error) => {
@@ -162,7 +188,15 @@ function AnimalSprite({
     return () => {
       group.clear();
     };
-  }, [animal, scale, group, currentPosition, positionRef, isLocalPlayer]);
+  }, [
+    animal,
+    scale,
+    group,
+    currentPosition,
+    positionRef,
+    isLocalPlayer,
+    directionRef,
+  ]);
 
   function setRotation(direction: THREE.Vector3) {
     if (direction.length() > 0) {
@@ -341,17 +375,20 @@ function AnimalSprite({
 
 export default function AnimalGraphic({
   user,
-  isLocalPlayer = false,
+  localUserId,
+  users,
 }: {
   user: UserInfo;
-  isLocalPlayer?: boolean;
+  localUserId?: string;
+  users: Map<string, UserInfo>;
 }) {
   // Create position ref as Vector3
+  const isLocalPlayer = localUserId === user.id;
   const positionRef = useRef(
     new THREE.Vector3(user.position.x, user.position.y, user.position.z)
   );
 
-  // Create direction ref as Vector3 (even if user.direction is Vector2-like)
+  // Create direction ref as Vector3
   const directionRef = useRef<THREE.Vector3 | null>(null);
 
   // Update refs when user data changes
@@ -367,8 +404,8 @@ export default function AnimalGraphic({
     }
   }, [user.position.x, user.position.y, user.position.z, user.direction]);
 
-  const sprite = useMemo(
-    () => (
+  return (
+    <>
       <AnimalSprite
         animal={user.animal as Animal}
         scale={ANIMAL_SCALES[user.animal as Animal]}
@@ -376,9 +413,16 @@ export default function AnimalGraphic({
         directionRef={directionRef}
         isLocalPlayer={isLocalPlayer}
       />
-    ),
-    [user.animal, isLocalPlayer]
-  );
 
-  return sprite;
+      {user.npcGroup.npcs.map((npc) => (
+        <NPCGraphic
+          key={npc.id}
+          npc={npc}
+          users={users}
+          followingUser={user}
+          localUserId={localUserId}
+        />
+      ))}
+    </>
+  );
 }

@@ -1,14 +1,16 @@
 // ocean/app/components/Scene.tsx
 "use client";
 import { Canvas, useThree } from "@react-three/fiber";
-import { Direction, UserInfo } from "../utils/types/user";
-import AnimalGraphic from "./AnimalGraphic";
+import { Direction, UserInfo } from "../utils/types";
+import NPCGraphic from "./NPCGraphic";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Vector3 } from "three";
 import { useFrame } from "@react-three/fiber";
 import { getChannel } from "../utils/pusher-instance";
 import WaveGrid from "./WaveGrid";
-import { ANIMAL_SCALES } from "../api/utils/user-info";
+import { ANIMAL_SCALES, DIRECTION_OFFSET } from "../api/utils/user-info";
+import { NPC } from "../utils/types";
+import AnimalGraphic from "./AnimalGraphic";
 
 // Speed of movement per keypress/frame
 const MOVE_SPEED = 0.5;
@@ -32,9 +34,12 @@ function CameraController({
   return null;
 }
 
-function useKeyboardMovement(initialPosition: Vector3) {
+function useKeyboardMovement(
+  initialPosition: Vector3,
+  initialDirection: Direction
+) {
   const [position, setPosition] = useState(initialPosition);
-  const [direction, setDirection] = useState<Direction>({ x: 1, y: 0 });
+  const [direction, setDirection] = useState<Direction>(initialDirection);
   const [keysPressed, setKeysPressed] = useState(new Set<string>());
 
   useEffect(() => {
@@ -52,35 +57,77 @@ function useKeyboardMovement(initialPosition: Vector3) {
 
     const updatePosition = () => {
       const change = new Vector3(0, 0, 0);
-      const newDirection = { x: 0, y: 0 };
 
-      if (keysPressed.has("ArrowUp") || keysPressed.has("w")) {
-        change.y += MOVE_SPEED;
-        newDirection.y += 1;
+      // Check which keys are pressed
+      const up = keysPressed.has("ArrowUp") || keysPressed.has("w");
+      const down = keysPressed.has("ArrowDown") || keysPressed.has("s");
+      const left = keysPressed.has("ArrowLeft") || keysPressed.has("a");
+      const right = keysPressed.has("ArrowRight") || keysPressed.has("d");
+
+      // Update position vector
+      if (up) change.y += MOVE_SPEED;
+      if (down) change.y -= MOVE_SPEED;
+      if (left) change.x -= MOVE_SPEED;
+      if (right) change.x += MOVE_SPEED;
+
+      // Primary direction logic
+      let newDirection = { ...direction };
+
+      // True diagonal movement - both components active
+      if (right && !left && up && !down) {
+        // Up-right diagonal
+        newDirection = { x: 1, y: 1 };
+      } else if (left && !right && up && !down) {
+        // Up-left diagonal
+        newDirection = { x: -1, y: 1 };
+      } else if (right && !left && down && !up) {
+        // Down-right diagonal
+        newDirection = { x: 1, y: -1 };
+      } else if (left && !right && down && !up) {
+        // Down-left diagonal
+        newDirection = { x: -1, y: -1 };
+      } else if (right && !left) {
+        // Moving right only
+        newDirection = { x: 1, y: 0 };
+      } else if (left && !right) {
+        // Moving left only
+        newDirection = { x: -1, y: 0 };
+      } else if (up && !down) {
+        // Moving up only
+        if (Math.abs(direction.x) === 1 && direction.y === 0) {
+          // Was previously moving horizontally - keep the DIRECTION_OFFSET
+          newDirection = {
+            x: direction.x > 0 ? DIRECTION_OFFSET : -DIRECTION_OFFSET,
+            y: 1,
+          };
+        } else {
+          newDirection = { x: 0, y: 1 };
+        }
+      } else if (down && !up) {
+        // Moving down only
+        if (Math.abs(direction.x) === 1 && direction.y === 0) {
+          // Was previously moving horizontally - keep the DIRECTION_OFFSET
+          newDirection = {
+            x: direction.x > 0 ? DIRECTION_OFFSET : -DIRECTION_OFFSET,
+            y: -1,
+          };
+        } else {
+          newDirection = { x: 0, y: -1 };
+        }
       }
-      if (keysPressed.has("ArrowDown") || keysPressed.has("s")) {
-        change.y -= MOVE_SPEED;
-        newDirection.y -= 1;
-      }
-      if (keysPressed.has("ArrowLeft") || keysPressed.has("a")) {
-        change.x -= MOVE_SPEED;
-        newDirection.x -= 1;
-      }
-      if (keysPressed.has("ArrowRight") || keysPressed.has("d")) {
-        change.x += MOVE_SPEED;
-        newDirection.x += 1;
+
+      // Normalize diagonal movement to maintain consistent speed
+      if (newDirection.x !== 0 && newDirection.y !== 0) {
+        const length = Math.sqrt(
+          newDirection.x * newDirection.x + newDirection.y * newDirection.y
+        );
+        newDirection.x /= length;
+        newDirection.y /= length;
       }
 
       if (change.x !== 0 || change.y !== 0) {
         setPosition((current) => current.clone().add(change));
-
-        const length = Math.sqrt(
-          newDirection.x * newDirection.x + newDirection.y * newDirection.y
-        );
-        setDirection({
-          x: newDirection.x / length,
-          y: newDirection.y / length,
-        });
+        setDirection(newDirection);
       }
     };
 
@@ -109,21 +156,30 @@ function useKeyboardMovement(initialPosition: Vector3) {
 interface Props {
   users: Map<string, UserInfo>;
   myUser: UserInfo;
+  npcs: Map<string, NPC>;
 }
 
-export default function Scene({ users, myUser }: Props) {
+export default function Scene({ users, myUser, npcs }: Props) {
   const initialPosition = new Vector3(
     myUser.position.x,
     myUser.position.y,
     myUser.position.z
   );
 
-  const { position, direction } = useKeyboardMovement(initialPosition);
-  const lastBroadcastPosition = useRef(new Vector3().copy(initialPosition));
-  const lastBroadcastDirection = useRef({ x: direction.x, y: direction.y });
+  const initialDirection = {
+    x: myUser.direction.x,
+    y: myUser.direction.y,
+  };
+
+  const { position, direction } = useKeyboardMovement(
+    initialPosition,
+    initialDirection
+  );
+  const lastBroadcastPosition = useRef(initialPosition);
+  const lastBroadcastDirection = useRef(initialDirection);
   const POSITION_THRESHOLD = 0.01;
 
-  // Throttled broadcast function using useState and useCallback
+  // Throttled broadcast function with forceUpdate parameter
   const [isReady, setIsReady] = useState(true);
   const [isPending, setIsPending] = useState(false);
   const THROTTLE_MS = 100;
@@ -154,15 +210,7 @@ export default function Scene({ users, myUser }: Props) {
         // Use the existing direction directly
         await channel.trigger("client-user-modified", {
           id: myUser.id,
-          info: {
-            ...myUser,
-            position: {
-              x: position.x,
-              y: position.y,
-              z: position.z,
-            },
-            direction: direction,
-          },
+          info: myUser,
         });
 
         // Update last broadcast values
@@ -188,20 +236,35 @@ export default function Scene({ users, myUser }: Props) {
     myUser.direction = direction;
 
     // Also update the user in the users Map to keep it in sync
-    if (users.has(myUser.id)) {
-      const userInMap = users.get(myUser.id);
-      if (userInMap) {
-        userInMap.position.x = myUser.position.x;
-        userInMap.position.y = myUser.position.y;
-        userInMap.position.z = myUser.position.z;
-
-        userInMap.direction = { ...myUser.direction };
-      }
-    }
+    users.set(myUser.id, myUser);
 
     // Attempt to broadcast whenever position/direction changes
     throttledBroadcast();
   }, [position, direction, myUser, throttledBroadcast, users]);
+
+  const handleNPCCollision = useCallback(
+    (npc: NPC) => {
+      if (npcs.has(npc.id)) {
+        // Remove NPC from general pool
+        npcs.delete(npc.id);
+
+        // Get the user from the map
+        myUser.npcGroup.npcs.push({ ...npc });
+        users.set(myUser.id, myUser);
+        // Create NPCGroup if it doesn't exist
+
+        // If this was the local player capturing an NPC
+        // Broadcast the capture to all other players
+        const channel = getChannel(myUser.channel_name);
+        channel.trigger("client-npc-captured", {
+          npcId: npc.id,
+          captorId: myUser.id,
+          npcData: npc,
+        });
+      }
+    },
+    [npcs, users, myUser]
+  );
 
   return (
     <Canvas
@@ -226,13 +289,28 @@ export default function Scene({ users, myUser }: Props) {
       />
       <pointLight position={[-10, -10, -10]} decay={0} intensity={Math.PI} />
       <WaveGrid />
+
+      {/* Render all users with their NPCs */}
       {Array.from(users.values()).map((user) => (
         <AnimalGraphic
           key={user.id}
           user={user}
-          isLocalPlayer={user.id === myUser.id}
+          localUserId={myUser.id}
+          users={users}
         />
       ))}
+
+      {/* Render free NPCs that haven't been captured */}
+      {npcs.size > 0 &&
+        Array.from(npcs.values()).map((npc) => (
+          <NPCGraphic
+            key={npc.id}
+            npc={npc}
+            users={users}
+            localUserId={myUser.id}
+            onCollision={(npc) => handleNPCCollision(npc)}
+          />
+        ))}
     </Canvas>
   );
 }
@@ -240,14 +318,12 @@ export default function Scene({ users, myUser }: Props) {
 /*
 TODO:
 add NPCs to capture
+  - adjust bounding box for interaction (to head? entire body?)
+  - split into grid for faster rendering
+  - push around, throw to cause health damage
 
-center the animal sprite within the camera view
+debug NPCs sometimes being laggy when following local player (probably just decrease render rate)
 debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)
 debug db rows not being deleted properly (likely same issue as previous)
-
-add NPCs to capture
-
-
-basic world interactions between them
-lots of facts throughout the day
+center the animal sprite within the camera view
 */

@@ -1,4 +1,5 @@
 import { prisma } from "@/prisma/prisma";
+import { populateChannel } from "../../npc/service";
 
 const MAX_USERS = 2;
 
@@ -33,7 +34,19 @@ export default async function getChannel(): Promise<string> {
       });
     });
 
-    return room.channelName;
+    // Directly populate the new room with NPCs
+    const channelName = room.channelName;
+    try {
+      await populateChannel(channelName);
+    } catch (error) {
+      console.error(
+        `Failed to populate channel ${channelName} with NPCs:`,
+        error
+      );
+      // Continue even if NPC population fails
+    }
+
+    return channelName;
   }
   await prisma.room.update({
     where: { id: smallestRoom.id },

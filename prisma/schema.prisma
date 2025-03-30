@@ -10,6 +10,7 @@ datasource db {
 model Stats {
   id            String    @id @default("global")  // Single row for global stats
   totalUsers    Int       @default(0)
+  numNPCs       Int       @default(0)
   updatedAt     DateTime  @updatedAt
 }
 

@@ -12,11 +12,31 @@ export interface UserInfo {
   animal: Animal;
   channel_name: string;
   position: Vector3;
-  direction?: Direction;
-  createdAt: Date;
+  direction: Direction;
+  npcGroup: NPCGroup;
 }
 
 export interface Member {
   id: string;
   info: UserInfo;
 }
+
+export type NPC = {
+  id: string;
+  type: string;
+  filename: string;
+  position: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  direction: {
+    x: number;
+    y: number;
+  };
+};
+
+export type NPCGroup = {
+  npcs: NPC[];
+  captorId?: string;
+};
