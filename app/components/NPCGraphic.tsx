@@ -1,7 +1,8 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useMemo } from "react";
 import { NPC, UserInfo } from "../utils/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
+import { MOVE_SPEED } from "./AnimalGraphic";
 
 interface NPCGraphicProps {
   npc: NPC;
@@ -18,7 +19,7 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
   followingUser,
   onCollision,
 }) => {
-  const group = useRef<THREE.Group>(new THREE.Group());
+  const group = useMemo(() => new THREE.Group(), []);
   const texture = useRef<THREE.Texture | null>(null);
   const material = useRef<THREE.MeshBasicMaterial | null>(null);
   const mesh = useRef<THREE.Mesh | null>(null);
@@ -26,6 +27,7 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
   const directionRef = useRef(new THREE.Vector2());
   const collisionSet = useRef<Set<string>>(new Set());
   const textureLoaded = useRef(false);
+  const currentPosition = useMemo(() => new THREE.Vector3(), []);
 
   // Set initial position and direction
   useEffect(() => {
@@ -40,6 +42,8 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
   // Load texture
   useEffect(() => {
     const textureLoader = new THREE.TextureLoader();
+    currentPosition.copy(positionRef.current);
+    group.position.copy(currentPosition);
 
     textureLoader.load(
       `/npcs/${npc.filename}`,
@@ -62,10 +66,8 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
         const scale = 3; // Base scale
         mesh.current.scale.set(scale * imageAspect, scale, 1);
 
-        if (group.current) {
-          group.current.add(mesh.current);
-          textureLoaded.current = true;
-        }
+        group.add(mesh.current);
+        textureLoaded.current = true;
       },
       undefined,
       (error) => {
@@ -79,11 +81,11 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
       if (mesh.current && mesh.current.geometry)
         mesh.current.geometry.dispose();
     };
-  }, [npc.filename]);
+  }, [currentPosition, group, npc.filename]);
 
   // Handle updates and collisions
   useFrame(() => {
-    if (!group.current || !textureLoaded.current) return;
+    if (!group || !textureLoaded.current) return;
 
     // If following a user, update position to follow
     if (followingUser && followingUser.position && followingUser.direction) {
@@ -99,7 +101,7 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
       // Position behind the user
       const offsetDistance = 4.5; // Distance behind user
       const offsetIndex =
-        followingUser.npcGroup.npcs.findIndex((n) => n.id === npc.id) || 0;
+        followingUser.npcGroup?.npcs.findIndex((n) => n.id === npc.id) || 0;
       const lineOffset = (offsetIndex + 1) * offsetDistance;
 
       // Calculate base position
@@ -116,21 +118,50 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
         posY += perpDy * spreadFactor;
       }
 
-      // Update position
       positionRef.current.set(posX, posY, 0);
-      npc.position.x = posX;
-      npc.position.y = posY;
-      npc.position.z = 0;
+      // Update position
+      const isLocalPlayer = followingUser.id === localUserId;
+      if (!isLocalPlayer) {
+        const positionDelta = new THREE.Vector3().subVectors(
+          positionRef.current,
+          currentPosition
+        );
+        const distance = currentPosition.distanceTo(positionRef.current);
 
-      // Don't update rotation or direction
-      // We'll keep the NPC's original direction
+        // Handle movement with adaptive approach
+        if (distance > 0.01) {
+          const LERP_FACTOR = 0.1; // How fast to lerp (0-1)
+
+          // Calculate how far we would move with LERP
+          const lerpPosition = currentPosition
+            .clone()
+            .lerp(positionRef.current, LERP_FACTOR);
+          const lerpDistance = currentPosition.distanceTo(lerpPosition);
+
+          // Calculate how far we would move with constant speed
+          const constantSpeedDistance = Math.min(MOVE_SPEED, distance);
+
+          // Use whichever method moves us farther
+          if (lerpDistance > constantSpeedDistance) {
+            currentPosition.copy(lerpPosition);
+          } else {
+            // Constant speed is faster - use it
+            currentPosition.addScaledVector(
+              positionDelta.normalize(),
+              constantSpeedDistance
+            );
+          }
+
+          // Apply the calculated position
+          group.position.copy(currentPosition);
+        }
+      } else {
+        group.position.copy(positionRef.current);
+      }
     }
 
-    // Update group position
-    group.current.position.copy(positionRef.current);
-
     // Fixed upright rotation - NPCs don't rotate with captor
-    group.current.rotation.z = 0;
+    group.rotation.z = 0;
 
     // Only check for collisions if we're not already following a user
     if (!followingUser && onCollision && localUserId) {
@@ -158,7 +189,7 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
     }
   });
 
-  return <primitive object={group.current} />;
+  return <primitive object={group} />;
 };
 
 export default NPCGraphic;

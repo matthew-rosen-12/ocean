@@ -129,7 +129,6 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
         "client-npc-captured",
         (data: { npcId: string; captorId: string; npcData: NPC }) => {
           // Remove the NPC from the general pool
-          console.log("npc captured", data);
           setNPCs((prevNPCs) => {
             const newNPCs = new Map(prevNPCs);
             newNPCs.delete(data.npcId);

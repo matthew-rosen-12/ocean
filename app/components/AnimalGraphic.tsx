@@ -18,7 +18,7 @@ const ANIMAL_ORIENTATION = {
 };
 
 // Constants
-const MOVE_SPEED = 0.5;
+export const MOVE_SPEED = 0.5;
 const ROTATION_SPEED = 0.25;
 const FLIP_SPEED = 0.5;
 
@@ -193,7 +193,6 @@ function AnimalSprite({
 
     // Position handling - same for local and non-local
     group.position.copy(positionRef.current);
-    // console.log("DIRECTION", directionRef.current);
 
     // Direction handling - consistent for both local and non-local
     if (directionRef.current && directionRef.current.length() > 0.01) {
@@ -343,14 +342,15 @@ function AnimalSprite({
 
 export default function AnimalGraphic({
   user,
-  isLocalPlayer = false,
+  localUserId,
   users,
 }: {
   user: UserInfo;
-  isLocalPlayer?: boolean;
+  localUserId?: string;
   users: Map<string, UserInfo>;
 }) {
   // Create position ref as Vector3
+  const isLocalPlayer = localUserId === user.id;
   const positionRef = useRef(
     new THREE.Vector3(user.position.x, user.position.y, user.position.z)
   );
@@ -383,10 +383,11 @@ export default function AnimalGraphic({
 
       {user.npcGroup.npcs.map((npc) => (
         <NPCGraphic
-          key={`following-${npc.id}`}
+          key={npc.id}
           npc={npc}
           users={users}
           followingUser={user}
+          localUserId={localUserId}
         />
       ))}
     </>

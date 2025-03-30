@@ -184,52 +184,49 @@ export default function Scene({ users, myUser, npcs }: Props) {
   const [isPending, setIsPending] = useState(false);
   const THROTTLE_MS = 100;
 
-  const throttledBroadcast = useCallback(
-    async (forceUpdate = false) => {
-      if (!isReady || isPending) return;
+  const throttledBroadcast = useCallback(async () => {
+    if (!isReady || isPending) return;
 
-      // Calculate if position changed enough to broadcast
-      const positionDelta = new Vector3()
-        .copy(position)
-        .sub(lastBroadcastPosition.current);
-      const positionChanged = positionDelta.length() >= POSITION_THRESHOLD;
+    // Calculate if position changed enough to broadcast
+    const positionDelta = new Vector3()
+      .copy(position)
+      .sub(lastBroadcastPosition.current);
+    const positionChanged = positionDelta.length() >= POSITION_THRESHOLD;
 
-      // Simply use the current direction - already calculated properly
-      const directionChanged =
-        lastBroadcastDirection.current.x !== direction.x ||
-        lastBroadcastDirection.current.y !== direction.y;
+    // Simply use the current direction - already calculated properly
+    const directionChanged =
+      lastBroadcastDirection.current.x !== direction.x ||
+      lastBroadcastDirection.current.y !== direction.y;
 
-      if (positionChanged || directionChanged || forceUpdate) {
-        // Lock the system during this broadcast attempt
-        setIsReady(false);
-        setIsPending(true);
+    if (positionChanged || directionChanged) {
+      // Lock the system during this broadcast attempt
+      setIsReady(false);
+      setIsPending(true);
 
-        // Get the channel
-        const channel = getChannel(myUser.channel_name);
+      // Get the channel
+      const channel = getChannel(myUser.channel_name);
 
-        try {
-          // Use the existing direction directly
-          await channel.trigger("client-user-modified", {
-            id: myUser.id,
-            info: myUser,
-          });
+      try {
+        // Use the existing direction directly
+        await channel.trigger("client-user-modified", {
+          id: myUser.id,
+          info: myUser,
+        });
 
-          // Update last broadcast values
-          lastBroadcastPosition.current.copy(position);
-          lastBroadcastDirection.current = { ...direction };
-        } catch (error) {
-          console.error("Broadcast failed:", error);
-        }
-
-        // Reset pending state
-        setIsPending(false);
-
-        // Start the cooldown timer to allow next broadcast
-        setTimeout(() => setIsReady(true), THROTTLE_MS);
+        // Update last broadcast values
+        lastBroadcastPosition.current.copy(position);
+        lastBroadcastDirection.current = { ...direction };
+      } catch (error) {
+        console.error("Broadcast failed:", error);
       }
-    },
-    [position, direction, myUser, isReady, isPending]
-  );
+
+      // Reset pending state
+      setIsPending(false);
+
+      // Start the cooldown timer to allow next broadcast
+      setTimeout(() => setIsReady(true), THROTTLE_MS);
+    }
+  }, [position, direction, myUser, isReady, isPending]);
 
   // Effect to update myUser position and direction continuously
   useEffect(() => {
@@ -264,12 +261,9 @@ export default function Scene({ users, myUser, npcs }: Props) {
           captorId: myUser.id,
           npcData: npc,
         });
-
-        // Force broadcast of updated user state with new NPC
-        throttledBroadcast(true);
       }
     },
-    [npcs, throttledBroadcast, users, myUser]
+    [npcs, users, myUser]
   );
 
   return (
@@ -301,7 +295,7 @@ export default function Scene({ users, myUser, npcs }: Props) {
         <AnimalGraphic
           key={user.id}
           user={user}
-          isLocalPlayer={user.id === myUser.id}
+          localUserId={myUser.id}
           users={users}
         />
       ))}
