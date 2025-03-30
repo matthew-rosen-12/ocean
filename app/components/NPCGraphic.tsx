@@ -31,13 +31,13 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
 
   // Set initial position and direction
   useEffect(() => {
-    if (npc.position) {
+    if (npc.position && followingUser === undefined) {
       positionRef.current.set(npc.position.x, npc.position.y, npc.position.z);
     }
     if (npc.direction) {
       directionRef.current.set(npc.direction.x, npc.direction.y);
     }
-  }, [npc]);
+  }, [followingUser, npc]);
 
   // Load texture
   useEffect(() => {

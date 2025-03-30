@@ -46,24 +46,88 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
         usersMap.set(members.me.id, MemberToUser(members.me));
         setUsers(usersMap);
 
-        // First fetch all NPCs
-        fetch(`/api/npc?channel=${channel_name}`)
-          .then((res) => res.json())
-          .then((data) => {
-            const npcMap: Map<string, NPC> = new Map();
-            data.npcs.forEach((npc: NPC) => {
-              npcMap.set(npc.id, npc);
-            });
+        // Create a set to track captured NPC IDs
+        const capturedNpcIds = new Set<string>();
 
-            setNPCs(npcMap);
+        // Count of members excluding ourselves
+        const memberCount = members.count - 1;
+        let responseCount = 0;
+        let responseTimeout: NodeJS.Timeout | null = null;
 
-            // After getting NPCs, request state from existing players
-            channel.trigger("client-request-state", {
-              id: members.me.id,
+        // Only proceed to fetch NPCs if we have no other members or all have responded
+        const proceedToFetchNPCs = () => {
+          if (responseTimeout) {
+            clearTimeout(responseTimeout);
+            responseTimeout = null;
+          }
+
+          // Fetch NPCs after we've received all expected responses
+          fetch(`/api/npc?channel=${channel_name}`)
+            .then((res) => res.json())
+            .then((data) => {
+              const npcMap: Map<string, NPC> = new Map();
+
+              // Only add NPCs that haven't been captured
+              data.npcs.forEach((npc: NPC) => {
+                if (!capturedNpcIds.has(npc.id)) {
+                  npcMap.set(npc.id, npc);
+                }
+              });
+
+              setNPCs(npcMap);
+              setLoading(false);
+            })
+            .catch((err) => console.error("Error fetching NPCs:", err));
+        };
+
+        // If we're the only member, proceed immediately
+        if (memberCount === 0) {
+          proceedToFetchNPCs();
+          return;
+        }
+
+        // Set up response handler for client-send-state events
+        const responseHandler = (data: { id: string; info: UserInfo }) => {
+          // Add the user to our users map
+          setUsers((prev) => {
+            const newUsers = new Map(prev);
+            newUsers.set(data.id, data.info);
+            return newUsers;
+          });
+
+          // Track captured NPCs from this user
+          if (data.info.npcGroup?.npcs) {
+            data.info.npcGroup.npcs.forEach((npc) => {
+              capturedNpcIds.add(npc.id);
             });
-            setLoading(false);
-          })
-          .catch((err) => console.error("Error fetching NPCs:", err));
+          }
+
+          // Track responses
+          responseCount++;
+
+          // If we've received responses from all members, proceed
+          if (responseCount >= memberCount) {
+            channel.unbind("client-send-state", responseHandler);
+            proceedToFetchNPCs();
+          }
+        };
+
+        // Bind the handler
+        channel.bind("client-send-state", responseHandler);
+
+        // Request state from all existing members
+        channel.trigger("client-request-state", {
+          id: members.me.id,
+        });
+
+        // Set a timeout in case some members don't respond
+        responseTimeout = setTimeout(() => {
+          console.log(
+            `Timeout waiting for responses. Got ${responseCount} of ${memberCount}`
+          );
+          channel.unbind("client-send-state", responseHandler);
+          proceedToFetchNPCs();
+        }, 3000); // 3 second timeout
       });
 
       // Handle state requests from new players
