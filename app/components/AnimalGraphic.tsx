@@ -10,14 +10,11 @@ import { ANIMAL_SCALES } from "../api/utils/user-info";
 import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js";
 import NPCGraphic from "./NPCGraphic";
 
-// Initial orientation configuration to make animals face right
 const ANIMAL_ORIENTATION = {
   wolf: { rotation: 0, flipY: true },
   dolphin: { rotation: 0, flipY: false },
-  // Add other animals as needed
 };
 
-// Constants
 export const MOVE_SPEED = 0.5;
 const ROTATION_SPEED = 0.25;
 const FLIP_SPEED = 0.5;
@@ -36,8 +33,8 @@ function AnimalSprite({
   isLocalPlayer: boolean;
 }) {
   const group = useMemo(() => new THREE.Group(), []);
-  const currentPosition = useMemo(() => new THREE.Vector3(), []);
-  const currentRotation = useRef(0);
+  const previousPosition = useMemo(() => new THREE.Vector3(), []);
+  const previousRotation = useRef(0);
   const targetRotation = useRef(0);
   const targetFlipY = useRef(1);
   const initialScale = useRef<THREE.Vector3 | null>(null);
@@ -144,15 +141,15 @@ function AnimalSprite({
 
         // Reset rotation references to 0 after applying initial orientation
         // This makes the resulting orientation the new "zero" rotation
-        currentRotation.current = 0;
+        previousRotation.current = 0;
         targetRotation.current = 0;
 
         // Reset the facing direction reference based on the initial state
         svgLoaded.current = true;
 
         // Set initial position
-        currentPosition.copy(positionRef.current);
-        group.position.copy(currentPosition);
+        previousPosition.copy(positionRef.current);
+        group.position.copy(previousPosition);
 
         // Apply initial rotation based on directionRef if available
         if (directionRef.current && directionRef.current.length() > 0.01) {
@@ -161,7 +158,7 @@ function AnimalSprite({
           const angle = Math.atan2(direction.y, direction.x);
 
           // Set current and target rotation immediately to avoid initial jump
-          currentRotation.current = angle;
+          previousRotation.current = angle;
           targetRotation.current = angle;
           group.rotation.z = angle;
 
@@ -192,7 +189,7 @@ function AnimalSprite({
     animal,
     scale,
     group,
-    currentPosition,
+    previousPosition,
     positionRef,
     isLocalPlayer,
     directionRef,
@@ -215,7 +212,6 @@ function AnimalSprite({
 
       if (needsFlip) {
         isFlipping.current = true;
-        // Set target flip direction
         targetFlipY.current = direction.x < 0 ? -1 : 1;
       }
     }
@@ -227,9 +223,7 @@ function AnimalSprite({
     // Position handling - same for local and non-local
     group.position.copy(positionRef.current);
 
-    // Direction handling - consistent for both local and non-local
     if (directionRef.current && directionRef.current.length() > 0.01) {
-      // For all players, use the directionRef for rotation
       setRotation(directionRef.current);
     }
 
@@ -237,19 +231,19 @@ function AnimalSprite({
     if (!isLocalPlayer) {
       const positionDelta = new THREE.Vector3().subVectors(
         positionRef.current,
-        currentPosition
+        previousPosition
       );
-      const distance = currentPosition.distanceTo(positionRef.current);
+      const distance = previousPosition.distanceTo(positionRef.current);
 
       // Handle movement with adaptive approach
       if (distance > 0.01) {
         const LERP_FACTOR = 0.1; // How fast to lerp (0-1)
 
         // Calculate how far we would move with LERP
-        const lerpPosition = currentPosition
+        const lerpPosition = previousPosition
           .clone()
           .lerp(positionRef.current, LERP_FACTOR);
-        const lerpDistance = currentPosition.distanceTo(lerpPosition);
+        const lerpDistance = previousPosition.distanceTo(lerpPosition);
 
         // Calculate how far we would move with constant speed
         const constantSpeedDistance = Math.min(MOVE_SPEED, distance);
@@ -257,23 +251,23 @@ function AnimalSprite({
         // Use whichever method moves us farther
         if (lerpDistance > constantSpeedDistance) {
           // LERP is faster - use it
-          currentPosition.copy(lerpPosition);
+          previousPosition.copy(lerpPosition);
         } else {
           // Constant speed is faster - use it
-          currentPosition.addScaledVector(
+          previousPosition.addScaledVector(
             positionDelta.normalize(),
             constantSpeedDistance
           );
         }
 
         // Apply the calculated position
-        group.position.copy(currentPosition);
+        group.position.copy(previousPosition);
       }
     }
 
     // Rotation interpolation with faster non-local rotation
-    if (Math.abs(targetRotation.current - currentRotation.current) > 0.001) {
-      let delta = targetRotation.current - currentRotation.current;
+    if (Math.abs(targetRotation.current - previousRotation.current) > 0.001) {
+      let delta = targetRotation.current - previousRotation.current;
 
       // Normalize delta to [-PI, PI]
       while (delta > Math.PI) delta -= Math.PI * 2;
@@ -287,17 +281,15 @@ function AnimalSprite({
         delta *= -1;
       }
 
-      // Apply rotation with much faster speed for non-local players
       const rotSpeed = ROTATION_SPEED;
 
-      // Snap to target if close enough
       if (Math.abs(delta) < rotSpeed) {
-        currentRotation.current = targetRotation.current;
+        previousRotation.current = targetRotation.current;
       } else {
-        currentRotation.current += Math.sign(delta) * rotSpeed;
+        previousRotation.current += Math.sign(delta) * rotSpeed;
       }
 
-      group.rotation.z = currentRotation.current;
+      group.rotation.z = previousRotation.current;
     }
 
     // Handle flipping animation with faster non-local flipping
@@ -337,17 +329,12 @@ function AnimalSprite({
           currentFlipState.current = -1;
         }
       } else {
-        // Flipping to positive (right-facing)
         flipProgress.current = Math.min(1, flipProgress.current + flipSpeed);
-
-        // Apply scale based on flip progress
         if (flipProgress.current < 0.5) {
-          // First half of flip - scale down y
           const scaleY =
             initialScale.current.y * (1 - flipProgress.current * 2) * -1;
           group.scale.setY(scaleY);
         } else {
-          // Second half of flip - scale up y with positive sign
           const scaleY =
             initialScale.current.y * ((flipProgress.current - 0.5) * 2);
           group.scale.setY(Math.max(0.01, scaleY));

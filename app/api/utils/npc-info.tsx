@@ -7,6 +7,5 @@ export function getPosition(): Vector3 {
 }
 
 export function getDirection(): Vector3 {
-  // Pick a random number 0-3 to select a cardinal direction
   return new Vector3(0, 0, 0);
 }
