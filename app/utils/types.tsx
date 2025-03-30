@@ -13,7 +13,7 @@ export interface UserInfo {
   channel_name: string;
   position: Vector3;
   direction: Direction;
-  npcGroup?: NPCGroup;
+  npcGroup: NPCGroup;
 }
 
 export interface Member {

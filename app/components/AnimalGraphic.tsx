@@ -373,7 +373,6 @@ export default function AnimalGraphic({
 
   return (
     <>
-      {/* Render the animal sprite */}
       <AnimalSprite
         animal={user.animal as Animal}
         scale={ANIMAL_SCALES[user.animal as Animal]}
@@ -382,8 +381,7 @@ export default function AnimalGraphic({
         isLocalPlayer={isLocalPlayer}
       />
 
-      {/* Render NPCs belonging to this user */}
-      {user.npcGroup?.npcs.map((npc) => (
+      {user.npcGroup.npcs.map((npc) => (
         <NPCGraphic
           key={`following-${npc.id}`}
           npc={npc}

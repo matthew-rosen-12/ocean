@@ -28,22 +28,23 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  const guestId = generateGuestId();
+
   const guestUser: UserInfo = {
-    id: generateGuestId(),
+    id: guestId,
     animal: getRandomAnimal(),
     channel_name: channelName,
     position: getPosition(),
     direction: getDirection(),
+    npcGroup: {
+      npcs: [],
+      captorId: guestId,
+    },
   };
 
   const authResponse = pusher.authorizeChannel(socketId, channelName, {
     user_id: guestUser.id,
-    user_info: {
-      animal: guestUser.animal,
-      channel_name: guestUser.channel_name,
-      position: guestUser.position,
-      direction: guestUser.direction,
-    },
+    user_info: guestUser,
   });
 
   return NextResponse.json({

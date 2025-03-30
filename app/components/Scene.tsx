@@ -179,54 +179,57 @@ export default function Scene({ users, myUser, npcs }: Props) {
   const lastBroadcastDirection = useRef(initialDirection);
   const POSITION_THRESHOLD = 0.01;
 
-  // Throttled broadcast function using useState and useCallback
+  // Throttled broadcast function with forceUpdate parameter
   const [isReady, setIsReady] = useState(true);
   const [isPending, setIsPending] = useState(false);
   const THROTTLE_MS = 100;
 
-  const throttledBroadcast = useCallback(async () => {
-    if (!isReady || isPending) return;
+  const throttledBroadcast = useCallback(
+    async (forceUpdate = false) => {
+      if (!isReady || isPending) return;
 
-    // Calculate if position changed enough to broadcast
-    const positionDelta = new Vector3()
-      .copy(position)
-      .sub(lastBroadcastPosition.current);
-    const positionChanged = positionDelta.length() >= POSITION_THRESHOLD;
+      // Calculate if position changed enough to broadcast
+      const positionDelta = new Vector3()
+        .copy(position)
+        .sub(lastBroadcastPosition.current);
+      const positionChanged = positionDelta.length() >= POSITION_THRESHOLD;
 
-    // Simply use the current direction - already calculated properly
-    const directionChanged =
-      lastBroadcastDirection.current.x !== direction.x ||
-      lastBroadcastDirection.current.y !== direction.y;
+      // Simply use the current direction - already calculated properly
+      const directionChanged =
+        lastBroadcastDirection.current.x !== direction.x ||
+        lastBroadcastDirection.current.y !== direction.y;
 
-    if (positionChanged || directionChanged) {
-      // Lock the system during this broadcast attempt
-      setIsReady(false);
-      setIsPending(true);
+      if (positionChanged || directionChanged || forceUpdate) {
+        // Lock the system during this broadcast attempt
+        setIsReady(false);
+        setIsPending(true);
 
-      // Get the channel
-      const channel = getChannel(myUser.channel_name);
+        // Get the channel
+        const channel = getChannel(myUser.channel_name);
 
-      try {
-        // Use the existing direction directly
-        await channel.trigger("client-user-modified", {
-          id: myUser.id,
-          info: myUser,
-        });
+        try {
+          // Use the existing direction directly
+          await channel.trigger("client-user-modified", {
+            id: myUser.id,
+            info: myUser,
+          });
 
-        // Update last broadcast values
-        lastBroadcastPosition.current.copy(position);
-        lastBroadcastDirection.current = { ...direction };
-      } catch (error) {
-        console.error("Broadcast failed:", error);
+          // Update last broadcast values
+          lastBroadcastPosition.current.copy(position);
+          lastBroadcastDirection.current = { ...direction };
+        } catch (error) {
+          console.error("Broadcast failed:", error);
+        }
+
+        // Reset pending state
+        setIsPending(false);
+
+        // Start the cooldown timer to allow next broadcast
+        setTimeout(() => setIsReady(true), THROTTLE_MS);
       }
-
-      // Reset pending state
-      setIsPending(false);
-
-      // Start the cooldown timer to allow next broadcast
-      setTimeout(() => setIsReady(true), THROTTLE_MS);
-    }
-  }, [position, direction, myUser, isReady, isPending]);
+    },
+    [position, direction, myUser, isReady, isPending]
+  );
 
   // Effect to update myUser position and direction continuously
   useEffect(() => {
@@ -236,57 +239,37 @@ export default function Scene({ users, myUser, npcs }: Props) {
     myUser.direction = direction;
 
     // Also update the user in the users Map to keep it in sync
-    if (users.has(myUser.id)) {
-      const userInMap = users.get(myUser.id);
-      if (userInMap) {
-        userInMap.position.x = myUser.position.x;
-        userInMap.position.y = myUser.position.y;
-        userInMap.position.z = myUser.position.z;
-
-        userInMap.direction = { ...myUser.direction };
-        // userInMap.npcGroup = myUser.npcGroup;
-      }
-    }
+    users.set(myUser.id, myUser);
 
     // Attempt to broadcast whenever position/direction changes
     throttledBroadcast();
   }, [position, direction, myUser, throttledBroadcast, users]);
 
   const handleNPCCollision = useCallback(
-    (user: UserInfo, npc: NPC) => {
+    (npc: NPC) => {
       if (npcs.has(npc.id)) {
         // Remove NPC from general pool
         npcs.delete(npc.id);
 
         // Get the user from the map
-        const currentUser = users.get(user.id);
-        if (currentUser) {
-          // Create NPCGroup if it doesn't exist
-          if (!currentUser.npcGroup) {
-            currentUser.npcGroup = {
-              npcs: [],
-              captorId: currentUser.id,
-            };
-          }
+        myUser.npcGroup.npcs.push({ ...npc });
+        users.set(myUser.id, myUser);
+        // Create NPCGroup if it doesn't exist
 
-          // Add NPC to the user's group
-          currentUser.npcGroup.npcs.push({ ...npc });
-          user.npcGroup?.npcs.push({ ...npc });
+        // If this was the local player capturing an NPC
+        // Broadcast the capture to all other players
+        const channel = getChannel(myUser.channel_name);
+        channel.trigger("client-npc-captured", {
+          npcId: npc.id,
+          captorId: myUser.id,
+          npcData: npc,
+        });
 
-          // If this was the local player capturing an NPC
-          if (user.id === myUser.id) {
-            // Broadcast the capture to all other players
-            const channel = getChannel(myUser.channel_name);
-            channel.trigger("client-npc-captured", {
-              npcId: npc.id,
-              captorId: user.id,
-              npcData: npc,
-            });
-          }
-        }
+        // Force broadcast of updated user state with new NPC
+        throttledBroadcast(true);
       }
     },
-    [npcs, users, myUser]
+    [npcs, throttledBroadcast, users, myUser]
   );
 
   return (
@@ -324,14 +307,16 @@ export default function Scene({ users, myUser, npcs }: Props) {
       ))}
 
       {/* Render free NPCs that haven't been captured */}
-      {Array.from(npcs.values()).map((npc) => (
-        <NPCGraphic
-          key={npc.id}
-          npc={npc}
-          users={users}
-          onCollision={handleNPCCollision}
-        />
-      ))}
+      {npcs.size > 0 &&
+        Array.from(npcs.values()).map((npc) => (
+          <NPCGraphic
+            key={npc.id}
+            npc={npc}
+            users={users}
+            localUserId={myUser.id}
+            onCollision={(npc) => handleNPCCollision(npc)}
+          />
+        ))}
     </Canvas>
   );
 }

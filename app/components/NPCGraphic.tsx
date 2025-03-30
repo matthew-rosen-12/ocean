@@ -6,13 +6,15 @@ import { useFrame } from "@react-three/fiber";
 interface NPCGraphicProps {
   npc: NPC;
   users: Map<string, UserInfo>;
+  localUserId?: string; // Add this to identify local user
   followingUser?: UserInfo; // The user this NPC is following (if any)
-  onCollision?: (user: UserInfo, npc: NPC) => void;
+  onCollision?: (npc: NPC) => void;
 }
 
 const NPCGraphic: React.FC<NPCGraphicProps> = ({
   npc,
   users,
+  localUserId,
   followingUser,
   onCollision,
 }) => {
@@ -97,7 +99,7 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
       // Position behind the user
       const offsetDistance = 4.5; // Distance behind user
       const offsetIndex =
-        followingUser.npcGroup?.npcs.findIndex((n) => n.id === npc.id) || 0;
+        followingUser.npcGroup.npcs.findIndex((n) => n.id === npc.id) || 0;
       const lineOffset = (offsetIndex + 1) * offsetDistance;
 
       // Calculate base position
@@ -131,31 +133,28 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
     group.current.rotation.z = 0;
 
     // Only check for collisions if we're not already following a user
-    if (!followingUser && onCollision) {
+    if (!followingUser && onCollision && localUserId) {
       const COLLISION_THRESHOLD = 2.5;
-      const currentlyColliding = new Set<string>();
+      const localUser = users.get(localUserId);
 
-      Array.from(users.entries()).forEach(([userId, user]) => {
-        if (!user.position) return;
-
+      if (localUser?.position) {
         const userPos = new THREE.Vector3(
-          user.position.x,
-          user.position.y,
-          user.position.z
+          localUser.position.x,
+          localUser.position.y,
+          localUser.position.z
         );
 
         const distance = positionRef.current.distanceTo(userPos);
 
         if (distance < COLLISION_THRESHOLD) {
-          currentlyColliding.add(userId);
-
-          if (!collisionSet.current.has(userId)) {
-            onCollision(user, npc);
+          if (!collisionSet.current.has(localUserId)) {
+            onCollision(npc);
+            collisionSet.current.add(localUserId);
           }
+        } else {
+          collisionSet.current.delete(localUserId);
         }
-      });
-
-      collisionSet.current = currentlyColliding;
+      }
     }
   });
 
