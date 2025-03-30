@@ -2,7 +2,6 @@ import React, { useRef, useEffect, useMemo } from "react";
 import { NPC, UserInfo } from "../utils/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
-import { MOVE_SPEED } from "./AnimalGraphic";
 
 interface NPCGraphicProps {
   npc: NPC;
@@ -39,40 +38,63 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
     }
   }, [followingUser, npc]);
 
+  // Add this helper function inside the component
+  const calculateFollowPosition = (
+    followingUser: UserInfo,
+    npcId: string,
+    offsetDistance: number = 4.0
+  ): THREE.Vector3 => {
+    // Find index of this NPC in the follower's group
+    const offsetIndex =
+      followingUser.npcGroup?.npcs.findIndex((n) => n.id === npcId) || 0;
+
+    // Get user direction
+    const dx = followingUser.direction?.x || 0;
+    const dy = followingUser.direction?.y || 0;
+
+    // Normalize direction
+    const dirLength = Math.sqrt(dx * dx + dy * dy) || 1;
+    const normalizedDx = dx / dirLength;
+    const normalizedDy = dy / dirLength;
+
+    // Calculate base position behind player
+    let posX =
+      followingUser.position.x -
+      normalizedDx * offsetDistance * (offsetIndex + 1);
+    let posY =
+      followingUser.position.y -
+      normalizedDy * offsetDistance * (offsetIndex + 1);
+
+    // For staggered formation, use perpendicular vector
+    if (offsetIndex > 0) {
+      const perpDx = -normalizedDy;
+      const perpDy = normalizedDx;
+      const spreadFactor =
+        (offsetIndex % 2 === 0 ? 1 : -1) * Math.ceil(offsetIndex / 2) * 1.2;
+      posX += perpDx * spreadFactor;
+      posY += perpDy * spreadFactor;
+    }
+
+    return new THREE.Vector3(posX, posY, 0);
+  };
+
   // Modify the useEffect that sets up the mesh
   useEffect(() => {
     const textureLoader = new THREE.TextureLoader();
 
     // Check if this is the first setup by looking at currentPosition
-    const isFirstSetup = currentPosition.lengthSq() === 0; // Will be 0 if x,y,z are all 0
+    const isFirstSetup = currentPosition.lengthSq() === 0;
 
-    // If this is the first setup and NPC is following someone
     if (isFirstSetup && followingUser && followingUser.position) {
-      const offsetDistance = 4.0;
-      const offsetIndex =
-        followingUser.npcGroup?.npcs.findIndex((n) => n.id === npc.id) || 0;
-      const dx = followingUser.direction?.x || 0;
-      const dy = followingUser.direction?.y || 0;
-
-      // Normalize direction
-      const dirLength = Math.sqrt(dx * dx + dy * dy) || 1;
-      const normalizedDx = dx / dirLength;
-      const normalizedDy = dy / dirLength;
-
-      // Calculate initial position behind player
-      const posX =
-        followingUser.position.x -
-        normalizedDx * offsetDistance * (offsetIndex + 1);
-      const posY =
-        followingUser.position.y -
-        normalizedDy * offsetDistance * (offsetIndex + 1);
+      // Calculate position using the helper function
+      const position = calculateFollowPosition(followingUser, npc.id);
 
       // Set initial position directly
-      positionRef.current.set(posX, posY, 0);
+      positionRef.current.copy(position);
       currentPosition.copy(positionRef.current);
       group.position.copy(currentPosition);
     } else {
-      // Default behavior for uncaptured NPCs or subsequent updates
+      // Default behavior
       currentPosition.copy(positionRef.current);
       group.position.copy(currentPosition);
     }
@@ -120,77 +142,27 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
   useFrame(() => {
     if (!group || !textureLoaded.current) return;
 
-    // If following a user, update position to follow
-    if (followingUser && followingUser.position && followingUser.direction) {
-      // Get user direction
-      const dx = followingUser.direction.x;
-      const dy = followingUser.direction.y;
+    if (followingUser && followingUser.position) {
+      // Calculate current target position
+      const targetPosition = calculateFollowPosition(followingUser, npc.id);
 
-      // Normalize direction
-      const dirLength = Math.sqrt(dx * dx + dy * dy);
-      const normalizedDx = dx / dirLength;
-      const normalizedDy = dy / dirLength;
+      // Apply appropriate movement based on whether it's a local player's NPC
+      const isLocalPlayerNPC = followingUser.id === localUserId;
 
-      // Position behind the user
-      const offsetDistance = 4.5; // Distance behind user
-      const offsetIndex =
-        followingUser.npcGroup?.npcs.findIndex((n) => n.id === npc.id) || 0;
-      const lineOffset = (offsetIndex + 1) * offsetDistance;
-
-      // Calculate base position
-      let posX = followingUser.position.x - normalizedDx * lineOffset;
-      let posY = followingUser.position.y - normalizedDy * lineOffset;
-
-      // For staggered formation, use perpendicular vector
-      if (offsetIndex > 0) {
-        const perpDx = -normalizedDy;
-        const perpDy = normalizedDx;
-        const spreadFactor =
-          (offsetIndex % 2 === 0 ? 1 : -1) * Math.ceil(offsetIndex / 2) * 1.2;
-        posX += perpDx * spreadFactor;
-        posY += perpDy * spreadFactor;
-      }
-
-      positionRef.current.set(posX, posY, 0);
-      // Update position
-      const isLocalPlayer = followingUser.id === localUserId;
-      if (!isLocalPlayer) {
-        const positionDelta = new THREE.Vector3().subVectors(
-          positionRef.current,
-          currentPosition
-        );
-        const distance = currentPosition.distanceTo(positionRef.current);
-
-        // Handle movement with adaptive approach
-        if (distance > 0.01) {
-          const LERP_FACTOR = 0.1; // How fast to lerp (0-1)
-
-          // Calculate how far we would move with LERP
-          const lerpPosition = currentPosition
-            .clone()
-            .lerp(positionRef.current, LERP_FACTOR);
-          const lerpDistance = currentPosition.distanceTo(lerpPosition);
-
-          // Calculate how far we would move with constant speed
-          const constantSpeedDistance = Math.min(MOVE_SPEED, distance);
-
-          // Use whichever method moves us farther
-          if (lerpDistance > constantSpeedDistance) {
-            currentPosition.copy(lerpPosition);
-          } else {
-            // Constant speed is faster - use it
-            currentPosition.addScaledVector(
-              positionDelta.normalize(),
-              constantSpeedDistance
-            );
-          }
-
-          // Apply the calculated position
-          group.position.copy(currentPosition);
-        }
+      if (isLocalPlayerNPC) {
+        positionRef.current.copy(targetPosition);
       } else {
-        group.position.copy(positionRef.current);
+        const LERP_FACTOR = 0.1;
+        positionRef.current.lerp(targetPosition, LERP_FACTOR);
       }
+
+      // Update group position
+      group.position.copy(positionRef.current);
+
+      // Update NPC position data
+      npc.position.x = positionRef.current.x;
+      npc.position.y = positionRef.current.y;
+      npc.position.z = positionRef.current.z;
     }
 
     // Fixed upright rotation - NPCs don't rotate with captor
