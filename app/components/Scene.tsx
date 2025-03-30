@@ -318,10 +318,11 @@ export default function Scene({ users, myUser, npcs }: Props) {
 /*
 TODO:
 add NPCs to capture
-  - bounding boxes for interactions
+  - adjust bounding box for interaction (to head? entire body?)
   - split into grid for faster rendering
   - push around, throw to cause health damage
-do not render *ANY* players until all states are received
+
+debug NPCs sometimes being laggy when following local player (probably just decrease render rate)
 debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)
 debug db rows not being deleted properly (likely same issue as previous)
 center the animal sprite within the camera view

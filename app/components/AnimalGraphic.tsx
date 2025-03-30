@@ -153,7 +153,6 @@ function AnimalSprite({
         // Set initial position
         currentPosition.copy(positionRef.current);
         group.position.copy(currentPosition);
-        console.log("animal graphic effect", isLocalPlayer);
 
         // Apply initial rotation based on directionRef if available
         if (directionRef.current && directionRef.current.length() > 0.01) {
