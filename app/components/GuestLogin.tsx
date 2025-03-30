@@ -18,6 +18,7 @@ function MemberToUser(member: Member) {
     channel_name: member.info.channel_name,
     position: member.info.position,
     direction: member.info.direction,
+    npcGroup: member.info?.npcGroup,
   };
 }
 
@@ -35,17 +36,6 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
 
       const channel_name = data.channel_name;
 
-      fetch(`/api/npc?channel=${channel_name}`)
-        .then((res) => res.json())
-        .then((data) => {
-          const npcMap: Map<string, NPC> = new Map();
-          data.npcs.forEach((npc: NPC) => {
-            npcMap.set(npc.id, npc);
-          });
-          setNPCs(npcMap);
-        })
-        .catch((err) => console.error("Error fetching NPCs:", err));
-
       const channel = getChannel(channel_name);
 
       channel.bind("pusher:subscription_succeeded", (members: Members) => {
@@ -55,10 +45,25 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
         currentUser = user;
         usersMap.set(members.me.id, MemberToUser(members.me));
         setUsers(usersMap);
-        channel.trigger("client-request-state", {
-          id: members.me.id,
-        });
-        setLoading(false);
+
+        // First fetch all NPCs
+        fetch(`/api/npc?channel=${channel_name}`)
+          .then((res) => res.json())
+          .then((data) => {
+            const npcMap: Map<string, NPC> = new Map();
+            data.npcs.forEach((npc: NPC) => {
+              npcMap.set(npc.id, npc);
+            });
+
+            setNPCs(npcMap);
+
+            // After getting NPCs, request state from existing players
+            channel.trigger("client-request-state", {
+              id: members.me.id,
+            });
+            setLoading(false);
+          })
+          .catch((err) => console.error("Error fetching NPCs:", err));
       });
 
       // Handle state requests from new players
@@ -75,11 +80,23 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
       channel.bind(
         "client-send-state",
         (data: { id: string; info: UserInfo }) => {
+          // Add the user to our users map
           setUsers((prev) => {
             const newUsers = new Map(prev);
             newUsers.set(data.id, data.info);
             return newUsers;
           });
+
+          // Remove any NPCs this user has captured from our global NPC list
+          if (data.info.npcGroup?.npcs && data.info.npcGroup.npcs.length > 0) {
+            setNPCs((prev) => {
+              const newNPCs = new Map(prev);
+              data.info?.npcGroup?.npcs.forEach((npc: NPC) => {
+                newNPCs.delete(npc.id);
+              });
+              return newNPCs;
+            });
+          }
         }
       );
 
@@ -105,15 +122,6 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
           newUsers.set(member.id, MemberToUser(member));
           return newUsers;
         });
-      });
-
-      // Add listener for npcs-added event
-      channel.bind("npcs-added", (data: { npcs: Array<NPC> }) => {
-        const npcMap = new Map();
-        data.npcs.forEach((npc) => {
-          npcMap.set(npc.id, npc);
-        });
-        setNPCs(npcMap);
       });
 
       // Add this with the other channel.bind statements

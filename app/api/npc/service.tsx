@@ -1,5 +1,4 @@
 // ocean/app/api/npc/service.ts
-import { getPusherInstance } from "../utils/pusher/pusher-instance";
 import { v4 as uuidv4 } from "uuid";
 import fs from "fs";
 import path from "path";
@@ -60,9 +59,6 @@ export async function populateChannel(channelName: string) {
     // Store NPCs for this channel
     channelNPCs.set(channelName, npcs);
 
-    // Start updating NPCs for this channel
-    startNPCUpdatesForRoom(npcs, channelName);
-
     return npcs;
   }
 
@@ -95,35 +91,4 @@ function createNPCs(count: number): NPC[] {
   }
 
   return npcs;
-}
-
-function startNPCUpdatesForRoom(npcs: NPC[], channelName: string) {
-  const pusher = getPusherInstance();
-
-  // Broadcast all NPCs to the channel at once
-  pusher.trigger(channelName, "npcs-added", {
-    npcs,
-  });
-}
-
-// Function to mark an NPC as captured
-export function captureNPC(
-  npcId: string,
-  captorId: string,
-  channelName: string
-): boolean {
-  // Get NPCs for the channel
-  const npcs = channelNPCs.get(channelName);
-  if (!npcs) return false;
-
-  // Find the NPC index
-  const npcIndex = npcs.findIndex((npc) => npc.id === npcId);
-  if (npcIndex === -1) return false;
-
-  npcs.splice(npcIndex, 1);
-
-  // Update the channel's NPC list
-  channelNPCs.set(channelName, npcs);
-
-  return true;
 }

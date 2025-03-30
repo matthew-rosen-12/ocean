@@ -2,10 +2,10 @@
 "use client";
 import GuestLogin from "./components/GuestLogin";
 import Scene from "./components/Scene";
-import { UserInfo } from "./utils/types/user";
+import { UserInfo } from "./utils/types";
 import { useState } from "react";
 import { ANIMAL_FACTS } from "@/public/facts";
-import { NPC } from "./utils/types/npc";
+import { NPC } from "./utils/types";
 
 export default function Home() {
   const [user, setUser] = useState<UserInfo | null>(null);
