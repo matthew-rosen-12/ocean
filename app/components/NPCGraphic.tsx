@@ -26,7 +26,7 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
   const directionRef = useRef(new THREE.Vector2());
   const collisionSet = useRef<Set<string>>(new Set());
   const textureLoaded = useRef(false);
-  const currentPosition = useMemo(() => new THREE.Vector3(), []);
+  const previousPosition = useMemo(() => new THREE.Vector3(), []);
 
   // Set initial position and direction
   useEffect(() => {
@@ -82,8 +82,8 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
   useEffect(() => {
     const textureLoader = new THREE.TextureLoader();
 
-    // Check if this is the first setup by looking at currentPosition
-    const isFirstSetup = currentPosition.lengthSq() === 0;
+    // Check if this is the first setup by looking at previousPosition
+    const isFirstSetup = previousPosition.lengthSq() === 0;
 
     if (isFirstSetup && followingUser && followingUser.position) {
       // Calculate position using the helper function
@@ -91,12 +91,12 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
 
       // Set initial position directly
       positionRef.current.copy(position);
-      currentPosition.copy(positionRef.current);
-      group.position.copy(currentPosition);
+      previousPosition.copy(positionRef.current);
+      group.position.copy(previousPosition);
     } else {
       // Default behavior
-      currentPosition.copy(positionRef.current);
-      group.position.copy(currentPosition);
+      previousPosition.copy(positionRef.current);
+      group.position.copy(previousPosition);
     }
 
     // Load texture
@@ -136,7 +136,7 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
       if (mesh.current && mesh.current.geometry)
         mesh.current.geometry.dispose();
     };
-  }, [currentPosition, group, npc.filename, followingUser, npc.id]);
+  }, [previousPosition, group, npc.filename, followingUser, npc.id]);
 
   // Handle updates and collisions
   useFrame(() => {
