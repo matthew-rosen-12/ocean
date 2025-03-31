@@ -323,10 +323,9 @@ add NPCs to capture
   - push around, throw to cause health damage
   - add NPC images
 
-* refractor / cleanup
-  - change variable name in NPCGraphic to previousPosition etc
 * debug NPCs sometimes being laggy when following local player (probably just decrease render rate)
 debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)
 debug db rows not being deleted properly (likely same issue as previous)
 center the animal sprite within the camera view
+* refractor / cleanup
 */
