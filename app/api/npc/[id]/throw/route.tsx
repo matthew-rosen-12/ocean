@@ -68,7 +68,7 @@ export async function POST(
     await addNPCToChannel(channelName, updatedNPC);
 
     // Broadcast the initial throw event to clients
-    await pusher.trigger("presence-ocean", "npc-thrown", {
+    await pusher.trigger(`presence-${channelName}`, "npc-thrown", {
       npcId,
       throwerId,
       npcData: updatedNPC,
@@ -105,7 +105,7 @@ async function updateThrownNPC(npcId: string, pusher: Pusher) {
   updateNPCInChannel(throwData.channelName, throwData.npc);
 
   // Broadcast position update to clients
-  await pusher.trigger("presence-ocean", "npc-position", {
+  await pusher.trigger(`presence-${throwData.channelName}`, "npc-position", {
     npcId,
     position: throwData.npc.position,
     phase: NPCPhase.THROWN,
@@ -120,7 +120,7 @@ async function updateThrownNPC(npcId: string, pusher: Pusher) {
     updateNPCInChannel(throwData.channelName, throwData.npc);
 
     // Broadcast final state to clients
-    await pusher.trigger("presence-ocean", "npc-free", {
+    await pusher.trigger(`presence-${throwData.channelName}`, "npc-free", {
       npcId,
       npcData: throwData.npc,
     });
