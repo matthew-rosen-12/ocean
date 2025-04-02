@@ -34,6 +34,47 @@ function CameraController({
   return null;
 }
 
+async function throwNPC(
+  myUser: UserInfo,
+  npc: NPC,
+  users: Map<string, UserInfo>
+) {
+  try {
+    await fetch(`/api/npc/${npc.id}/throw`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        throwerId: myUser.id,
+        direction: myUser.direction,
+        velocity: 8,
+        position: { x: npc.position.x, y: npc.position.y, z: npc.position.z },
+        channelName: myUser.channel_name,
+      }),
+    });
+
+    // Remove the NPC from the myUser's NPC group
+    if (myUser.npcGroup?.npcs) {
+      myUser.npcGroup.npcs = myUser.npcGroup.npcs.filter(
+        (n) => n.id !== npc.id
+      );
+
+      // Update the user in the users Map to keep it in sync
+      users.set(myUser.id, myUser);
+
+      // Broadcast that the user has been modified
+      const channel = getChannel(myUser.channel_name);
+      await channel.trigger("client-user-modified", {
+        id: myUser.id,
+        info: myUser,
+      });
+    }
+
+    // Server handles the rest via Pusher broadcasts
+  } catch (error) {
+    console.error("Error throwing NPC:", error);
+  }
+}
+
 function useKeyboardMovement(
   initialPosition: Vector3,
   initialDirection: Direction,
@@ -63,12 +104,7 @@ function useKeyboardMovement(
         if (capturedNpcIndex >= 0) {
           // Get the NPC to throw
           const npcToThrow = myUser.npcGroup.npcs[capturedNpcIndex];
-
-          // Update its phase
-          npcToThrow.phase = NPCPhase.THROWN;
-
-          // Update the user in the users map
-          users.set(myUser.id, myUser);
+          throwNPC(myUser, npcToThrow, users);
         }
       }
     };

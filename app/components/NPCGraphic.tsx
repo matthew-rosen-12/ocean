@@ -19,7 +19,6 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
   localUserId,
   followingUser,
   onCollision,
-  onNPCReleased,
 }) => {
   const group = useMemo(() => new THREE.Group(), []);
   const texture = useRef<THREE.Texture | null>(null);

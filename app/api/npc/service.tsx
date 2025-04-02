@@ -93,3 +93,29 @@ function createNPCs(count: number): NPC[] {
 
   return npcs;
 }
+
+// Add a new NPC to a specific channel
+export function addNPCToChannel(channelName: string, npc: NPC): void {
+  if (!channelNPCs.has(channelName)) {
+    channelNPCs.set(channelName, []);
+  }
+
+  const npcs = channelNPCs.get(channelName);
+  if (npcs) {
+    npcs.push(npc);
+  }
+}
+
+// Update an existing NPC in a channel
+export function updateNPCInChannel(channelName: string, updatedNPC: NPC): void {
+  if (!channelNPCs.has(channelName)) return;
+
+  const npcs = channelNPCs.get(channelName);
+  if (!npcs) return;
+
+  const index = npcs.findIndex((npc) => npc.id === updatedNPC.id);
+
+  if (index >= 0) {
+    npcs[index] = updatedNPC;
+  }
+}
