@@ -13,7 +13,7 @@ export async function POST(
 ) {
   try {
     const npcId = params.id;
-    const { throwerId, direction, velocity, position, channelName } =
+    const { throwerId, direction, filename, velocity, position, channelName } =
       await request.json();
 
     // Validate the request data
@@ -21,6 +21,7 @@ export async function POST(
       !npcId ||
       !throwerId ||
       !direction ||
+      !filename ||
       !velocity ||
       !position ||
       !channelName
@@ -37,7 +38,7 @@ export async function POST(
     const updatedNPC = {
       id: npcId,
       type: "npc",
-      filename: "default.png", // Use default filename or add filename to the destructured parameters
+      filename: filename, // Use default filename or add filename to the destructured parameters
       phase: NPCPhase.THROWN,
       direction: {
         x: direction.x,

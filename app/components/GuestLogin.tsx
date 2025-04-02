@@ -1,7 +1,7 @@
 // ocean/app/components/GuestLogin.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Member, NPCPhase, UserInfo } from "../utils/types";
-import type { Members } from "pusher-js";
+import type { Channel, Members } from "pusher-js";
 import { getChannel } from "../utils/pusher-instance";
 import { NPC } from "../utils/types";
 
@@ -25,6 +25,7 @@ function MemberToUser(member: Member) {
 export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
   let currentUser: UserInfo | null = null;
   const [loading, setLoading] = useState(false);
+  const [channel, setChannel] = useState<Channel | null>(null);
 
   const handleGuestLogin = async () => {
     setLoading(true);
@@ -37,6 +38,7 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
       const channel_name = data.channel_name;
 
       const channel = getChannel(channel_name);
+      setChannel(channel);
 
       channel.bind("pusher:subscription_succeeded", (members: Members) => {
         const usersMap = new Map();
@@ -218,11 +220,68 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
           });
         }
       );
+
+      // Add these new event listeners for thrown NPCs
+
+      // When an NPC is thrown initially
+      channel.bind(
+        "npc-thrown",
+        (data: { npcId: string; throwerId: string; npcData: NPC }) => {
+          setNPCs((prev) => {
+            const newNPCs = new Map(prev);
+            newNPCs.set(data.npcId, data.npcData);
+            return newNPCs;
+          });
+        }
+      );
+
+      // Position updates while NPC is in flight
+      channel.bind(
+        "npc-position",
+        (data: {
+          npcId: string;
+          position: { x: number; y: number; z: number };
+          phase: NPCPhase;
+        }) => {
+          setNPCs((prev) => {
+            const newNPCs = new Map(prev);
+            const existingNPC = newNPCs.get(data.npcId);
+            if (existingNPC) {
+              newNPCs.set(data.npcId, {
+                ...existingNPC,
+                position: data.position,
+                phase: data.phase,
+              });
+            }
+            return newNPCs;
+          });
+        }
+      );
+
+      // When an NPC finishes being thrown and becomes free
+      channel.bind("npc-free", (data: { npcId: string; npcData: NPC }) => {
+        setNPCs((prev) => {
+          const newNPCs = new Map(prev);
+          newNPCs.set(data.npcId, data.npcData);
+          return newNPCs;
+        });
+      });
     } catch (error) {
       console.error("Login error:", error);
     } finally {
     }
   };
+
+  useEffect(() => {
+    if (!channel) return;
+
+    // Remember to unbind events on cleanup
+    return () => {
+      channel.unbind("npc-thrown");
+      channel.unbind("npc-position");
+      channel.unbind("npc-free");
+    };
+  }, [channel]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">

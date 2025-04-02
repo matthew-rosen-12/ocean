@@ -47,6 +47,7 @@ async function throwNPC(
         throwerId: myUser.id,
         direction: myUser.direction,
         velocity: 8,
+        filename: npc.filename,
         position: { x: npc.position.x, y: npc.position.y, z: npc.position.z },
         channelName: myUser.channel_name,
       }),
