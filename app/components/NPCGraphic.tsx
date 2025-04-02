@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useMemo } from "react";
-import { NPC, UserInfo } from "../utils/types";
+import { NPC, NPCPhase, UserInfo } from "../utils/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 
@@ -27,6 +27,9 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
   const collisionSet = useRef<Set<string>>(new Set());
   const textureLoaded = useRef(false);
   const previousPosition = useMemo(() => new THREE.Vector3(), []);
+  const throwDirectionRef = useRef(new THREE.Vector2());
+  const throwStartTimeRef = useRef(0);
+  const throwVelocityRef = useRef(8); // Units per second
 
   // Set initial position and direction
   useEffect(() => {
@@ -139,11 +142,37 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
   }, [previousPosition, group, npc.filename, followingUser, npc.id]);
 
   // Handle updates and collisions
-  useFrame(() => {
+  useFrame((state, delta) => {
     if (!group || !textureLoaded.current) return;
 
-    if (followingUser && followingUser.position) {
-      // Calculate current target position
+    // Check if this NPC is in THROWN phase
+    if (npc.phase === NPCPhase.THROWN) {
+      // Initialize throw parameters if this is the first frame after throwing
+      if (throwStartTimeRef.current === 0) {
+        // Capture throw direction from the followingUser's direction
+        if (followingUser && followingUser.direction) {
+          throwDirectionRef.current
+            .set(followingUser.direction.x, followingUser.direction.y)
+            .normalize();
+        } else {
+          // Default direction if no following user
+          throwDirectionRef.current.set(1, 0);
+        }
+        throwStartTimeRef.current = state.clock.elapsedTime;
+      }
+
+      // Move the NPC in the throw direction
+      const moveDistance = throwVelocityRef.current * delta;
+      group.position.x += throwDirectionRef.current.x * moveDistance;
+      group.position.y += throwDirectionRef.current.y * moveDistance;
+
+      // Update NPC position data
+      npc.position.x = group.position.x;
+      npc.position.y = group.position.y;
+      npc.position.z = group.position.z;
+    }
+    // Normal following behavior
+    else if (followingUser && followingUser.position) {
       const targetPosition = calculateFollowPosition(followingUser, npc.id);
 
       // Apply appropriate movement based on whether it's a local player's NPC
@@ -193,6 +222,13 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
       }
     }
   });
+
+  // Reset the throw state when the NPC phase changes
+  useEffect(() => {
+    if (npc.phase !== NPCPhase.THROWN) {
+      throwStartTimeRef.current = 0;
+    }
+  }, [npc.phase]);
 
   return <primitive object={group} />;
 };

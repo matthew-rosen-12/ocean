@@ -58,6 +58,7 @@ function useKeyboardMovement(
         const capturedNpcIndex = myUser.npcGroup.npcs.findIndex(
           (npc) => npc.phase === NPCPhase.CAPTURED
         );
+        console.log("CAPTURED NPC INDEX", capturedNpcIndex);
 
         if (capturedNpcIndex >= 0) {
           // Get the NPC to throw
@@ -178,7 +179,7 @@ function useKeyboardMovement(
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [keysPressed, myUser, users]);
+  }, [direction, keysPressed, myUser, users]);
 
   return { position, direction, keysPressed };
 }
@@ -279,14 +280,11 @@ export default function Scene({ users, myUser, npcs }: Props) {
       if (npcs.has(npc.id)) {
         // Remove NPC from general pool
         npcs.delete(npc.id);
+        npc.phase = NPCPhase.CAPTURED;
 
-        // Get the user from the map
         myUser.npcGroup.npcs.push({ ...npc });
         users.set(myUser.id, myUser);
-        // Create NPCGroup if it doesn't exist
 
-        // If this was the local player capturing an NPC
-        // Broadcast the capture to all other players
         const channel = getChannel(myUser.channel_name);
         channel.trigger("client-npc-captured", {
           npcId: npc.id,
