@@ -69,7 +69,7 @@ export async function POST(
     await addNPCToChannel(channelName, updatedNPC);
 
     // Broadcast the initial throw event to clients
-    await pusher.trigger(`presence-${channelName}`, "npc-thrown", {
+    await pusher.trigger(throwData.channelName, "npc-thrown", {
       npcId,
       throwerId,
       npcData: updatedNPC,
@@ -105,8 +105,7 @@ async function updateThrownNPC(npcId: string, pusher: Pusher) {
   // Update the NPC in the service directly
   updateNPCInChannel(throwData.channelName, throwData.npc);
 
-  // Broadcast position update to clients
-  await pusher.trigger(`presence-${throwData.channelName}`, "npc-position", {
+  await pusher.trigger(throwData.channelName, "npc-position", {
     npcId,
     position: throwData.npc.position,
     phase: NPCPhase.THROWN,
@@ -121,7 +120,7 @@ async function updateThrownNPC(npcId: string, pusher: Pusher) {
     updateNPCInChannel(throwData.channelName, throwData.npc);
 
     // Broadcast final state to clients
-    await pusher.trigger(`presence-${throwData.channelName}`, "npc-free", {
+    await pusher.trigger(throwData.channelName, "npc-free", {
       npcId,
       npcData: throwData.npc,
     });

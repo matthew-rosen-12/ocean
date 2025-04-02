@@ -190,39 +190,6 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
         });
       });
 
-      // Add this with the other channel.bind statements
-      channel.bind(
-        "client-npc-captured",
-        (data: { npcId: string; captorId: string; npcData: NPC }) => {
-          // Remove the NPC from the general pool
-          setNPCs((prevNPCs) => {
-            const newNPCs = new Map(prevNPCs);
-            newNPCs.delete(data.npcId);
-            return newNPCs;
-          });
-        }
-      );
-
-      // Add this with the other channel.bind statements
-      channel.bind(
-        "client-npc-free",
-        (data: { npcId: string; releaserId: string; npcData: NPC }) => {
-          // Add the NPC back to the general pool
-          setNPCs((prevNPCs) => {
-            const newNPCs = new Map(prevNPCs);
-            // Ensure the NPC has the FREE phase
-            const updatedNpc = {
-              ...data.npcData,
-              phase: NPCPhase.FREE,
-            };
-            newNPCs.set(data.npcId, updatedNpc);
-            return newNPCs;
-          });
-        }
-      );
-
-      // Add these new event listeners for thrown NPCs
-
       // When an NPC is thrown initially
       channel.bind(
         "npc-thrown",
@@ -243,6 +210,7 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
           position: { x: number; y: number; z: number };
           phase: NPCPhase;
         }) => {
+          console.log("npc-position", data);
           setNPCs((prev) => {
             const newNPCs = new Map(prev);
             const existingNPC = newNPCs.get(data.npcId);
@@ -276,12 +244,12 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
     if (!channel) return;
 
     // Remember to unbind events on cleanup
-    return () => {
-      channel.unbind("npc-thrown");
-      channel.unbind("npc-position");
-      channel.unbind("npc-free");
-    };
-  }, [channel]);
+    // return () => {
+    //   channel.unbind("npc-thrown");
+    //   channel.unbind("npc-position");
+    //   channel.unbind("npc-free");
+    // };
+  });
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
