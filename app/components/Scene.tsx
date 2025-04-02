@@ -1,7 +1,7 @@
 // ocean/app/components/Scene.tsx
 "use client";
 import { Canvas, useThree } from "@react-three/fiber";
-import { Direction, UserInfo } from "../utils/types";
+import { Direction, NPCPhase, UserInfo } from "../utils/types";
 import NPCGraphic from "./NPCGraphic";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Vector3 } from "three";
@@ -36,7 +36,9 @@ function CameraController({
 
 function useKeyboardMovement(
   initialPosition: Vector3,
-  initialDirection: Direction
+  initialDirection: Direction,
+  myUser: UserInfo,
+  users: Map<string, UserInfo>
 ) {
   const [position, setPosition] = useState(initialPosition);
   const [direction, setDirection] = useState<Direction>(initialDirection);
@@ -46,6 +48,28 @@ function useKeyboardMovement(
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       setKeysPressed((prev) => new Set(prev).add(event.key));
+
+      // Handle space bar press for throwing NPCs
+      if (
+        (event.key === " " || event.key === "Spacebar") &&
+        myUser.npcGroup?.npcs?.length > 0
+      ) {
+        // Find the first captured NPC
+        const capturedNpcIndex = myUser.npcGroup.npcs.findIndex(
+          (npc) => npc.phase === NPCPhase.CAPTURED
+        );
+
+        if (capturedNpcIndex >= 0) {
+          // Get the NPC to throw
+          const npcToThrow = myUser.npcGroup.npcs[capturedNpcIndex];
+
+          // Update its phase
+          npcToThrow.phase = NPCPhase.THROWN;
+
+          // Update the user in the users map
+          users.set(myUser.id, myUser);
+        }
+      }
     };
 
     const handleKeyUp = (event: KeyboardEvent) => {
@@ -154,7 +178,7 @@ function useKeyboardMovement(
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [direction, keysPressed]);
+  }, [keysPressed, myUser, users]);
 
   return { position, direction, keysPressed };
 }
@@ -179,7 +203,9 @@ export default function Scene({ users, myUser, npcs }: Props) {
 
   const { position, direction } = useKeyboardMovement(
     initialPosition,
-    initialDirection
+    initialDirection,
+    myUser,
+    users
   );
   const lastBroadcastPosition = useRef(initialPosition);
   const lastBroadcastDirection = useRef(initialDirection);
