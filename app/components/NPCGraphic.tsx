@@ -9,6 +9,8 @@ interface NPCGraphicProps {
   localUserId?: string; // Add this to identify local user
   followingUser?: UserInfo; // The user this NPC is following (if any)
   onCollision?: (npc: NPC) => void;
+  targetPosition?: THREE.Vector3;
+  onNPCReleased?: (npc: NPC, user: UserInfo) => void; // Add this new prop
 }
 
 const NPCGraphic: React.FC<NPCGraphicProps> = ({
@@ -17,6 +19,7 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
   localUserId,
   followingUser,
   onCollision,
+  onNPCReleased,
 }) => {
   const group = useMemo(() => new THREE.Group(), []);
   const texture = useRef<THREE.Texture | null>(null);
@@ -27,9 +30,11 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
   const collisionSet = useRef<Set<string>>(new Set());
   const textureLoaded = useRef(false);
   const previousPosition = useMemo(() => new THREE.Vector3(), []);
-  const throwDirectionRef = useRef(new THREE.Vector2());
+  const MAX_THROW_DISTANCE = 15; // Maximum distance the NPC can be thrown
+  const throwDistanceTraveledRef = useRef(0);
   const throwStartTimeRef = useRef(0);
-  const throwVelocityRef = useRef(8); // Units per second
+  const throwDirectionRef = useRef(new THREE.Vector2());
+  const throwVelocityRef = useRef(5); // Assuming a default throwVelocity
 
   // Set initial position and direction
   useEffect(() => {
@@ -159,17 +164,28 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
           throwDirectionRef.current.set(1, 0);
         }
         throwStartTimeRef.current = state.clock.elapsedTime;
+        throwDistanceTraveledRef.current = 0; // Reset distance counter
       }
 
-      // Move the NPC in the throw direction
-      const moveDistance = throwVelocityRef.current * delta;
-      group.position.x += throwDirectionRef.current.x * moveDistance;
-      group.position.y += throwDirectionRef.current.y * moveDistance;
+      // Check if we've reached maximum throw distance
+      if (throwDistanceTraveledRef.current < MAX_THROW_DISTANCE) {
+        // Move the NPC in the throw direction
+        const moveDistance = throwVelocityRef.current * delta;
+        group.position.x += throwDirectionRef.current.x * moveDistance;
+        group.position.y += throwDirectionRef.current.y * moveDistance;
 
-      // Update NPC position data
-      npc.position.x = group.position.x;
-      npc.position.y = group.position.y;
-      npc.position.z = group.position.z;
+        // Update distance traveled
+        throwDistanceTraveledRef.current += moveDistance;
+
+        // Update NPC position data
+        npc.position.x = group.position.x;
+        npc.position.y = group.position.y;
+        npc.position.z = group.position.z;
+      } else {
+        // We've reached maximum distance
+        // First change the phase
+        npc.phase = NPCPhase.FREE;
+      }
     }
     // Normal following behavior
     else if (followingUser && followingUser.position) {
@@ -227,6 +243,7 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
   useEffect(() => {
     if (npc.phase !== NPCPhase.THROWN) {
       throwStartTimeRef.current = 0;
+      throwDistanceTraveledRef.current = 0;
     }
   }, [npc.phase]);
 
