@@ -1,6 +1,6 @@
 // ocean/app/components/GuestLogin.tsx
 import { useState } from "react";
-import { Member, UserInfo } from "../utils/types";
+import { Member, NPCPhase, UserInfo } from "../utils/types";
 import type { Members } from "pusher-js";
 import { getChannel } from "../utils/pusher-instance";
 import { NPC } from "../utils/types";
@@ -196,6 +196,24 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
           setNPCs((prevNPCs) => {
             const newNPCs = new Map(prevNPCs);
             newNPCs.delete(data.npcId);
+            return newNPCs;
+          });
+        }
+      );
+
+      // Add this with the other channel.bind statements
+      channel.bind(
+        "client-npc-free",
+        (data: { npcId: string; releaserId: string; npcData: NPC }) => {
+          // Add the NPC back to the general pool
+          setNPCs((prevNPCs) => {
+            const newNPCs = new Map(prevNPCs);
+            // Ensure the NPC has the FREE phase
+            const updatedNpc = {
+              ...data.npcData,
+              phase: NPCPhase.FREE,
+            };
+            newNPCs.set(data.npcId, updatedNpc);
             return newNPCs;
           });
         }

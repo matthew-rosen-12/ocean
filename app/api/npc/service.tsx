@@ -2,7 +2,7 @@
 import { v4 as uuidv4 } from "uuid";
 import fs from "fs";
 import path from "path";
-import { NPC } from "../../utils/types";
+import { NPC, NPCPhase } from "../../utils/types";
 import { getDirection, getPosition } from "../utils/npc-info";
 
 const NUM_NPCS = 4;
@@ -85,6 +85,7 @@ function createNPCs(count: number): NPC[] {
       filename: filename,
       position: getPosition(),
       direction: getDirection(),
+      phase: NPCPhase.FREE,
     };
 
     npcs.push(npc);

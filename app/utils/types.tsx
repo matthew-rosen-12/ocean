@@ -21,6 +21,13 @@ export interface Member {
   info: UserInfo;
 }
 
+// First, define the NPCPhase enum
+export enum NPCPhase {
+  FREE = "free",
+  CAPTURED = "captured",
+  THROWN = "thrown",
+}
+
 export type NPC = {
   id: string;
   type: string;
@@ -34,6 +41,7 @@ export type NPC = {
     x: number;
     y: number;
   };
+  phase: NPCPhase;
 };
 
 export type NPCGroup = {

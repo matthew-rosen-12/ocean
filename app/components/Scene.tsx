@@ -41,6 +41,7 @@ function useKeyboardMovement(
   const [position, setPosition] = useState(initialPosition);
   const [direction, setDirection] = useState<Direction>(initialDirection);
   const [keysPressed, setKeysPressed] = useState(new Set<string>());
+  const animationFrameRef = useRef<number>();
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -131,14 +132,16 @@ function useKeyboardMovement(
       }
     };
 
-    let animationFrameId: number;
     const animate = () => {
       if (keysPressed.size > 0) {
         updatePosition();
       }
-      animationFrameId = requestAnimationFrame(animate);
+      // Store the ID so we can cancel it properly
+      animationFrameRef.current = requestAnimationFrame(animate);
     };
-    animate();
+
+    // Start the animation loop once
+    animationFrameRef.current = requestAnimationFrame(animate);
 
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
@@ -146,9 +149,12 @@ function useKeyboardMovement(
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
-      cancelAnimationFrame(animationFrameId);
+      // Cancel the animation frame using the ref
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     };
-  }, [keysPressed]);
+  }, [direction, keysPressed]);
 
   return { position, direction, keysPressed };
 }
@@ -323,7 +329,6 @@ add NPCs to capture
   - push around, throw to cause health damage
   - add NPC images
 
-* debug NPCs sometimes being laggy when following local player (probably just decrease render rate)
 debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)
 debug db rows not being deleted properly (likely same issue as previous)
 center the animal sprite within the camera view
