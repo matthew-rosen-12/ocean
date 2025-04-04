@@ -40,20 +40,7 @@ async function throwNPC(
   users: Map<string, UserInfo>
 ) {
   try {
-    await fetch(`/api/npc/${npc.id}/throw`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        throwerId: myUser.id,
-        direction: myUser.direction,
-        velocity: 8,
-        filename: npc.filename,
-        position: { x: npc.position.x, y: npc.position.y, z: npc.position.z },
-        channelName: myUser.channel_name,
-      }),
-    });
-
-    // Remove the NPC from the myUser's NPC group
+    // First remove the NPC from the myUser's NPC group immediately
     if (myUser.npcGroup?.npcs) {
       myUser.npcGroup.npcs = myUser.npcGroup.npcs.filter(
         (n) => n.id !== npc.id
@@ -70,7 +57,18 @@ async function throwNPC(
       });
     }
 
-    // Server handles the rest via Pusher broadcasts
+    // Then make the API call to throw the NPC
+    await fetch(`/api/npc/${npc.id}/throw`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        throwerId: myUser.id,
+        direction: myUser.direction,
+        npc: npc,
+        velocity: 8,
+        channelName: myUser.channel_name,
+      }),
+    });
   } catch (error) {
     console.error("Error throwing NPC:", error);
   }
@@ -320,7 +318,6 @@ export default function Scene({ users, myUser, npcs }: Props) {
 
         myUser.npcGroup.npcs.push({ ...npc });
         users.set(myUser.id, myUser);
-
         const channel = getChannel(myUser.channel_name);
         channel.trigger("client-npc-captured", {
           npcId: npc.id,
@@ -344,7 +341,6 @@ export default function Scene({ users, myUser, npcs }: Props) {
         targetPosition={position}
         animalScale={ANIMAL_SCALES[myUser.animal]}
       />
-
       <ambientLight intensity={Math.PI / 2} />
       <spotLight
         position={[10, 10, 10]}
@@ -355,7 +351,6 @@ export default function Scene({ users, myUser, npcs }: Props) {
       />
       <pointLight position={[-10, -10, -10]} decay={0} intensity={Math.PI} />
       <WaveGrid />
-
       {/* Render all users with their NPCs */}
       {Array.from(users.values()).map((user) => (
         <AnimalGraphic
@@ -365,8 +360,6 @@ export default function Scene({ users, myUser, npcs }: Props) {
           users={users}
         />
       ))}
-
-      {/* Render free NPCs that haven't been captured */}
       {npcs.size > 0 &&
         Array.from(npcs.values()).map((npc) => (
           <NPCGraphic
@@ -386,9 +379,10 @@ TODO:
 add NPCs to capture
   - adjust bounding box for interaction (to head? entire body?)
   - split into grid for faster rendering
-  - push around, throw to cause health damage
+  - throwing
   - add NPC images
 
+clean up!
 debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)
 debug db rows not being deleted properly (likely same issue as previous)
 center the animal sprite within the camera view

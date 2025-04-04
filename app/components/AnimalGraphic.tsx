@@ -9,6 +9,7 @@ import { Animal } from "../utils/types";
 import { ANIMAL_SCALES } from "../api/utils/user-info";
 import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js";
 import NPCGraphic from "./NPCGraphic";
+import { smoothMove } from "../utils/movement";
 
 const ANIMAL_ORIENTATION = {
   wolf: { rotation: 0, flipY: true },
@@ -229,40 +230,18 @@ function AnimalSprite({
 
     // Handle position interpolation for non-local players
     if (!isLocalPlayer) {
-      const positionDelta = new THREE.Vector3().subVectors(
-        positionRef.current,
-        previousPosition
+      // Apply smooth movement
+      previousPosition.copy(
+        smoothMove(previousPosition.clone(), positionRef.current, {
+          lerpFactor: 0.1,
+          moveSpeed: MOVE_SPEED,
+          minDistance: 0.01,
+          useConstantSpeed: true,
+        })
       );
-      const distance = previousPosition.distanceTo(positionRef.current);
 
-      // Handle movement with adaptive approach
-      if (distance > 0.01) {
-        const LERP_FACTOR = 0.1; // How fast to lerp (0-1)
-
-        // Calculate how far we would move with LERP
-        const lerpPosition = previousPosition
-          .clone()
-          .lerp(positionRef.current, LERP_FACTOR);
-        const lerpDistance = previousPosition.distanceTo(lerpPosition);
-
-        // Calculate how far we would move with constant speed
-        const constantSpeedDistance = Math.min(MOVE_SPEED, distance);
-
-        // Use whichever method moves us farther
-        if (lerpDistance > constantSpeedDistance) {
-          // LERP is faster - use it
-          previousPosition.copy(lerpPosition);
-        } else {
-          // Constant speed is faster - use it
-          previousPosition.addScaledVector(
-            positionDelta.normalize(),
-            constantSpeedDistance
-          );
-        }
-
-        // Apply the calculated position
-        group.position.copy(previousPosition);
-      }
+      // Apply the calculated position
+      group.position.copy(previousPosition);
     }
 
     // Rotation interpolation with faster non-local rotation

@@ -1,6 +1,6 @@
 // ocean/app/components/GuestLogin.tsx
-import { useState, useEffect } from "react";
-import { Member, NPCPhase, UserInfo } from "../utils/types";
+import { useState } from "react";
+import { Member, UserInfo } from "../utils/types";
 import type { Channel, Members } from "pusher-js";
 import { getChannel } from "../utils/pusher-instance";
 import { NPC } from "../utils/types";
@@ -198,27 +198,35 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
           return newNPCs;
         });
       });
+
+      // Add handler for when NPCs are captured by users
+      channel.bind(
+        "npc-captured",
+        (data: { npcId: string; captorId: string }) => {
+          setNPCs((prev) => {
+            const newNPCs = new Map(prev);
+            newNPCs.delete(data.npcId);
+            return newNPCs;
+          });
+        }
+      );
     } catch (error) {
       console.error("Login error:", error);
     } finally {
-      // Remember to update the cleanup
+      // Clean up all event listeners when component unmounts or channel changes
       return () => {
-        // channel.unbind("npc-update");
-        // Other unbinds...
+        if (!channel) return;
+        channel.unbind("npc-update");
+        channel.unbind("npc-captured");
+        channel.unbind("pusher:subscription_succeeded");
+        channel.unbind("client-request-state");
+        channel.unbind("client-send-state");
+        channel.unbind("pusher:member_added");
+        channel.unbind("pusher:member_removed");
+        channel.unbind("client-user-modified");
       };
     }
   };
-
-  useEffect(() => {
-    if (!channel) return;
-
-    // Remember to unbind events on cleanup
-    // return () => {
-    //   channel.unbind("npc-thrown");
-    //   channel.unbind("npc-position");
-    //   channel.unbind("npc-free");
-    // };
-  });
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">

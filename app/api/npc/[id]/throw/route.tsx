@@ -16,7 +16,7 @@ export async function POST(
 ) {
   try {
     const npcId = params.id;
-    const { throwerId, direction, velocity, filename, position, channelName } =
+    const { throwerId, direction, npc, velocity, channelName } =
       await request.json();
 
     // Validate the request data
@@ -24,9 +24,8 @@ export async function POST(
       !npcId ||
       !throwerId ||
       !direction ||
+      !npc ||
       !velocity ||
-      !filename ||
-      !position ||
       !channelName
     ) {
       return NextResponse.json(
@@ -39,27 +38,16 @@ export async function POST(
 
     // Create the updated NPC data
     const updatedNPC = {
-      id: npcId,
-      type: "npc",
-      filename: filename,
+      ...npc,
       phase: NPCPhase.THROWN,
-      direction: {
-        x: direction.x,
-        y: direction.y,
-      },
-      position: {
-        x: position.x,
-        y: position.y,
-        z: position.z || 0,
-      },
     };
 
     // Store only trajectory data, not the full NPC
     const throwData = {
       channelName,
       npcId, // Store just the ID reference
-      startPosition: { ...position },
-      direction: { ...direction },
+      startPosition: npc.position,
+      direction: direction,
       velocity,
       startTime: Date.now(),
       maxDistance: 15,
@@ -70,7 +58,7 @@ export async function POST(
 
     // Broadcast and add to channel as before
     await addNPCToChannel(channelName, updatedNPC);
-    await pusher.trigger(`presence-${channelName}`, "npc-thrown", {
+    await pusher.trigger(channelName, "npc-thrown", {
       npcId,
       throwerId,
       npcData: updatedNPC,

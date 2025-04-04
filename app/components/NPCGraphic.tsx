@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useMemo } from "react";
 import { NPC, NPCPhase, UserInfo } from "../utils/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
+import { smoothMove } from "../utils/movement";
 
 interface NPCGraphicProps {
   npc: NPC;
@@ -25,23 +26,14 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
   const material = useRef<THREE.MeshBasicMaterial | null>(null);
   const mesh = useRef<THREE.Mesh | null>(null);
   const positionRef = useRef(new THREE.Vector3());
-  const directionRef = useRef(new THREE.Vector2());
-  const collisionSet = useRef<Set<string>>(new Set());
+  const targetPositionRef = useRef(new THREE.Vector3());
   const textureLoaded = useRef(false);
   const previousPosition = useMemo(() => new THREE.Vector3(), []);
-  const MAX_THROW_DISTANCE = 15; // Maximum distance the NPC can be thrown
-  const throwDistanceTraveledRef = useRef(0);
-  const throwStartTimeRef = useRef(0);
-  const throwDirectionRef = useRef(new THREE.Vector2());
-  const throwVelocityRef = useRef(5); // Assuming a default throwVelocity
 
   // Set initial position and direction
   useEffect(() => {
     if (npc.position && followingUser === undefined) {
       positionRef.current.set(npc.position.x, npc.position.y, npc.position.z);
-    }
-    if (npc.direction) {
-      directionRef.current.set(npc.direction.x, npc.direction.y);
     }
   }, [followingUser, npc]);
 
@@ -137,81 +129,61 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
       }
     );
 
+    if (npc.phase === NPCPhase.THROWN || npc.phase === NPCPhase.FREE) {
+      targetPositionRef.current.copy(npc.position);
+    }
     return () => {
       if (texture.current) texture.current.dispose();
       if (material.current) material.current.dispose();
       if (mesh.current && mesh.current.geometry)
         mesh.current.geometry.dispose();
     };
-  }, [previousPosition, group, npc.filename, followingUser, npc.id]);
+  }, [
+    previousPosition,
+    group,
+    npc.filename,
+    npc.phase,
+    followingUser,
+    npc.id,
+    npc.position,
+  ]);
 
   // Handle updates and collisions
-  useFrame((state, delta) => {
+  useFrame(() => {
     if (!group || !textureLoaded.current) return;
 
-    // Check if this NPC is in THROWN phase
-    if (npc.phase === NPCPhase.THROWN) {
-      // Initialize throw parameters if this is the first frame after throwing
-      if (throwStartTimeRef.current === 0) {
-        // Capture throw direction from the followingUser's direction
-        if (followingUser && followingUser.direction) {
-          throwDirectionRef.current
-            .set(followingUser.direction.x, followingUser.direction.y)
-            .normalize();
-        } else {
-          // Default direction if no following user
-          throwDirectionRef.current.set(1, 0);
-        }
-        throwStartTimeRef.current = state.clock.elapsedTime;
-        throwDistanceTraveledRef.current = 0; // Reset distance counter
-      }
-
-      // Check if we've reached maximum throw distance
-      if (throwDistanceTraveledRef.current < MAX_THROW_DISTANCE) {
-        // Move the NPC in the throw direction
-        const moveDistance = throwVelocityRef.current * delta;
-        group.position.x += throwDirectionRef.current.x * moveDistance;
-        group.position.y += throwDirectionRef.current.y * moveDistance;
-
-        // Update distance traveled
-        throwDistanceTraveledRef.current += moveDistance;
-
-        // Update NPC position data
-        npc.position.x = group.position.x;
-        npc.position.y = group.position.y;
-        npc.position.z = group.position.z;
-      } else {
-        // We've reached maximum distance
-        // First change the phase
-        npc.phase = NPCPhase.FREE;
-      }
-    }
     // Normal following behavior
-    else if (followingUser && followingUser.position) {
-      const targetPosition = calculateFollowPosition(followingUser, npc.id);
+    const targetPosition =
+      npc.phase === NPCPhase.CAPTURED && followingUser
+        ? calculateFollowPosition(followingUser, npc.id)
+        : targetPositionRef.current;
 
+    if (positionRef.current != targetPosition) {
       // Apply appropriate movement based on whether it's a local player's NPC
-      const isLocalPlayerNPC = followingUser.id === localUserId;
+      const isLocalPlayerNPC =
+        followingUser && followingUser.id === localUserId;
 
       if (isLocalPlayerNPC) {
         positionRef.current.copy(targetPosition);
       } else {
-        const LERP_FACTOR = 0.1;
-        positionRef.current.lerp(targetPosition, LERP_FACTOR);
+        positionRef.current.copy(
+          smoothMove(positionRef.current.clone(), targetPosition)
+        );
       }
 
       // Update group position
       group.position.copy(positionRef.current);
 
       // Update NPC position data
-      npc.position.x = positionRef.current.x;
-      npc.position.y = positionRef.current.y;
-      npc.position.z = positionRef.current.z;
+      if (npc.phase === NPCPhase.CAPTURED && followingUser) {
+        npc.position.x = positionRef.current.x;
+        npc.position.y = positionRef.current.y;
+        npc.position.z = positionRef.current.z;
+      }
+
+      // Fixed upright rotation - NPCs don't rotate with captor
+      group.rotation.z = 0;
     }
-
-    // Fixed upright rotation - NPCs don't rotate with captor
-    group.rotation.z = 0;
-
     // Only check for collisions if we're not already following a user
     if (!followingUser && onCollision && localUserId) {
       const COLLISION_THRESHOLD = 2.5;
@@ -223,28 +195,15 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
           localUser.position.y,
           localUser.position.z
         );
-
         const distance = positionRef.current.distanceTo(userPos);
 
         if (distance < COLLISION_THRESHOLD) {
-          if (!collisionSet.current.has(localUserId)) {
-            onCollision(npc);
-            collisionSet.current.add(localUserId);
-          }
-        } else {
-          collisionSet.current.delete(localUserId);
+          // console.log("WHY DOES THIS KEEP COLLIDING");
+          onCollision(npc);
         }
       }
     }
   });
-
-  // Reset the throw state when the NPC phase changes
-  useEffect(() => {
-    if (npc.phase !== NPCPhase.THROWN) {
-      throwStartTimeRef.current = 0;
-      throwDistanceTraveledRef.current = 0;
-    }
-  }, [npc.phase]);
 
   return <primitive object={group} />;
 };
