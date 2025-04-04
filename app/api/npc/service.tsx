@@ -102,6 +102,17 @@ export function addNPCToChannel(channelName: string, npc: NPC): void {
 
   const npcs = channelNPCs.get(channelName);
   if (npcs) {
+    // Check if this NPC already exists in the channel
+    const existingIndex = npcs.findIndex(
+      (existingNpc) => existingNpc.id === npc.id
+    );
+
+    // Remove the existing NPC if found
+    if (existingIndex >= 0) {
+      npcs.splice(existingIndex, 1);
+    }
+
+    // Add the new/updated NPC
     npcs.push(npc);
   }
 }

@@ -30,13 +30,6 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
   const textureLoaded = useRef(false);
   const previousPosition = useMemo(() => new THREE.Vector3(), []);
 
-  // Set initial position and direction
-  useEffect(() => {
-    if (npc.position && followingUser === undefined) {
-      positionRef.current.set(npc.position.x, npc.position.y, npc.position.z);
-    }
-  }, [followingUser, npc]);
-
   // Add this helper function inside the component
   const calculateFollowPosition = (
     followingUser: UserInfo,
@@ -84,6 +77,10 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
     // Check if this is the first setup by looking at previousPosition
     const isFirstSetup = previousPosition.lengthSq() === 0;
 
+    if (isFirstSetup && npc.position && followingUser === undefined) {
+      positionRef.current.set(npc.position.x, npc.position.y, npc.position.z);
+    }
+
     if (isFirstSetup && followingUser && followingUser.position) {
       // Calculate position using the helper function
       const position = calculateFollowPosition(followingUser, npc.id);
@@ -97,7 +94,6 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
       previousPosition.copy(positionRef.current);
       group.position.copy(previousPosition);
     }
-
     // Load texture
     textureLoader.load(
       `/npcs/${npc.filename}`,
@@ -152,37 +148,46 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
   useFrame(() => {
     if (!group || !textureLoaded.current) return;
 
-    // Normal following behavior
-    const targetPosition =
-      npc.phase === NPCPhase.CAPTURED && followingUser
-        ? calculateFollowPosition(followingUser, npc.id)
-        : targetPositionRef.current;
-
-    if (positionRef.current != targetPosition) {
-      // Apply appropriate movement based on whether it's a local player's NPC
-      const isLocalPlayerNPC =
-        followingUser && followingUser.id === localUserId;
-
-      if (isLocalPlayerNPC) {
-        positionRef.current.copy(targetPosition);
-      } else {
-        positionRef.current.copy(
-          smoothMove(positionRef.current.clone(), targetPosition)
-        );
-      }
-
-      // Update group position
+    if (npc.phase === NPCPhase.THROWN || npc.phase === NPCPhase.FREE) {
+      // Use faster lerp for thrown NPCs
+      positionRef.current.copy(
+        smoothMove(positionRef.current.clone(), targetPositionRef.current, {
+          lerpFactor: 0.1,
+          moveSpeed: 0.1,
+          useConstantSpeed: true,
+        })
+      );
       group.position.copy(positionRef.current);
+    } else {
+      // Normal following behavior
+      if (followingUser) {
+        const targetPosition = calculateFollowPosition(followingUser, npc.id);
 
-      // Update NPC position data
-      if (npc.phase === NPCPhase.CAPTURED && followingUser) {
-        npc.position.x = positionRef.current.x;
-        npc.position.y = positionRef.current.y;
-        npc.position.z = positionRef.current.z;
+        if (positionRef.current != targetPosition) {
+          const isLocalPlayerNPC =
+            followingUser && followingUser.id === localUserId;
+
+          if (isLocalPlayerNPC) {
+            positionRef.current.copy(targetPosition);
+          } else {
+            positionRef.current.copy(
+              smoothMove(positionRef.current.clone(), targetPosition)
+            );
+          }
+
+          group.position.copy(positionRef.current);
+
+          // Update NPC position data
+          if (npc.phase === NPCPhase.CAPTURED && followingUser) {
+            npc.position.x = positionRef.current.x;
+            npc.position.y = positionRef.current.y;
+            npc.position.z = positionRef.current.z;
+          }
+
+          // Fixed upright rotation - NPCs don't rotate with captor
+          group.rotation.z = 0;
+        }
       }
-
-      // Fixed upright rotation - NPCs don't rotate with captor
-      group.rotation.z = 0;
     }
     // Only check for collisions if we're not already following a user
     if (!followingUser && onCollision && localUserId) {
