@@ -190,53 +190,22 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
         });
       });
 
-      // When an NPC is thrown initially
-      channel.bind(
-        "npc-thrown",
-        (data: { npcId: string; throwerId: string; npcData: NPC }) => {
-          setNPCs((prev) => {
-            const newNPCs = new Map(prev);
-            newNPCs.set(data.npcId, data.npcData);
-            return newNPCs;
-          });
-        }
-      );
-
-      // Position updates while NPC is in flight
-      channel.bind(
-        "npc-position",
-        (data: {
-          npcId: string;
-          position: { x: number; y: number; z: number };
-          phase: NPCPhase;
-        }) => {
-          console.log("npc-position", data);
-          setNPCs((prev) => {
-            const newNPCs = new Map(prev);
-            const existingNPC = newNPCs.get(data.npcId);
-            if (existingNPC) {
-              newNPCs.set(data.npcId, {
-                ...existingNPC,
-                position: data.position,
-                phase: data.phase,
-              });
-            }
-            return newNPCs;
-          });
-        }
-      );
-
-      // When an NPC finishes being thrown and becomes free
-      channel.bind("npc-free", (data: { npcId: string; npcData: NPC }) => {
+      // Replace the separate handlers with a single npc-update handler
+      channel.bind("npc-update", (data: { npc: NPC }) => {
         setNPCs((prev) => {
           const newNPCs = new Map(prev);
-          newNPCs.set(data.npcId, data.npcData);
+          newNPCs.set(data.npc.id, data.npc);
           return newNPCs;
         });
       });
     } catch (error) {
       console.error("Login error:", error);
     } finally {
+      // Remember to update the cleanup
+      return () => {
+        // channel.unbind("npc-update");
+        // Other unbinds...
+      };
     }
   };
 

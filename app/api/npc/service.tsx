@@ -11,7 +11,7 @@ const NUM_NPCS = 4;
 let npcFilenamesCache: string[] | null = null;
 
 // Store NPCs by channel name
-const channelNPCs = new Map<string, NPC[]>();
+export const channelNPCs = new Map<string, NPC[]>();
 
 // Function to get NPC filenames from directory
 function getNPCFilenames(): string[] {
@@ -106,16 +106,24 @@ export function addNPCToChannel(channelName: string, npc: NPC): void {
   }
 }
 
-// Update an existing NPC in a channel
-export function updateNPCInChannel(channelName: string, updatedNPC: NPC): void {
+// Update specific attributes of an existing NPC in a channel
+export function updateNPCInChannel(
+  channelName: string,
+  npcId: string,
+  updates: Partial<NPC>
+): void {
   if (!channelNPCs.has(channelName)) return;
 
   const npcs = channelNPCs.get(channelName);
   if (!npcs) return;
 
-  const index = npcs.findIndex((npc) => npc.id === updatedNPC.id);
+  const index = npcs.findIndex((npc) => npc.id === npcId);
 
   if (index >= 0) {
-    npcs[index] = updatedNPC;
+    // Only update the properties provided in updates
+    npcs[index] = {
+      ...npcs[index],
+      ...updates,
+    };
   }
 }

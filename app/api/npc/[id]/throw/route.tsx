@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPusherInstance } from "../../../utils/pusher/pusher-instance";
 import { NPCPhase } from "../../../../utils/types";
 import Pusher from "pusher";
-import { addNPCToChannel, updateNPCInChannel } from "../../../npc/service";
+import {
+  addNPCToChannel,
+  channelNPCs,
+  updateNPCInChannel,
+} from "../../../npc/service";
 
-// Track thrown NPCs with their trajectory data
-const thrownNPCs = new Map();
+const activeThrows = new Map();
 
 export async function POST(
   request: NextRequest,
@@ -13,7 +16,7 @@ export async function POST(
 ) {
   try {
     const npcId = params.id;
-    const { throwerId, direction, filename, velocity, position, channelName } =
+    const { throwerId, direction, velocity, filename, position, channelName } =
       await request.json();
 
     // Validate the request data
@@ -21,8 +24,8 @@ export async function POST(
       !npcId ||
       !throwerId ||
       !direction ||
-      !filename ||
       !velocity ||
+      !filename ||
       !position ||
       !channelName
     ) {
@@ -38,7 +41,7 @@ export async function POST(
     const updatedNPC = {
       id: npcId,
       type: "npc",
-      filename: filename, // Use default filename or add filename to the destructured parameters
+      filename: filename,
       phase: NPCPhase.THROWN,
       direction: {
         x: direction.x,
@@ -51,25 +54,23 @@ export async function POST(
       },
     };
 
-    // Store thrown NPC data for position updates
+    // Store only trajectory data, not the full NPC
     const throwData = {
-      npc: updatedNPC,
       channelName,
+      npcId, // Store just the ID reference
       startPosition: { ...position },
       direction: { ...direction },
       velocity,
       startTime: Date.now(),
-      maxDistance: 15, // Maximum throw distance
+      maxDistance: 15,
       distanceTraveled: 0,
     };
 
-    thrownNPCs.set(npcId, throwData);
+    activeThrows.set(npcId, throwData);
 
-    // Add the thrown NPC back to the channel directly in the service
+    // Broadcast and add to channel as before
     await addNPCToChannel(channelName, updatedNPC);
-
-    // Broadcast the initial throw event to clients
-    await pusher.trigger(throwData.channelName, "npc-thrown", {
+    await pusher.trigger(`presence-${channelName}`, "npc-thrown", {
       npcId,
       throwerId,
       npcData: updatedNPC,
@@ -88,47 +89,67 @@ export async function POST(
   }
 }
 
-// Function to update thrown NPC position
+// Update the function to send complete NPCs
 async function updateThrownNPC(npcId: string, pusher: Pusher) {
-  const throwData = thrownNPCs.get(npcId);
+  const throwData = activeThrows.get(npcId);
   if (!throwData) return;
 
-  // Calculate new position based on elapsed time
-  const updateInterval = 0.05; // 50ms in seconds
+  // Calculate new position
+  const updateInterval = 0.05;
   const distanceToAdd = throwData.velocity * updateInterval;
   throwData.distanceTraveled += distanceToAdd;
 
-  // Update NPC position
-  throwData.npc.position.x += throwData.direction.x * distanceToAdd;
-  throwData.npc.position.y += throwData.direction.y * distanceToAdd;
+  // Get the updated position
+  const newPosition = {
+    x:
+      throwData.startPosition.x +
+      throwData.direction.x * throwData.distanceTraveled,
+    y:
+      throwData.startPosition.y +
+      throwData.direction.y * throwData.distanceTraveled,
+    z: throwData.startPosition.z || 0,
+  };
 
-  // Update the NPC in the service directly
-  updateNPCInChannel(throwData.channelName, throwData.npc);
-
-  await pusher.trigger(throwData.channelName, "npc-position", {
-    npcId,
-    position: throwData.npc.position,
+  // Update NPC in service
+  updateNPCInChannel(throwData.channelName, npcId, {
     phase: NPCPhase.THROWN,
+    position: newPosition,
   });
 
-  // Check if throw is complete
+  // Get the full updated NPC from the channel
+  const channelNpcs = channelNPCs.get(throwData.channelName) || [];
+  const updatedNPC = channelNpcs.find((npc) => npc.id === npcId);
+
+  if (!updatedNPC) {
+    console.error(`NPC ${npcId} not found in channel ${throwData.channelName}`);
+    return;
+  }
+
+  // Broadcast complete NPC
+  await pusher.trigger(throwData.channelName, "npc-update", {
+    npc: updatedNPC,
+  });
+
+  // Handle completion
   if (throwData.distanceTraveled >= throwData.maxDistance) {
-    // Throw complete, change to FREE state
-    throwData.npc.phase = NPCPhase.FREE;
-
-    // Update the NPC in the service directly
-    updateNPCInChannel(throwData.channelName, throwData.npc);
-
-    // Broadcast final state to clients
-    await pusher.trigger(throwData.channelName, "npc-free", {
-      npcId,
-      npcData: throwData.npc,
+    // Update to FREE state
+    updateNPCInChannel(throwData.channelName, npcId, {
+      phase: NPCPhase.FREE,
+      position: newPosition,
     });
 
-    // Remove from tracked throws
-    thrownNPCs.delete(npcId);
+    // Get the final NPC state
+    const finalNPC = channelNpcs.find((npc) => npc.id === npcId);
+
+    if (finalNPC) {
+      // Broadcast final complete NPC
+      await pusher.trigger(throwData.channelName, "npc-update", {
+        npc: finalNPC,
+      });
+    }
+
+    activeThrows.delete(npcId);
   } else {
-    // Continue updating if not complete
-    setTimeout(() => updateThrownNPC(npcId, pusher), 50); // Update every 50ms
+    setTimeout(() => updateThrownNPC(npcId, pusher), 50);
   }
 }
