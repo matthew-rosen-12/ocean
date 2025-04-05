@@ -2,14 +2,17 @@
 import { v4 as uuidv4 } from "uuid";
 import fs from "fs";
 import path from "path";
-import { NPC, NPCPhase } from "../../utils/types";
+import { NPC, NPCPhase, throwData } from "../../utils/types";
 import { getDirection, getPosition } from "../utils/npc-info";
+import { getPusherInstance } from "../utils/pusher/pusher-instance";
+const pusher = getPusherInstance();
 
 const NUM_NPCS = 4;
 
 let npcFilenamesCache: string[] | null = null;
 
-export const channelNPCs = new Map<string, NPC[]>();
+export const channelFreeNPCs = new Map<string, NPC[]>();
+export const channelActiveThrows = new Map<string, throwData[]>();
 
 function getNPCFilenames(): string[] {
   if (npcFilenamesCache) return npcFilenamesCache;
@@ -29,23 +32,25 @@ function getNPCFilenames(): string[] {
   return imageFiles;
 }
 
-export async function getNPCsForChannel(channelName: string): Promise<NPC[]> {
-  if (!channelNPCs.has(channelName)) {
+export async function getFreeNPCsForChannel(
+  channelName: string
+): Promise<NPC[]> {
+  if (!channelFreeNPCs.has(channelName)) {
     await populateChannel(channelName);
   }
 
-  return channelNPCs.get(channelName) || [];
+  return channelFreeNPCs.get(channelName) || [];
 }
 
 export async function populateChannel(channelName: string) {
-  if (!channelNPCs.has(channelName)) {
+  if (!channelFreeNPCs.has(channelName)) {
     const npcs = createNPCs(NUM_NPCS);
-    channelNPCs.set(channelName, npcs);
+    channelFreeNPCs.set(channelName, npcs);
 
     return npcs;
   }
 
-  return channelNPCs.get(channelName);
+  return channelFreeNPCs.get(channelName);
 }
 
 function createNPCs(count: number): NPC[] {
@@ -65,7 +70,7 @@ function createNPCs(count: number): NPC[] {
       filename: filename,
       position: getPosition(),
       direction: getDirection(),
-      phase: NPCPhase.FREE,
+      phase: NPCPhase.IDLE,
     };
 
     npcs.push(npc);
@@ -74,12 +79,12 @@ function createNPCs(count: number): NPC[] {
   return npcs;
 }
 
-export function addNPCToChannel(channelName: string, npc: NPC): void {
-  if (!channelNPCs.has(channelName)) {
-    channelNPCs.set(channelName, []);
+export function updateFreeNPCInChannel(channelName: string, npc: NPC): void {
+  if (!channelFreeNPCs.has(channelName)) {
+    channelFreeNPCs.set(channelName, []);
   }
 
-  const npcs = channelNPCs.get(channelName);
+  const npcs = channelFreeNPCs.get(channelName);
   if (npcs) {
     const existingIndex = npcs.findIndex(
       (existingNpc) => existingNpc.id === npc.id
@@ -91,25 +96,20 @@ export function addNPCToChannel(channelName: string, npc: NPC): void {
 
     npcs.push(npc);
   }
+  pusher.trigger(channelName, "npc-update", {
+    ...npc,
+  });
 }
 
-export function updateNPCInChannel(
+export function setThrownCompleteInChannel(
   channelName: string,
-  npcId: string,
-  updates: Partial<NPC>
+  landedThrow: throwData
 ): void {
-  if (!channelNPCs.has(channelName)) return;
-
-  const npcs = channelNPCs.get(channelName);
-  if (!npcs) return;
-
-  const index = npcs.findIndex((npc) => npc.id === npcId);
-
-  if (index >= 0) {
-    // Only update the properties provided in updates
-    npcs[index] = {
-      ...npcs[index],
-      ...updates,
-    };
+  if (!channelFreeNPCs.has(channelName)) {
+    channelFreeNPCs.set(channelName, []);
   }
+
+  pusher.trigger(channelName, "throw-complete", {
+    ...landedThrow,
+  });
 }

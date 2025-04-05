@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useMemo } from "react";
-import { NPC, NPCPhase, UserInfo } from "../utils/types";
+import { NPC, NPCPhase, throwData, UserInfo } from "../utils/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { smoothMove } from "../utils/movement";
@@ -10,8 +10,7 @@ interface NPCGraphicProps {
   myUserId: string; // Add this to identify local user
   followingUser?: UserInfo; // The user this NPC is following (if any)
   onCollision?: (npc: NPC) => void;
-  targetPosition?: THREE.Vector3;
-  onNPCReleased?: (npc: NPC, user: UserInfo) => void; // Add this new prop
+  throw?: throwData;
 }
 
 const NPCGraphic: React.FC<NPCGraphicProps> = ({
@@ -20,6 +19,7 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
   myUserId,
   followingUser,
   onCollision,
+  throw: throwData,
 }) => {
   const group = useMemo(() => new THREE.Group(), []);
   const texture = useRef<THREE.Texture | null>(null);
@@ -68,6 +68,31 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
     }
 
     return new THREE.Vector3(posX, posY, 0);
+  };
+
+  // Add this function to calculate position for thrown NPCs - straight line
+  const calculateThrowPosition = (
+    throwData: throwData,
+    currentTime: number
+  ) => {
+    if (!throwData) return new THREE.Vector3();
+
+    // Calculate elapsed time in seconds
+    const elapsedTime = (currentTime - throwData.timestamp) / 1000;
+    const progress = Math.min(
+      elapsedTime / (throwData.throwDuration / 1000),
+      1
+    );
+
+    // Calculate distance based on velocity and time
+    const distance = throwData.velocity * progress;
+
+    // Calculate the position - straight line
+    return new THREE.Vector3(
+      throwData.startPosition.x + throwData.direction.x * distance,
+      throwData.startPosition.y + throwData.direction.y * distance,
+      0
+    );
   };
 
   // Modify the useEffect that sets up the mesh
@@ -125,7 +150,7 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
       }
     );
 
-    if (npc.phase === NPCPhase.THROWN || npc.phase === NPCPhase.FREE) {
+    if (npc.phase === NPCPhase.THROWN || npc.phase === NPCPhase.IDLE) {
       targetPositionRef.current.copy(npc.position);
     }
     return () => {
@@ -148,16 +173,35 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
   useFrame(() => {
     if (!group || !textureLoaded.current) return;
 
-    if (npc.phase === NPCPhase.THROWN || npc.phase === NPCPhase.FREE) {
-      // Use faster lerp for thrown NPCs
-      positionRef.current.copy(
-        smoothMove(positionRef.current.clone(), targetPositionRef.current, {
-          lerpFactor: 0.1,
-          moveSpeed: 0.1,
-          useConstantSpeed: true,
-        })
-      );
+    if (npc.phase === NPCPhase.THROWN && throwData) {
+      // Calculate current position based on simple linear motion
+      const throwPosition = calculateThrowPosition(throwData, Date.now());
+
+      // Set position directly for smoother throws
+      positionRef.current.copy(throwPosition);
       group.position.copy(positionRef.current);
+    } else if (npc.phase === NPCPhase.IDLE) {
+      // Normal following behavior
+      if (followingUser) {
+        const targetPosition = calculateFollowPosition(followingUser, npc.id);
+
+        if (positionRef.current != targetPosition) {
+          const isLocalPlayerNPC =
+            followingUser && followingUser.id === myUserId;
+
+          if (isLocalPlayerNPC) {
+            positionRef.current.copy(targetPosition);
+          } else {
+            positionRef.current.copy(
+              smoothMove(positionRef.current.clone(), targetPosition)
+            );
+          }
+
+          group.position.copy(positionRef.current);
+          // Fixed upright rotation - NPCs don't rotate with captor
+          group.rotation.z = 0;
+        }
+      }
     } else {
       // Normal following behavior
       if (followingUser) {
@@ -189,8 +233,7 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
         }
       }
     }
-    // Only check for collisions if we're not already following a user
-    if (!followingUser && onCollision && myUserId) {
+    if (!followingUser && onCollision) {
       const COLLISION_THRESHOLD = 2.5;
       const localUser = users.get(myUserId);
 
@@ -203,7 +246,6 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
         const distance = positionRef.current.distanceTo(userPos);
 
         if (distance < COLLISION_THRESHOLD) {
-          // console.log("WHY DOES THIS KEEP COLLIDING");
           onCollision(npc);
         }
       }

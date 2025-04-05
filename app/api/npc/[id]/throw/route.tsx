@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPusherInstance } from "../../../utils/pusher/pusher-instance";
-import { NPC, NPCPhase } from "../../../../utils/types";
-import Pusher from "pusher";
-import { addNPCToChannel, updateNPCInChannel } from "../../../npc/service";
-
-const activeThrows = new Map();
+import { throwData, NPC, NPCPhase } from "../../../../utils/types";
+import { channelActiveThrows } from "../../service";
 
 export async function POST(
   request: NextRequest,
@@ -31,31 +28,25 @@ export async function POST(
 
     const pusher = getPusherInstance();
 
-    const updatedNPC = {
+    const updatedNPC: NPC = {
       ...npc,
       phase: NPCPhase.THROWN,
     };
 
-    const throwData = {
+    const throwData: throwData = {
       channelName,
-      npcId,
+      npc: updatedNPC,
       startPosition: npc.position,
       direction: direction,
       velocity,
-      maxDistance: 15,
-      distanceTraveled: 0,
+      throwDuration: 2000,
+      timestamp: Date.now(),
     };
 
-    activeThrows.set(npcId, throwData);
-
-    await addNPCToChannel(channelName, updatedNPC);
+    channelActiveThrows.get(channelName)?.push(throwData);
     await pusher.trigger(channelName, "npc-thrown", {
-      npcId,
-      throwerId,
-      npcData: updatedNPC,
+      throw: throwData,
     });
-
-    updateThrownNPC(updatedNPC, pusher);
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -67,40 +58,13 @@ export async function POST(
   }
 }
 
-async function updateThrownNPC(npc: NPC, pusher: Pusher) {
-  const throwData = activeThrows.get(npc.id);
-  if (!throwData) return;
-
-  const updateInterval = 0.05;
-  const distanceToAdd = throwData.velocity * updateInterval;
-  throwData.distanceTraveled += distanceToAdd;
-
-  const newPosition = {
-    x:
-      throwData.startPosition.x +
-      throwData.direction.x * throwData.distanceTraveled,
-    y:
-      throwData.startPosition.y +
-      throwData.direction.y * throwData.distanceTraveled,
-    z: throwData.startPosition.z || 0,
+export function calculateLandingPosition(throwData: throwData) {
+  const { startPosition, direction, velocity, throwDuration } = throwData;
+  const distance = velocity * (throwDuration / 1000);
+  const landingPosition = {
+    x: startPosition.x + direction.x * distance,
+    y: startPosition.y + direction.y * distance,
+    z: 0,
   };
-
-  npc.position = newPosition;
-  updateNPCInChannel(throwData.channelName, npc.id, npc);
-  await pusher.trigger(throwData.channelName, "npc-update", {
-    npc: npc,
-  });
-
-  if (throwData.distanceTraveled >= throwData.maxDistance) {
-    npc.phase = NPCPhase.FREE;
-    npc.position = newPosition;
-    updateNPCInChannel(throwData.channelName, npc.id, npc);
-    await pusher.trigger(throwData.channelName, "npc-update", {
-      npc: npc,
-    });
-
-    activeThrows.delete(npc.id);
-  } else {
-    setTimeout(() => updateThrownNPC(npc, pusher), 50);
-  }
+  return landingPosition;
 }

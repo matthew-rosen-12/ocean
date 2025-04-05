@@ -1,7 +1,7 @@
 // ocean/app/components/Scene.tsx
 "use client";
 import { Canvas, useThree } from "@react-three/fiber";
-import { Direction, NPCPhase, UserInfo } from "../utils/types";
+import { Direction, NPCPhase, throwData, UserInfo } from "../utils/types";
 import NPCGraphic from "./NPCGraphic";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Vector3 } from "three";
@@ -58,7 +58,7 @@ async function throwNPC(myUser: UserInfo, npc: NPC) {
         throwerId: myUser.id,
         direction: myUser.direction,
         npc: npc,
-        velocity: 8,
+        velocity: 20,
         channelName: myUser.channel_name,
       }),
     });
@@ -195,9 +195,10 @@ interface Props {
   users: Map<string, UserInfo>;
   myUser: UserInfo;
   npcs: Map<string, NPC>;
+  throws: Map<string, throwData>;
 }
 
-export default function Scene({ users, myUser, npcs }: Props) {
+export default function Scene({ users, myUser, npcs, throws }: Props) {
   const initialPosition = new Vector3(
     myUser.position.x,
     myUser.position.y,
@@ -274,7 +275,7 @@ export default function Scene({ users, myUser, npcs }: Props) {
 
   const handleNPCCollision = useCallback(
     (npc: NPC) => {
-      if (npc.phase == NPCPhase.FREE) {
+      if (npc.phase == NPCPhase.IDLE) {
         // Remove NPC from general pool
         npcs.delete(npc.id);
         npc.phase = NPCPhase.CAPTURED;
@@ -285,7 +286,6 @@ export default function Scene({ users, myUser, npcs }: Props) {
         channel.trigger("client-npc-captured", {
           npcId: npc.id,
           captorId: myUser.id,
-          npcData: npc,
         });
       }
     },
@@ -323,16 +323,16 @@ export default function Scene({ users, myUser, npcs }: Props) {
           users={users}
         />
       ))}
-      {npcs.size > 0 &&
-        Array.from(npcs.values()).map((npc) => (
-          <NPCGraphic
-            key={npc.id}
-            npc={npc}
-            users={users}
-            myUserId={myUser.id}
-            onCollision={(npc) => handleNPCCollision(npc)}
-          />
-        ))}
+      {Array.from(npcs.values()).map((npc) => (
+        <NPCGraphic
+          key={npc.id}
+          npc={npc}
+          users={users}
+          myUserId={myUser.id}
+          onCollision={(npc) => handleNPCCollision(npc)}
+          throw={throws.get(npc.id)}
+        />
+      ))}
     </Canvas>
   );
 }
@@ -344,8 +344,10 @@ add NPCs to capture
   - split into grid for faster rendering
   - add NPC images (fix texture loading)
 
-clean up!
-avoid slowdown when npcs are thrown - too much lerping? less frequent broadcast updates?
+clean up! (various fixes - nonlocal npc following flipping plus lag at the end, local npc group sometimes jumpy)
+de slop AnimalGraphic.tsx and NPCGraphic.tsx (abstract functions?)
+add to architecture doc
+avoid slowdown when npcs are thrown - too much lerping? less frequent broadcast updates? batch npc updates? update just by final position and timestamp for new clients?
 
 debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)
 debug db rows not being deleted properly (likely same issue as previous)

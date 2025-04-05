@@ -1,6 +1,6 @@
 // ocean/app/components/GuestLogin.tsx
 import { useState } from "react";
-import { Member, UserInfo } from "../utils/types";
+import { Member, throwData, UserInfo } from "../utils/types";
 import type { Channel, Members } from "pusher-js";
 import { getChannel } from "../utils/pusher-instance";
 import { NPC } from "../utils/types";
@@ -9,9 +9,15 @@ interface Props {
   setMyUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
   setUsers: React.Dispatch<React.SetStateAction<Map<string, UserInfo>>>;
   setNPCs: React.Dispatch<React.SetStateAction<Map<string, NPC>>>;
+  setThrows: React.Dispatch<React.SetStateAction<Map<string, throwData>>>;
 }
 
-export default function GuestLogin({ setMyUser, setUsers, setNPCs }: Props) {
+export default function GuestLogin({
+  setMyUser,
+  setUsers,
+  setNPCs,
+  setThrows,
+}: Props) {
   let currentUser: UserInfo | null = null;
   const [loading, setLoading] = useState(false);
   const [channel, setChannel] = useState<Channel | null>(null);
@@ -61,9 +67,35 @@ export default function GuestLogin({ setMyUser, setUsers, setNPCs }: Props) {
               });
 
               setNPCs(npcMap);
+
+              // Now fetch active throws
+              fetchActiveThrows();
+            })
+            .catch((err) => {
+              console.error("Error fetching NPCs:", err);
+              setLoading(false);
+            });
+        };
+
+        const fetchActiveThrows = () => {
+          fetch(`/api/npc/throws?channel=${channel_name}`)
+            .then((res) => res.json())
+            .then((data) => {
+              // Process active throws
+              const { activeThrows } = data;
+              const throwsMap = new Map<string, throwData>();
+
+              activeThrows.forEach((activeThrow: throwData) => {
+                throwsMap.set(activeThrow.npc.id, activeThrow);
+              });
+              setThrows(throwsMap);
+
               setLoading(false);
             })
-            .catch((err) => console.error("Error fetching NPCs:", err));
+            .catch((err) => {
+              console.error("Error fetching active throws:", err);
+              setLoading(false);
+            });
         };
 
         if (responsesToAwait === 0) {
@@ -181,9 +213,34 @@ export default function GuestLogin({ setMyUser, setUsers, setNPCs }: Props) {
         });
       });
 
-      // Add handler for when NPCs are captured by users
+      channel.bind("npc-thrown", (data: { throw: throwData }) => {
+        setThrows((prev) => {
+          const newThrows = new Map(prev);
+          newThrows.set(data.throw.npc.id, data.throw);
+          return newThrows;
+        });
+        setNPCs((prev) => {
+          const newNPCs = new Map(prev);
+          newNPCs.set(data.throw.npc.id, data.throw.npc);
+          return newNPCs;
+        });
+      });
+
+      channel.bind("throw-complete", (data: { throw: throwData }) => {
+        setThrows((prev) => {
+          const newThrows = new Map(prev);
+          newThrows.delete(data.throw.npc.id);
+          return newThrows;
+        });
+        setNPCs((prev) => {
+          const newNPCs = new Map(prev);
+          newNPCs.set(data.throw.npc.id, data.throw.npc);
+          return newNPCs;
+        });
+      });
+
       channel.bind(
-        "npc-captured",
+        "client-npc-captured",
         (data: { npcId: string; captorId: string }) => {
           setNPCs((prev) => {
             const newNPCs = new Map(prev);
@@ -198,14 +255,7 @@ export default function GuestLogin({ setMyUser, setUsers, setNPCs }: Props) {
       // Clean up all event listeners when component unmounts or channel changes
       return () => {
         if (!channel) return;
-        channel.unbind("npc-update");
-        channel.unbind("npc-captured");
-        channel.unbind("pusher:subscription_succeeded");
-        channel.unbind("client-request-state");
-        channel.unbind("client-send-state");
-        channel.unbind("pusher:member_added");
-        channel.unbind("pusher:member_removed");
-        channel.unbind("client-user-modified");
+        channel.unbind_all();
       };
     }
   };
