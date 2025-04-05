@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getNPCsForChannel } from "./service";
+import { getFreeNPCsForChannel } from "./service";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const npcs = await getNPCsForChannel(channelName);
+  const npcs = await getFreeNPCsForChannel(channelName);
   return NextResponse.json({
     npcs,
   });

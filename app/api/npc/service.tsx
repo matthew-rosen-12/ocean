@@ -12,7 +12,25 @@ const NUM_NPCS = 4;
 let npcFilenamesCache: string[] | null = null;
 
 export const channelFreeNPCs = new Map<string, NPC[]>();
-export const channelActiveThrows = new Map<string, throwData[]>();
+
+// DefaultMap class implementation
+export class DefaultMap<K, V> extends Map<K, V> {
+  constructor(private defaultFactory: () => V) {
+    super();
+  }
+
+  get(key: K): V {
+    if (!this.has(key)) {
+      this.set(key, this.defaultFactory());
+    }
+    return super.get(key)!;
+  }
+}
+
+// Replace the regular Map with DefaultMap
+export const channelActiveThrows = new DefaultMap<string, throwData[]>(
+  () => []
+);
 
 function getNPCFilenames(): string[] {
   if (npcFilenamesCache) return npcFilenamesCache;
@@ -79,7 +97,11 @@ function createNPCs(count: number): NPC[] {
   return npcs;
 }
 
-export function updateFreeNPCInChannel(channelName: string, npc: NPC): void {
+export function updateFreeNPCInChannel(
+  channelName: string,
+  npc: NPC,
+  message: boolean = false
+): void {
   if (!channelFreeNPCs.has(channelName)) {
     channelFreeNPCs.set(channelName, []);
   }
@@ -96,20 +118,19 @@ export function updateFreeNPCInChannel(channelName: string, npc: NPC): void {
 
     npcs.push(npc);
   }
-  pusher.trigger(channelName, "npc-update", {
-    ...npc,
-  });
+  if (message) {
+    pusher.trigger(channelName, "npc-update", {
+      npc: npc,
+    });
+  }
 }
 
-export function setThrownCompleteInChannel(
+export function setThrowCompleteInChannel(
   channelName: string,
   landedThrow: throwData
 ): void {
-  if (!channelFreeNPCs.has(channelName)) {
-    channelFreeNPCs.set(channelName, []);
-  }
-
   pusher.trigger(channelName, "throw-complete", {
-    ...landedThrow,
+    throw: landedThrow,
   });
+  updateFreeNPCInChannel(channelName, landedThrow.npc, true);
 }

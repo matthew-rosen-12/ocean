@@ -79,15 +79,21 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
 
     // Calculate elapsed time in seconds
     const elapsedTime = (currentTime - throwData.timestamp) / 1000;
-    const progress = Math.min(
-      elapsedTime / (throwData.throwDuration / 1000),
-      1
-    );
+    const throwDurationSec = throwData.throwDuration / 1000;
+    const progress = Math.min(elapsedTime / throwDurationSec, 1);
 
-    // Calculate distance based on velocity and time
-    const distance = throwData.velocity * progress;
+    // If we've reached the end of the throw, use exact same calculation as server
+    if (progress >= 1) {
+      const finalDistance = throwData.velocity * throwDurationSec;
+      return new THREE.Vector3(
+        throwData.startPosition.x + throwData.direction.x * finalDistance,
+        throwData.startPosition.y + throwData.direction.y * finalDistance,
+        0
+      );
+    }
 
-    // Calculate the position - straight line
+    // For animation, calculate intermediate position
+    const distance = throwData.velocity * elapsedTime;
     return new THREE.Vector3(
       throwData.startPosition.x + throwData.direction.x * distance,
       throwData.startPosition.y + throwData.direction.y * distance,
@@ -182,26 +188,22 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
       group.position.copy(positionRef.current);
     } else if (npc.phase === NPCPhase.IDLE) {
       // Normal following behavior
-      if (followingUser) {
-        const targetPosition = calculateFollowPosition(followingUser, npc.id);
+      const isLocalPlayerNPC = followingUser && followingUser.id === myUserId;
 
-        if (positionRef.current != targetPosition) {
-          const isLocalPlayerNPC =
-            followingUser && followingUser.id === myUserId;
-
-          if (isLocalPlayerNPC) {
-            positionRef.current.copy(targetPosition);
-          } else {
-            positionRef.current.copy(
-              smoothMove(positionRef.current.clone(), targetPosition)
-            );
-          }
-
-          group.position.copy(positionRef.current);
-          // Fixed upright rotation - NPCs don't rotate with captor
-          group.rotation.z = 0;
-        }
+      if (isLocalPlayerNPC) {
+        positionRef.current.copy(npc.position);
+      } else {
+        positionRef.current.copy(
+          smoothMove(
+            positionRef.current.clone(),
+            new THREE.Vector3(npc.position.x, npc.position.y, 0)
+          )
+        );
       }
+
+      group.position.copy(positionRef.current);
+      // Fixed upright rotation - NPCs don't rotate with captor
+      group.rotation.z = 0;
     } else {
       // Normal following behavior
       if (followingUser) {

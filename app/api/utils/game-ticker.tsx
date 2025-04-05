@@ -1,9 +1,6 @@
 import { NPCPhase } from "@/app/utils/types";
 import { calculateLandingPosition } from "../npc/[id]/throw/route";
-import {
-  channelActiveThrows,
-  setThrownCompleteInChannel,
-} from "../npc/service";
+import { channelActiveThrows, setThrowCompleteInChannel } from "../npc/service";
 
 let gameTickerInstance: GameTicker | null = null;
 
@@ -28,7 +25,6 @@ class GameTicker {
 
   private tick() {
     const now = Date.now();
-
     // Process throws from all channels
     for (const [channelName, throws] of channelActiveThrows.entries()) {
       // Use filter to keep active throws and process completed ones
@@ -43,7 +39,7 @@ class GameTicker {
 
             throwData.npc.position = finalPosition;
             throwData.npc.phase = NPCPhase.IDLE;
-            setThrownCompleteInChannel(channelName, { ...throwData });
+            setThrowCompleteInChannel(channelName, { ...throwData });
 
             // Remove by returning false
             return false;
