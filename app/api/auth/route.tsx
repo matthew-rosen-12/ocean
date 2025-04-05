@@ -45,7 +45,5 @@ export async function POST(request: NextRequest) {
     user_info: guestUser,
   });
 
-  return NextResponse.json({
-    ...authResponse,
-  });
+  return NextResponse.json(authResponse);
 }

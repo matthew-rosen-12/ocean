@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPusherInstance } from "../../../utils/pusher/pusher-instance";
-import { NPCPhase } from "../../../../utils/types";
+import { NPC, NPCPhase } from "../../../../utils/types";
 import Pusher from "pusher";
-import {
-  addNPCToChannel,
-  channelNPCs,
-  updateNPCInChannel,
-} from "../../../npc/service";
+import { addNPCToChannel, updateNPCInChannel } from "../../../npc/service";
 
 const activeThrows = new Map();
 
@@ -19,7 +15,6 @@ export async function POST(
     const { throwerId, direction, npc, velocity, channelName } =
       await request.json();
 
-    // Validate the request data
     if (
       !npcId ||
       !throwerId ||
@@ -36,27 +31,23 @@ export async function POST(
 
     const pusher = getPusherInstance();
 
-    // Create the updated NPC data
     const updatedNPC = {
       ...npc,
       phase: NPCPhase.THROWN,
     };
 
-    // Store only trajectory data, not the full NPC
     const throwData = {
       channelName,
-      npcId, // Store just the ID reference
+      npcId,
       startPosition: npc.position,
       direction: direction,
       velocity,
-      startTime: Date.now(),
       maxDistance: 15,
       distanceTraveled: 0,
     };
 
     activeThrows.set(npcId, throwData);
 
-    // Broadcast and add to channel as before
     await addNPCToChannel(channelName, updatedNPC);
     await pusher.trigger(channelName, "npc-thrown", {
       npcId,
@@ -64,8 +55,7 @@ export async function POST(
       npcData: updatedNPC,
     });
 
-    // Set up position updates
-    updateThrownNPC(npcId, pusher);
+    updateThrownNPC(updatedNPC, pusher);
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -77,17 +67,14 @@ export async function POST(
   }
 }
 
-// Update the function to send complete NPCs
-async function updateThrownNPC(npcId: string, pusher: Pusher) {
-  const throwData = activeThrows.get(npcId);
+async function updateThrownNPC(npc: NPC, pusher: Pusher) {
+  const throwData = activeThrows.get(npc.id);
   if (!throwData) return;
 
-  // Calculate new position
   const updateInterval = 0.05;
   const distanceToAdd = throwData.velocity * updateInterval;
   throwData.distanceTraveled += distanceToAdd;
 
-  // Get the updated position
   const newPosition = {
     x:
       throwData.startPosition.x +
@@ -98,46 +85,22 @@ async function updateThrownNPC(npcId: string, pusher: Pusher) {
     z: throwData.startPosition.z || 0,
   };
 
-  // Update NPC in service
-  updateNPCInChannel(throwData.channelName, npcId, {
-    phase: NPCPhase.THROWN,
-    position: newPosition,
-  });
-
-  // Get the full updated NPC from the channel
-  const channelNpcs = channelNPCs.get(throwData.channelName) || [];
-  const updatedNPC = channelNpcs.find((npc) => npc.id === npcId);
-
-  if (!updatedNPC) {
-    console.error(`NPC ${npcId} not found in channel ${throwData.channelName}`);
-    return;
-  }
-
-  // Broadcast complete NPC
+  npc.position = newPosition;
+  updateNPCInChannel(throwData.channelName, npc.id, npc);
   await pusher.trigger(throwData.channelName, "npc-update", {
-    npc: updatedNPC,
+    npc: npc,
   });
 
-  // Handle completion
   if (throwData.distanceTraveled >= throwData.maxDistance) {
-    // Update to FREE state
-    updateNPCInChannel(throwData.channelName, npcId, {
-      phase: NPCPhase.FREE,
-      position: newPosition,
+    npc.phase = NPCPhase.FREE;
+    npc.position = newPosition;
+    updateNPCInChannel(throwData.channelName, npc.id, npc);
+    await pusher.trigger(throwData.channelName, "npc-update", {
+      npc: npc,
     });
 
-    // Get the final NPC state
-    const finalNPC = channelNpcs.find((npc) => npc.id === npcId);
-
-    if (finalNPC) {
-      // Broadcast final complete NPC
-      await pusher.trigger(throwData.channelName, "npc-update", {
-        npc: finalNPC,
-      });
-    }
-
-    activeThrows.delete(npcId);
+    activeThrows.delete(npc.id);
   } else {
-    setTimeout(() => updateThrownNPC(npcId, pusher), 50);
+    setTimeout(() => updateThrownNPC(npc, pusher), 50);
   }
 }
