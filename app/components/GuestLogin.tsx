@@ -6,12 +6,12 @@ import { getChannel } from "../utils/pusher-instance";
 import { NPC } from "../utils/types";
 
 interface Props {
-  setUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
+  setMyUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
   setUsers: React.Dispatch<React.SetStateAction<Map<string, UserInfo>>>;
   setNPCs: React.Dispatch<React.SetStateAction<Map<string, NPC>>>;
 }
 
-export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
+export default function GuestLogin({ setMyUser, setUsers, setNPCs }: Props) {
   let currentUser: UserInfo | null = null;
   const [loading, setLoading] = useState(false);
   const [channel, setChannel] = useState<Channel | null>(null);
@@ -32,7 +32,7 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
       channel.bind("pusher:subscription_succeeded", (members: Members) => {
         const usersMap = new Map();
         const user = members.me.info as UserInfo;
-        setUser(user);
+        setMyUser(user);
         currentUser = user;
         usersMap.set(user.id, user);
         setUsers(usersMap);

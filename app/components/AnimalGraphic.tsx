@@ -341,15 +341,15 @@ function AnimalSprite({
 
 export default function AnimalGraphic({
   user,
-  localUserId,
+  myUserId,
   users,
 }: {
   user: UserInfo;
-  localUserId?: string;
+  myUserId: string;
   users: Map<string, UserInfo>;
 }) {
   // Create position ref as Vector3
-  const isLocalPlayer = localUserId === user.id;
+  const isLocalPlayer = myUserId === user.id;
   const positionRef = useRef(
     new THREE.Vector3(user.position.x, user.position.y, user.position.z)
   );
@@ -386,7 +386,7 @@ export default function AnimalGraphic({
           npc={npc}
           users={users}
           followingUser={user}
-          localUserId={localUserId}
+          myUserId={myUserId}
         />
       ))}
     </>

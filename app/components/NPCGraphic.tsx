@@ -7,7 +7,7 @@ import { smoothMove } from "../utils/movement";
 interface NPCGraphicProps {
   npc: NPC;
   users: Map<string, UserInfo>;
-  localUserId?: string; // Add this to identify local user
+  myUserId: string; // Add this to identify local user
   followingUser?: UserInfo; // The user this NPC is following (if any)
   onCollision?: (npc: NPC) => void;
   targetPosition?: THREE.Vector3;
@@ -17,7 +17,7 @@ interface NPCGraphicProps {
 const NPCGraphic: React.FC<NPCGraphicProps> = ({
   npc,
   users,
-  localUserId,
+  myUserId,
   followingUser,
   onCollision,
 }) => {
@@ -165,7 +165,7 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
 
         if (positionRef.current != targetPosition) {
           const isLocalPlayerNPC =
-            followingUser && followingUser.id === localUserId;
+            followingUser && followingUser.id === myUserId;
 
           if (isLocalPlayerNPC) {
             positionRef.current.copy(targetPosition);
@@ -190,9 +190,9 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
       }
     }
     // Only check for collisions if we're not already following a user
-    if (!followingUser && onCollision && localUserId) {
+    if (!followingUser && onCollision && myUserId) {
       const COLLISION_THRESHOLD = 2.5;
-      const localUser = users.get(localUserId);
+      const localUser = users.get(myUserId);
 
       if (localUser?.position) {
         const userPos = new THREE.Vector3(

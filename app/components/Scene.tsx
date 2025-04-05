@@ -34,20 +34,13 @@ function CameraController({
   return null;
 }
 
-async function throwNPC(
-  myUser: UserInfo,
-  npc: NPC,
-  users: Map<string, UserInfo>
-) {
+async function throwNPC(myUser: UserInfo, npc: NPC) {
   try {
     // First remove the NPC from the myUser's NPC group immediately
     if (myUser.npcGroup?.npcs) {
       myUser.npcGroup.npcs = myUser.npcGroup.npcs.filter(
         (n) => n.id !== npc.id
       );
-
-      // Update the user in the users Map to keep it in sync
-      users.set(myUser.id, myUser);
 
       // Broadcast that the user has been modified
       const channel = getChannel(myUser.channel_name);
@@ -77,8 +70,7 @@ async function throwNPC(
 function useKeyboardMovement(
   initialPosition: Vector3,
   initialDirection: Direction,
-  myUser: UserInfo,
-  users: Map<string, UserInfo>
+  myUser: UserInfo
 ) {
   const [position, setPosition] = useState(initialPosition);
   const [direction, setDirection] = useState<Direction>(initialDirection);
@@ -102,7 +94,7 @@ function useKeyboardMovement(
         if (capturedNpcIndex >= 0) {
           // Get the NPC to throw
           const npcToThrow = myUser.npcGroup.npcs[capturedNpcIndex];
-          throwNPC(myUser, npcToThrow, users);
+          throwNPC(myUser, npcToThrow);
         }
       }
     };
@@ -131,48 +123,29 @@ function useKeyboardMovement(
       if (right) change.x += MOVE_SPEED;
 
       // Primary direction logic
-      let newDirection = { ...direction };
+      let newDirection = { x: 0, y: 0 };
 
       // True diagonal movement - both components active
-      if (right && !left && up && !down) {
-        // Up-right diagonal
-        newDirection = { x: 1, y: 1 };
-      } else if (left && !right && up && !down) {
-        // Up-left diagonal
-        newDirection = { x: -1, y: 1 };
-      } else if (right && !left && down && !up) {
-        // Down-right diagonal
-        newDirection = { x: 1, y: -1 };
-      } else if (left && !right && down && !up) {
-        // Down-left diagonal
-        newDirection = { x: -1, y: -1 };
-      } else if (right && !left) {
-        // Moving right only
-        newDirection = { x: 1, y: 0 };
-      } else if (left && !right) {
-        // Moving left only
-        newDirection = { x: -1, y: 0 };
-      } else if (up && !down) {
-        // Moving up only
-        if (Math.abs(direction.x) === 1 && direction.y === 0) {
-          // Was previously moving horizontally - keep the DIRECTION_OFFSET
-          newDirection = {
-            x: direction.x > 0 ? DIRECTION_OFFSET : -DIRECTION_OFFSET,
-            y: 1,
-          };
-        } else {
-          newDirection = { x: 0, y: 1 };
+      if (!left && !right && up && !down) {
+        newDirection = {
+          x: direction.x > 0 ? DIRECTION_OFFSET : -DIRECTION_OFFSET,
+          y: 1,
+        };
+      } else if (!left && !right && !up && down) {
+        newDirection = {
+          x: direction.x > 0 ? DIRECTION_OFFSET : -DIRECTION_OFFSET,
+          y: -1,
+        };
+      } else {
+        if (left && !right) {
+          newDirection.x -= 1;
+        } else if (right && !left) {
+          newDirection.x += 1;
         }
-      } else if (down && !up) {
-        // Moving down only
-        if (Math.abs(direction.x) === 1 && direction.y === 0) {
-          // Was previously moving horizontally - keep the DIRECTION_OFFSET
-          newDirection = {
-            x: direction.x > 0 ? DIRECTION_OFFSET : -DIRECTION_OFFSET,
-            y: -1,
-          };
-        } else {
-          newDirection = { x: 0, y: -1 };
+        if (up && !down) {
+          newDirection.y += 1;
+        } else if (down && !up) {
+          newDirection.y -= 1;
         }
       }
 
@@ -213,9 +186,9 @@ function useKeyboardMovement(
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [direction, keysPressed, myUser, users]);
+  }, [direction, keysPressed, myUser]);
 
-  return { position, direction, keysPressed };
+  return { position, direction };
 }
 
 interface Props {
@@ -239,20 +212,20 @@ export default function Scene({ users, myUser, npcs }: Props) {
   const { position, direction } = useKeyboardMovement(
     initialPosition,
     initialDirection,
-    myUser,
-    users
+    myUser
   );
+  users.set(myUser.id, myUser);
+
   const lastBroadcastPosition = useRef(initialPosition);
   const lastBroadcastDirection = useRef(initialDirection);
   const POSITION_THRESHOLD = 0.01;
 
   // Throttled broadcast function with forceUpdate parameter
-  const [isReady, setIsReady] = useState(true);
-  const [isPending, setIsPending] = useState(false);
+  const isThrottledRef = useRef(false);
   const THROTTLE_MS = 100;
 
   const throttledBroadcast = useCallback(async () => {
-    if (!isReady || isPending) return;
+    if (isThrottledRef.current) return;
 
     // Calculate if position changed enough to broadcast
     const positionDelta = new Vector3()
@@ -260,17 +233,13 @@ export default function Scene({ users, myUser, npcs }: Props) {
       .sub(lastBroadcastPosition.current);
     const positionChanged = positionDelta.length() >= POSITION_THRESHOLD;
 
-    // Simply use the current direction - already calculated properly
     const directionChanged =
       lastBroadcastDirection.current.x !== direction.x ||
       lastBroadcastDirection.current.y !== direction.y;
 
     if (positionChanged || directionChanged) {
-      // Lock the system during this broadcast attempt
-      setIsReady(false);
-      setIsPending(true);
+      isThrottledRef.current = true;
 
-      // Get the channel
       const channel = getChannel(myUser.channel_name);
 
       try {
@@ -280,29 +249,23 @@ export default function Scene({ users, myUser, npcs }: Props) {
           info: myUser,
         });
 
-        // Update last broadcast values
         lastBroadcastPosition.current.copy(position);
         lastBroadcastDirection.current = { ...direction };
       } catch (error) {
         console.error("Broadcast failed:", error);
       }
 
-      // Reset pending state
-      setIsPending(false);
-
       // Start the cooldown timer to allow next broadcast
-      setTimeout(() => setIsReady(true), THROTTLE_MS);
+      setTimeout(() => {
+        isThrottledRef.current = false;
+      }, THROTTLE_MS);
     }
-  }, [position, direction, myUser, isReady, isPending]);
+  }, [position, direction, myUser]);
 
   // Effect to update myUser position and direction continuously
   useEffect(() => {
-    myUser.position.x = position.x;
-    myUser.position.y = position.y;
-    myUser.position.z = position.z;
-    myUser.direction = direction;
-
-    // Also update the user in the users Map to keep it in sync
+    myUser.position = position.clone();
+    myUser.direction = { ...direction };
     users.set(myUser.id, myUser);
 
     // Attempt to broadcast whenever position/direction changes
@@ -311,7 +274,7 @@ export default function Scene({ users, myUser, npcs }: Props) {
 
   const handleNPCCollision = useCallback(
     (npc: NPC) => {
-      if (npc.phase == NPCPhase.FREE && npcs.has(npc.id)) {
+      if (npc.phase == NPCPhase.FREE) {
         // Remove NPC from general pool
         npcs.delete(npc.id);
         npc.phase = NPCPhase.CAPTURED;
@@ -356,7 +319,7 @@ export default function Scene({ users, myUser, npcs }: Props) {
         <AnimalGraphic
           key={user.id}
           user={user}
-          localUserId={myUser.id}
+          myUserId={myUser.id}
           users={users}
         />
       ))}
@@ -366,7 +329,7 @@ export default function Scene({ users, myUser, npcs }: Props) {
             key={npc.id}
             npc={npc}
             users={users}
-            localUserId={myUser.id}
+            myUserId={myUser.id}
             onCollision={(npc) => handleNPCCollision(npc)}
           />
         ))}
@@ -379,7 +342,7 @@ TODO:
 add NPCs to capture
   - adjust bounding box for interaction (to head? entire body?)
   - split into grid for faster rendering
-  - add NPC images
+  - add NPC images (fix texture loading)
 
 clean up!
 avoid slowdown when npcs are thrown - too much lerping? less frequent broadcast updates?

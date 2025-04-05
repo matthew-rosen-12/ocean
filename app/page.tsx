@@ -8,19 +8,19 @@ import { ANIMAL_FACTS } from "@/public/facts";
 import { NPC } from "./utils/types";
 
 export default function Home() {
-  const [user, setUser] = useState<UserInfo | null>(null);
+  const [myUser, setMyUser] = useState<UserInfo | null>(null);
   const [users, setUsers] = useState<Map<string, UserInfo>>(new Map());
   const [npcs, setNPCs] = useState<Map<string, NPC>>(new Map());
 
-  if (!user) {
+  if (!myUser) {
     return (
-      <GuestLogin setUser={setUser} setUsers={setUsers} setNPCs={setNPCs} />
+      <GuestLogin setMyUser={setMyUser} setUsers={setUsers} setNPCs={setNPCs} />
     );
   }
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
-      <Scene users={users} myUser={user} npcs={npcs} />
+      <Scene users={users} myUser={myUser} npcs={npcs} />
 
       {/* Fixed overlay */}
       <div
@@ -35,10 +35,10 @@ export default function Home() {
         }}
       >
         <div style={{ fontSize: "24px", marginBottom: "10px" }}>
-          {user.animal}
+          {myUser.animal}
         </div>
         <div style={{ fontSize: "16px", maxWidth: "300px" }}>
-          {ANIMAL_FACTS[user.animal]}
+          {ANIMAL_FACTS[myUser.animal]}
         </div>
       </div>
     </div>
