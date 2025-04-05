@@ -7,62 +7,44 @@ import { getDirection, getPosition } from "../utils/npc-info";
 
 const NUM_NPCS = 4;
 
-// Cache for NPC filenames
 let npcFilenamesCache: string[] | null = null;
 
-// Store NPCs by channel name
 export const channelNPCs = new Map<string, NPC[]>();
 
-// Function to get NPC filenames from directory
 function getNPCFilenames(): string[] {
   if (npcFilenamesCache) return npcFilenamesCache;
 
-  try {
-    const npcsDir = path.join(process.cwd(), "public", "npcs");
-    const files = fs.readdirSync(npcsDir);
+  const npcsDir = path.join(process.cwd(), "public", "npcs");
+  const files = fs.readdirSync(npcsDir);
 
-    // Filter for image files
-    const imageFiles = files.filter((file) =>
-      /\.(png|jpg|jpeg|gif|svg)$/i.test(file)
-    );
+  const imageFiles = files.filter((file) =>
+    /\.(png|jpg|jpeg|gif|svg)$/i.test(file)
+  );
 
-    if (imageFiles.length === 0) {
-      console.error("No image files found in npcs directory");
-    }
-
-    npcFilenamesCache = imageFiles;
-    return imageFiles;
-  } catch (error) {
-    console.error("Error reading NPC files:", error);
-    return ["am.png", "default.png"]; // Fallback defaults
+  if (imageFiles.length === 0) {
+    console.error("No image files found in npcs directory");
   }
+
+  npcFilenamesCache = imageFiles;
+  return imageFiles;
 }
 
-// Function to get NPCs for a specific channel
 export async function getNPCsForChannel(channelName: string): Promise<NPC[]> {
-  // If this channel doesn't have NPCs yet, populate it
   if (!channelNPCs.has(channelName)) {
     await populateChannel(channelName);
   }
 
-  // Return NPCs for this channel (already filtered because captured ones were removed)
   return channelNPCs.get(channelName) || [];
 }
 
-// Primary function to populate a specific channel with NPCs
 export async function populateChannel(channelName: string) {
-  // Only create NPCs if they don't already exist for this channel
   if (!channelNPCs.has(channelName)) {
-    // Create NPCs for this channel
     const npcs = createNPCs(NUM_NPCS);
-
-    // Store NPCs for this channel
     channelNPCs.set(channelName, npcs);
 
     return npcs;
   }
 
-  // Return existing NPCs if already populated
   return channelNPCs.get(channelName);
 }
 
@@ -70,11 +52,9 @@ function createNPCs(count: number): NPC[] {
   const npcs: NPC[] = [];
   const npcFilenames = getNPCFilenames();
 
-  // Create a copy of filenames and shuffle it
   const shuffledFilenames = [...npcFilenames].sort(() => Math.random() - 0.5);
 
   for (let i = 0; i < count; i++) {
-    // Use modulo to cycle through the array if we need more NPCs than filenames
     const filenameIndex = i % shuffledFilenames.length;
     const filename = shuffledFilenames[filenameIndex];
 
@@ -94,7 +74,6 @@ function createNPCs(count: number): NPC[] {
   return npcs;
 }
 
-// Add a new NPC to a specific channel
 export function addNPCToChannel(channelName: string, npc: NPC): void {
   if (!channelNPCs.has(channelName)) {
     channelNPCs.set(channelName, []);
@@ -102,22 +81,18 @@ export function addNPCToChannel(channelName: string, npc: NPC): void {
 
   const npcs = channelNPCs.get(channelName);
   if (npcs) {
-    // Check if this NPC already exists in the channel
     const existingIndex = npcs.findIndex(
       (existingNpc) => existingNpc.id === npc.id
     );
 
-    // Remove the existing NPC if found
     if (existingIndex >= 0) {
       npcs.splice(existingIndex, 1);
     }
 
-    // Add the new/updated NPC
     npcs.push(npc);
   }
 }
 
-// Update specific attributes of an existing NPC in a channel
 export function updateNPCInChannel(
   channelName: string,
   npcId: string,
