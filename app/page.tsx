@@ -10,7 +10,6 @@ import { NPC } from "./utils/types";
 export default function Home() {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [users, setUsers] = useState<Map<string, UserInfo>>(new Map());
-  // Add state for NPCs
   const [npcs, setNPCs] = useState<Map<string, NPC>>(new Map());
 
   if (!user) {

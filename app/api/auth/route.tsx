@@ -1,5 +1,3 @@
-// auth route for pusher to authorize guest user for any channel
-
 import {
   generateGuestId,
   getRandomAnimal,
@@ -49,6 +47,5 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({
     ...authResponse,
-    user: guestUser,
   });
 }

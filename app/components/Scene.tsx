@@ -379,10 +379,11 @@ TODO:
 add NPCs to capture
   - adjust bounding box for interaction (to head? entire body?)
   - split into grid for faster rendering
-  - throwing
   - add NPC images
 
 clean up!
+avoid slowdown when npcs are thrown - too much lerping? less frequent broadcast updates?
+
 debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)
 debug db rows not being deleted properly (likely same issue as previous)
 center the animal sprite within the camera view

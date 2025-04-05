@@ -11,17 +11,6 @@ interface Props {
   setNPCs: React.Dispatch<React.SetStateAction<Map<string, NPC>>>;
 }
 
-function MemberToUser(member: Member) {
-  return {
-    id: member.id,
-    animal: member.info.animal,
-    channel_name: member.info.channel_name,
-    position: member.info.position,
-    direction: member.info.direction,
-    npcGroup: member.info.npcGroup,
-  };
-}
-
 export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
   let currentUser: UserInfo | null = null;
   const [loading, setLoading] = useState(false);
@@ -42,22 +31,17 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
 
       channel.bind("pusher:subscription_succeeded", (members: Members) => {
         const usersMap = new Map();
-        const user = MemberToUser(members.me);
+        const user = members.me.info as UserInfo;
         setUser(user);
         currentUser = user;
-        usersMap.set(members.me.id, MemberToUser(members.me));
+        usersMap.set(user.id, user);
         setUsers(usersMap);
 
-        // Create a set to track captured NPC IDs
         const capturedNpcIds = new Set<string>();
-
-        // Count of members excluding ourselves
-        const memberCount = members.count - 1;
-        let responseCount = 0;
+        let responsesToAwait = members.count - 1;
         let responseTimeout: NodeJS.Timeout | null = null;
 
-        // Only proceed to fetch NPCs if we have no other members or all have responded
-        const proceedToFetchNPCs = () => {
+        const fetchNPCs = () => {
           if (responseTimeout) {
             clearTimeout(responseTimeout);
             responseTimeout = null;
@@ -82,14 +66,12 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
             .catch((err) => console.error("Error fetching NPCs:", err));
         };
 
-        // If we're the only member, proceed immediately
-        if (memberCount === 0) {
-          proceedToFetchNPCs();
+        if (responsesToAwait === 0) {
+          fetchNPCs();
           return;
         }
 
-        // Set up response handler for client-send-state events
-        const responseHandler = (data: { id: string; info: UserInfo }) => {
+        const stateReceivedHandler = (data: { id: string; info: UserInfo }) => {
           // Add the user to our users map
           setUsers((prev) => {
             const newUsers = new Map(prev);
@@ -105,17 +87,17 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
           }
 
           // Track responses
-          responseCount++;
+          responsesToAwait--;
 
           // If we've received responses from all members, proceed
-          if (responseCount >= memberCount) {
-            channel.unbind("client-send-state", responseHandler);
-            proceedToFetchNPCs();
+          if (responsesToAwait === 0) {
+            channel.unbind("client-send-state", stateReceivedHandler);
+            fetchNPCs();
           }
         };
 
         // Bind the handler
-        channel.bind("client-send-state", responseHandler);
+        channel.bind("client-send-state", stateReceivedHandler);
 
         // Request state from all existing members
         channel.trigger("client-request-state", {
@@ -125,10 +107,10 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
         // Set a timeout in case some members don't respond
         responseTimeout = setTimeout(() => {
           console.log(
-            `Timeout waiting for responses. Got ${responseCount} of ${memberCount}`
+            `Timeout waiting for responses. Still waiting for ${responsesToAwait} responses`
           );
-          channel.unbind("client-send-state", responseHandler);
-          proceedToFetchNPCs();
+          channel.unbind("client-send-state", stateReceivedHandler);
+          fetchNPCs();
         }, 3000); // 3 second timeout
       });
 
@@ -169,7 +151,7 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
       channel.bind("pusher:member_added", (member: Member) => {
         setUsers((prevUsers) => {
           const newUsers = new Map(prevUsers);
-          newUsers.set(member.id, MemberToUser(member));
+          newUsers.set(member.id, member.info as UserInfo);
           return newUsers;
         });
       });
@@ -185,7 +167,7 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
       channel.bind("client-user-modified", (member: Member) => {
         setUsers((prevUsers) => {
           const newUsers = new Map(prevUsers);
-          newUsers.set(member.id, MemberToUser(member));
+          newUsers.set(member.id, member.info as UserInfo);
           return newUsers;
         });
       });
