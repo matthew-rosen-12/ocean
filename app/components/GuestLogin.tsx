@@ -11,7 +11,7 @@ import {
 import type { Channel, Members } from "pusher-js";
 import { getChannel } from "../utils/pusher-instance";
 import { NPC } from "../utils/types";
-import { DefaultMap } from "../api/npc/service";
+import { DefaultMap } from "../utils/types";
 
 interface Props {
   setMyUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
@@ -64,20 +64,12 @@ export default function GuestLogin({
             responseTimeout = null;
           }
 
-          // Fetch NPCs after we've received all expected responses
           fetch(`/api/npc?channel=${channel_name}`)
             .then((res) => res.json())
             .then((data) => {
-              const npcMap: Map<string, NPC> = new Map();
-
-              // Only add NPCs that haven't been captured
-              data.npcs.forEach((npc: NPC) => {
-                npcMap.set(npc.id, npc);
-              });
-
+              // Convert the array back to a Map
+              const npcMap = new Map<npcId, NPC>(data);
               setNPCs(npcMap);
-
-              // Now fetch active throws
               fetchActiveThrows();
             })
             .catch((err) => {
@@ -220,7 +212,8 @@ export default function GuestLogin({
       channel.bind("npc-captured", (data: { id: userId; npc: NPC }) => {
         setNPCGroups((prev) => {
           const newNPCGroups = prev.clone();
-          newNPCGroups.get(data.id).npcs.push(data.npc);
+          newNPCGroups.get(data.id).npcIds.push(data.npc.id);
+          console.log("npc group", newNPCGroups.get(data.id));
           return newNPCGroups;
         });
       });

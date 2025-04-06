@@ -53,11 +53,28 @@ export type throwData = {
 };
 
 export type NPCGroup = {
-  npcs: NPC[];
+  npcIds: npcId[];
   captorId: userId;
 };
 
 export interface Member {
   id: string;
   info: UserInfo;
+}
+
+export class DefaultMap<K, V> extends Map<K, V> {
+  constructor(private defaultFactory: (key: K) => V) {
+    super();
+  }
+
+  get(key: K): V {
+    if (!this.has(key)) {
+      this.set(key, this.defaultFactory(key));
+    }
+    return super.get(key)!;
+  }
+
+  clone(): DefaultMap<K, V> {
+    return new DefaultMap<K, V>(this.defaultFactory);
+  }
 }

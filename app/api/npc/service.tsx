@@ -1,8 +1,8 @@
-// ocean/app/api/npc/service.ts
 import { v4 as uuidv4 } from "uuid";
 import fs from "fs";
 import path from "path";
 import {
+  DefaultMap,
   NPC,
   NPCGroup,
   npcId,
@@ -20,24 +20,6 @@ let npcFilenamesCache: string[] | null = null;
 
 export const channelNPCs = new Map<string, Map<npcId, NPC>>();
 
-// DefaultMap class implementation
-export class DefaultMap<K, V> extends Map<K, V> {
-  constructor(private defaultFactory: (key: K) => V) {
-    super();
-  }
-
-  get(key: K): V {
-    if (!this.has(key)) {
-      this.set(key, this.defaultFactory(key));
-    }
-    return super.get(key)!;
-  }
-
-  clone(): DefaultMap<K, V> {
-    return new DefaultMap<K, V>(this.defaultFactory);
-  }
-}
-
 // Replace the regular Map with DefaultMap
 export const channelActiveThrows = new DefaultMap<string, throwData[]>(
   () => []
@@ -46,7 +28,9 @@ export const channelActiveThrows = new DefaultMap<string, throwData[]>(
 export const channelNPCGroups = new DefaultMap<
   string,
   DefaultMap<userId, NPCGroup>
->(() => new DefaultMap<userId, NPCGroup>((id) => ({ npcs: [], captorId: id })));
+>(
+  () => new DefaultMap<userId, NPCGroup>((id) => ({ npcIds: [], captorId: id }))
+);
 
 function getNPCFilenames(): string[] {
   if (npcFilenamesCache) return npcFilenamesCache;
@@ -66,17 +50,15 @@ function getNPCFilenames(): string[] {
   return imageFiles;
 }
 
-export async function getNPCsForChannel(
-  channelName: string
-): Promise<Map<npcId, NPC>> {
+export function getNPCsForChannel(channelName: string): Map<npcId, NPC> {
   if (!channelNPCs.has(channelName)) {
-    await populateChannel(channelName);
+    populateChannel(channelName);
   }
 
   return channelNPCs.get(channelName) || new Map<npcId, NPC>();
 }
 
-export async function populateChannel(channelName: string) {
+export function populateChannel(channelName: string) {
   if (!channelNPCs.has(channelName)) {
     const npcs = createNPCs(NUM_NPCS);
     const npcMap = new Map<npcId, NPC>();
@@ -85,7 +67,7 @@ export async function populateChannel(channelName: string) {
     });
     channelNPCs.set(channelName, npcMap);
 
-    return npcs;
+    return npcMap;
   }
 
   return channelNPCs.get(channelName);
@@ -135,6 +117,25 @@ export function updateNPCInChannel(
     pusher.trigger(channelName, "npc-update", {
       npc: npc,
     });
+  }
+}
+
+export function updateNPCGroupInChannel(
+  channelName: string,
+  captorId: userId,
+  npcId: npcId
+): void {
+  if (!channelNPCGroups.has(channelName)) {
+    const npcGroupMap = new DefaultMap<userId, NPCGroup>((id) => ({
+      npcIds: [],
+      captorId: id,
+    }));
+    channelNPCGroups.set(channelName, npcGroupMap);
+  }
+
+  const npcGroups = channelNPCGroups.get(channelName);
+  if (npcGroups) {
+    npcGroups.get(captorId).npcIds.push(npcId);
   }
 }
 

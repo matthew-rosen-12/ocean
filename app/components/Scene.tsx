@@ -4,8 +4,10 @@ import { Canvas, useThree } from "@react-three/fiber";
 import {
   Direction,
   NPCGroup,
+  npcId,
   NPCPhase,
   throwData,
+  userId,
   UserInfo,
 } from "../utils/types";
 import NPCGraphic from "./NPCGraphic";
@@ -17,7 +19,7 @@ import WaveGrid from "./WaveGrid";
 import { ANIMAL_SCALES, DIRECTION_OFFSET } from "../api/utils/user-info";
 import { NPC } from "../utils/types";
 import AnimalGraphic from "./AnimalGraphic";
-import { DefaultMap } from "../api/npc/service";
+import { DefaultMap } from "../utils/types";
 
 // Speed of movement per keypress/frame
 const MOVE_SPEED = 0.5;
@@ -44,14 +46,14 @@ function CameraController({
 async function throwNPC(
   myUser: UserInfo,
   npc: NPC,
-  npcGroups: DefaultMap<string, NPCGroup>
+  npcGroups: DefaultMap<userId, NPCGroup>
 ) {
   try {
     // First remove the NPC from the myUser's NPC group immediately
     if (npcGroups.get(myUser.id)) {
-      npcGroups.get(myUser.id).npcs = npcGroups
+      npcGroups.get(myUser.id).npcIds = npcGroups
         .get(myUser.id)
-        .npcs.filter((n) => n.id !== npc.id);
+        .npcIds.filter((npcId) => npcId !== npc.id);
 
       // Broadcast that the user has been modified
       const channel = getChannel(myUser.channel_name);
@@ -82,7 +84,8 @@ function useKeyboardMovement(
   initialPosition: Vector3,
   initialDirection: Direction,
   myUser: UserInfo,
-  npcGroups: DefaultMap<string, NPCGroup>
+  npcGroups: DefaultMap<userId, NPCGroup>,
+  npcs: Map<npcId, NPC>
 ) {
   const [position, setPosition] = useState(initialPosition);
   const [direction, setDirection] = useState<Direction>(initialDirection);
@@ -96,17 +99,26 @@ function useKeyboardMovement(
       // Handle space bar press for throwing NPCs
       if (
         (event.key === " " || event.key === "Spacebar") &&
-        npcGroups.get(myUser.id).npcs.length > 0
+        npcGroups.get(myUser.id).npcIds.length > 0
       ) {
         // Find the first captured NPC
         const capturedNpcIndex = npcGroups
           .get(myUser.id)
-          .npcs.findIndex((npc) => npc.phase === NPCPhase.CAPTURED);
+          .npcIds.findIndex(
+            (npcId) => npcs.get(npcId)!.phase === NPCPhase.CAPTURED
+          );
 
         if (capturedNpcIndex >= 0) {
           // Get the NPC to throw
-          const npcToThrow = npcGroups.get(myUser.id).npcs[capturedNpcIndex];
-          throwNPC(myUser, npcToThrow, npcGroups);
+          const npcIdToThrow = npcGroups.get(myUser.id).npcIds[
+            capturedNpcIndex
+          ];
+          const npc = npcs.get(npcIdToThrow);
+          if (!npc) {
+            console.error(`NPC with ID ${npcIdToThrow} not found`);
+            return;
+          }
+          throwNPC(myUser, npc, npcGroups);
         }
       }
     };
@@ -198,7 +210,7 @@ function useKeyboardMovement(
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [direction, keysPressed, myUser, npcGroups]);
+  }, [direction, keysPressed, myUser, npcGroups, npcs]);
 
   return { position, direction };
 }
@@ -233,7 +245,8 @@ export default function Scene({
     initialPosition,
     initialDirection,
     myUser,
-    npcGroups
+    npcGroups,
+    npcs
   );
   users.set(myUser.id, myUser);
 
@@ -296,12 +309,9 @@ export default function Scene({
   const handleNPCCollision = useCallback(
     (npc: NPC) => {
       if (npc.phase == NPCPhase.IDLE) {
-        // Remove NPC from general pool
-        npcs.delete(npc.id);
         npc.phase = NPCPhase.CAPTURED;
 
-        npcGroups.get(myUser.id).npcs.push({ ...npc });
-        users.set(myUser.id, myUser);
+        npcGroups.get(myUser.id).npcIds.push(npc.id);
         fetch(`/api/npc/${npc.id}/capture`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -310,9 +320,10 @@ export default function Scene({
             channelName: myUser.channel_name,
           }),
         });
+        console.log("npc group", npcGroups.get(myUser.id));
       }
     },
-    [npcs, npcGroups, myUser, users]
+    [npcGroups, myUser]
   );
 
   return (
@@ -342,10 +353,10 @@ export default function Scene({
         <AnimalGraphic key={user.id} user={user} myUserId={myUser.id} />
       ))}
       {Array.from(npcGroups.entries()).map(([userId, npcGroup]) =>
-        npcGroup.npcs.map((npc, index) => (
+        npcGroup.npcIds.map((npcId, index) => (
           <NPCGraphic
-            key={`${userId}-${npc.id}`}
-            npc={npc}
+            key={`${userId}-${npcId}`}
+            npc={npcs.get(npcId)!}
             myUser={myUser}
             isLocalUser={userId === myUser.id}
             followingUser={users.get(userId)}
@@ -353,23 +364,27 @@ export default function Scene({
           />
         ))
       )}
-      {Array.from(npcs.values()).map((npc) => (
-        <NPCGraphic
-          key={npc.id}
-          npc={npc}
-          myUser={myUser}
-          onCollision={(npc) => handleNPCCollision(npc)}
-          throw={throws.get(npc.id)}
-        />
-      ))}
+      {npcs.size > 0 &&
+        Array.from(npcs.values())
+          .filter((npc) => npc.phase !== NPCPhase.CAPTURED)
+          .map((npc) => (
+            <NPCGraphic
+              key={npc.id}
+              npc={npc}
+              myUser={myUser}
+              onCollision={(npc) => handleNPCCollision(npc)}
+              throw={throws.get(npc.id)}
+            />
+          ))}
     </Canvas>
   );
 }
 
 /*
 TODO:
+change out the maps that require bam ing
 debug slow local and non-local npc following when multiplayer
-- ? create map of npc to following user instead of sending NPCs as part of user data
+factory or abstraction for update server and client
 
 add NPCs to capture
   - adjust bounding box for interaction (to head? entire body?)
@@ -379,7 +394,6 @@ add NPCs to capture
 clean up! (various fixes - nonlocal npc following flipping plus lag at the end, local npc group sometimes jumpy)
 de slop AnimalGraphic.tsx and NPCGraphic.tsx (abstract functions?)
 add to architecture doc
-avoid slowdown when npcs are thrown - too much lerping? less frequent broadcast updates? batch npc updates? update just by final position and timestamp for new clients?
 
 debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)
 debug db rows not being deleted properly (likely same issue as previous)

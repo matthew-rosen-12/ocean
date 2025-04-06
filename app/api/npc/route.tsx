@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getNPCsForChannel } from "./service";
+import { channelNPCs, getNPCsForChannel } from "./service";
+import { channel } from "diagnostics_channel";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -12,8 +13,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const npcs = await getNPCsForChannel(channelName);
-  return NextResponse.json({
-    npcs,
-  });
+  const npcs = getNPCsForChannel(channelName);
+  console.log("channelNPCs in initial GET: ", channelNPCs);
+  return NextResponse.json(Array.from(npcs.entries()));
 }

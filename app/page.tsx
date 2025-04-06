@@ -2,19 +2,19 @@
 "use client";
 import GuestLogin from "./components/GuestLogin";
 import Scene from "./components/Scene";
-import { npcId, throwData, userId, UserInfo } from "./utils/types";
+import { NPCGroup, npcId, throwData, userId, UserInfo } from "./utils/types";
 import { useState } from "react";
 import { ANIMAL_FACTS } from "@/public/facts";
 import { NPC } from "./utils/types";
-import { DefaultMap } from "./api/npc/service";
+import { DefaultMap } from "./utils/types";
 
 export default function Home() {
   const [myUser, setMyUser] = useState<UserInfo | null>(null);
   const [users, setUsers] = useState<Map<userId, UserInfo>>(new Map());
   const [npcs, setNPCs] = useState<Map<npcId, NPC>>(new Map());
   const [throws, setThrows] = useState<Map<npcId, throwData>>(new Map());
-  const [npcGroups, setNPCGroups] = useState<DefaultMap<userId, NPC[]>>(
-    new DefaultMap(() => [])
+  const [npcGroups, setNPCGroups] = useState<DefaultMap<userId, NPCGroup>>(
+    new DefaultMap((id) => ({ npcIds: [], captorId: id }))
   );
 
   if (!myUser) {

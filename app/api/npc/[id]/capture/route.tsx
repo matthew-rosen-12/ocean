@@ -4,6 +4,8 @@ import { NPC, NPCPhase } from "../../../../utils/types";
 import {
   channelNPCGroups,
   channelNPCs,
+  getNPCsForChannel,
+  updateNPCGroupInChannel,
   updateNPCInChannel,
 } from "../../service";
 
@@ -21,17 +23,19 @@ export async function POST(
         { status: 400 }
       );
     }
-
     const pusher = getPusherInstance();
 
-    const npc = channelNPCs.get(channelName)!.get(npcId)!;
+    console.log("channelNPCs in capture", channelNPCs);
+
+    const npc = getNPCsForChannel(channelName).get(npcId)!;
+
     const updatedNPC: NPC = {
       ...npc,
-      phase: NPCPhase.THROWN,
+      phase: NPCPhase.CAPTURED,
     };
 
-    updateNPCInChannel(channelName, updatedNPC);
-    channelNPCGroups.get(channelName).get(captorId).npcs.push(updatedNPC);
+    updateNPCInChannel(channelName, updatedNPC, true);
+    updateNPCGroupInChannel(channelName, captorId, npcId);
     await pusher.trigger(channelName, "npc-captured", {
       id: captorId,
       npc: updatedNPC,
@@ -39,7 +43,7 @@ export async function POST(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error processing NPC throw:", error);
+    console.error("Error processing NPC capture:", error);
     return NextResponse.json(
       { error: "Failed to process throw" },
       { status: 500 }
