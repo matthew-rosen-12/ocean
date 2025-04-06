@@ -2,16 +2,21 @@
 "use client";
 import GuestLogin from "./components/GuestLogin";
 import Scene from "./components/Scene";
-import { throwData, UserInfo } from "./utils/types";
+import { npcId, throwData, userId, UserInfo } from "./utils/types";
 import { useState } from "react";
 import { ANIMAL_FACTS } from "@/public/facts";
 import { NPC } from "./utils/types";
+import { DefaultMap } from "./api/npc/service";
 
 export default function Home() {
   const [myUser, setMyUser] = useState<UserInfo | null>(null);
-  const [users, setUsers] = useState<Map<string, UserInfo>>(new Map());
-  const [npcs, setNPCs] = useState<Map<string, NPC>>(new Map());
-  const [throws, setThrows] = useState<Map<string, throwData>>(new Map());
+  const [users, setUsers] = useState<Map<userId, UserInfo>>(new Map());
+  const [npcs, setNPCs] = useState<Map<npcId, NPC>>(new Map());
+  const [throws, setThrows] = useState<Map<npcId, throwData>>(new Map());
+  const [npcGroups, setNPCGroups] = useState<DefaultMap<userId, NPC[]>>(
+    new DefaultMap(() => [])
+  );
+
   if (!myUser) {
     return (
       <GuestLogin
@@ -19,13 +24,20 @@ export default function Home() {
         setUsers={setUsers}
         setNPCs={setNPCs}
         setThrows={setThrows}
+        setNPCGroups={setNPCGroups}
       />
     );
   }
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
-      <Scene users={users} myUser={myUser} npcs={npcs} throws={throws} />
+      <Scene
+        users={users}
+        myUser={myUser}
+        npcs={npcs}
+        throws={throws}
+        npcGroups={npcGroups}
+      />
 
       {/* Fixed overlay */}
       <div

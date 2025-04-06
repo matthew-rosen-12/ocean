@@ -1,15 +1,26 @@
 // ocean/app/components/GuestLogin.tsx
 import { useState } from "react";
-import { Member, throwData, UserInfo } from "../utils/types";
+import {
+  Member,
+  NPCGroup,
+  npcId,
+  throwData,
+  userId,
+  UserInfo,
+} from "../utils/types";
 import type { Channel, Members } from "pusher-js";
 import { getChannel } from "../utils/pusher-instance";
 import { NPC } from "../utils/types";
+import { DefaultMap } from "../api/npc/service";
 
 interface Props {
   setMyUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
-  setUsers: React.Dispatch<React.SetStateAction<Map<string, UserInfo>>>;
-  setNPCs: React.Dispatch<React.SetStateAction<Map<string, NPC>>>;
-  setThrows: React.Dispatch<React.SetStateAction<Map<string, throwData>>>;
+  setUsers: React.Dispatch<React.SetStateAction<Map<userId, UserInfo>>>;
+  setNPCs: React.Dispatch<React.SetStateAction<Map<npcId, NPC>>>;
+  setThrows: React.Dispatch<React.SetStateAction<Map<npcId, throwData>>>;
+  setNPCGroups: React.Dispatch<
+    React.SetStateAction<DefaultMap<userId, NPCGroup>>
+  >;
 }
 
 export default function GuestLogin({
@@ -17,6 +28,7 @@ export default function GuestLogin({
   setUsers,
   setNPCs,
   setThrows,
+  setNPCGroups,
 }: Props) {
   let currentUser: UserInfo | null = null;
   const [loading, setLoading] = useState(false);
@@ -43,7 +55,6 @@ export default function GuestLogin({
         usersMap.set(user.id, user);
         setUsers(usersMap);
 
-        const capturedNpcIds = new Set<string>();
         let responsesToAwait = members.count - 1;
         let responseTimeout: NodeJS.Timeout | null = null;
 
@@ -61,9 +72,7 @@ export default function GuestLogin({
 
               // Only add NPCs that haven't been captured
               data.npcs.forEach((npc: NPC) => {
-                if (!capturedNpcIds.has(npc.id)) {
-                  npcMap.set(npc.id, npc);
-                }
+                npcMap.set(npc.id, npc);
               });
 
               setNPCs(npcMap);
@@ -110,13 +119,6 @@ export default function GuestLogin({
             newUsers.set(data.id, data.info);
             return newUsers;
           });
-
-          // Track captured NPCs from this user
-          if (data.info.npcGroup?.npcs) {
-            data.info.npcGroup.npcs.forEach((npc) => {
-              capturedNpcIds.add(npc.id);
-            });
-          }
 
           // Track responses
           responsesToAwait--;
@@ -166,17 +168,6 @@ export default function GuestLogin({
             newUsers.set(data.id, data.info);
             return newUsers;
           });
-
-          // Remove any NPCs this user has captured from our global NPC list
-          if (data.info.npcGroup?.npcs && data.info.npcGroup.npcs.length > 0) {
-            setNPCs((prev) => {
-              const newNPCs = new Map(prev);
-              data.info?.npcGroup?.npcs.forEach((npc: NPC) => {
-                newNPCs.delete(npc.id);
-              });
-              return newNPCs;
-            });
-          }
         }
       );
 
@@ -226,6 +217,14 @@ export default function GuestLogin({
         });
       });
 
+      channel.bind("npc-captured", (data: { id: userId; npc: NPC }) => {
+        setNPCGroups((prev) => {
+          const newNPCGroups = prev.clone();
+          newNPCGroups.get(data.id).npcs.push(data.npc);
+          return newNPCGroups;
+        });
+      });
+
       channel.bind("throw-complete", (data: { throw: throwData }) => {
         setThrows((prev) => {
           const newThrows = new Map(prev);
@@ -238,17 +237,6 @@ export default function GuestLogin({
           return newNPCs;
         });
       });
-
-      channel.bind(
-        "client-npc-captured",
-        (data: { npcId: string; captorId: string }) => {
-          setNPCs((prev) => {
-            const newNPCs = new Map(prev);
-            newNPCs.delete(data.npcId);
-            return newNPCs;
-          });
-        }
-      );
     } catch (error) {
       console.error("Login error:", error);
     } finally {

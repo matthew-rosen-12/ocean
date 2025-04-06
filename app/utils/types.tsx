@@ -3,23 +3,20 @@ import { Position } from "three/examples/jsm/Addons.js";
 
 export type Animal = "dolphin" | "wolf";
 
+export type npcId = string;
+export type userId = string;
+
 export interface Direction {
   x: number;
   y: number;
 }
 
 export interface UserInfo {
-  id: string;
+  id: userId;
   animal: Animal;
   channel_name: string;
   position: Vector3;
   direction: Direction;
-  npcGroup: NPCGroup;
-}
-
-export interface Member {
-  id: string;
-  info: UserInfo;
 }
 
 // First, define the NPCPhase enum
@@ -30,7 +27,7 @@ export enum NPCPhase {
 }
 
 export type NPC = {
-  id: string;
+  id: npcId;
   type: string;
   filename: string;
   position: {
@@ -45,11 +42,6 @@ export type NPC = {
   phase: NPCPhase;
 };
 
-export type NPCGroup = {
-  npcs: NPC[];
-  captorId?: string;
-};
-
 export type throwData = {
   channelName: string;
   npc: NPC;
@@ -59,3 +51,13 @@ export type throwData = {
   velocity: number;
   timestamp: number;
 };
+
+export type NPCGroup = {
+  npcs: NPC[];
+  captorId: userId;
+};
+
+export interface Member {
+  id: string;
+  info: UserInfo;
+}

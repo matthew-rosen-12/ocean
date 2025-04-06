@@ -6,20 +6,22 @@ import { smoothMove } from "../utils/movement";
 
 interface NPCGraphicProps {
   npc: NPC;
-  users: Map<string, UserInfo>;
-  myUserId: string; // Add this to identify local user
-  followingUser?: UserInfo; // The user this NPC is following (if any)
+  myUser: UserInfo;
+  isLocalUser?: boolean;
+  followingUser?: UserInfo;
   onCollision?: (npc: NPC) => void;
   throw?: throwData;
+  offsetIndex?: number;
 }
 
 const NPCGraphic: React.FC<NPCGraphicProps> = ({
   npc,
-  users,
-  myUserId,
+  myUser,
+  isLocalUser,
   followingUser,
   onCollision,
   throw: throwData,
+  offsetIndex,
 }) => {
   const group = useMemo(() => new THREE.Group(), []);
   const texture = useRef<THREE.Texture | null>(null);
@@ -34,12 +36,10 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
   const calculateFollowPosition = (
     followingUser: UserInfo,
     npcId: string,
+    offsetIndex: number,
     offsetDistance: number = 4.0
   ): THREE.Vector3 => {
-    // Find index of this NPC in the follower's group
-    const offsetIndex =
-      followingUser.npcGroup?.npcs.findIndex((n) => n.id === npcId) || 0;
-
+    // Get user direction
     // Get user direction
     const dx = followingUser.direction?.x || 0;
     const dy = followingUser.direction?.y || 0;
@@ -114,7 +114,11 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
 
     if (isFirstSetup && followingUser && followingUser.position) {
       // Calculate position using the helper function
-      const position = calculateFollowPosition(followingUser, npc.id);
+      const position = calculateFollowPosition(
+        followingUser,
+        npc.id,
+        offsetIndex || 0
+      );
 
       // Set initial position directly
       positionRef.current.copy(position);
@@ -173,6 +177,7 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
     followingUser,
     npc.id,
     npc.position,
+    offsetIndex,
   ]);
 
   // Handle updates and collisions
@@ -188,9 +193,8 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
       group.position.copy(positionRef.current);
     } else if (npc.phase === NPCPhase.IDLE) {
       // Normal following behavior
-      const isLocalPlayerNPC = followingUser && followingUser.id === myUserId;
 
-      if (isLocalPlayerNPC) {
+      if (isLocalUser) {
         positionRef.current.copy(npc.position);
       } else {
         positionRef.current.copy(
@@ -207,13 +211,14 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
     } else {
       // Normal following behavior
       if (followingUser) {
-        const targetPosition = calculateFollowPosition(followingUser, npc.id);
+        const targetPosition = calculateFollowPosition(
+          followingUser,
+          npc.id,
+          offsetIndex || 0
+        );
 
         if (positionRef.current != targetPosition) {
-          const isLocalPlayerNPC =
-            followingUser && followingUser.id === myUserId;
-
-          if (isLocalPlayerNPC) {
+          if (isLocalUser) {
             positionRef.current.copy(targetPosition);
           } else {
             positionRef.current.copy(
@@ -237,13 +242,12 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
     }
     if (!followingUser && onCollision) {
       const COLLISION_THRESHOLD = 2.5;
-      const localUser = users.get(myUserId);
 
-      if (localUser?.position) {
+      if (myUser.position) {
         const userPos = new THREE.Vector3(
-          localUser.position.x,
-          localUser.position.y,
-          localUser.position.z
+          myUser.position.x,
+          myUser.position.y,
+          myUser.position.z
         );
         const distance = positionRef.current.distanceTo(userPos);
 

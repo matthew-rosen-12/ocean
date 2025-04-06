@@ -8,7 +8,6 @@ import { useFrame } from "@react-three/fiber";
 import { Animal } from "../utils/types";
 import { ANIMAL_SCALES } from "../api/utils/user-info";
 import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js";
-import NPCGraphic from "./NPCGraphic";
 import { smoothMove } from "../utils/movement";
 
 const ANIMAL_ORIENTATION = {
@@ -342,11 +341,9 @@ function AnimalSprite({
 export default function AnimalGraphic({
   user,
   myUserId,
-  users,
 }: {
   user: UserInfo;
   myUserId: string;
-  users: Map<string, UserInfo>;
 }) {
   // Create position ref as Vector3
   const isLocalPlayer = myUserId === user.id;
@@ -379,16 +376,6 @@ export default function AnimalGraphic({
         directionRef={directionRef}
         isLocalPlayer={isLocalPlayer}
       />
-
-      {user.npcGroup.npcs.map((npc) => (
-        <NPCGraphic
-          key={npc.id}
-          npc={npc}
-          users={users}
-          followingUser={user}
-          myUserId={myUserId}
-        />
-      ))}
     </>
   );
 }

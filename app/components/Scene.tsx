@@ -1,7 +1,13 @@
 // ocean/app/components/Scene.tsx
 "use client";
 import { Canvas, useThree } from "@react-three/fiber";
-import { Direction, NPCPhase, throwData, UserInfo } from "../utils/types";
+import {
+  Direction,
+  NPCGroup,
+  NPCPhase,
+  throwData,
+  UserInfo,
+} from "../utils/types";
 import NPCGraphic from "./NPCGraphic";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Vector3 } from "three";
@@ -11,6 +17,7 @@ import WaveGrid from "./WaveGrid";
 import { ANIMAL_SCALES, DIRECTION_OFFSET } from "../api/utils/user-info";
 import { NPC } from "../utils/types";
 import AnimalGraphic from "./AnimalGraphic";
+import { DefaultMap } from "../api/npc/service";
 
 // Speed of movement per keypress/frame
 const MOVE_SPEED = 0.5;
@@ -34,19 +41,23 @@ function CameraController({
   return null;
 }
 
-async function throwNPC(myUser: UserInfo, npc: NPC) {
+async function throwNPC(
+  myUser: UserInfo,
+  npc: NPC,
+  npcGroups: DefaultMap<string, NPCGroup>
+) {
   try {
     // First remove the NPC from the myUser's NPC group immediately
-    if (myUser.npcGroup?.npcs) {
-      myUser.npcGroup.npcs = myUser.npcGroup.npcs.filter(
-        (n) => n.id !== npc.id
-      );
+    if (npcGroups.get(myUser.id)) {
+      npcGroups.get(myUser.id).npcs = npcGroups
+        .get(myUser.id)
+        .npcs.filter((n) => n.id !== npc.id);
 
       // Broadcast that the user has been modified
       const channel = getChannel(myUser.channel_name);
-      await channel.trigger("client-user-modified", {
+      await channel.trigger("client-npc-group-modified", {
         id: myUser.id,
-        info: myUser,
+        info: npcGroups.get(myUser.id),
       });
     }
 
@@ -70,7 +81,8 @@ async function throwNPC(myUser: UserInfo, npc: NPC) {
 function useKeyboardMovement(
   initialPosition: Vector3,
   initialDirection: Direction,
-  myUser: UserInfo
+  myUser: UserInfo,
+  npcGroups: DefaultMap<string, NPCGroup>
 ) {
   const [position, setPosition] = useState(initialPosition);
   const [direction, setDirection] = useState<Direction>(initialDirection);
@@ -84,17 +96,17 @@ function useKeyboardMovement(
       // Handle space bar press for throwing NPCs
       if (
         (event.key === " " || event.key === "Spacebar") &&
-        myUser.npcGroup?.npcs?.length > 0
+        npcGroups.get(myUser.id).npcs.length > 0
       ) {
         // Find the first captured NPC
-        const capturedNpcIndex = myUser.npcGroup.npcs.findIndex(
-          (npc) => npc.phase === NPCPhase.CAPTURED
-        );
+        const capturedNpcIndex = npcGroups
+          .get(myUser.id)
+          .npcs.findIndex((npc) => npc.phase === NPCPhase.CAPTURED);
 
         if (capturedNpcIndex >= 0) {
           // Get the NPC to throw
-          const npcToThrow = myUser.npcGroup.npcs[capturedNpcIndex];
-          throwNPC(myUser, npcToThrow);
+          const npcToThrow = npcGroups.get(myUser.id).npcs[capturedNpcIndex];
+          throwNPC(myUser, npcToThrow, npcGroups);
         }
       }
     };
@@ -186,7 +198,7 @@ function useKeyboardMovement(
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [direction, keysPressed, myUser]);
+  }, [direction, keysPressed, myUser, npcGroups]);
 
   return { position, direction };
 }
@@ -196,9 +208,16 @@ interface Props {
   myUser: UserInfo;
   npcs: Map<string, NPC>;
   throws: Map<string, throwData>;
+  npcGroups: DefaultMap<string, NPCGroup>;
 }
 
-export default function Scene({ users, myUser, npcs, throws }: Props) {
+export default function Scene({
+  users,
+  myUser,
+  npcs,
+  throws,
+  npcGroups,
+}: Props) {
   const initialPosition = new Vector3(
     myUser.position.x,
     myUser.position.y,
@@ -213,7 +232,8 @@ export default function Scene({ users, myUser, npcs, throws }: Props) {
   const { position, direction } = useKeyboardMovement(
     initialPosition,
     initialDirection,
-    myUser
+    myUser,
+    npcGroups
   );
   users.set(myUser.id, myUser);
 
@@ -280,16 +300,19 @@ export default function Scene({ users, myUser, npcs, throws }: Props) {
         npcs.delete(npc.id);
         npc.phase = NPCPhase.CAPTURED;
 
-        myUser.npcGroup.npcs.push({ ...npc });
+        npcGroups.get(myUser.id).npcs.push({ ...npc });
         users.set(myUser.id, myUser);
-        const channel = getChannel(myUser.channel_name);
-        channel.trigger("client-npc-captured", {
-          npcId: npc.id,
-          captorId: myUser.id,
+        fetch(`/api/npc/${npc.id}/capture`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            captorId: myUser.id,
+            channelName: myUser.channel_name,
+          }),
         });
       }
     },
-    [npcs, users, myUser]
+    [npcs, npcGroups, myUser, users]
   );
 
   return (
@@ -316,19 +339,25 @@ export default function Scene({ users, myUser, npcs, throws }: Props) {
       <WaveGrid />
       {/* Render all users with their NPCs */}
       {Array.from(users.values()).map((user) => (
-        <AnimalGraphic
-          key={user.id}
-          user={user}
-          myUserId={myUser.id}
-          users={users}
-        />
+        <AnimalGraphic key={user.id} user={user} myUserId={myUser.id} />
       ))}
+      {Array.from(npcGroups.entries()).map(([userId, npcGroup]) =>
+        npcGroup.npcs.map((npc, index) => (
+          <NPCGraphic
+            key={`${userId}-${npc.id}`}
+            npc={npc}
+            myUser={myUser}
+            isLocalUser={userId === myUser.id}
+            followingUser={users.get(userId)}
+            offsetIndex={index}
+          />
+        ))
+      )}
       {Array.from(npcs.values()).map((npc) => (
         <NPCGraphic
           key={npc.id}
           npc={npc}
-          users={users}
-          myUserId={myUser.id}
+          myUser={myUser}
           onCollision={(npc) => handleNPCCollision(npc)}
           throw={throws.get(npc.id)}
         />
@@ -339,6 +368,9 @@ export default function Scene({ users, myUser, npcs, throws }: Props) {
 
 /*
 TODO:
+debug slow local and non-local npc following when multiplayer
+- ? create map of npc to following user instead of sending NPCs as part of user data
+
 add NPCs to capture
   - adjust bounding box for interaction (to head? entire body?)
   - split into grid for faster rendering

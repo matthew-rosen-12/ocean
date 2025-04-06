@@ -2,7 +2,14 @@
 import { v4 as uuidv4 } from "uuid";
 import fs from "fs";
 import path from "path";
-import { NPC, NPCPhase, throwData } from "../../utils/types";
+import {
+  NPC,
+  NPCGroup,
+  npcId,
+  NPCPhase,
+  throwData,
+  userId,
+} from "../../utils/types";
 import { getDirection, getPosition } from "../utils/npc-info";
 import { getPusherInstance } from "../utils/pusher/pusher-instance";
 const pusher = getPusherInstance();
@@ -11,19 +18,23 @@ const NUM_NPCS = 4;
 
 let npcFilenamesCache: string[] | null = null;
 
-export const channelFreeNPCs = new Map<string, NPC[]>();
+export const channelNPCs = new Map<string, Map<npcId, NPC>>();
 
 // DefaultMap class implementation
 export class DefaultMap<K, V> extends Map<K, V> {
-  constructor(private defaultFactory: () => V) {
+  constructor(private defaultFactory: (key: K) => V) {
     super();
   }
 
   get(key: K): V {
     if (!this.has(key)) {
-      this.set(key, this.defaultFactory());
+      this.set(key, this.defaultFactory(key));
     }
     return super.get(key)!;
+  }
+
+  clone(): DefaultMap<K, V> {
+    return new DefaultMap<K, V>(this.defaultFactory);
   }
 }
 
@@ -31,6 +42,11 @@ export class DefaultMap<K, V> extends Map<K, V> {
 export const channelActiveThrows = new DefaultMap<string, throwData[]>(
   () => []
 );
+
+export const channelNPCGroups = new DefaultMap<
+  string,
+  DefaultMap<userId, NPCGroup>
+>(() => new DefaultMap<userId, NPCGroup>((id) => ({ npcs: [], captorId: id })));
 
 function getNPCFilenames(): string[] {
   if (npcFilenamesCache) return npcFilenamesCache;
@@ -50,25 +66,29 @@ function getNPCFilenames(): string[] {
   return imageFiles;
 }
 
-export async function getFreeNPCsForChannel(
+export async function getNPCsForChannel(
   channelName: string
-): Promise<NPC[]> {
-  if (!channelFreeNPCs.has(channelName)) {
+): Promise<Map<npcId, NPC>> {
+  if (!channelNPCs.has(channelName)) {
     await populateChannel(channelName);
   }
 
-  return channelFreeNPCs.get(channelName) || [];
+  return channelNPCs.get(channelName) || new Map<npcId, NPC>();
 }
 
 export async function populateChannel(channelName: string) {
-  if (!channelFreeNPCs.has(channelName)) {
+  if (!channelNPCs.has(channelName)) {
     const npcs = createNPCs(NUM_NPCS);
-    channelFreeNPCs.set(channelName, npcs);
+    const npcMap = new Map<npcId, NPC>();
+    npcs.forEach((npc) => {
+      npcMap.set(npc.id, npc);
+    });
+    channelNPCs.set(channelName, npcMap);
 
     return npcs;
   }
 
-  return channelFreeNPCs.get(channelName);
+  return channelNPCs.get(channelName);
 }
 
 function createNPCs(count: number): NPC[] {
@@ -97,26 +117,19 @@ function createNPCs(count: number): NPC[] {
   return npcs;
 }
 
-export function updateFreeNPCInChannel(
+export function updateNPCInChannel(
   channelName: string,
   npc: NPC,
   message: boolean = false
 ): void {
-  if (!channelFreeNPCs.has(channelName)) {
-    channelFreeNPCs.set(channelName, []);
+  if (!channelNPCs.has(channelName)) {
+    const npcMap = new Map<npcId, NPC>();
+    channelNPCs.set(channelName, npcMap);
   }
 
-  const npcs = channelFreeNPCs.get(channelName);
+  const npcs = channelNPCs.get(channelName);
   if (npcs) {
-    const existingIndex = npcs.findIndex(
-      (existingNpc) => existingNpc.id === npc.id
-    );
-
-    if (existingIndex >= 0) {
-      npcs.splice(existingIndex, 1);
-    }
-
-    npcs.push(npc);
+    npcs.set(npc.id, npc);
   }
   if (message) {
     pusher.trigger(channelName, "npc-update", {
@@ -132,5 +145,5 @@ export function setThrowCompleteInChannel(
   pusher.trigger(channelName, "throw-complete", {
     throw: landedThrow,
   });
-  updateFreeNPCInChannel(channelName, landedThrow.npc, true);
+  updateNPCInChannel(channelName, landedThrow.npc, true);
 }
