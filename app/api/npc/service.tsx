@@ -67,7 +67,7 @@ export async function getNPCGroupsFromRedis(
 
   const parsed = JSON.parse(data);
   return new Map(
-    parsed.map(([id, group]: [string, any]) => {
+    parsed.map(([id, group]: [string, NPCGroup]) => {
       return [id, { npcIds: new Set(group.npcIds), captorId: group.captorId }];
     })
   );

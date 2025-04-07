@@ -240,6 +240,10 @@ export default function GuestLogin({
           newNPCs.set(data.throw.npc.id, data.throw.npc);
           return newNPCs;
         });
+        setNPCGroups((prev) => {
+          prev.get(data.throw.throwerId).npcIds.delete(data.throw.npc.id);
+          return prev;
+        });
       });
 
       channel.bind("npc-captured", (data: { id: userId; npc: NPC }) => {

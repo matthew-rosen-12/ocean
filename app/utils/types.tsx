@@ -50,6 +50,7 @@ export type throwData = {
   throwDuration: number;
   velocity: number;
   timestamp: number;
+  throwerId: userId;
 };
 
 export type NPCGroup = {

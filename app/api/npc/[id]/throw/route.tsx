@@ -48,6 +48,7 @@ export async function POST(
       velocity,
       throwDuration: 2000,
       timestamp: Date.now(),
+      throwerId,
     };
 
     updateNPCInChannel(channelName, updatedNPC);

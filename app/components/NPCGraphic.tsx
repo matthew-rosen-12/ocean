@@ -265,32 +265,30 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
       // Fixed upright rotation - NPCs don't rotate with captor
       group.rotation.z = 0;
     } else {
-      // Normal following behavior
-      // if (followingUser) {
-      //   const targetPosition = calculateFollowPosition(
-      //     followingUser,
-      //     npc.id,
-      //     offsetIndex || 0
-      //   );
-      //   if (positionRef.current != targetPosition) {
-      //     if (isLocalUser || !isLocalUser) {
-      //       positionRef.current.copy(targetPosition);
-      //     } else {
-      //       positionRef.current.copy(
-      //         smoothMove(positionRef.current.clone(), targetPosition)
-      //       );
-      //     }
-      //     group.position.copy(positionRef.current);
-      //     // Update NPC position data
-      //     if (npc.phase === NPCPhase.CAPTURED && followingUser) {
-      //       npc.position.x = positionRef.current.x;
-      //       npc.position.y = positionRef.current.y;
-      //       npc.position.z = positionRef.current.z;
-      //     }
-      //     // Fixed upright rotation - NPCs don't rotate with captor
-      //     group.rotation.z = 0;
-      //   }
-      // }
+      if (followingUser) {
+        const targetPosition = calculateFollowPosition(
+          followingUser,
+          offsetIndex || 0
+        );
+        if (positionRef.current != targetPosition) {
+          if (isLocalUser) {
+            positionRef.current.copy(targetPosition);
+          } else {
+            positionRef.current.copy(
+              smoothMove(positionRef.current.clone(), targetPosition)
+            );
+          }
+          group.position.copy(positionRef.current);
+          // Update NPC position data
+          if (npc.phase === NPCPhase.CAPTURED && followingUser) {
+            npc.position.x = positionRef.current.x;
+            npc.position.y = positionRef.current.y;
+            npc.position.z = positionRef.current.z;
+          }
+          // Fixed upright rotation - NPCs don't rotate with captor
+          group.rotation.z = 0;
+        }
+      }
     }
     if (!followingUser && onCollision) {
       const COLLISION_THRESHOLD = 2.5;
