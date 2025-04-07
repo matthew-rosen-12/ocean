@@ -49,24 +49,28 @@ export async function POST(request: NextRequest) {
         // Extract roomId from channel name
         const roomId = event.channel.split("presence-chat-")[1];
 
-        await prisma.$transaction(async (tx) => {
-          const updatedRoom = await prisma.room.update({
-            where: { id: roomId },
-            data: {
-              numUsers: { decrement: 1 },
-              lastActive: new Date(),
-            },
-            select: {
-              numUsers: true,
-            },
-          });
-
-          if (updatedRoom.numUsers <= 0) {
-            await tx.room.delete({
+        await prisma.$transaction(
+          async (tx: {
+            room: { delete: (arg0: { where: { id: string } }) => any };
+          }) => {
+            const updatedRoom = await prisma.room.update({
               where: { id: roomId },
+              data: {
+                numUsers: { decrement: 1 },
+                lastActive: new Date(),
+              },
+              select: {
+                numUsers: true,
+              },
             });
+
+            if (updatedRoom.numUsers <= 0) {
+              await tx.room.delete({
+                where: { id: roomId },
+              });
+            }
           }
-        });
+        );
       }
     }
 

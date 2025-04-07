@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { channelActiveThrows } from "../../npc/service";
+import { getChannelActiveThrows } from "../../npc/service";
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get active throws for this channel
-    const activeThrows = channelActiveThrows.get(channel) || [];
+    const activeThrows = await getChannelActiveThrows(channel);
 
     // Return active throws data
     return NextResponse.json({

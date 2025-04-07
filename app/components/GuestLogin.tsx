@@ -91,10 +91,43 @@ export default function GuestLogin({
               });
               setThrows(throwsMap);
 
-              setLoading(false);
+              // Add this call to fetch groups after fetching throws
+              fetchNPCGroups();
             })
             .catch((err) => {
               console.error("Error fetching active throws:", err);
+              setLoading(false);
+            });
+        };
+
+        // Add this new function to fetch NPC groups
+        const fetchNPCGroups = () => {
+          fetch(`/api/npc/capture?channel=${channel_name}`)
+            .then((res) => res.json())
+            .then((data) => {
+              // Process NPC groups
+              const { npcGroups } = data;
+              const groupsMap = new DefaultMap<userId, NPCGroup>((id) => ({
+                npcIds: new Set<npcId>(),
+                captorId: id,
+              }));
+
+              // Convert array data back to our DefaultMap with Sets
+              npcGroups.forEach(
+                (group: { id: userId; npcIds: npcId[]; captorId: userId }) => {
+                  groupsMap.set(group.id, {
+                    npcIds: new Set(group.npcIds),
+                    captorId: group.captorId,
+                  });
+                }
+              );
+
+              console.log("Fetched NPC groups:", groupsMap);
+              setNPCGroups(groupsMap);
+              setLoading(false);
+            })
+            .catch((err) => {
+              console.error("Error fetching NPC groups:", err);
               setLoading(false);
             });
         };
@@ -187,13 +220,13 @@ export default function GuestLogin({
         });
       });
 
-      // Replace the separate handlers with a single npc-update handler
       channel.bind("npc-update", (data: { npc: NPC }) => {
         setNPCs((prev) => {
           const newNPCs = new Map(prev);
           newNPCs.set(data.npc.id, data.npc);
           return newNPCs;
         });
+        console.log("NPC updated:", data.npc);
       });
 
       channel.bind("npc-thrown", (data: { throw: throwData }) => {
@@ -211,10 +244,9 @@ export default function GuestLogin({
 
       channel.bind("npc-captured", (data: { id: userId; npc: NPC }) => {
         setNPCGroups((prev) => {
-          const newNPCGroups = prev.clone();
-          newNPCGroups.get(data.id).npcIds.push(data.npc.id);
-          console.log("npc group", newNPCGroups.get(data.id));
-          return newNPCGroups;
+          // only push if not already in npcIds
+          prev.get(data.id).npcIds.add(data.npc.id);
+          return prev;
         });
       });
 

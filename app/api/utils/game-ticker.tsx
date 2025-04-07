@@ -1,6 +1,10 @@
-import { NPCPhase } from "@/app/utils/types";
-import { calculateLandingPosition } from "../npc/[id]/throw/route";
-import { channelActiveThrows, setThrowCompleteInChannel } from "../npc/service";
+import { throwData } from "@/app/utils/types";
+import {
+  getAllChannelNames,
+  getChannelActiveThrows,
+  setChannelActiveThrows,
+  setThrowCompleteInChannel,
+} from "../npc/service";
 
 let gameTickerInstance: GameTicker | null = null;
 
@@ -20,41 +24,59 @@ class GameTicker {
   }
 
   startTicker() {
-    this.tickInterval = setInterval(() => this.tick(), this.tickRate);
+    this.tick();
   }
 
-  private tick() {
-    const now = Date.now();
-    // Process throws from all channels
-    for (const [channelName, throws] of channelActiveThrows.entries()) {
-      // Use filter to keep active throws and process completed ones
-      channelActiveThrows.set(
-        channelName,
-        throws.filter((throwData) => {
-          const elapsedTime = now - throwData.timestamp;
+  private async tick() {
+    try {
+      // Get all channel names
+      const channelNames = await getAllChannelNames();
 
-          if (elapsedTime >= throwData.throwDuration) {
-            // Handle landing
-            const finalPosition = calculateLandingPosition(throwData);
+      // Process each channel
+      for (const channelName of channelNames) {
+        // Get throws for this channel
+        const throws = await getChannelActiveThrows(channelName);
+        if (!throws || throws.length === 0) continue;
 
-            throwData.npc.position = finalPosition;
-            throwData.npc.phase = NPCPhase.IDLE;
-            setThrowCompleteInChannel(channelName, { ...throwData });
+        const activeThrows: throwData[] = [];
+        const completedThrows: throwData[] = [];
 
-            // Remove by returning false
-            return false;
+        // Use forEach instead of filter to separate active and completed throws
+        throws.forEach((throwData) => {
+          const now = Date.now();
+          const throwEndTime = throwData.timestamp + throwData.throwDuration;
+
+          if (now >= throwEndTime) {
+            // Throw is complete
+            completedThrows.push(throwData);
+          } else {
+            // Throw is still active
+            activeThrows.push(throwData);
           }
+        });
 
-          // Keep this throw active
-          return true;
-        })
-      );
+        // Process completed throws
+        for (const completedThrow of completedThrows) {
+          await setThrowCompleteInChannel(channelName, completedThrow);
+        }
+
+        // Update active throws in Redis store
+        if (activeThrows.length !== throws.length) {
+          await setChannelActiveThrows(channelName, activeThrows);
+        }
+      }
+    } catch (error) {
+      console.error("Error in game ticker:", error);
     }
+
+    // Important: Use a properly bound function reference
+    setTimeout(() => this.tick(), this.tickRate);
   }
 
   cleanup() {
     if (this.tickInterval) {
       clearInterval(this.tickInterval);
+      this.tickInterval = null;
     }
   }
 }

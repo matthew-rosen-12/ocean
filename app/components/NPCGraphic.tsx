@@ -4,6 +4,11 @@ import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { smoothMove } from "../utils/movement";
 
+// Create a global texture cache
+const textureCache = new Map<string, THREE.Texture>();
+// Create a single shared loader
+const textureLoader = new THREE.TextureLoader();
+
 interface NPCGraphicProps {
   npc: NPC;
   myUser: UserInfo;
@@ -13,6 +18,11 @@ interface NPCGraphicProps {
   throw?: throwData;
   offsetIndex?: number;
 }
+
+// Add this custom hook at the top of your file or in a separate hooks file
+const useMount = (callback: () => void) => {
+  useEffect(callback, []); // Empty dependency array means it runs only on mount
+};
 
 const NPCGraphic: React.FC<NPCGraphicProps> = ({
   npc,
@@ -32,10 +42,29 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
   const textureLoaded = useRef(false);
   const previousPosition = useMemo(() => new THREE.Vector3(), []);
 
+  // This will run only once on initial render
+  useMount(() => {
+    // Initial position setup logic
+    if (npc.position && npc.phase !== NPCPhase.CAPTURED) {
+      positionRef.current.set(npc.position.x, npc.position.y, npc.position.z);
+    }
+
+    if (followingUser) {
+      // Calculate position using the helper function
+      const position = calculateFollowPosition(followingUser, offsetIndex || 0);
+
+      // Set initial position directly
+      positionRef.current.copy(position);
+    }
+
+    // Update previous position and group position
+    previousPosition.copy(positionRef.current);
+    group.position.copy(previousPosition);
+  });
+
   // Add this helper function inside the component
   const calculateFollowPosition = (
     followingUser: UserInfo,
-    npcId: string,
     offsetIndex: number,
     offsetDistance: number = 4.0
   ): THREE.Vector3 => {
@@ -101,84 +130,111 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
     );
   };
 
-  // Modify the useEffect that sets up the mesh
+  // Regular useEffect for texture loading and updates that need to respond to prop changes
   useEffect(() => {
-    const textureLoader = new THREE.TextureLoader();
+    // Position update
+    previousPosition.copy(positionRef.current);
+    group.position.copy(previousPosition);
 
-    // Check if this is the first setup by looking at previousPosition
-    const isFirstSetup = previousPosition.lengthSq() === 0;
+    // Check if mesh is already set up and attached to the group
+    if (
+      mesh.current &&
+      mesh.current.parent === group &&
+      textureLoaded.current
+    ) {
+      // Mesh is already set up correctly, no need to recreate
+      console.log("Mesh already set up for", npc.filename);
 
-    if (isFirstSetup && npc.position && followingUser === undefined) {
-      positionRef.current.set(npc.position.x, npc.position.y, npc.position.z);
-    }
-
-    if (isFirstSetup && followingUser && followingUser.position) {
-      // Calculate position using the helper function
-      const position = calculateFollowPosition(
-        followingUser,
-        npc.id,
-        offsetIndex || 0
-      );
-
-      // Set initial position directly
-      positionRef.current.copy(position);
-      previousPosition.copy(positionRef.current);
-      group.position.copy(previousPosition);
-    } else {
-      // Default behavior
-      previousPosition.copy(positionRef.current);
-      group.position.copy(previousPosition);
-    }
-    // Load texture
-    textureLoader.load(
-      `/npcs/${npc.filename}`,
-      (loadedTexture) => {
-        texture.current = loadedTexture;
-
-        // Create material and mesh
-        material.current = new THREE.MeshBasicMaterial({
-          map: loadedTexture,
-          transparent: true,
-          side: THREE.DoubleSide,
-        });
-
-        const geometry = new THREE.PlaneGeometry(1, 1);
-        mesh.current = new THREE.Mesh(geometry, material.current);
-
-        // Scale based on texture aspect ratio
-        const imageAspect =
-          loadedTexture.image.width / loadedTexture.image.height;
-        const scale = 3; // Base scale
-        mesh.current.scale.set(scale * imageAspect, scale, 1);
-
-        group.add(mesh.current);
-        textureLoaded.current = true;
-      },
-      undefined,
-      (error) => {
-        console.error("Error loading NPC texture:", error);
+      // Still update target position if needed
+      if (npc.phase === NPCPhase.THROWN || npc.phase === NPCPhase.IDLE) {
+        targetPositionRef.current.copy(npc.position);
       }
-    );
+      return;
+    }
+
+    // If we get here, we need to set up the mesh
+    const texturePath = `/npcs/${npc.filename}`;
+
+    // Clean up any existing mesh first to avoid adding duplicates
+    if (mesh.current && mesh.current.parent === group) {
+      group.remove(mesh.current);
+    }
+
+    if (textureCache.has(texturePath)) {
+      console.log("Using cached texture for", npc.filename);
+      texture.current = textureCache.get(texturePath)!;
+
+      // Create material and mesh using cached texture
+      material.current = new THREE.MeshBasicMaterial({
+        map: texture.current,
+        transparent: true,
+        side: THREE.DoubleSide,
+      });
+
+      const geometry = new THREE.PlaneGeometry(1, 1);
+      mesh.current = new THREE.Mesh(geometry, material.current);
+
+      // Scale based on texture aspect ratio
+      const imageAspect =
+        texture.current.image.width / texture.current.image.height;
+      const scale = 3; // Base scale
+      mesh.current.scale.set(scale * imageAspect, scale, 1);
+
+      group.add(mesh.current);
+      textureLoaded.current = true;
+    } else {
+      // Load texture if not cached
+      textureLoader.load(
+        texturePath,
+        (loadedTexture) => {
+          console.log("Newly loaded texture for", npc.filename);
+          // Cache the texture
+          textureCache.set(texturePath, loadedTexture);
+
+          // Double-check we don't already have a mesh (in case of rapid re-renders)
+          if (mesh.current && mesh.current.parent === group) {
+            group.remove(mesh.current);
+          }
+
+          texture.current = loadedTexture;
+
+          // Create material and mesh
+          material.current = new THREE.MeshBasicMaterial({
+            map: loadedTexture,
+            transparent: true,
+            side: THREE.DoubleSide,
+          });
+
+          const geometry = new THREE.PlaneGeometry(1, 1);
+          mesh.current = new THREE.Mesh(geometry, material.current);
+
+          // Scale based on texture aspect ratio
+          const imageAspect =
+            loadedTexture.image.width / loadedTexture.image.height;
+          const scale = 3; // Base scale
+          mesh.current.scale.set(scale * imageAspect, scale, 1);
+
+          group.add(mesh.current);
+          textureLoaded.current = true;
+        },
+        undefined,
+        (error) => {
+          console.error("Error loading NPC texture:", error);
+        }
+      );
+    }
 
     if (npc.phase === NPCPhase.THROWN || npc.phase === NPCPhase.IDLE) {
       targetPositionRef.current.copy(npc.position);
     }
+
     return () => {
       if (texture.current) texture.current.dispose();
       if (material.current) material.current.dispose();
       if (mesh.current && mesh.current.geometry)
         mesh.current.geometry.dispose();
     };
-  }, [
-    previousPosition,
-    group,
-    npc.filename,
-    npc.phase,
-    followingUser,
-    npc.id,
-    npc.position,
-    offsetIndex,
-  ]);
+  }, [group, npc.filename, npc.phase, npc.position, previousPosition]);
 
   // Handle updates and collisions
   useFrame(() => {
@@ -210,35 +266,31 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
       group.rotation.z = 0;
     } else {
       // Normal following behavior
-      if (followingUser) {
-        const targetPosition = calculateFollowPosition(
-          followingUser,
-          npc.id,
-          offsetIndex || 0
-        );
-
-        if (positionRef.current != targetPosition) {
-          if (isLocalUser) {
-            positionRef.current.copy(targetPosition);
-          } else {
-            positionRef.current.copy(
-              smoothMove(positionRef.current.clone(), targetPosition)
-            );
-          }
-
-          group.position.copy(positionRef.current);
-
-          // Update NPC position data
-          if (npc.phase === NPCPhase.CAPTURED && followingUser) {
-            npc.position.x = positionRef.current.x;
-            npc.position.y = positionRef.current.y;
-            npc.position.z = positionRef.current.z;
-          }
-
-          // Fixed upright rotation - NPCs don't rotate with captor
-          group.rotation.z = 0;
-        }
-      }
+      // if (followingUser) {
+      //   const targetPosition = calculateFollowPosition(
+      //     followingUser,
+      //     npc.id,
+      //     offsetIndex || 0
+      //   );
+      //   if (positionRef.current != targetPosition) {
+      //     if (isLocalUser || !isLocalUser) {
+      //       positionRef.current.copy(targetPosition);
+      //     } else {
+      //       positionRef.current.copy(
+      //         smoothMove(positionRef.current.clone(), targetPosition)
+      //       );
+      //     }
+      //     group.position.copy(positionRef.current);
+      //     // Update NPC position data
+      //     if (npc.phase === NPCPhase.CAPTURED && followingUser) {
+      //       npc.position.x = positionRef.current.x;
+      //       npc.position.y = positionRef.current.y;
+      //       npc.position.z = positionRef.current.z;
+      //     }
+      //     // Fixed upright rotation - NPCs don't rotate with captor
+      //     group.rotation.z = 0;
+      //   }
+      // }
     }
     if (!followingUser && onCollision) {
       const COLLISION_THRESHOLD = 2.5;

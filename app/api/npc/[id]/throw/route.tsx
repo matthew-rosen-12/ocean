@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPusherInstance } from "../../../utils/pusher/pusher-instance";
 import { throwData, NPC, NPCPhase } from "../../../../utils/types";
-import { channelActiveThrows, updateNPCInChannel } from "../../service";
+import {
+  getChannelActiveThrows,
+  setChannelActiveThrows,
+  updateNPCInChannel,
+} from "../../service";
 import { getGameTicker } from "../../../utils/game-ticker";
 
 getGameTicker();
@@ -47,7 +51,9 @@ export async function POST(
     };
 
     updateNPCInChannel(channelName, updatedNPC);
-    channelActiveThrows.get(channelName).push(throwData);
+    const activeThrows = await getChannelActiveThrows(channelName);
+    activeThrows.push(throwData);
+    await setChannelActiveThrows(channelName, activeThrows);
     await pusher.trigger(channelName, "npc-thrown", {
       throw: throwData,
     });

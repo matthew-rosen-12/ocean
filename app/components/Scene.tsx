@@ -51,9 +51,7 @@ async function throwNPC(
   try {
     // First remove the NPC from the myUser's NPC group immediately
     if (npcGroups.get(myUser.id)) {
-      npcGroups.get(myUser.id).npcIds = npcGroups
-        .get(myUser.id)
-        .npcIds.filter((npcId) => npcId !== npc.id);
+      npcGroups.get(myUser.id).npcIds.delete(npc.id);
 
       // Broadcast that the user has been modified
       const channel = getChannel(myUser.channel_name);
@@ -99,26 +97,19 @@ function useKeyboardMovement(
       // Handle space bar press for throwing NPCs
       if (
         (event.key === " " || event.key === "Spacebar") &&
-        npcGroups.get(myUser.id).npcIds.length > 0
+        npcGroups.get(myUser.id).npcIds.size > 0
       ) {
-        // Find the first captured NPC
-        const capturedNpcIndex = npcGroups
+        // Get the first NPC ID from the set
+        const npcIdToThrow = npcGroups
           .get(myUser.id)
-          .npcIds.findIndex(
-            (npcId) => npcs.get(npcId)!.phase === NPCPhase.CAPTURED
-          );
+          .npcIds.values()
+          .next().value;
 
-        if (capturedNpcIndex >= 0) {
-          // Get the NPC to throw
-          const npcIdToThrow = npcGroups.get(myUser.id).npcIds[
-            capturedNpcIndex
-          ];
+        if (npcIdToThrow) {
           const npc = npcs.get(npcIdToThrow);
-          if (!npc) {
-            console.error(`NPC with ID ${npcIdToThrow} not found`);
-            return;
+          if (npc) {
+            throwNPC(myUser, npc, npcGroups);
           }
-          throwNPC(myUser, npc, npcGroups);
         }
       }
     };
@@ -311,7 +302,7 @@ export default function Scene({
       if (npc.phase == NPCPhase.IDLE) {
         npc.phase = NPCPhase.CAPTURED;
 
-        npcGroups.get(myUser.id).npcIds.push(npc.id);
+        npcGroups.get(myUser.id).npcIds.add(npc.id);
         fetch(`/api/npc/${npc.id}/capture`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -320,7 +311,6 @@ export default function Scene({
             channelName: myUser.channel_name,
           }),
         });
-        console.log("npc group", npcGroups.get(myUser.id));
       }
     },
     [npcGroups, myUser]
@@ -353,9 +343,9 @@ export default function Scene({
         <AnimalGraphic key={user.id} user={user} myUserId={myUser.id} />
       ))}
       {Array.from(npcGroups.entries()).map(([userId, npcGroup]) =>
-        npcGroup.npcIds.map((npcId, index) => (
+        Array.from(npcGroup.npcIds).map((npcId, index) => (
           <NPCGraphic
-            key={`${userId}-${npcId}`}
+            key={npcId}
             npc={npcs.get(npcId)!}
             myUser={myUser}
             isLocalUser={userId === myUser.id}

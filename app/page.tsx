@@ -14,7 +14,7 @@ export default function Home() {
   const [npcs, setNPCs] = useState<Map<npcId, NPC>>(new Map());
   const [throws, setThrows] = useState<Map<npcId, throwData>>(new Map());
   const [npcGroups, setNPCGroups] = useState<DefaultMap<userId, NPCGroup>>(
-    new DefaultMap((id) => ({ npcIds: [], captorId: id }))
+    new DefaultMap((id) => ({ npcIds: new Set(), captorId: id }))
   );
 
   if (!myUser) {

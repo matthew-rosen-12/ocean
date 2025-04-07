@@ -53,7 +53,7 @@ export type throwData = {
 };
 
 export type NPCGroup = {
-  npcIds: npcId[];
+  npcIds: Set<npcId>;
   captorId: userId;
 };
 
@@ -72,9 +72,5 @@ export class DefaultMap<K, V> extends Map<K, V> {
       this.set(key, this.defaultFactory(key));
     }
     return super.get(key)!;
-  }
-
-  clone(): DefaultMap<K, V> {
-    return new DefaultMap<K, V>(this.defaultFactory);
   }
 }

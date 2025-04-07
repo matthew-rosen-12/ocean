@@ -1,8 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
-import fs from "fs";
 import path from "path";
+import fs from "fs";
 import {
-  DefaultMap,
   NPC,
   NPCGroup,
   npcId,
@@ -12,71 +11,132 @@ import {
 } from "../../utils/types";
 import { getDirection, getPosition } from "../utils/npc-info";
 import { getPusherInstance } from "../utils/pusher/pusher-instance";
-const pusher = getPusherInstance();
+import { getRedisClient } from "../utils/redis-client";
 
+const pusher = getPusherInstance();
 const NUM_NPCS = 4;
 
-let npcFilenamesCache: string[] | null = null;
+// Redis Key prefixes for different data types
+const NPC_KEY_PREFIX = "npcs:";
+const THROWS_KEY_PREFIX = "throws:";
+const GROUPS_KEY_PREFIX = "groups:";
 
-export const channelNPCs = new Map<string, Map<npcId, NPC>>();
+// Helper functions for Redis storage
+async function getNPCMapFromRedis(
+  channelName: string
+): Promise<Map<npcId, NPC>> {
+  const redis = await getRedisClient();
+  const data = await redis.get(`${NPC_KEY_PREFIX}${channelName}`);
+  return data ? new Map(JSON.parse(data)) : new Map();
+}
 
-// Replace the regular Map with DefaultMap
-export const channelActiveThrows = new DefaultMap<string, throwData[]>(
-  () => []
-);
-
-export const channelNPCGroups = new DefaultMap<
-  string,
-  DefaultMap<userId, NPCGroup>
->(
-  () => new DefaultMap<userId, NPCGroup>((id) => ({ npcIds: [], captorId: id }))
-);
-
-function getNPCFilenames(): string[] {
-  if (npcFilenamesCache) return npcFilenamesCache;
-
-  const npcsDir = path.join(process.cwd(), "public", "npcs");
-  const files = fs.readdirSync(npcsDir);
-
-  const imageFiles = files.filter((file) =>
-    /\.(png|jpg|jpeg|gif|svg)$/i.test(file)
+async function setNPCMapToRedis(
+  channelName: string,
+  npcs: Map<npcId, NPC>
+): Promise<void> {
+  const redis = await getRedisClient();
+  await redis.set(
+    `${NPC_KEY_PREFIX}${channelName}`,
+    JSON.stringify(Array.from(npcs.entries()))
   );
-
-  if (imageFiles.length === 0) {
-    console.error("No image files found in npcs directory");
-  }
-
-  npcFilenamesCache = imageFiles;
-  return imageFiles;
 }
 
-export function getNPCsForChannel(channelName: string): Map<npcId, NPC> {
-  if (!channelNPCs.has(channelName)) {
-    populateChannel(channelName);
-  }
-
-  return channelNPCs.get(channelName) || new Map<npcId, NPC>();
+async function getThrowsFromRedis(channelName: string): Promise<throwData[]> {
+  const redis = await getRedisClient();
+  const data = await redis.get(`${THROWS_KEY_PREFIX}${channelName}`);
+  return data ? JSON.parse(data) : [];
 }
 
-export function populateChannel(channelName: string) {
-  if (!channelNPCs.has(channelName)) {
-    const npcs = createNPCs(NUM_NPCS);
+async function setThrowsToRedis(
+  channelName: string,
+  throws: throwData[]
+): Promise<void> {
+  const redis = await getRedisClient();
+  await redis.set(`${THROWS_KEY_PREFIX}${channelName}`, JSON.stringify(throws));
+}
+
+export async function getNPCGroupsFromRedis(
+  channelName: string
+): Promise<Map<userId, NPCGroup>> {
+  const redis = await getRedisClient();
+  const data = await redis.get(`${GROUPS_KEY_PREFIX}${channelName}`);
+
+  if (!data) {
+    return new Map();
+  }
+
+  const parsed = JSON.parse(data);
+  return new Map(
+    parsed.map(([id, group]: [string, any]) => {
+      return [id, { npcIds: new Set(group.npcIds), captorId: group.captorId }];
+    })
+  );
+}
+
+async function setNPCGroupsToRedis(
+  channelName: string,
+  groups: Map<userId, NPCGroup>
+): Promise<void> {
+  const redis = await getRedisClient();
+  const serializable = Array.from(groups.entries()).map(([id, group]) => {
+    return [id, { npcIds: Array.from(group.npcIds), captorId: group.captorId }];
+  });
+
+  await redis.set(
+    `${GROUPS_KEY_PREFIX}${channelName}`,
+    JSON.stringify(serializable)
+  );
+}
+
+// Main service functions
+export async function getNPCsForChannel(
+  channelName: string
+): Promise<Map<npcId, NPC>> {
+  const npcs = await getNPCMapFromRedis(channelName);
+
+  if (npcs.size === 0) {
+    return populateChannel(channelName);
+  }
+
+  return npcs;
+}
+
+export async function getChannelActiveThrows(
+  channelName: string
+): Promise<throwData[]> {
+  return getThrowsFromRedis(channelName);
+}
+
+export async function setChannelActiveThrows(
+  channelName: string,
+  throws: throwData[]
+): Promise<void> {
+  await setThrowsToRedis(channelName, throws);
+}
+
+export async function populateChannel(
+  channelName: string
+): Promise<Map<npcId, NPC>> {
+  const existingNpcs = await getNPCMapFromRedis(channelName);
+
+  if (existingNpcs.size === 0) {
+    const npcs = await createNPCs(NUM_NPCS);
     const npcMap = new Map<npcId, NPC>();
+
     npcs.forEach((npc) => {
       npcMap.set(npc.id, npc);
     });
-    channelNPCs.set(channelName, npcMap);
 
+    await setNPCMapToRedis(channelName, npcMap);
     return npcMap;
   }
 
-  return channelNPCs.get(channelName);
+  return existingNpcs;
 }
 
-function createNPCs(count: number): NPC[] {
+async function createNPCs(count: number): Promise<NPC[]> {
   const npcs: NPC[] = [];
-  const npcFilenames = getNPCFilenames();
-
+  const npcFilenames = await getNPCFilenames();
   const shuffledFilenames = [...npcFilenames].sort(() => Math.random() - 0.5);
 
   for (let i = 0; i < count; i++) {
@@ -99,20 +159,15 @@ function createNPCs(count: number): NPC[] {
   return npcs;
 }
 
-export function updateNPCInChannel(
+export async function updateNPCInChannel(
   channelName: string,
   npc: NPC,
   message: boolean = false
-): void {
-  if (!channelNPCs.has(channelName)) {
-    const npcMap = new Map<npcId, NPC>();
-    channelNPCs.set(channelName, npcMap);
-  }
+): Promise<void> {
+  const npcs = await getNPCMapFromRedis(channelName);
+  npcs.set(npc.id, npc);
+  await setNPCMapToRedis(channelName, npcs);
 
-  const npcs = channelNPCs.get(channelName);
-  if (npcs) {
-    npcs.set(npc.id, npc);
-  }
   if (message) {
     pusher.trigger(channelName, "npc-update", {
       npc: npc,
@@ -120,31 +175,70 @@ export function updateNPCInChannel(
   }
 }
 
-export function updateNPCGroupInChannel(
+export async function updateNPCGroupInChannel(
   channelName: string,
   captorId: userId,
   npcId: npcId
-): void {
-  if (!channelNPCGroups.has(channelName)) {
-    const npcGroupMap = new DefaultMap<userId, NPCGroup>((id) => ({
-      npcIds: [],
-      captorId: id,
-    }));
-    channelNPCGroups.set(channelName, npcGroupMap);
+): Promise<void> {
+  const groups = await getNPCGroupsFromRedis(channelName);
+
+  if (!groups.has(captorId)) {
+    groups.set(captorId, { npcIds: new Set(), captorId });
   }
 
-  const npcGroups = channelNPCGroups.get(channelName);
-  if (npcGroups) {
-    npcGroups.get(captorId).npcIds.push(npcId);
-  }
+  const group = groups.get(captorId)!;
+  group.npcIds.add(npcId);
+
+  await setNPCGroupsToRedis(channelName, groups);
 }
 
-export function setThrowCompleteInChannel(
+export async function setThrowCompleteInChannel(
   channelName: string,
   landedThrow: throwData
-): void {
+): Promise<void> {
+  // Calculate landing position
+  const landingPosition = calculateLandingPosition(landedThrow);
+
+  // Update NPC with new position and change phase back to IDLE
+  const updatedNPC = {
+    ...landedThrow.npc,
+    position: landingPosition,
+    phase: NPCPhase.IDLE,
+  };
+
   pusher.trigger(channelName, "throw-complete", {
-    throw: landedThrow,
+    throw: {
+      ...landedThrow,
+      npc: updatedNPC,
+    },
   });
-  updateNPCInChannel(channelName, landedThrow.npc, true);
+
+  await updateNPCInChannel(channelName, updatedNPC, true);
+}
+
+function calculateLandingPosition(throwData: throwData) {
+  const { startPosition, direction, velocity, throwDuration } = throwData;
+  const distance = velocity * (throwDuration / 1000);
+  const landingPosition = {
+    x: startPosition.x + direction.x * distance,
+    y: startPosition.y + direction.y * distance,
+    z: 0,
+  };
+  return landingPosition;
+}
+
+async function getNPCFilenames(): Promise<string[]> {
+  // Implementation using fs directly
+  const npcsDir = path.join(process.cwd(), "public", "npcs");
+  const files = fs.readdirSync(npcsDir);
+  return files.filter((file) => /\.(png|jpg|jpeg|gif|svg)$/i.test(file));
+}
+
+// Add this new function to get all channel names
+export async function getAllChannelNames(): Promise<string[]> {
+  const redis = await getRedisClient();
+  const keys = await redis.keys(`${NPC_KEY_PREFIX}*`);
+
+  // Extract the channel names from the keys
+  return keys.map((key) => key.substring(NPC_KEY_PREFIX.length));
 }

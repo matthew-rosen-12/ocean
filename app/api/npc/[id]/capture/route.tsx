@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPusherInstance } from "../../../utils/pusher/pusher-instance";
 import { NPC, NPCPhase } from "../../../../utils/types";
 import {
-  channelNPCGroups,
-  channelNPCs,
   getNPCsForChannel,
   updateNPCGroupInChannel,
   updateNPCInChannel,
@@ -25,9 +23,8 @@ export async function POST(
     }
     const pusher = getPusherInstance();
 
-    console.log("channelNPCs in capture", channelNPCs);
-
-    const npc = getNPCsForChannel(channelName).get(npcId)!;
+    const npcs = await getNPCsForChannel(channelName);
+    const npc = npcs.get(npcId)!;
 
     const updatedNPC: NPC = {
       ...npc,
