@@ -10,7 +10,6 @@ import {
   userId,
   UserInfo,
 } from "../utils/types";
-import NPCGraphic from "./NPCGraphic";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Vector3 } from "three";
 import { useFrame } from "@react-three/fiber";
@@ -20,6 +19,9 @@ import { ANIMAL_SCALES, DIRECTION_OFFSET } from "../api/utils/user-info";
 import { NPC } from "../utils/types";
 import AnimalGraphic from "./AnimalGraphic";
 import { DefaultMap } from "../utils/types";
+import CapturedNPCGraphic from "./npc-graphics/CapturedNPCGraphic";
+import IdleNPCGraphic from "./npc-graphics/IdleNPCGraphic";
+import ThrownNPCGraphic from "./npc-graphics/ThrownNPCGraphic";
 
 // Speed of movement per keypress/frame
 const MOVE_SPEED = 0.5;
@@ -351,29 +353,41 @@ export default function Scene({
             return null;
           }
           return (
-            <NPCGraphic
+            <CapturedNPCGraphic
               key={npcId}
               npc={npc}
               myUser={myUser}
               isLocalUser={userId === myUser.id}
-              followingUser={users.get(userId)}
+              followingUser={users.get(userId)!}
               offsetIndex={index}
             />
           );
         })
       )}
-      {npcs.size > 0 &&
-        Array.from(npcs.values())
-          .filter((npc) => npc.phase !== NPCPhase.CAPTURED)
-          .map((npc) => (
-            <NPCGraphic
+      {Array.from(npcs.values())
+        .filter((npc) => npc.phase === NPCPhase.IDLE)
+        .map((npc) => (
+          <IdleNPCGraphic
+            key={npc.id}
+            npc={npc}
+            myUser={myUser}
+            isLocalUser={false}
+            onCollision={(npc) => handleNPCCollision(npc)}
+          />
+        ))}
+      {Array.from(npcs.values())
+        .filter((npc) => npc.phase === NPCPhase.THROWN)
+        .map((npc) => {
+          const throwData = throws.get(npc.id);
+          return throwData ? (
+            <ThrownNPCGraphic
               key={npc.id}
               npc={npc}
               myUser={myUser}
-              onCollision={(npc) => handleNPCCollision(npc)}
-              throw={throws.get(npc.id)}
+              throwData={throwData}
             />
-          ))}
+          ) : null;
+        })}
     </Canvas>
   );
 }
