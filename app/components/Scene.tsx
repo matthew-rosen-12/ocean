@@ -50,6 +50,7 @@ async function throwNPC(
 ) {
   try {
     // First remove the NPC from the myUser's NPC group immediately
+    npc.position = myUser.position;
     if (npcGroups.get(myUser.id)) {
       npcGroups.get(myUser.id).npcIds.delete(npc.id);
 
@@ -381,7 +382,7 @@ export default function Scene({
 TODO:
 change out the maps that require bam ing
 debug slow local and non-local npc following when multiplayer
-factory or abstraction for update server and client
+factory or abstraction for update server and client (update npc, update npc group, update throw)
 
 add NPCs to capture
   - adjust bounding box for interaction (to head? entire body?)

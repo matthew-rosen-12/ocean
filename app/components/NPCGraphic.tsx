@@ -303,9 +303,6 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
           }
           group.position.copy(positionRef.current);
 
-          npc.position.x = positionRef.current.x;
-          npc.position.y = positionRef.current.y;
-
           // Fixed upright rotation - NPCs don't rotate with captor
           group.rotation.z = 0;
         }
