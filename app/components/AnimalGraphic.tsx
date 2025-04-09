@@ -218,6 +218,9 @@ function AnimalSprite({
   }
   useFrame(() => {
     // Skip if SVG isn't loaded yet
+    // console.log("isLocalPlayer", isLocalPlayer);
+    // if (!isLocalPlayer) return;
+
     if (!svgLoaded.current || !initialScale.current) return;
 
     // Position handling - same for local and non-local

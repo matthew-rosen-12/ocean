@@ -3,6 +3,7 @@ import { getPusherInstance } from "../../../utils/pusher/pusher-instance";
 import { throwData, NPC, NPCPhase } from "../../../../utils/types";
 import {
   getChannelActiveThrows,
+  removeNPCFromGroupInChannel,
   setChannelActiveThrows,
   updateNPCGroupInChannel,
   updateNPCInChannel,
@@ -58,7 +59,7 @@ export async function POST(
     await setChannelActiveThrows(channelName, activeThrows);
 
     // update NPCGroup in channel
-    await updateNPCGroupInChannel(channelName, throwerId, npcId);
+    await removeNPCFromGroupInChannel(channelName, throwerId, npcId);
 
     await pusher.trigger(channelName, "npc-thrown", {
       throw: throwData,
@@ -72,15 +73,4 @@ export async function POST(
       { status: 500 }
     );
   }
-}
-
-export function calculateLandingPosition(throwData: throwData) {
-  const { startPosition, direction, velocity, throwDuration } = throwData;
-  const distance = velocity * (throwDuration / 1000);
-  const landingPosition = {
-    x: startPosition.x + direction.x * distance,
-    y: startPosition.y + direction.y * distance,
-    z: 0,
-  };
-  return landingPosition;
 }

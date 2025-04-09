@@ -49,13 +49,15 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
     source: string
   ) => {
     if (!positionRef.current.equals(newPos)) {
-      console.log(`Position updated from ${source}:`, {
-        npcId: npc.id,
-        from: positionRef.current.clone(),
-        to: newPos.clone(),
-        phase: npc.phase,
-        isFollowing: !!followingUser,
-      });
+      if (true) {
+        console.log(`Position updated from ${source}:`, {
+          npcId: npc.id,
+          from: positionRef.current.clone(),
+          to: newPos.clone(),
+          phase: npc.phase,
+          isFollowing: !!followingUser,
+        });
+      }
       positionRef.current.copy(newPos);
     }
   };
@@ -70,7 +72,7 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
       );
     }
 
-    if (followingUser) {
+    if (npc.phase === NPCPhase.CAPTURED && followingUser) {
       // Calculate position using the helper function
       const position = calculateFollowPosition(followingUser, offsetIndex || 0);
       // Set initial position directly
