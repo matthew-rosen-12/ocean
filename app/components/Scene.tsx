@@ -343,16 +343,23 @@ export default function Scene({
         <AnimalGraphic key={user.id} user={user} myUserId={myUser.id} />
       ))}
       {Array.from(npcGroups.entries()).map(([userId, npcGroup]) =>
-        Array.from(npcGroup.npcIds).map((npcId, index) => (
-          <NPCGraphic
-            key={npcId}
-            npc={npcs.get(npcId)!}
-            myUser={myUser}
-            isLocalUser={userId === myUser.id}
-            followingUser={users.get(userId)}
-            offsetIndex={index}
-          />
-        ))
+        Array.from(npcGroup.npcIds).map((npcId, index) => {
+          const npc = npcs.get(npcId);
+          if (!npc) {
+            console.warn(`NPC with id ${npcId} not found in npcs map`);
+            return null;
+          }
+          return (
+            <NPCGraphic
+              key={npcId}
+              npc={npc}
+              myUser={myUser}
+              isLocalUser={userId === myUser.id}
+              followingUser={users.get(userId)}
+              offsetIndex={index}
+            />
+          );
+        })
       )}
       {npcs.size > 0 &&
         Array.from(npcs.values())

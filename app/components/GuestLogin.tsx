@@ -55,22 +55,14 @@ export default function GuestLogin({
         usersMap.set(user.id, user);
         setUsers(usersMap);
 
-        let responsesToAwait = members.count - 1;
-        let responseTimeout: NodeJS.Timeout | null = null;
-
         const fetchNPCs = () => {
-          if (responseTimeout) {
-            clearTimeout(responseTimeout);
-            responseTimeout = null;
-          }
-
           fetch(`/api/npc?channel=${channel_name}`)
             .then((res) => res.json())
             .then((data) => {
               // Convert the array back to a Map
               const npcMap = new Map<npcId, NPC>(data);
               setNPCs(npcMap);
-              fetchActiveThrows();
+              setLoading(false); // Move loading false here as this is now the last fetch
             })
             .catch((err) => {
               console.error("Error fetching NPCs:", err);
@@ -78,29 +70,6 @@ export default function GuestLogin({
             });
         };
 
-        const fetchActiveThrows = () => {
-          fetch(`/api/npc/throws?channel=${channel_name}`)
-            .then((res) => res.json())
-            .then((data) => {
-              // Process active throws
-              const { activeThrows } = data;
-              const throwsMap = new Map<string, throwData>();
-
-              activeThrows.forEach((activeThrow: throwData) => {
-                throwsMap.set(activeThrow.npc.id, activeThrow);
-              });
-              setThrows(throwsMap);
-
-              // Add this call to fetch groups after fetching throws
-              fetchNPCGroups();
-            })
-            .catch((err) => {
-              console.error("Error fetching active throws:", err);
-              setLoading(false);
-            });
-        };
-
-        // Add this new function to fetch NPC groups
         const fetchNPCGroups = () => {
           fetch(`/api/npc/capture?channel=${channel_name}`)
             .then((res) => res.json())
@@ -124,7 +93,8 @@ export default function GuestLogin({
 
               console.log("Fetched NPC groups:", groupsMap);
               setNPCGroups(groupsMap);
-              setLoading(false);
+              // Now fetch NPCs last
+              fetchNPCs();
             })
             .catch((err) => {
               console.error("Error fetching NPC groups:", err);
@@ -132,10 +102,29 @@ export default function GuestLogin({
             });
         };
 
-        if (responsesToAwait === 0) {
-          fetchNPCs();
-          return;
-        }
+        const fetchActiveThrows = () => {
+          fetch(`/api/npc/throws?channel=${channel_name}`)
+            .then((res) => res.json())
+            .then((data) => {
+              // Process active throws
+              const { activeThrows } = data;
+              const throwsMap = new Map<string, throwData>();
+
+              activeThrows.forEach((activeThrow: throwData) => {
+                throwsMap.set(activeThrow.npc.id, activeThrow);
+              });
+              setThrows(throwsMap);
+
+              // Now fetch NPC groups second
+              fetchNPCGroups();
+            })
+            .catch((err) => {
+              console.error("Error fetching active throws:", err);
+              setLoading(false);
+            });
+        };
+
+        fetchActiveThrows();
 
         const stateReceivedHandler = (data: { id: string; info: UserInfo }) => {
           // Add the user to our users map
@@ -144,15 +133,6 @@ export default function GuestLogin({
             newUsers.set(data.id, data.info);
             return newUsers;
           });
-
-          // Track responses
-          responsesToAwait--;
-
-          // If we've received responses from all members, proceed
-          if (responsesToAwait === 0) {
-            channel.unbind("client-send-state", stateReceivedHandler);
-            fetchNPCs();
-          }
         };
 
         // Bind the handler
@@ -162,15 +142,6 @@ export default function GuestLogin({
         channel.trigger("client-request-state", {
           id: members.me.id,
         });
-
-        // Set a timeout in case some members don't respond
-        responseTimeout = setTimeout(() => {
-          console.log(
-            `Timeout waiting for responses. Still waiting for ${responsesToAwait} responses`
-          );
-          channel.unbind("client-send-state", stateReceivedHandler);
-          fetchNPCs();
-        }, 3000); // 3 second timeout
       });
 
       // Handle state requests from new players

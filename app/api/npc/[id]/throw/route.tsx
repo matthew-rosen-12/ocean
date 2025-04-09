@@ -4,6 +4,7 @@ import { throwData, NPC, NPCPhase } from "../../../../utils/types";
 import {
   getChannelActiveThrows,
   setChannelActiveThrows,
+  updateNPCGroupInChannel,
   updateNPCInChannel,
 } from "../../service";
 import { getGameTicker } from "../../../utils/game-ticker";
@@ -55,6 +56,10 @@ export async function POST(
     const activeThrows = await getChannelActiveThrows(channelName);
     activeThrows.push(throwData);
     await setChannelActiveThrows(channelName, activeThrows);
+
+    // update NPCGroup in channel
+    await updateNPCGroupInChannel(channelName, throwerId, npcId);
+
     await pusher.trigger(channelName, "npc-thrown", {
       throw: throwData,
     });

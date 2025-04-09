@@ -21,7 +21,8 @@ interface NPCGraphicProps {
 
 // Add this custom hook at the top of your file or in a separate hooks file
 const useMount = (callback: () => void) => {
-  useEffect(callback, []); // Empty dependency array means it runs only on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(callback, []);
 };
 
 const NPCGraphic: React.FC<NPCGraphicProps> = ({
@@ -42,19 +43,38 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
   const textureLoaded = useRef(false);
   const previousPosition = useMemo(() => new THREE.Vector3(), []);
 
+  // Add a function to track position changes
+  const updatePositionWithTracking = (
+    newPos: THREE.Vector3,
+    source: string
+  ) => {
+    if (!positionRef.current.equals(newPos)) {
+      console.log(`Position updated from ${source}:`, {
+        npcId: npc.id,
+        from: positionRef.current.clone(),
+        to: newPos.clone(),
+        phase: npc.phase,
+        isFollowing: !!followingUser,
+      });
+      positionRef.current.copy(newPos);
+    }
+  };
+
   // This will run only once on initial render
   useMount(() => {
     // Initial position setup logic
     if (npc.position && npc.phase !== NPCPhase.CAPTURED) {
-      positionRef.current.set(npc.position.x, npc.position.y, npc.position.z);
+      updatePositionWithTracking(
+        new THREE.Vector3(npc.position.x, npc.position.y, npc.position.z),
+        "useMount-position"
+      );
     }
 
     if (followingUser) {
       // Calculate position using the helper function
       const position = calculateFollowPosition(followingUser, offsetIndex || 0);
-
       // Set initial position directly
-      positionRef.current.copy(position);
+      updatePositionWithTracking(position, "useMount-followingUser");
     }
 
     // Update previous position and group position
@@ -136,15 +156,13 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
     previousPosition.copy(positionRef.current);
     group.position.copy(previousPosition);
 
+    // Log that this useEffect ran
     // Check if mesh is already set up and attached to the group
     if (
       mesh.current &&
       mesh.current.parent === group &&
       textureLoaded.current
     ) {
-      // Mesh is already set up correctly, no need to recreate
-      console.log("Mesh already set up for", npc.filename);
-
       // Still update target position if needed
       if (npc.phase === NPCPhase.THROWN || npc.phase === NPCPhase.IDLE) {
         targetPositionRef.current.copy(npc.position);
@@ -161,7 +179,6 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
     }
 
     if (textureCache.has(texturePath)) {
-      console.log("Using cached texture for", npc.filename);
       texture.current = textureCache.get(texturePath)!;
 
       // Create material and mesh using cached texture
@@ -234,7 +251,7 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
       if (mesh.current && mesh.current.geometry)
         mesh.current.geometry.dispose();
     };
-  }, [group, npc.filename, npc.phase, npc.position, previousPosition]);
+  }, [group, npc.filename, npc.id, npc.phase, npc.position, previousPosition]);
 
   // Handle updates and collisions
   useFrame(() => {
@@ -243,21 +260,23 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
     if (npc.phase === NPCPhase.THROWN && throwData) {
       // Calculate current position based on simple linear motion
       const throwPosition = calculateThrowPosition(throwData, Date.now());
-
       // Set position directly for smoother throws
-      positionRef.current.copy(throwPosition);
+      updatePositionWithTracking(throwPosition, "useFrame-thrown");
       group.position.copy(positionRef.current);
     } else if (npc.phase === NPCPhase.IDLE) {
       // Normal following behavior
-
       if (isLocalUser) {
-        positionRef.current.copy(npc.position);
+        updatePositionWithTracking(
+          new THREE.Vector3(npc.position.x, npc.position.y, 0),
+          "useFrame-idle-local"
+        );
       } else {
-        positionRef.current.copy(
+        updatePositionWithTracking(
           smoothMove(
             positionRef.current.clone(),
             new THREE.Vector3(npc.position.x, npc.position.y, 0)
-          )
+          ),
+          "useFrame-idle-remote"
         );
       }
 
@@ -270,21 +289,21 @@ const NPCGraphic: React.FC<NPCGraphicProps> = ({
           followingUser,
           offsetIndex || 0
         );
-        if (positionRef.current != targetPosition) {
+
+        if (!positionRef.current.equals(targetPosition)) {
           if (isLocalUser) {
-            positionRef.current.copy(targetPosition);
+            updatePositionWithTracking(targetPosition, "useFrame-follow-local");
           } else {
-            positionRef.current.copy(
-              smoothMove(positionRef.current.clone(), targetPosition)
+            updatePositionWithTracking(
+              smoothMove(positionRef.current.clone(), targetPosition),
+              "useFrame-follow-remote"
             );
           }
           group.position.copy(positionRef.current);
-          // Update NPC position data
-          if (npc.phase === NPCPhase.CAPTURED && followingUser) {
-            npc.position.x = positionRef.current.x;
-            npc.position.y = positionRef.current.y;
-            npc.position.z = positionRef.current.z;
-          }
+
+          npc.position.x = positionRef.current.x;
+          npc.position.y = positionRef.current.y;
+
           // Fixed upright rotation - NPCs don't rotate with captor
           group.rotation.z = 0;
         }

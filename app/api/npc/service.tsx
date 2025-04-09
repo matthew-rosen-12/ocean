@@ -192,6 +192,23 @@ export async function updateNPCGroupInChannel(
   await setNPCGroupsToRedis(channelName, groups);
 }
 
+export async function removeNPCFromGroupInChannel(
+  channelName: string,
+  throwerId: userId,
+  npcId: npcId
+): Promise<void> {
+  const groups = await getNPCGroupsFromRedis(channelName);
+
+  if (!groups.has(throwerId)) {
+    return;
+  }
+
+  const group = groups.get(throwerId)!;
+  group.npcIds.delete(npcId);
+
+  await setNPCGroupsToRedis(channelName, groups);
+}
+
 export async function setThrowCompleteInChannel(
   channelName: string,
   landedThrow: throwData
