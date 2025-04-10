@@ -34,10 +34,7 @@ export async function POST(request: NextRequest) {
     channel_name: channelName,
     position: getPosition(),
     direction: getDirection(),
-    npcGroup: {
-      npcs: [],
-      captorId: guestId,
-    },
+    npcGroup: { npcIds: new Set(), captorId: guestId },
   };
 
   const authResponse = pusher.authorizeChannel(socketId, channelName, {

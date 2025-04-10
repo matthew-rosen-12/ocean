@@ -51,7 +51,11 @@ export async function POST(request: NextRequest) {
 
         await prisma.$transaction(
           async (tx: {
-            room: { delete: (arg0: { where: { id: string } }) => any };
+            room: {
+              delete: (arg0: {
+                where: { id: string };
+              }) => Promise<{ id: string }>;
+            };
           }) => {
             const updatedRoom = await prisma.room.update({
               where: { id: roomId },

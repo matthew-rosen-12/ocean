@@ -17,6 +17,7 @@ export interface UserInfo {
   channel_name: string;
   position: Vector3;
   direction: Direction;
+  npcGroup: NPCGroup;
 }
 
 // First, define the NPCPhase enum

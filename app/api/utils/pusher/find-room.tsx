@@ -22,11 +22,13 @@ export default async function getChannel(): Promise<string> {
     const room = await prisma.$transaction(
       async (tx: {
         room: {
-          create: (arg0: { data: { numUsers: number } }) => any;
+          create: (arg0: {
+            data: { numUsers: number };
+          }) => Promise<{ id: string }>;
           update: (arg0: {
             where: { id: string };
             data: { channelName: string };
-          }) => any;
+          }) => Promise<{ id: string; channelName: string }>;
         };
       }) => {
         const newRoom = await tx.room.create({
