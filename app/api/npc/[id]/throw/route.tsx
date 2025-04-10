@@ -5,7 +5,6 @@ import {
   getChannelActiveThrows,
   removeNPCFromGroupInChannel,
   setChannelActiveThrows,
-  updateNPCGroupInChannel,
   updateNPCInChannel,
 } from "../../service";
 import { getGameTicker } from "../../../utils/game-ticker";
@@ -57,8 +56,6 @@ export async function POST(
     const activeThrows = await getChannelActiveThrows(channelName);
     activeThrows.push(throwData);
     await setChannelActiveThrows(channelName, activeThrows);
-
-    // update NPCGroup in channel
     await removeNPCFromGroupInChannel(channelName, throwerId, npcId);
 
     await pusher.trigger(channelName, "npc-thrown", {

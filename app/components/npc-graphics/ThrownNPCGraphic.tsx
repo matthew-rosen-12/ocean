@@ -1,12 +1,11 @@
 import React from "react";
-import { NPC, throwData, UserInfo } from "../../utils/types";
+import { NPC, throwData } from "../../utils/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
-import { useNPCBase } from "../../hooks/useNPCBase";
+import { useMount, useNPCBase } from "../../hooks/useNPCBase";
 
 interface ThrownNPCGraphicProps {
   npc: NPC;
-  myUser: UserInfo;
   throwData: throwData;
 }
 
@@ -18,13 +17,13 @@ const ThrownNPCGraphic: React.FC<ThrownNPCGraphicProps> = ({
     useNPCBase(npc);
 
   // Set initial position
-  React.useEffect(() => {
+  useMount(() => {
     updatePositionWithTracking(
       new THREE.Vector3(npc.position.x, npc.position.y, npc.position.z),
       "ThrownNPC-initial"
     );
     group.position.copy(positionRef.current);
-  }, []);
+  });
 
   // Calculate position for thrown NPCs
   const calculateThrowPosition = (

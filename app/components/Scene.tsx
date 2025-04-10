@@ -242,7 +242,6 @@ export default function Scene({
     npcGroups,
     npcs
   );
-  users.set(myUser.id, myUser);
 
   const lastBroadcastPosition = useRef(initialPosition);
   const lastBroadcastDirection = useRef(initialDirection);
@@ -302,22 +301,42 @@ export default function Scene({
 
   const handleNPCCollision = useCallback(
     (npc: NPC) => {
-      if (npc.phase == NPCPhase.IDLE) {
-        npc.phase = NPCPhase.CAPTURED;
-
-        npcGroups.get(myUser.id).npcIds.add(npc.id);
-        fetch(`/api/npc/${npc.id}/capture`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            captorId: myUser.id,
-            channelName: myUser.channel_name,
-          }),
-        });
-      }
+      npc.phase = NPCPhase.CAPTURED;
+      npcGroups.get(myUser.id).npcIds.add(npc.id);
+      fetch(`/api/npc/${npc.id}/capture`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          captorId: myUser.id,
+          channelName: myUser.channel_name,
+        }),
+      });
     },
-    [npcGroups, myUser]
+    [npcGroups, myUser.id, myUser.channel_name]
   );
+
+  // Function to check for collisions with NPCs
+  const checkForNPCCollision = (npc: NPC) => {
+    const COLLISION_THRESHOLD = 2.5;
+
+    const userPos = new Vector3(
+      myUser.position.x,
+      myUser.position.y,
+      myUser.position.z
+    );
+
+    const npcPosition = new Vector3(
+      npc.position.x,
+      npc.position.y,
+      npc.position.z
+    );
+
+    const distance = npcPosition.distanceTo(userPos);
+
+    if (distance < COLLISION_THRESHOLD) {
+      handleNPCCollision(npc);
+    }
+  };
 
   return (
     <Canvas
@@ -352,11 +371,14 @@ export default function Scene({
             console.warn(`NPC with id ${npcId} not found in npcs map`);
             return null;
           }
+          if (!users.get(userId)) {
+            console.warn(`User with id ${userId} not found in users map`);
+            return null;
+          }
           return (
             <CapturedNPCGraphic
               key={npcId}
               npc={npc}
-              myUser={myUser}
               isLocalUser={userId === myUser.id}
               followingUser={users.get(userId)!}
               offsetIndex={index}
@@ -364,51 +386,30 @@ export default function Scene({
           );
         })
       )}
+      {/* Idle NPCs with collision detection */}
       {Array.from(npcs.values())
         .filter((npc) => npc.phase === NPCPhase.IDLE)
         .map((npc) => (
           <IdleNPCGraphic
             key={npc.id}
             npc={npc}
-            myUser={myUser}
-            isLocalUser={false}
-            onCollision={(npc) => handleNPCCollision(npc)}
+            checkForCollision={checkForNPCCollision}
           />
         ))}
       {Array.from(npcs.values())
         .filter((npc) => npc.phase === NPCPhase.THROWN)
         .map((npc) => {
           const throwData = throws.get(npc.id);
-          return throwData ? (
-            <ThrownNPCGraphic
-              key={npc.id}
-              npc={npc}
-              myUser={myUser}
-              throwData={throwData}
-            />
-          ) : null;
+          if (!throwData) {
+            console.warn(
+              `Throw data with id ${npc.id} not found in throws map`
+            );
+            return null;
+          }
+          return (
+            <ThrownNPCGraphic key={npc.id} npc={npc} throwData={throwData} />
+          );
         })}
     </Canvas>
   );
 }
-
-/*
-TODO:
-change out the maps that require bam ing
-debug slow local and non-local npc following when multiplayer
-factory or abstraction for update server and client (update npc, update npc group, update throw)
-
-add NPCs to capture
-  - adjust bounding box for interaction (to head? entire body?)
-  - split into grid for faster rendering
-  - add NPC images (fix texture loading)
-
-clean up! (various fixes - nonlocal npc following flipping plus lag at the end, local npc group sometimes jumpy)
-de slop AnimalGraphic.tsx and NPCGraphic.tsx (abstract functions?)
-add to architecture doc
-
-debug user not being added to first room without saturation (likely Pusher not configured to send member_deleted to local instance)
-debug db rows not being deleted properly (likely same issue as previous)
-center the animal sprite within the camera view
-* refractor / cleanup
-*/

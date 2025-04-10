@@ -7,6 +7,8 @@ const textureCache = new Map<string, THREE.Texture>();
 // Create a single shared loader
 const textureLoader = new THREE.TextureLoader();
 
+const debug = false;
+
 export function useNPCBase(npc: NPC) {
   const group = useMemo(() => new THREE.Group(), []);
   const texture = useRef<THREE.Texture | null>(null);
@@ -23,7 +25,7 @@ export function useNPCBase(npc: NPC) {
     source: string
   ) => {
     if (!positionRef.current.equals(newPos)) {
-      if (true) {
+      if (debug) {
         console.log(`Position updated from ${source}:`, {
           npcId: npc.id,
           from: positionRef.current.clone(),
@@ -138,4 +140,9 @@ export function useNPCBase(npc: NPC) {
     updatePositionWithTracking,
     previousPosition,
   };
+}
+
+export function useMount(callback: () => void) {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(callback, []);
 }

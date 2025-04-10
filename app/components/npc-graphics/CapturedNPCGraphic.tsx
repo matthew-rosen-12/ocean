@@ -3,11 +3,10 @@ import { NPC, UserInfo } from "../../utils/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { smoothMove } from "../../utils/movement";
-import { useNPCBase } from "../../hooks/useNPCBase";
+import { useMount, useNPCBase } from "../../hooks/useNPCBase";
 
 interface CapturedNPCGraphicProps {
   npc: NPC;
-  myUser: UserInfo;
   followingUser: UserInfo;
   isLocalUser: boolean;
   offsetIndex: number;
@@ -59,11 +58,11 @@ const CapturedNPCGraphic: React.FC<CapturedNPCGraphicProps> = ({
   };
 
   // Set initial position
-  React.useEffect(() => {
+  useMount(() => {
     const position = calculateFollowPosition(followingUser, offsetIndex);
     updatePositionWithTracking(position, "CapturedNPC-initial");
     group.position.copy(positionRef.current);
-  }, []);
+  });
 
   // Handle position updates
   useFrame(() => {
