@@ -1,30 +1,38 @@
 // ocean/app/components/GuestLogin.tsx
 import { useState } from "react";
-import { Member, UserInfo } from "../utils/types";
-import type { Members } from "pusher-js";
+import {
+  Member,
+  NPCGroup,
+  npcId,
+  throwData,
+  userId,
+  UserInfo,
+} from "../utils/types";
+import type { Channel, Members } from "pusher-js";
 import { getChannel } from "../utils/pusher-instance";
 import { NPC } from "../utils/types";
+import { DefaultMap } from "../utils/types";
 
 interface Props {
-  setUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
-  setUsers: React.Dispatch<React.SetStateAction<Map<string, UserInfo>>>;
-  setNPCs: React.Dispatch<React.SetStateAction<Map<string, NPC>>>;
+  setMyUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
+  setUsers: React.Dispatch<React.SetStateAction<Map<userId, UserInfo>>>;
+  setNPCs: React.Dispatch<React.SetStateAction<Map<npcId, NPC>>>;
+  setThrows: React.Dispatch<React.SetStateAction<Map<npcId, throwData>>>;
+  setNPCGroups: React.Dispatch<
+    React.SetStateAction<DefaultMap<userId, NPCGroup>>
+  >;
 }
 
-function MemberToUser(member: Member) {
-  return {
-    id: member.id,
-    animal: member.info.animal,
-    channel_name: member.info.channel_name,
-    position: member.info.position,
-    direction: member.info.direction,
-    npcGroup: member.info.npcGroup,
-  };
-}
-
-export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
+export default function GuestLogin({
+  setMyUser,
+  setUsers,
+  setNPCs,
+  setThrows,
+  setNPCGroups,
+}: Props) {
   let currentUser: UserInfo | null = null;
   const [loading, setLoading] = useState(false);
+  const [channel, setChannel] = useState<Channel | null>(null);
 
   const handleGuestLogin = async () => {
     setLoading(true);
@@ -37,97 +45,101 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
       const channel_name = data.channel_name;
 
       const channel = getChannel(channel_name);
+      setChannel(channel);
 
       channel.bind("pusher:subscription_succeeded", (members: Members) => {
         const usersMap = new Map();
-        const user = MemberToUser(members.me);
-        setUser(user);
+        const user = members.me.info as UserInfo;
+        setMyUser(user);
         currentUser = user;
-        usersMap.set(members.me.id, MemberToUser(members.me));
+        usersMap.set(user.id, user);
         setUsers(usersMap);
 
-        // Create a set to track captured NPC IDs
-        const capturedNpcIds = new Set<string>();
-
-        // Count of members excluding ourselves
-        const memberCount = members.count - 1;
-        let responseCount = 0;
-        let responseTimeout: NodeJS.Timeout | null = null;
-
-        // Only proceed to fetch NPCs if we have no other members or all have responded
-        const proceedToFetchNPCs = () => {
-          if (responseTimeout) {
-            clearTimeout(responseTimeout);
-            responseTimeout = null;
-          }
-
-          // Fetch NPCs after we've received all expected responses
+        const fetchNPCs = () => {
           fetch(`/api/npc?channel=${channel_name}`)
             .then((res) => res.json())
             .then((data) => {
-              const npcMap: Map<string, NPC> = new Map();
-
-              // Only add NPCs that haven't been captured
-              data.npcs.forEach((npc: NPC) => {
-                if (!capturedNpcIds.has(npc.id)) {
-                  npcMap.set(npc.id, npc);
-                }
-              });
-
+              // Convert the array back to a Map
+              const npcMap = new Map<npcId, NPC>(data);
               setNPCs(npcMap);
-              setLoading(false);
+              setLoading(false); // Move loading false here as this is now the last fetch
             })
-            .catch((err) => console.error("Error fetching NPCs:", err));
+            .catch((err) => {
+              console.error("Error fetching NPCs:", err);
+              setLoading(false);
+            });
         };
 
-        // If we're the only member, proceed immediately
-        if (memberCount === 0) {
-          proceedToFetchNPCs();
-          return;
-        }
+        const fetchNPCGroups = () => {
+          fetch(`/api/npc/capture?channel=${channel_name}`)
+            .then((res) => res.json())
+            .then((data) => {
+              // Process NPC groups
+              const { npcGroups } = data;
+              const groupsMap = new DefaultMap<userId, NPCGroup>((id) => ({
+                npcIds: new Set<npcId>(),
+                captorId: id,
+              }));
 
-        // Set up response handler for client-send-state events
-        const responseHandler = (data: { id: string; info: UserInfo }) => {
+              // Convert array data back to our DefaultMap with Sets
+              npcGroups.forEach(
+                (group: { id: userId; npcIds: npcId[]; captorId: userId }) => {
+                  groupsMap.set(group.id, {
+                    npcIds: new Set(group.npcIds),
+                    captorId: group.captorId,
+                  });
+                }
+              );
+              setNPCGroups(groupsMap);
+              // Now fetch NPCs last
+              fetchNPCs();
+            })
+            .catch((err) => {
+              console.error("Error fetching NPC groups:", err);
+              setLoading(false);
+            });
+        };
+
+        const fetchActiveThrows = () => {
+          fetch(`/api/npc/throws?channel=${channel_name}`)
+            .then((res) => res.json())
+            .then((data) => {
+              // Process active throws
+              const { activeThrows } = data;
+              const throwsMap = new Map<string, throwData>();
+
+              activeThrows.forEach((activeThrow: throwData) => {
+                throwsMap.set(activeThrow.npc.id, activeThrow);
+              });
+              setThrows(throwsMap);
+
+              // Now fetch NPC groups second
+              fetchNPCGroups();
+            })
+            .catch((err) => {
+              console.error("Error fetching active throws:", err);
+              setLoading(false);
+            });
+        };
+
+        fetchActiveThrows();
+
+        const stateReceivedHandler = (data: { id: string; info: UserInfo }) => {
           // Add the user to our users map
           setUsers((prev) => {
             const newUsers = new Map(prev);
             newUsers.set(data.id, data.info);
             return newUsers;
           });
-
-          // Track captured NPCs from this user
-          if (data.info.npcGroup?.npcs) {
-            data.info.npcGroup.npcs.forEach((npc) => {
-              capturedNpcIds.add(npc.id);
-            });
-          }
-
-          // Track responses
-          responseCount++;
-
-          // If we've received responses from all members, proceed
-          if (responseCount >= memberCount) {
-            channel.unbind("client-send-state", responseHandler);
-            proceedToFetchNPCs();
-          }
         };
 
         // Bind the handler
-        channel.bind("client-send-state", responseHandler);
+        channel.bind("client-send-state", stateReceivedHandler);
 
         // Request state from all existing members
         channel.trigger("client-request-state", {
           id: members.me.id,
         });
-
-        // Set a timeout in case some members don't respond
-        responseTimeout = setTimeout(() => {
-          console.log(
-            `Timeout waiting for responses. Got ${responseCount} of ${memberCount}`
-          );
-          channel.unbind("client-send-state", responseHandler);
-          proceedToFetchNPCs();
-        }, 3000); // 3 second timeout
       });
 
       // Handle state requests from new players
@@ -150,24 +162,13 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
             newUsers.set(data.id, data.info);
             return newUsers;
           });
-
-          // Remove any NPCs this user has captured from our global NPC list
-          if (data.info.npcGroup?.npcs && data.info.npcGroup.npcs.length > 0) {
-            setNPCs((prev) => {
-              const newNPCs = new Map(prev);
-              data.info?.npcGroup?.npcs.forEach((npc: NPC) => {
-                newNPCs.delete(npc.id);
-              });
-              return newNPCs;
-            });
-          }
         }
       );
 
       channel.bind("pusher:member_added", (member: Member) => {
         setUsers((prevUsers) => {
           const newUsers = new Map(prevUsers);
-          newUsers.set(member.id, MemberToUser(member));
+          newUsers.set(member.id, member.info as UserInfo);
           return newUsers;
         });
       });
@@ -183,26 +184,64 @@ export default function GuestLogin({ setUser, setUsers, setNPCs }: Props) {
       channel.bind("client-user-modified", (member: Member) => {
         setUsers((prevUsers) => {
           const newUsers = new Map(prevUsers);
-          newUsers.set(member.id, MemberToUser(member));
+          newUsers.set(member.id, member.info as UserInfo);
           return newUsers;
         });
       });
 
-      // Add this with the other channel.bind statements
-      channel.bind(
-        "client-npc-captured",
-        (data: { npcId: string; captorId: string; npcData: NPC }) => {
-          // Remove the NPC from the general pool
-          setNPCs((prevNPCs) => {
-            const newNPCs = new Map(prevNPCs);
-            newNPCs.delete(data.npcId);
-            return newNPCs;
-          });
-        }
-      );
+      channel.bind("npc-update", (data: { npc: NPC }) => {
+        setNPCs((prev) => {
+          const newNPCs = new Map(prev);
+          newNPCs.set(data.npc.id, data.npc);
+          return newNPCs;
+        });
+      });
+
+      channel.bind("npc-thrown", (data: { throw: throwData }) => {
+        setThrows((prev) => {
+          const newThrows = new Map(prev);
+          newThrows.set(data.throw.npc.id, data.throw);
+          return newThrows;
+        });
+        setNPCs((prev) => {
+          const newNPCs = new Map(prev);
+          newNPCs.set(data.throw.npc.id, data.throw.npc);
+          return newNPCs;
+        });
+        setNPCGroups((prev) => {
+          prev.get(data.throw.throwerId).npcIds.delete(data.throw.npc.id);
+          return prev;
+        });
+      });
+
+      channel.bind("npc-captured", (data: { id: userId; npc: NPC }) => {
+        setNPCGroups((prev) => {
+          // only push if not already in npcIds
+          prev.get(data.id).npcIds.add(data.npc.id);
+          return prev;
+        });
+      });
+
+      channel.bind("throw-complete", (data: { throw: throwData }) => {
+        setThrows((prev) => {
+          const newThrows = new Map(prev);
+          newThrows.delete(data.throw.npc.id);
+          return newThrows;
+        });
+        setNPCs((prev) => {
+          const newNPCs = new Map(prev);
+          newNPCs.set(data.throw.npc.id, data.throw.npc);
+          return newNPCs;
+        });
+      });
     } catch (error) {
       console.error("Login error:", error);
     } finally {
+      // Clean up all event listeners when component unmounts or channel changes
+      return () => {
+        if (!channel) return;
+        channel.unbind_all();
+      };
     }
   };
 
