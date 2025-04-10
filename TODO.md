@@ -1,6 +1,7 @@
 examine all useFrame for unecessary calculations
 
 clean up code
+(eg add debug var for console.logs)
 fix bugs / polish
 -> why does loading take so long even when only one player?
 

@@ -90,8 +90,6 @@ export default function GuestLogin({
                   });
                 }
               );
-
-              console.log("Fetched NPC groups:", groupsMap);
               setNPCGroups(groupsMap);
               // Now fetch NPCs last
               fetchNPCs();
@@ -197,7 +195,6 @@ export default function GuestLogin({
           newNPCs.set(data.npc.id, data.npc);
           return newNPCs;
         });
-        console.log("NPC updated:", data.npc);
       });
 
       channel.bind("npc-thrown", (data: { throw: throwData }) => {
