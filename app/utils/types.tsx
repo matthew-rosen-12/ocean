@@ -43,7 +43,10 @@ export type NPC = {
   phase: NPCPhase;
 };
 
+export type throwId = string;
+
 export type throwData = {
+  id: throwId;
   channelName: string;
   npc: NPC;
   startPosition: Position;

@@ -6,10 +6,12 @@ import {
   removeNPCFromGroupInChannel,
   setChannelActiveThrows,
   updateNPCInChannel,
+  setThrowCompleteInChannel,
 } from "../../service";
-import { getGameTicker } from "../../../utils/game-ticker";
+// import { getGameTicker } from "../../../utils/game-ticker";
+import { v4 as uuidv4 } from "uuid";
 
-getGameTicker();
+// getGameTicker();
 
 export async function POST(
   request: NextRequest,
@@ -42,6 +44,7 @@ export async function POST(
     };
 
     const throwData: throwData = {
+      id: uuidv4(),
       channelName,
       npc: updatedNPC,
       startPosition: npc.position,
@@ -61,6 +64,14 @@ export async function POST(
     await pusher.trigger(channelName, "npc-thrown", {
       throw: throwData,
     });
+
+    setTimeout(async () => {
+      await setThrowCompleteInChannel(channelName, throwData);
+      const updatedActiveThrows = activeThrows.filter(
+        (t) => t.id !== throwData.id
+      );
+      await setChannelActiveThrows(channelName, updatedActiveThrows);
+    }, throwData.throwDuration);
 
     return NextResponse.json({ success: true });
   } catch (error) {
