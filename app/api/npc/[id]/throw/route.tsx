@@ -10,6 +10,7 @@ import {
 } from "../../service";
 // import { getGameTicker } from "../../../utils/game-ticker";
 import { v4 as uuidv4 } from "uuid";
+import { GAME_CONFIG } from "@/app/utils/config";
 
 // getGameTicker();
 
@@ -50,7 +51,7 @@ export async function POST(
       startPosition: npc.position,
       direction: direction,
       velocity,
-      throwDuration: 2000,
+      throwDuration: GAME_CONFIG.THROW_DURATION,
       timestamp: Date.now(),
       throwerId,
     };

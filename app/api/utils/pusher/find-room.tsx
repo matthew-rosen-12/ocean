@@ -1,7 +1,6 @@
 import { prisma } from "@/prisma/prisma";
 import { populateChannel } from "../../npc/service";
-
-const MAX_USERS = 2;
+import { GAME_CONFIG } from "@/app/utils/config";
 
 export default async function getChannel(): Promise<string> {
   const smallestRoom = await prisma.room.findFirst({
@@ -18,7 +17,7 @@ export default async function getChannel(): Promise<string> {
     },
   });
 
-  if (smallestRoom == null || smallestRoom.numUsers >= MAX_USERS) {
+  if (smallestRoom == null || smallestRoom.numUsers >= GAME_CONFIG.MAX_USERS) {
     const room = await prisma.$transaction(
       async (tx: {
         room: {

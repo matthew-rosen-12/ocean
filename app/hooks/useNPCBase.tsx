@@ -1,13 +1,15 @@
 import { useRef, useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { NPC } from "../utils/types";
+import { DEBUG } from "../utils/config";
 
 // Create a global texture cache
 const textureCache = new Map<string, THREE.Texture>();
 // Create a single shared loader
 const textureLoader = new THREE.TextureLoader();
 
-const debug = false;
+// Use the specific debug flag
+const debug = DEBUG.NPC_MOVEMENT;
 
 export function useNPCBase(npc: NPC) {
   const group = useMemo(() => new THREE.Group(), []);
