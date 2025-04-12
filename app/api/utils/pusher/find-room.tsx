@@ -17,7 +17,10 @@ export default async function getChannel(): Promise<string> {
     },
   });
 
-  if (smallestRoom == null || smallestRoom.numUsers >= GAME_CONFIG.MAX_USERS) {
+  if (
+    smallestRoom == null ||
+    smallestRoom.numUsers >= GAME_CONFIG.MAX_PLAYERS
+  ) {
     const room = await prisma.$transaction(
       async (tx: {
         room: {
