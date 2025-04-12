@@ -1,7 +1,6 @@
 import { prisma } from "@/prisma/prisma";
 import { populateChannel } from "../../npc/service";
-
-const MAX_USERS = 2;
+import { GAME_CONFIG } from "@/app/utils/config";
 
 export default async function getChannel(): Promise<string> {
   const smallestRoom = await prisma.room.findFirst({
@@ -18,21 +17,36 @@ export default async function getChannel(): Promise<string> {
     },
   });
 
-  if (smallestRoom == null || smallestRoom.numUsers >= MAX_USERS) {
-    const room = await prisma.$transaction(async (tx) => {
-      const newRoom = await tx.room.create({
-        data: {
-          numUsers: 1,
-        },
-      });
+  if (
+    smallestRoom == null ||
+    smallestRoom.numUsers >= GAME_CONFIG.MAX_PLAYERS
+  ) {
+    const room = await prisma.$transaction(
+      async (tx: {
+        room: {
+          create: (arg0: {
+            data: { numUsers: number };
+          }) => Promise<{ id: string }>;
+          update: (arg0: {
+            where: { id: string };
+            data: { channelName: string };
+          }) => Promise<{ id: string; channelName: string }>;
+        };
+      }) => {
+        const newRoom = await tx.room.create({
+          data: {
+            numUsers: 1,
+          },
+        });
 
-      return await tx.room.update({
-        where: { id: newRoom.id },
-        data: {
-          channelName: `presence-chat-${newRoom.id}`,
-        },
-      });
-    });
+        return await tx.room.update({
+          where: { id: newRoom.id },
+          data: {
+            channelName: `presence-chat-${newRoom.id}`,
+          },
+        });
+      }
+    );
 
     // Directly populate the new room with NPCs
     const channelName = room.channelName;

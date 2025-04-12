@@ -13,7 +13,5 @@ export async function GET(request: Request) {
   }
 
   const npcs = await getNPCsForChannel(channelName);
-  return NextResponse.json({
-    npcs,
-  });
+  return NextResponse.json(Array.from(npcs.entries()));
 }
