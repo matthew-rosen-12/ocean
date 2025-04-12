@@ -1,6 +1,3 @@
-examine all useFrame for unecessary calculations
-fix cannot recapture after throw!
-
 clean up code
 (eg add debug var for console.logs)
 fix bugs / polish

@@ -30,15 +30,15 @@ const IdleNPCGraphic: React.FC<IdleNPCGraphicProps> = ({
   useFrame(() => {
     if (!group || !textureLoaded.current) return;
 
-    updatePositionWithTracking(
-      smoothMove(
-        positionRef.current.clone(),
-        new THREE.Vector3(npc.position.x, npc.position.y, 0)
-      ),
-      "IdleNPC"
-    );
+    const targetPosition = new THREE.Vector3(npc.position.x, npc.position.y, 0);
+    if (!positionRef.current.equals(targetPosition)) {
+      updatePositionWithTracking(
+        smoothMove(positionRef.current.clone(), targetPosition),
+        "IdleNPC"
+      );
 
-    group.position.copy(positionRef.current);
+      group.position.copy(positionRef.current);
+    }
     group.rotation.z = 0; // Fixed upright rotation
 
     // Check for collision
