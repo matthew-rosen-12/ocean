@@ -50,7 +50,6 @@ function AnimalSprite({
     loader.load(
       `/public/animals/${animal}.svg`,
       (data) => {
-        console.log("Loading animal successful", animal);
         // Group paths by color
         const geometriesByColor = new Map<number, THREE.BufferGeometry[]>();
 

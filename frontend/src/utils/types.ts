@@ -22,9 +22,9 @@ export interface UserInfo {
 
 // First, define the NPCPhase enum
 export enum NPCPhase {
-  IDLE = "idle",
-  CAPTURED = "captured",
-  THROWN = "thrown",
+  IDLE = "IDLE",
+  CAPTURED = "CAPTURED",
+  THROWN = "THROWN",
 }
 
 export type NPC = {

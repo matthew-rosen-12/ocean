@@ -21,7 +21,7 @@ app.use(express.json());
 app.use("/api/auth", authRouter);
 
 const httpServer = createServer(app);
-const io = new Server(httpServer, {
+export const io = new Server(httpServer, {
   cors: {
     origin: ["http://localhost:3000", "http://localhost:3001"],
     methods: ["GET", "POST"],

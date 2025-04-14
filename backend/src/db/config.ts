@@ -2,6 +2,7 @@ import { createClient } from "redis";
 import dotenv from "dotenv";
 import { v4 as uuidv4 } from "uuid";
 import { populateRoom } from "../services/npcService";
+import { NPC } from "../types";
 
 dotenv.config();
 
@@ -18,7 +19,6 @@ export const connect = async () => {
       process.env.REDIS_URL || "redis://localhost:6379"
     );
     await redisClient.connect();
-    console.log("Successfully connected to Redis");
   } catch (error) {
     console.error("Failed to connect to Redis:", error);
     throw error;
@@ -28,6 +28,15 @@ export const connect = async () => {
 export const get = async (key: string): Promise<string | null> => {
   try {
     return await redisClient.get(key);
+  } catch (error) {
+    console.error("Error getting from Redis", { key, error });
+    throw error;
+  }
+};
+
+export const hgetall = async (key: string): Promise<Record<string, string>> => {
+  try {
+    return await redisClient.hGetAll(key);
   } catch (error) {
     console.error("Error getting from Redis", { key, error });
     throw error;
@@ -52,6 +61,14 @@ export const del = async (key: string): Promise<void> => {
   }
 };
 
+export const keys = async (key: string): Promise<string[]> => {
+  try {
+    return await redisClient.keys(key);
+  } catch (error) {
+    console.error("Error getting keys from Redis", { key, error });
+    throw error;
+  }
+};
 interface Room {
   name: string;
   numUsers: number;
@@ -62,9 +79,7 @@ interface Room {
 
 export const findRoom = async (): Promise<string> => {
   try {
-    console.log("Starting findRoom...");
     const roomKeys = await redisClient.keys("room:*");
-    console.log("Found room keys:", roomKeys);
 
     const rooms = await Promise.all(
       roomKeys.map(async (key) => {
@@ -80,11 +95,8 @@ export const findRoom = async (): Promise<string> => {
       )
       .sort((a, b) => a.numUsers - b.numUsers);
 
-    console.log("Active rooms:", activeRooms);
-
     if (activeRooms.length > 0) {
       const room = activeRooms[0];
-      console.log("Using existing room:", room.name);
       await incrementRoomUsers(room.name);
       return room.name;
     }

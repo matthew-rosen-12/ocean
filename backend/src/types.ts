@@ -37,9 +37,12 @@ export interface UserInfo {
 }
 
 export interface NPCGroup {
-  npcIds: Set<string>;
+  npcIds: Set<npcId>;
   captorId: string;
 }
+
+export type npcId = string;
+export type userId = string;
 
 export class DefaultMap<K, V> extends Map<K, V> {
   constructor(private defaultFactory: (key: K) => V) {
