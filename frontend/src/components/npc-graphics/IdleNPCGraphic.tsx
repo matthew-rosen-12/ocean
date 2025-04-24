@@ -14,7 +14,6 @@ const IdleNPCGraphic: React.FC<IdleNPCGraphicProps> = ({
   npc,
   checkForCollision,
 }) => {
-  console.log("IdleNPCGraphic", npc);
   const { group, positionRef, textureLoaded, updatePositionWithTracking } =
     useNPCBase(npc);
 

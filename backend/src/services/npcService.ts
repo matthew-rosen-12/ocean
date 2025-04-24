@@ -1,10 +1,8 @@
 import { NPC, throwData, NPCGroup, NPCPhase } from "../types";
-import { get, hgetall, keys, set } from "../db/config";
+import { get, keys, set } from "../db/config";
 import { v4 as uuidv4 } from "uuid";
 import { getPosition, getDirection } from "../user-info";
 import { npcId, userId } from "../types";
-import path from "path";
-import fs from "fs";
 
 // Redis Key prefixes for different data types
 const NPC_KEY_PREFIX = "npcs:";

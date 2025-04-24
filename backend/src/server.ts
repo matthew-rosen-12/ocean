@@ -3,10 +3,21 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import cors from "cors";
 import { v4 as uuidv4 } from "uuid";
-import { connect, get, set } from "./db/config";
+import {
+  connect,
+  get,
+  set,
+  hgetall,
+  del,
+  keys,
+  addSocketToRoom,
+  removeSocketFromRoom,
+  getSocketRoom,
+} from "./db/config";
 import { NPC, NPCPhase, throwData } from "./types";
 import authRouter from "./routes/auth";
 import { getGameTicker } from "./game-ticker";
+import { decrementRoomUsers } from "./db/config";
 
 // Initialize game ticker
 getGameTicker();
@@ -80,12 +91,15 @@ io.on("connection", async (socket) => {
       }
 
       socket.join(data.name);
+      await addSocketToRoom(socket.id, data.name);
+      console.log("Room the socket joined", data.name);
       io.to(data.name).emit("user-joined", user);
     });
 
     // Handle room leaving
-    socket.on("leave-room", (roomName: string) => {
+    socket.on("leave-room", async (roomName: string) => {
       socket.leave(roomName);
+      await removeSocketFromRoom(socket.id);
     });
 
     // Handle get-npcs request
@@ -195,30 +209,27 @@ io.on("connection", async (socket) => {
 
     // Handle disconnection
     socket.on("disconnect", async () => {
-      console.log("A client disconnected");
       try {
-        // Get all rooms the socket was in
-        const rooms = Array.from(socket.rooms);
+        // Get the socket's room from Redis
+        const room = await getSocketRoom(socket.id);
+        if (room) {
+          await decrementRoomUsers(room);
 
-        for (const room of rooms) {
-          if (room !== socket.id) {
-            // Skip the socket's own room
-            const roomRecord = await get(`room:${room}`);
-
-            if (roomRecord) {
-              await set(
-                `room:${room}`,
-                JSON.stringify({
-                  ...JSON.parse(roomRecord),
-                  numUsers: { decrement: 1 },
-                  lastActive: new Date().toISOString(),
-                })
-              );
+          // Clean up NPCs in the room
+          const npcsData = await get(`npcs:${room}`);
+          if (npcsData) {
+            const npcs = JSON.parse(npcsData);
+            for (const [id, npcData] of Object.entries(npcs)) {
+              await del(`npc:${id}`);
             }
+            await del(`npcs:${room}`);
           }
+
+          // Remove socket from room mapping
+          await removeSocketFromRoom(socket.id);
         }
       } catch (error) {
-        console.error("Error handling disconnection:", error);
+        console.error("Error handling disconnect:", error);
       }
     });
   } catch (error) {
