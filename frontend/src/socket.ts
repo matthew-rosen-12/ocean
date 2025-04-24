@@ -22,4 +22,4 @@ export const getSocket = (token?: string) => {
   return socketInstance;
 };
 
-export const socket = getSocket();
+export const socket = () => getSocket();

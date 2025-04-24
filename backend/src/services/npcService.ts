@@ -149,14 +149,29 @@ export async function setRoomActiveThrows(
   io.to(roomName).emit("throws-update", { throws });
 }
 
+function calculateLandingPosition(throwData: throwData) {
+  const { startPosition, direction, velocity, throwDuration } = throwData;
+  const distance = velocity * (throwDuration / 1000);
+  const landingPosition = {
+    x: startPosition.x + direction.x * distance,
+    y: startPosition.y + direction.y * distance,
+    z: 0,
+  };
+  return landingPosition;
+}
+
 export async function setThrowCompleteInRoom(
   roomName: string,
-  throwId: string
+  throwData: throwData
 ): Promise<void> {
   const throws = await getRoomActiveThrows(roomName);
-  const updatedThrows = throws.filter((t) => t.id !== throwId);
+  const updatedThrows = throws.filter((t) => t.id !== throwData.id);
   await setRoomActiveThrows(roomName, updatedThrows);
-  io.to(roomName).emit("throw-complete", { throwId });
+  // update npc from throw to have phase IDLE
+  const npc = throwData.npc;
+  npc.phase = NPCPhase.IDLE;
+  npc.position = calculateLandingPosition(throwData);
+  io.to(roomName).emit("throw-complete", { npc });
 }
 
 export async function populateRoom(roomName: string): Promise<void> {
@@ -193,91 +208,6 @@ async function createNPCs(count: number): Promise<NPC[]> {
   }
 
   return npcs;
-}
-
-export async function updateNPCInChannel(
-  room: string,
-  npc: NPC,
-  message: boolean = false
-): Promise<void> {
-  const npcs = await getNPCMapFromRedis(room);
-  npcs.set(npc.id, npc);
-  await setNPCMapToRedis(room, npcs);
-
-  if (message) {
-    io.to(room).emit("npc-update", {
-      npc: npc,
-    });
-  }
-}
-
-export async function updateNPCGroupInChannel(
-  room: string,
-  captorId: userId,
-  npcId: npcId
-): Promise<void> {
-  const groups = await getNPCGroupsFromRedis(room);
-
-  if (!groups.has(captorId)) {
-    groups.set(captorId, { npcIds: new Set(), captorId });
-  }
-
-  const group = groups.get(captorId)!;
-  group.npcIds.add(npcId);
-
-  await setNPCGroupsToRedis(room, groups);
-}
-
-export async function removeNPCFromGroupInChannel(
-  room: string,
-  throwerId: userId,
-  npcId: npcId
-): Promise<void> {
-  const groups = await getNPCGroupsFromRedis(room);
-
-  if (!groups.has(throwerId)) {
-    return;
-  }
-
-  const group = groups.get(throwerId)!;
-  group.npcIds.delete(npcId);
-
-  await setNPCGroupsToRedis(room, groups);
-}
-
-export async function setThrowCompleteInChannel(
-  room: string,
-  landedThrow: throwData
-): Promise<void> {
-  // Calculate landing position
-  const landingPosition = calculateLandingPosition(landedThrow);
-
-  // Update NPC with new position and change phase back to IDLE
-  const updatedNPC = {
-    ...landedThrow.npc,
-    position: landingPosition,
-    phase: NPCPhase.IDLE,
-  };
-
-  io.emit(room, "throw-complete", {
-    throw: {
-      ...landedThrow,
-      npc: updatedNPC,
-    },
-  });
-
-  await updateNPCInChannel(room, updatedNPC, true);
-}
-
-function calculateLandingPosition(throwData: throwData) {
-  const { startPosition, direction, velocity, throwDuration } = throwData;
-  const distance = velocity * (throwDuration / 1000);
-  const landingPosition = {
-    x: startPosition.x + direction.x * distance,
-    y: startPosition.y + direction.y * distance,
-    z: 0,
-  };
-  return landingPosition;
 }
 
 async function getNPCFilenames(): Promise<string[]> {

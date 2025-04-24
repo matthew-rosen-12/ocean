@@ -6,6 +6,10 @@ import { v4 as uuidv4 } from "uuid";
 import { connect, get, set } from "./db/config";
 import { NPC, NPCPhase, throwData } from "./types";
 import authRouter from "./routes/auth";
+import { getGameTicker } from "./game-ticker";
+
+// Initialize game ticker
+getGameTicker();
 
 const app = express();
 app.use(
@@ -42,7 +46,6 @@ const {
   updateNPCGroupInRoom,
   removeNPCFromGroupInRoom,
   setRoomActiveThrows,
-  setThrowCompleteInRoom,
 } = require("./services/npcService");
 
 io.on("connection", async (socket) => {
@@ -59,7 +62,6 @@ io.on("connection", async (socket) => {
 
     // Decode user info from token
     const user = JSON.parse(Buffer.from(token, "base64").toString());
-    console.log("User connected:", user);
 
     // Join room and broadcast user joined
     socket.on("join-room", async (data: { name: string }) => {
@@ -154,6 +156,7 @@ io.on("connection", async (socket) => {
         { npcId, room, throwerId, direction, npc, velocity },
         callback
       ) => {
+        console.log("server recieved throwing npc", npc);
         try {
           const updatedNPC: NPC = {
             ...npc,
@@ -181,14 +184,6 @@ io.on("connection", async (socket) => {
           io.to(room).emit("npc-thrown", {
             throw: throwData,
           });
-
-          setTimeout(async () => {
-            await setThrowCompleteInRoom(room, throwData.id);
-            const updatedActiveThrows = activeThrows.filter(
-              (t: throwData) => t.id !== throwData.id
-            );
-            await setRoomActiveThrows(room, updatedActiveThrows);
-          }, throwData.throwDuration);
 
           callback({ success: true });
         } catch (error) {

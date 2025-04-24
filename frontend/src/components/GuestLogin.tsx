@@ -1,16 +1,23 @@
 // nature_v_npc/app/components/GuestLogin.tsx
 import { useState } from "react";
-import { NPCGroup, throwData, UserInfo, NPC } from "../utils/types";
+import {
+  NPCGroup,
+  throwData,
+  UserInfo,
+  NPC,
+  npcId,
+  userId,
+} from "../utils/types";
 import { DefaultMap } from "../utils/types";
 import { getSocket } from "../socket";
 
 interface Props {
   setMyUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
-  setUsers: React.Dispatch<React.SetStateAction<Map<string, UserInfo>>>;
-  setNPCs: React.Dispatch<React.SetStateAction<Map<string, NPC>>>;
-  setThrows: React.Dispatch<React.SetStateAction<Map<string, throwData>>>;
+  setUsers: React.Dispatch<React.SetStateAction<Map<userId, UserInfo>>>;
+  setNPCs: React.Dispatch<React.SetStateAction<Map<npcId, NPC>>>;
+  setThrows: React.Dispatch<React.SetStateAction<Map<npcId, throwData>>>;
   setNPCGroups: React.Dispatch<
-    React.SetStateAction<DefaultMap<string, NPCGroup>>
+    React.SetStateAction<DefaultMap<userId, NPCGroup>>
   >;
 }
 
@@ -62,6 +69,7 @@ export default function GuestLogin({
       });
 
       socket.on("npc-thrown", (data: { throw: throwData }) => {
+        console.log("npc-thrown", data);
         setThrows((prev) => new Map(prev).set(data.throw.npc.id, data.throw));
         setNPCs((prev) => new Map(prev).set(data.throw.npc.id, data.throw.npc));
         setNPCGroups((prev) => {
@@ -70,13 +78,14 @@ export default function GuestLogin({
         });
       });
 
-      socket.on("throw-complete", (data: { throw: throwData }) => {
+      socket.on("throw-complete", (data: { npc: NPC }) => {
+        console.log("throw-complete", data);
         setThrows((prev) => {
           const newThrows = new Map(prev);
-          newThrows.delete(data.throw.npc.id);
+          newThrows.delete(data.npc.id);
           return newThrows;
         });
-        setNPCs((prev) => new Map(prev).set(data.throw.npc.id, data.throw.npc));
+        setNPCs((prev) => new Map(prev).set(data.npc.id, data.npc));
       });
 
       // Set initial user state

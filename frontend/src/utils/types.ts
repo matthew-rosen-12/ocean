@@ -44,10 +44,10 @@ export type NPC = {
 };
 
 export type throwId = string;
-
+export type roomId = string;
 export type throwData = {
   id: throwId;
-  room: string;
+  room: roomId;
   npc: NPC;
   startPosition: Position;
   direction: Direction;

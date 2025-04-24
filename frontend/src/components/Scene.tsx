@@ -55,30 +55,45 @@ async function throwNPC(
 ) {
   try {
     // First remove the NPC from the myUser's NPC group immediately
+    console.log("throwing npc", npc);
     npc.position = myUser.position;
     if (npcGroups.get(myUser.id)) {
       npcGroups.get(myUser.id).npcIds.delete(npc.id);
 
       // Broadcast that the user has been modified
       if (socket) {
-        socket.emit("client-npc-group-modified", {
-          id: myUser.id,
-          info: npcGroups.get(myUser.id),
-          room: myUser.room,
-        });
+        socket.emit(
+          "client-npc-group-modified",
+          {
+            id: myUser.id,
+            info: npcGroups.get(myUser.id),
+            room: myUser.room,
+          },
+          (response: { success: boolean }) => {
+            if (!response.success)
+              console.error("NPC group modification failed");
+          }
+        );
       }
     }
 
     // Then make the socket call to throw the NPC
     if (socket) {
-      socket.emit("throw-npc", {
-        npcId: npc.id,
-        room: myUser.room,
-        throwerId: myUser.id,
-        direction: myUser.direction,
-        npc: npc,
-        velocity: 20,
-      });
+      console.log("throwing npc on client", npc);
+      socket.emit(
+        "throw-npc",
+        {
+          npcId: npc.id,
+          room: myUser.room,
+          throwerId: myUser.id,
+          direction: myUser.direction,
+          npc: npc,
+          velocity: 20,
+        },
+        (response: { success: boolean }) => {
+          if (!response.success) console.error("NPC throw failed");
+        }
+      );
     }
   } catch (error) {
     console.error("Error throwing NPC:", error);
@@ -115,7 +130,7 @@ function useKeyboardMovement(
         if (npcIdToThrow) {
           const npc = npcs.get(npcIdToThrow);
           if (npc) {
-            throwNPC(myUser, npc, npcGroups, null);
+            throwNPC(myUser, npc, npcGroups, socket());
           }
         }
       }
@@ -273,12 +288,20 @@ export default function Scene({
 
       try {
         // Use the existing direction directly
-        if (socket) {
-          await socket.emit("client-user-modified", {
-            id: myUser.id,
-            info: myUser,
-          });
-        }
+        const currentSocket = socket();
+        await new Promise<void>((resolve, reject) => {
+          currentSocket.emit(
+            "client-user-modified",
+            {
+              id: myUser.id,
+              info: myUser,
+            },
+            (response: { success: boolean }) => {
+              if (!response.success) reject(new Error("Broadcast failed"));
+              else resolve();
+            }
+          );
+        });
 
         lastBroadcastPosition.current.copy(position);
         lastBroadcastDirection.current = { ...direction };
@@ -291,7 +314,7 @@ export default function Scene({
         isThrottledRef.current = false;
       }, THROTTLE_MS);
     }
-  }, [position, direction, myUser, socket]);
+  }, [position, direction, myUser]);
 
   // Effect to update myUser position and direction continuously
   useEffect(() => {
@@ -307,15 +330,20 @@ export default function Scene({
     (npc: NPC) => {
       npc.phase = NPCPhase.CAPTURED;
       npcGroups.get(myUser.id).npcIds.add(npc.id);
-      if (socket) {
-        socket.emit("capture-npc", {
+      const currentSocket = socket();
+      currentSocket.emit(
+        "capture-npc",
+        {
           npcId: npc.id,
           room: myUser.room,
           captorId: myUser.id,
-        });
-      }
+        },
+        (response: { success: boolean }) => {
+          if (!response.success) console.error("Capture failed");
+        }
+      );
     },
-    [npcGroups, myUser.id, myUser.room, socket]
+    [npcGroups, myUser.id, myUser.room]
   );
 
   // Function to check for collisions with NPCs
