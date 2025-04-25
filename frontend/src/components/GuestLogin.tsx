@@ -10,7 +10,6 @@ import {
 } from "../utils/types";
 import { DefaultMap } from "../utils/types";
 import { getSocket } from "../socket";
-import io from "socket.io-client";
 
 interface Props {
   setMyUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
@@ -54,7 +53,6 @@ export default function GuestLogin({
       });
 
       socket.on("request-current-user", (requestingSocketId: string) => {
-        console.log("request-current-user user", user);
         socket.emit("current-user-response", {
           user,
           requestingSocketId,
@@ -70,7 +68,6 @@ export default function GuestLogin({
       });
 
       socket.on("user-updated", (data: { updatedUser: UserInfo }) => {
-        console.log("user-updated", data.updatedUser);
         setUsers((prev) =>
           new Map(prev).set(data.updatedUser.id, data.updatedUser)
         );
@@ -82,6 +79,14 @@ export default function GuestLogin({
 
       socket.on("npcs-update", (data: { npcs: [string, NPC][] }) => {
         setNPCs(new Map(data.npcs));
+      });
+
+      socket.on("user-left", (data: { userId: string }) => {
+        setUsers((prev) => {
+          const newUsers = new Map(prev);
+          newUsers.delete(data.userId);
+          return newUsers;
+        });
       });
 
       socket.on("throws-update", (data: { throws: [string, throwData][] }) => {
@@ -110,7 +115,6 @@ export default function GuestLogin({
       });
 
       socket.on("npc-thrown", (data: { throw: throwData }) => {
-        console.log("npc-thrown", data);
         setThrows((prev) => new Map(prev).set(data.throw.npc.id, data.throw));
         setNPCs((prev) => new Map(prev).set(data.throw.npc.id, data.throw.npc));
         setNPCGroups((prev) => {
@@ -120,7 +124,6 @@ export default function GuestLogin({
       });
 
       socket.on("throw-complete", (data: { npc: NPC }) => {
-        console.log("throw-complete", data);
         setThrows((prev) => {
           const newThrows = new Map(prev);
           newThrows.delete(data.npc.id);
@@ -136,15 +139,30 @@ export default function GuestLogin({
       // Fetch initial game state
       // Request initial game state via socket
       const [npcs, throws, npcGroups] = await Promise.all([
-        new Promise<[string, NPC][]>((resolve) =>
-          socket.emit("get-npcs", { room: user.room }, resolve)
-        ),
-        new Promise<[string, throwData][]>((resolve) =>
-          socket.emit("get-throws", { room: user.room }, resolve)
-        ),
-        new Promise<[string, NPCGroup][]>((resolve) =>
-          socket.emit("get-npc-groups", { room: user.room }, resolve)
-        ),
+        new Promise<[string, NPC][]>((resolve) => {
+          socket.emit("get-npcs", { room: user.room });
+          socket.once("npcs-data", (data: { npcs: [string, NPC][] }) => {
+            resolve(data.npcs);
+          });
+        }),
+        new Promise<[string, throwData][]>((resolve) => {
+          socket.emit("get-throws", { room: user.room });
+          socket.once(
+            "throws-data",
+            (data: { throws: [string, throwData][] }) => {
+              resolve(data.throws);
+            }
+          );
+        }),
+        new Promise<[string, NPCGroup][]>((resolve) => {
+          socket.emit("get-npc-groups", { room: user.room });
+          socket.once(
+            "npc-groups-data",
+            (data: { groups: [string, NPCGroup][] }) => {
+              resolve(data.groups);
+            }
+          );
+        }),
       ]);
 
       setNPCs(new Map(npcs));

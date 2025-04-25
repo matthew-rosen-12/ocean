@@ -10,7 +10,7 @@ import {
   userId,
   UserInfo,
 } from "../utils/types";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Vector3 } from "three";
 import { useFrame } from "@react-three/fiber";
 import { socket } from "../socket";
@@ -23,9 +23,14 @@ import { DefaultMap } from "../utils/types";
 import CapturedNPCGraphic from "./npc-graphics/CapturedNPCGraphic";
 import IdleNPCGraphic from "./npc-graphics/IdleNPCGraphic";
 import ThrownNPCGraphic from "./npc-graphics/ThrownNPCGraphic";
+import { throttle } from "lodash";
 
 // Speed of movement per keypress/frame
-const MOVE_SPEED = 0.5;
+const MOVEMENT_SPEED = 0.05;
+// Min distance before broadcasting position change
+const POSITION_THRESHOLD = 0.01;
+// Throttle duration in milliseconds
+const THROTTLE_MS = 100;
 
 interface CameraControllerProps {
   targetPosition: Vector3;
@@ -55,7 +60,6 @@ async function throwNPC(
 ) {
   try {
     // First remove the NPC from the myUser's NPC group immediately
-    console.log("throwing npc", npc);
     npc.position = myUser.position;
     if (npcGroups.get(myUser.id)) {
       npcGroups.get(myUser.id).npcIds.delete(npc.id);
@@ -79,7 +83,6 @@ async function throwNPC(
 
     // Then make the socket call to throw the NPC
     if (socket) {
-      console.log("throwing npc on client", npc);
       socket.emit(
         "throw-npc",
         {
@@ -154,10 +157,10 @@ function useKeyboardMovement(
       const right = keysPressed.has("ArrowRight") || keysPressed.has("d");
 
       // Update position vector
-      if (up) change.y += MOVE_SPEED;
-      if (down) change.y -= MOVE_SPEED;
-      if (left) change.x -= MOVE_SPEED;
-      if (right) change.x += MOVE_SPEED;
+      if (up) change.y += MOVEMENT_SPEED;
+      if (down) change.y -= MOVEMENT_SPEED;
+      if (left) change.x -= MOVEMENT_SPEED;
+      if (right) change.x += MOVEMENT_SPEED;
 
       // Primary direction logic
       let newDirection = { x: 0, y: 0 };
@@ -264,56 +267,66 @@ export default function Scene({
 
   const lastBroadcastPosition = useRef(initialPosition);
   const lastBroadcastDirection = useRef(initialDirection);
-  const POSITION_THRESHOLD = 0.01;
 
-  // Throttled broadcast function with forceUpdate parameter
-  const isThrottledRef = useRef(false);
-  const THROTTLE_MS = 100;
-
-  const throttledBroadcast = useCallback(async () => {
-    if (isThrottledRef.current) return;
-
-    // Calculate if position changed enough to broadcast
-    const positionDelta = new Vector3()
-      .copy(position)
-      .sub(lastBroadcastPosition.current);
-    const positionChanged = positionDelta.length() >= POSITION_THRESHOLD;
-
-    const directionChanged =
-      lastBroadcastDirection.current.x !== direction.x ||
-      lastBroadcastDirection.current.y !== direction.y;
-
-    if (positionChanged || directionChanged) {
-      isThrottledRef.current = true;
-
+  // Create a throttled broadcast function using lodash
+  const broadcastPosition = useCallback(
+    async (
+      currentPosition: Vector3,
+      currentDirection: { x: number; y: number },
+      user: UserInfo
+    ) => {
       try {
-        // Use the existing direction directly
-        const currentSocket = socket();
-        await new Promise<void>((resolve, reject) => {
-          currentSocket.emit(
-            "user-updated",
-            {
-              updatedUser: myUser,
-            },
-            (response: { success: boolean }) => {
-              if (!response.success) reject(new Error("Broadcast failed"));
-              else resolve();
-            }
-          );
-        });
+        // Calculate position delta to see if worth broadcasting
+        const positionDelta = new Vector3()
+          .copy(currentPosition)
+          .sub(lastBroadcastPosition.current);
+        const positionChanged = positionDelta.length() >= POSITION_THRESHOLD;
 
-        lastBroadcastPosition.current.copy(position);
-        lastBroadcastDirection.current = { ...direction };
+        const directionChanged =
+          lastBroadcastDirection.current.x !== currentDirection.x ||
+          lastBroadcastDirection.current.y !== currentDirection.y;
+
+        if (positionChanged || directionChanged) {
+          // Use the existing direction directly
+          const currentSocket = socket();
+          await new Promise<void>((resolve, reject) => {
+            currentSocket.emit(
+              "user-updated",
+              {
+                updatedUser: user,
+              },
+              (response: { success: boolean }) => {
+                if (!response.success) reject(new Error("Broadcast failed"));
+                else resolve();
+              }
+            );
+          });
+
+          // Update last broadcast values
+          lastBroadcastPosition.current.copy(currentPosition);
+          lastBroadcastDirection.current = { ...currentDirection };
+        }
       } catch (error) {
         console.error("Broadcast failed:", error);
       }
+    },
+    []
+  );
 
-      // Start the cooldown timer to allow next broadcast
-      setTimeout(() => {
-        isThrottledRef.current = false;
-      }, THROTTLE_MS);
-    }
-  }, [position, direction, myUser]);
+  // Create a throttled version of the broadcast function
+  const throttledBroadcast = useMemo(
+    () =>
+      throttle(
+        () => {
+          if (myUser) {
+            broadcastPosition(position, direction, myUser);
+          }
+        },
+        THROTTLE_MS,
+        { leading: true, trailing: true }
+      ),
+    [position, direction, myUser, broadcastPosition]
+  );
 
   // Effect to update myUser position and direction continuously
   useEffect(() => {

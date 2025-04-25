@@ -192,11 +192,95 @@ export const incrementRoomUsers = async (roomName: string): Promise<void> => {
   }
 };
 
+// Socket to user mapping functions
+export const mapSocketToUser = async (
+  socketId: string,
+  userId: string
+): Promise<void> => {
+  try {
+    // Create bidirectional mapping
+    await redisClient.set(`socket_to_user:${socketId}`, userId);
+    await redisClient.sAdd(`user_sockets:${userId}`, socketId);
+  } catch (error) {
+    console.error("Error mapping socket to user:", error);
+    throw error;
+  }
+};
+
+export const getUserIdFromSocket = async (
+  socketId: string
+): Promise<string | null> => {
+  try {
+    return await redisClient.get(`socket_to_user:${socketId}`);
+  } catch (error) {
+    console.error("Error getting userId from socket:", error);
+    throw error;
+  }
+};
+
+export const getSocketsFromUserId = async (
+  userId: string
+): Promise<string[]> => {
+  try {
+    return await redisClient.sMembers(`user_sockets:${userId}`);
+  } catch (error) {
+    console.error("Error getting sockets from userId:", error);
+    throw error;
+  }
+};
+
+export const removeSocketUserMapping = async (
+  socketId: string
+): Promise<void> => {
+  try {
+    // Get userId before removing the mapping
+    const userId = await getUserIdFromSocket(socketId);
+    if (!userId) return;
+
+    // Remove socket from user's socket set
+    await redisClient.sRem(`user_sockets:${userId}`, socketId);
+
+    // Check if this was the user's last socket
+    const remainingSockets = await redisClient.sMembers(
+      `user_sockets:${userId}`
+    );
+    if (remainingSockets.length === 0) {
+      // If no sockets left, clean up the user's socket set
+      await redisClient.del(`user_sockets:${userId}`);
+    }
+
+    // Remove the socket mapping
+    await redisClient.del(`socket_to_user:${socketId}`);
+  } catch (error) {
+    console.error("Error removing socket user mapping:", error);
+    throw error;
+  }
+};
+
+// Modified to work with userId instead of socketId
 export const decrementRoomUsers = async (
   roomName: string,
   socketId: string
 ): Promise<void> => {
   try {
+    // Get userId from socketId
+    const userId = await getUserIdFromSocket(socketId);
+    if (!userId) {
+      console.error("No userId found for socket:", socketId);
+      return;
+    }
+
+    // Check if this is the user's last socket
+    const remainingSockets = await getSocketsFromUserId(userId);
+    if (remainingSockets.length > 1) {
+      console.log(
+        `User ${userId} still has ${
+          remainingSockets.length - 1
+        } active connections. Not removing from room.`
+      );
+      return; // User still has other connections, don't remove from room
+    }
+
     const roomKey = `room:${roomName}`;
     const room = await redisClient.hGetAll(roomKey);
 
@@ -206,7 +290,7 @@ export const decrementRoomUsers = async (
     }
 
     const users = JSON.parse(room.users);
-    const updatedUsers = users.filter((userId: string) => userId !== socketId);
+    const updatedUsers = users.filter((id: string) => id !== userId);
 
     if (updatedUsers.length === 0) {
       // Room is empty, delete all associated data
@@ -358,33 +442,6 @@ export const addUserToRoom = async (
     }
   } catch (error) {
     console.error("Error adding user to room:", error);
-    throw error;
-  }
-};
-
-export const removeUserFromRoom = async (
-  roomName: string,
-  userId: string
-): Promise<void> => {
-  try {
-    const roomKey = `room:${roomName}`;
-    const roomData = await get(roomKey);
-    if (!roomData) return;
-
-    const room = JSON.parse(roomData);
-    if (room.users) {
-      room.users = room.users.filter((id: string) => id !== userId);
-      room.numUsers = room.users.length;
-      room.lastActive = new Date().toISOString();
-
-      if (room.numUsers === 0) {
-        await del(roomKey);
-      } else {
-        await set(roomKey, JSON.stringify(room));
-      }
-    }
-  } catch (error) {
-    console.error("Error removing user from room:", error);
     throw error;
   }
 };

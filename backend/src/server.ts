@@ -14,15 +14,17 @@ import {
   removeSocketFromRoom,
   getSocketRoom,
   addUserToRoom,
-  removeUserFromRoom,
   getRoomUsers,
   addUser,
   removeUser,
+  decrementRoomUsers,
+  mapSocketToUser,
+  getUserIdFromSocket,
+  removeSocketUserMapping,
 } from "./db/config";
 import { NPC, NPCPhase, throwData, userId, UserInfo, socketId } from "./types";
 import authRouter from "./routes/auth";
 import { getGameTicker } from "./game-ticker";
-import { decrementRoomUsers } from "./db/config";
 
 // Initialize game ticker
 getGameTicker();
@@ -81,6 +83,9 @@ io.on("connection", async (socket) => {
     // Decode user info from token
     const user = JSON.parse(Buffer.from(token, "base64").toString());
 
+    // Map this socket to the user
+    await mapSocketToUser(socket.id, user.id);
+
     socket.on(
       "current-user-response",
       async (data: { user: UserInfo; requestingSocketId: string }) => {
@@ -100,11 +105,9 @@ io.on("connection", async (socket) => {
 
           // If we've received responses from all users in the room
           if (users.size === expectedUserCount) {
-            console.log("Received all user responses, sending update");
-            io.to(data.requestingSocketId).emit(
-              "users-update",
-              Array.from(users.entries())
-            );
+            io.to(data.requestingSocketId).emit("users-update", {
+              users: Array.from(users.entries()),
+            });
             usersForSocket.delete(data.requestingSocketId);
           }
         }
@@ -129,8 +132,12 @@ io.on("connection", async (socket) => {
 
       socket.join(data.name);
       await addSocketToRoom(socket.id, data.name);
-      await addUser(socket.id, user);
-      await addUserToRoom(data.name, socket.id);
+
+      // Add user data if they're joining for the first time
+      await addUser(user.id, user);
+
+      // Add user to the room
+      await addUserToRoom(data.name, user.id);
 
       // add user to map for socket
       usersForSocket.set(socket.id, new Map([[user.id, user]]));
@@ -142,10 +149,12 @@ io.on("connection", async (socket) => {
       setTimeout(() => {
         const users = usersForSocket.get(socket.id);
         if (users && users.size > 1) {
-          io.to(socket.id).emit("users-update", Array.from(users.entries()));
+          io.to(socket.id).emit("users-update", {
+            users: Array.from(users.entries()),
+          });
           usersForSocket.delete(socket.id);
         }
-      }, 100);
+      }, 10000);
 
       // Now add the new user to the room
 
@@ -179,124 +188,129 @@ io.on("connection", async (socket) => {
       socket.broadcast.to(data.name).emit("user-joined", user);
     });
 
-    // Handle room leaving
-    socket.on("leave-room", async (roomName: string) => {
-      socket.leave(roomName);
-      await removeSocketFromRoom(socket.id);
-      await removeUserFromRoom(roomName, socket.id);
-    });
-
     // Handle get-npcs request
-    socket.on("get-npcs", async ({ room }, callback) => {
+    socket.on("get-npcs", async ({ room }) => {
       try {
         const npcs = await getNPCsForRoom(room);
-        callback(Array.from(npcs.entries()));
+        socket.emit("npcs-data", { npcs: Array.from(npcs.entries()) });
       } catch (error) {
         console.error("Error getting NPCs:", error);
-        callback([]);
+        socket.emit("npcs-data", { npcs: [] });
       }
     });
 
     // Handle get-throws request
-    socket.on("get-throws", async ({ room }, callback) => {
+    socket.on("get-throws", async ({ room }) => {
       try {
         const throws = await getRoomActiveThrows(room);
-        callback(
-          throws.map((throwData: throwData) => [throwData.npc.id, throwData])
-        );
+        socket.emit("throws-data", {
+          throws: throws.map((throwData: throwData) => [
+            throwData.npc.id,
+            throwData,
+          ]),
+        });
       } catch (error) {
         console.error("Error getting throws:", error);
-        callback([]);
+        socket.emit("throws-data", { throws: [] });
       }
     });
 
     // Handle get-npc-groups request
-    socket.on("get-npc-groups", async ({ room }, callback) => {
+    socket.on("get-npc-groups", async ({ room }) => {
       try {
         const groups = await getNPCGroupsFromRedis(room);
-        callback(Array.from(groups.entries()));
+        socket.emit("npc-groups-data", {
+          groups: Array.from(groups.entries()),
+        });
       } catch (error) {
         console.error("Error getting NPC groups:", error);
-        callback([]);
+        socket.emit("npc-groups-data", { groups: [] });
       }
     });
 
     // Handle capture-npc request
-    socket.on("capture-npc", async ({ npcId, room, captorId }, callback) => {
-      try {
-        const npcs = await getNPCsForRoom(room);
-        const npc = npcs.get(npcId)!;
+    socket.on(
+      "capture-npc",
+      async (data: { npcId: string; roomName: string; captorId: string }) => {
+        try {
+          const npcs = await getNPCsForRoom(data.roomName);
+          const npc = npcs.get(data.npcId)!;
 
-        const updatedNPC: NPC = {
-          ...npc,
-          phase: NPCPhase.CAPTURED,
-        };
+          const updatedNPC: NPC = {
+            ...npc,
+            phase: NPCPhase.CAPTURED,
+          };
 
-        await updateNPCInRoom(room, updatedNPC, true);
-        await updateNPCGroupInRoom(room, captorId, npcId);
+          await updateNPCInRoom(data.roomName, updatedNPC, true);
+          await updateNPCGroupInRoom(data.roomName, data.captorId, data.npcId);
 
-        io.to(room).emit("npc-captured", {
-          id: captorId,
-          npc: updatedNPC,
-        });
-
-        callback({ success: true });
-      } catch (error) {
-        console.error("Error capturing NPC:", error);
-        callback({ error: "Failed to capture NPC" });
+          io.to(data.roomName).emit("npc-captured", {
+            id: data.captorId,
+            npc: updatedNPC,
+          });
+        } catch (error) {
+          console.error("Error capturing NPC:", error);
+        }
       }
-    });
+    );
 
     // Handle throw-npc request
     socket.on(
       "throw-npc",
-      async (
-        { npcId, room, throwerId, direction, npc, velocity },
-        callback
-      ) => {
+      async (data: {
+        npcId: string;
+        roomName: string;
+        throwerId: string;
+        direction: { x: number; y: number };
+        npc: NPC;
+        velocity: number;
+      }) => {
         try {
           const updatedNPC: NPC = {
-            ...npc,
+            ...data.npc,
             phase: NPCPhase.THROWN,
           };
 
           const throwData: throwData = {
             id: uuidv4(),
-            room: room,
+            room: data.roomName,
             npc: updatedNPC,
-            startPosition: npc.position,
-            direction: direction,
-            velocity,
+            startPosition: data.npc.position,
+            direction: data.direction,
+            velocity: data.velocity,
             throwDuration: 1000, // 1 second
             timestamp: Date.now(),
-            throwerId,
+            throwerId: data.throwerId,
           };
 
-          await updateNPCInRoom(room, updatedNPC);
-          const activeThrows = await getRoomActiveThrows(room);
+          await updateNPCInRoom(data.roomName, updatedNPC);
+          const activeThrows = await getRoomActiveThrows(data.roomName);
           activeThrows.push(throwData);
-          await setRoomActiveThrows(room, activeThrows);
-          await removeNPCFromGroupInRoom(room, throwerId, npcId);
+          await setRoomActiveThrows(data.roomName, activeThrows);
+          await removeNPCFromGroupInRoom(
+            data.roomName,
+            data.throwerId,
+            data.npcId
+          );
 
-          io.to(room).emit("npc-thrown", {
+          io.to(data.roomName).emit("npc-thrown", {
             throw: throwData,
           });
-
-          callback({ success: true });
         } catch (error) {
           console.error("Error throwing NPC:", error);
-          callback({ error: "Failed to throw NPC" });
         }
       }
     );
 
     // Handle user position updates
-    socket.on("user-updated", async (updatedUser: UserInfo) => {
+    socket.on("user-updated", async (data: { updatedUser: UserInfo }) => {
       try {
         // Just broadcast to room, don't update Redis
         const room = await getSocketRoom(socket.id);
         if (room) {
-          socket.broadcast.to(room).emit("user-updated", updatedUser);
+          socket.broadcast.to(room).emit("user-updated", {
+            updatedUser: data.updatedUser,
+          });
         }
       } catch (error) {
         console.error("Error handling user update:", error);
@@ -309,22 +323,22 @@ io.on("connection", async (socket) => {
         // Get the socket's room from Redis
         const room = await getSocketRoom(socket.id);
         if (room) {
-          await removeUserFromRoom(room, socket.id);
-          await removeUser(socket.id);
+          // Get userId from socket
+          const userId = await getUserIdFromSocket(socket.id);
+
+          // Handle room users decrement (this now checks multiple connections)
           await decrementRoomUsers(room, socket.id);
 
-          // Clean up NPCs in the room
-          const npcsData = await get(`npcs:${room}`);
-          if (npcsData) {
-            const npcs = JSON.parse(npcsData);
-            for (const [id, npcData] of Object.entries(npcs)) {
-              await del(`npc:${id}`);
-            }
-            await del(`npcs:${room}`);
-          }
+          // Remove the socket-user mapping
+          await removeSocketUserMapping(socket.id);
 
-          // Remove socket from room mapping
+          // Remove this socket from room
           await removeSocketFromRoom(socket.id);
+
+          // Only broadcast user-left if this was their last connection
+          if (userId) {
+            socket.broadcast.to(room).emit("user-left", { userId });
+          }
         }
       } catch (error) {
         console.error("Error handling disconnect:", error);
