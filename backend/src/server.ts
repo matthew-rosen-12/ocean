@@ -189,9 +189,11 @@ io.on("connection", async (socket) => {
     });
 
     // Handle get-npcs request
-    socket.on("get-npcs", async ({ room }) => {
+    socket.on("get-npcs", async (data: { room: string }) => {
+      console.log("get-npcs before try", data);
       try {
-        const npcs = await getNPCsForRoom(room);
+        const npcs = await getNPCsForRoom(data.room);
+        console.log("npcs from get-npcs", npcs);
         socket.emit("npcs-data", { npcs: Array.from(npcs.entries()) });
       } catch (error) {
         console.error("Error getting NPCs:", error);

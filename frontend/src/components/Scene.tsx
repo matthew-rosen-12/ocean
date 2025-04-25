@@ -26,7 +26,7 @@ import ThrownNPCGraphic from "./npc-graphics/ThrownNPCGraphic";
 import { throttle } from "lodash";
 
 // Speed of movement per keypress/frame
-const MOVEMENT_SPEED = 0.05;
+const MOVEMENT_SPEED = 0.5;
 // Min distance before broadcasting position change
 const POSITION_THRESHOLD = 0.01;
 // Throttle duration in milliseconds

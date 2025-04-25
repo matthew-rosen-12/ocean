@@ -282,41 +282,56 @@ export const decrementRoomUsers = async (
     }
 
     const roomKey = `room:${roomName}`;
-    const room = await redisClient.hGetAll(roomKey);
 
-    if (!room || !room.users) {
-      console.error("Room not found or has no users:", roomName);
+    // Get room data using get instead of hGetAll
+    const roomData = await get(roomKey);
+    if (!roomData) {
+      console.error("Room not found:", roomName);
       return;
     }
 
-    const users = JSON.parse(room.users);
+    // Parse room data
+    const room = JSON.parse(roomData);
+
+    if (!room || !room.users) {
+      console.error("Room has no users array:", roomName);
+      return;
+    }
+
+    const users = room.users;
     const updatedUsers = users.filter((id: string) => id !== userId);
+    room.users = updatedUsers;
+    room.numUsers = updatedUsers.length;
+    room.lastActive = new Date().toISOString();
 
     if (updatedUsers.length === 0) {
       // Room is empty, delete all associated data
       console.log("Deleting room and all associated data:", roomName);
 
       // Delete room data
-      await redisClient.del(roomKey);
+      await del(roomKey);
 
       // Delete NPCs
-      await redisClient.del(`npcs:${roomName}`);
+      await del(`npcs:${roomName}`);
 
       // Delete throws
-      await redisClient.del(`throws:${roomName}`);
+      await del(`throws:${roomName}`);
 
       // Delete NPC groups
-      await redisClient.del(`npcGroups:${roomName}`);
+      await del(`npcGroups:${roomName}`);
 
       // Delete any other room-specific data
       const roomPattern = `${roomName}:*`;
-      const roomKeys = await redisClient.keys(roomPattern);
+      const roomKeys = await keys(roomPattern);
       if (roomKeys.length > 0) {
-        await redisClient.del(roomKeys);
+        // Delete each key individually
+        for (const key of roomKeys) {
+          await del(key);
+        }
       }
     } else {
       // Update room with remaining users
-      await redisClient.hSet(roomKey, "users", JSON.stringify(updatedUsers));
+      await set(roomKey, JSON.stringify(room));
     }
   } catch (error) {
     console.error("Error decrementing room users:", error);

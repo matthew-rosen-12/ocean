@@ -59,14 +59,6 @@ export default function GuestLogin({
         });
       });
 
-      socket.on("user-left", (userId: string) => {
-        setUsers((prev) => {
-          const newUsers = new Map(prev);
-          newUsers.delete(userId);
-          return newUsers;
-        });
-      });
-
       socket.on("user-updated", (data: { updatedUser: UserInfo }) => {
         setUsers((prev) =>
           new Map(prev).set(data.updatedUser.id, data.updatedUser)
@@ -82,6 +74,7 @@ export default function GuestLogin({
       });
 
       socket.on("user-left", (data: { userId: string }) => {
+        console.log("user-left", data);
         setUsers((prev) => {
           const newUsers = new Map(prev);
           newUsers.delete(data.userId);
@@ -140,10 +133,12 @@ export default function GuestLogin({
       // Request initial game state via socket
       const [npcs, throws, npcGroups] = await Promise.all([
         new Promise<[string, NPC][]>((resolve) => {
-          socket.emit("get-npcs", { room: user.room });
+          console.log("getting npcs");
           socket.once("npcs-data", (data: { npcs: [string, NPC][] }) => {
+            console.log("npcs-data", data);
             resolve(data.npcs);
           });
+          socket.emit("get-npcs", { room: user.room });
         }),
         new Promise<[string, throwData][]>((resolve) => {
           socket.emit("get-throws", { room: user.room });
