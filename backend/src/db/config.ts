@@ -192,26 +192,53 @@ export const incrementRoomUsers = async (roomName: string): Promise<void> => {
   }
 };
 
-export async function decrementRoomUsers(roomName: string) {
-  console.log("Decrementing room users for:", roomName);
+export const decrementRoomUsers = async (
+  roomName: string,
+  socketId: string
+): Promise<void> => {
   try {
-    const roomData = await get(`room:${roomName}`);
-    if (!roomData) return;
+    const roomKey = `room:${roomName}`;
+    const room = await redisClient.hGetAll(roomKey);
 
-    const room = JSON.parse(roomData);
-    room.numUsers = (room.numUsers || 1) - 1;
+    if (!room || !room.users) {
+      console.error("Room not found or has no users:", roomName);
+      return;
+    }
 
-    if (room.numUsers <= 0) {
-      // Delete the room if empty
-      await del(`room:${roomName}`);
+    const users = JSON.parse(room.users);
+    const updatedUsers = users.filter((userId: string) => userId !== socketId);
+
+    if (updatedUsers.length === 0) {
+      // Room is empty, delete all associated data
+      console.log("Deleting room and all associated data:", roomName);
+
+      // Delete room data
+      await redisClient.del(roomKey);
+
+      // Delete NPCs
+      await redisClient.del(`npcs:${roomName}`);
+
+      // Delete throws
+      await redisClient.del(`throws:${roomName}`);
+
+      // Delete NPC groups
+      await redisClient.del(`npcGroups:${roomName}`);
+
+      // Delete any other room-specific data
+      const roomPattern = `${roomName}:*`;
+      const roomKeys = await redisClient.keys(roomPattern);
+      if (roomKeys.length > 0) {
+        await redisClient.del(roomKeys);
+      }
     } else {
-      // Update the room with new user count
-      await set(`room:${roomName}`, JSON.stringify(room));
+      // Update room with remaining users
+      await redisClient.hSet(roomKey, "users", JSON.stringify(updatedUsers));
     }
   } catch (error) {
     console.error("Error decrementing room users:", error);
+    throw error;
   }
-}
+};
 
 const createRoom = async (roomName: string): Promise<Room> => {
   try {
@@ -261,6 +288,130 @@ export const getSocketRoom = async (
     return room || null;
   } catch (error) {
     console.error("Error getting socket room:", error);
+    throw error;
+  }
+};
+
+// User management functions
+export const addUser = async (userId: string, userInfo: any): Promise<void> => {
+  try {
+    // Convert userInfo object to array of field-value pairs
+    const entries = Object.entries(userInfo);
+    if (entries.length === 0) return;
+
+    // Use hSet with field-value pairs
+    const tuples: [string, string][] = entries.map(([field, value]) => [
+      field,
+      String(value),
+    ]);
+    await redisClient.hSet(`user:${userId}`, tuples);
+  } catch (error) {
+    console.error("Error adding user:", error);
+    throw error;
+  }
+};
+
+export const removeUser = async (userId: string): Promise<void> => {
+  try {
+    await redisClient.del(`user:${userId}`);
+  } catch (error) {
+    console.error("Error removing user:", error);
+    throw error;
+  }
+};
+
+export const getUser = async (userId: string): Promise<any | null> => {
+  try {
+    const userData = await redisClient.hGetAll(`user:${userId}`);
+    return Object.keys(userData).length > 0 ? userData : null;
+  } catch (error) {
+    console.error("Error getting user:", error);
+    throw error;
+  }
+};
+
+// Room user management functions
+export const addUserToRoom = async (
+  roomName: string,
+  userId: string
+): Promise<void> => {
+  try {
+    const roomKey = `room:${roomName}`;
+    const roomData = await get(roomKey);
+    let room = roomData
+      ? JSON.parse(roomData)
+      : {
+          name: roomName,
+          numUsers: 0,
+          isActive: true,
+          lastActive: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          users: [],
+        };
+
+    room.users = room.users || [];
+    if (!room.users.includes(userId)) {
+      room.users.push(userId);
+      room.numUsers = room.users.length;
+      room.lastActive = new Date().toISOString();
+      await set(roomKey, JSON.stringify(room));
+    }
+  } catch (error) {
+    console.error("Error adding user to room:", error);
+    throw error;
+  }
+};
+
+export const removeUserFromRoom = async (
+  roomName: string,
+  userId: string
+): Promise<void> => {
+  try {
+    const roomKey = `room:${roomName}`;
+    const roomData = await get(roomKey);
+    if (!roomData) return;
+
+    const room = JSON.parse(roomData);
+    if (room.users) {
+      room.users = room.users.filter((id: string) => id !== userId);
+      room.numUsers = room.users.length;
+      room.lastActive = new Date().toISOString();
+
+      if (room.numUsers === 0) {
+        await del(roomKey);
+      } else {
+        await set(roomKey, JSON.stringify(room));
+      }
+    }
+  } catch (error) {
+    console.error("Error removing user from room:", error);
+    throw error;
+  }
+};
+
+export const getRoomUsers = async (
+  roomName: string
+): Promise<Record<string, any>> => {
+  try {
+    const roomKey = `room:${roomName}`;
+    const roomData = await get(roomKey);
+    if (!roomData) return {};
+
+    const room = JSON.parse(roomData);
+    const users: Record<string, any> = {};
+
+    if (room.users) {
+      for (const userId of room.users) {
+        const userData = await getUser(userId);
+        if (userData) {
+          users[userId] = userData;
+        }
+      }
+    }
+
+    return users;
+  } catch (error) {
+    console.error("Error getting room users:", error);
     throw error;
   }
 };

@@ -13,8 +13,13 @@ import {
   addSocketToRoom,
   removeSocketFromRoom,
   getSocketRoom,
+  addUserToRoom,
+  removeUserFromRoom,
+  getRoomUsers,
+  addUser,
+  removeUser,
 } from "./db/config";
-import { NPC, NPCPhase, throwData } from "./types";
+import { NPC, NPCPhase, throwData, userId, UserInfo, socketId } from "./types";
 import authRouter from "./routes/auth";
 import { getGameTicker } from "./game-ticker";
 import { decrementRoomUsers } from "./db/config";
@@ -59,6 +64,8 @@ const {
   setRoomActiveThrows,
 } = require("./services/npcService");
 
+const usersForSocket = new Map<socketId, Map<userId, UserInfo>>();
+
 io.on("connection", async (socket) => {
   console.log("A client connected");
 
@@ -73,6 +80,36 @@ io.on("connection", async (socket) => {
 
     // Decode user info from token
     const user = JSON.parse(Buffer.from(token, "base64").toString());
+
+    socket.on(
+      "current-user-response",
+      async (data: { user: UserInfo; requestingSocketId: string }) => {
+        // Add the user to the map for the requesting socket
+        let users = usersForSocket.get(data.requestingSocketId);
+        if (!users) {
+          return;
+        }
+        users.set(data.user.id, data.user);
+
+        // Get the room this socket is in
+        const room = await getSocketRoom(socket.id);
+        if (room) {
+          // Get all users in the room
+          const roomUsers = await getRoomUsers(room);
+          const expectedUserCount = Object.keys(roomUsers).length;
+
+          // If we've received responses from all users in the room
+          if (users.size === expectedUserCount) {
+            console.log("Received all user responses, sending update");
+            io.to(data.requestingSocketId).emit(
+              "users-update",
+              Array.from(users.entries())
+            );
+            usersForSocket.delete(data.requestingSocketId);
+          }
+        }
+      }
+    );
 
     // Join room and broadcast user joined
     socket.on("join-room", async (data: { name: string }) => {
@@ -92,14 +129,61 @@ io.on("connection", async (socket) => {
 
       socket.join(data.name);
       await addSocketToRoom(socket.id, data.name);
-      console.log("Room the socket joined", data.name);
-      io.to(data.name).emit("user-joined", user);
+      await addUser(socket.id, user);
+      await addUserToRoom(data.name, socket.id);
+
+      // add user to map for socket
+      usersForSocket.set(socket.id, new Map([[user.id, user]]));
+
+      // Broadcast request to the entire room
+      console.log("Broadcasting request for current users to room:", data.name);
+      socket.broadcast.to(data.name).emit("request-current-user", socket.id);
+      // if after 5 seconds, no response, send to all users
+      setTimeout(() => {
+        const users = usersForSocket.get(socket.id);
+        if (users && users.size > 1) {
+          io.to(socket.id).emit("users-update", Array.from(users.entries()));
+          usersForSocket.delete(socket.id);
+        }
+      }, 100);
+
+      // Now add the new user to the room
+
+      // Send other room state to the joining socket
+      try {
+        // Get existing NPCs
+        const npcsData = await get(`npcs:${data.name}`);
+        if (npcsData) {
+          const npcs = JSON.parse(npcsData);
+          socket.emit("npcs-update", Array.from(Object.entries(npcs)));
+        }
+
+        // Get existing throws
+        const throwsData = await get(`throws:${data.name}`);
+        if (throwsData) {
+          const throws = JSON.parse(throwsData);
+          socket.emit("throws-update", Array.from(Object.entries(throws)));
+        }
+
+        // Get existing NPC groups
+        const groupsData = await get(`npcGroups:${data.name}`);
+        if (groupsData) {
+          const groups = JSON.parse(groupsData);
+          socket.emit("npc-groups-update", Array.from(Object.entries(groups)));
+        }
+      } catch (error) {
+        console.error("Error sending room state to new user:", error);
+      }
+
+      // Broadcast to room that user joined
+      socket.broadcast.to(data.name).emit("user-joined", user);
     });
 
     // Handle room leaving
     socket.on("leave-room", async (roomName: string) => {
       socket.leave(roomName);
       await removeSocketFromRoom(socket.id);
+      await removeUserFromRoom(roomName, socket.id);
     });
 
     // Handle get-npcs request
@@ -170,7 +254,6 @@ io.on("connection", async (socket) => {
         { npcId, room, throwerId, direction, npc, velocity },
         callback
       ) => {
-        console.log("server recieved throwing npc", npc);
         try {
           const updatedNPC: NPC = {
             ...npc,
@@ -207,13 +290,28 @@ io.on("connection", async (socket) => {
       }
     );
 
+    // Handle user position updates
+    socket.on("user-updated", async (updatedUser: UserInfo) => {
+      try {
+        // Just broadcast to room, don't update Redis
+        const room = await getSocketRoom(socket.id);
+        if (room) {
+          socket.broadcast.to(room).emit("user-updated", updatedUser);
+        }
+      } catch (error) {
+        console.error("Error handling user update:", error);
+      }
+    });
+
     // Handle disconnection
     socket.on("disconnect", async () => {
       try {
         // Get the socket's room from Redis
         const room = await getSocketRoom(socket.id);
         if (room) {
-          await decrementRoomUsers(room);
+          await removeUserFromRoom(room, socket.id);
+          await removeUser(socket.id);
+          await decrementRoomUsers(room, socket.id);
 
           // Clean up NPCs in the room
           const npcsData = await get(`npcs:${room}`);

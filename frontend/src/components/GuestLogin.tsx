@@ -10,6 +10,7 @@ import {
 } from "../utils/types";
 import { DefaultMap } from "../utils/types";
 import { getSocket } from "../socket";
+import io from "socket.io-client";
 
 interface Props {
   setMyUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
@@ -52,6 +53,14 @@ export default function GuestLogin({
         setUsers((prev) => new Map(prev).set(newUser.id, newUser));
       });
 
+      socket.on("request-current-user", (requestingSocketId: string) => {
+        console.log("request-current-user user", user);
+        socket.emit("current-user-response", {
+          user,
+          requestingSocketId,
+        });
+      });
+
       socket.on("user-left", (userId: string) => {
         setUsers((prev) => {
           const newUsers = new Map(prev);
@@ -60,9 +69,41 @@ export default function GuestLogin({
         });
       });
 
-      socket.on("user-updated", (updatedUser: UserInfo) => {
-        setUsers((prev) => new Map(prev).set(updatedUser.id, updatedUser));
+      socket.on("user-updated", (data: { updatedUser: UserInfo }) => {
+        console.log("user-updated", data.updatedUser);
+        setUsers((prev) =>
+          new Map(prev).set(data.updatedUser.id, data.updatedUser)
+        );
       });
+
+      socket.on("users-update", (data: { users: [string, UserInfo][] }) => {
+        setUsers(new Map(data.users));
+      });
+
+      socket.on("npcs-update", (data: { npcs: [string, NPC][] }) => {
+        setNPCs(new Map(data.npcs));
+      });
+
+      socket.on("throws-update", (data: { throws: [string, throwData][] }) => {
+        setThrows(new Map(data.throws));
+      });
+
+      socket.on(
+        "npc-groups-update",
+        (data: { groups: [string, NPCGroup][] }) => {
+          const defaultMap = new DefaultMap<string, NPCGroup>((id: string) => ({
+            npcIds: new Set<string>(),
+            captorId: id,
+          }));
+          data.groups.forEach(([id, group]) =>
+            defaultMap.set(id, {
+              npcIds: new Set<string>(group.npcIds),
+              captorId: group.captorId,
+            })
+          );
+          setNPCGroups(defaultMap);
+        }
+      );
 
       socket.on("npc-update", (data: { npc: NPC }) => {
         setNPCs((prev) => new Map(prev).set(data.npc.id, data.npc));

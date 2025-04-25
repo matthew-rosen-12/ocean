@@ -43,6 +43,7 @@ export interface NPCGroup {
 
 export type npcId = string;
 export type userId = string;
+export type socketId = string;
 
 export class DefaultMap<K, V> extends Map<K, V> {
   constructor(private defaultFactory: (key: K) => V) {

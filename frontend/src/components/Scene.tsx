@@ -291,10 +291,9 @@ export default function Scene({
         const currentSocket = socket();
         await new Promise<void>((resolve, reject) => {
           currentSocket.emit(
-            "client-user-modified",
+            "user-updated",
             {
-              id: myUser.id,
-              info: myUser,
+              updatedUser: myUser,
             },
             (response: { success: boolean }) => {
               if (!response.success) reject(new Error("Broadcast failed"));
