@@ -6,6 +6,10 @@ import { NPC } from "../types";
 
 dotenv.config();
 
+// Track client status
+let clientConnected = false;
+let connectionInProgress = false;
+
 export const redisClient = createClient({
   url: process.env.REDIS_URL || "redis://localhost:6379",
   socket: {
@@ -24,18 +28,22 @@ export const redisClient = createClient({
 // Connection state logging
 redisClient.on("error", (err) => {
   console.error("Redis Client Error:", err);
+  clientConnected = false;
   console.log("Current Redis connection state:", {
     isOpen: redisClient.isOpen,
     isReady: redisClient.isReady,
+    clientConnected,
   });
 });
 
 redisClient.on("connect", () => {
   console.log("Redis Client Connected");
+  clientConnected = true;
   console.log("Connection details:", {
     url: process.env.REDIS_URL || "redis://localhost:6379",
     isOpen: redisClient.isOpen,
     isReady: redisClient.isReady,
+    clientConnected,
   });
 });
 
@@ -44,51 +52,82 @@ redisClient.on("reconnecting", () => {
   console.log("Reconnection attempt details:", {
     isOpen: redisClient.isOpen,
     isReady: redisClient.isReady,
+    clientConnected,
   });
 });
 
 redisClient.on("ready", () => {
   console.log("Redis Client Ready");
+  clientConnected = true;
   console.log("Ready state details:", {
     isOpen: redisClient.isOpen,
     isReady: redisClient.isReady,
+    clientConnected,
   });
 });
 
 redisClient.on("end", () => {
   console.log("Redis Client Connection Ended");
+  clientConnected = false;
   console.log("End state details:", {
     isOpen: redisClient.isOpen,
     isReady: redisClient.isReady,
+    clientConnected,
   });
 });
 
-export const connect = async () => {
+// Helper to ensure Redis client is connected
+async function ensureConnected() {
+  if (clientConnected && redisClient.isReady) {
+    return true;
+  }
+
+  if (connectionInProgress) {
+    // Wait for current connection attempt to finish
+    let attempts = 0;
+    while (connectionInProgress && attempts < 50) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      attempts++;
+    }
+
+    if (clientConnected) return true;
+  }
+
+  connectionInProgress = true;
+
   try {
+    console.log("Ensuring Redis client is connected, current state:", {
+      isOpen: redisClient.isOpen,
+      isReady: redisClient.isReady,
+      clientConnected,
+    });
+
     if (!redisClient.isOpen) {
       console.log(
         "Attempting to connect to Redis at:",
         process.env.REDIS_URL || "redis://localhost:6379"
       );
       await redisClient.connect();
-    } else {
-      console.log("Redis client already connected, current state:", {
-        isOpen: redisClient.isOpen,
-        isReady: redisClient.isReady,
-      });
     }
+
+    clientConnected = true;
+    return true;
   } catch (error) {
     console.error("Failed to connect to Redis:", error);
-    console.log("Connection failure state:", {
-      isOpen: redisClient.isOpen,
-      isReady: redisClient.isReady,
-    });
+    clientConnected = false;
     throw error;
+  } finally {
+    connectionInProgress = false;
   }
+}
+
+export const connect = async () => {
+  return ensureConnected();
 };
 
 export const get = async (key: string): Promise<string | null> => {
   try {
+    await ensureConnected();
     return await redisClient.get(key);
   } catch (error) {
     console.error("Error getting from Redis", { key, error });
@@ -98,6 +137,7 @@ export const get = async (key: string): Promise<string | null> => {
 
 export const hgetall = async (key: string): Promise<Record<string, string>> => {
   try {
+    await ensureConnected();
     return await redisClient.hGetAll(key);
   } catch (error) {
     console.error("Error getting from Redis", { key, error });
@@ -107,6 +147,7 @@ export const hgetall = async (key: string): Promise<Record<string, string>> => {
 
 export const set = async (key: string, value: string): Promise<void> => {
   try {
+    await ensureConnected();
     await redisClient.set(key, value);
   } catch (error) {
     console.error("Error setting in Redis", { key, value, error });
@@ -116,6 +157,7 @@ export const set = async (key: string, value: string): Promise<void> => {
 
 export const del = async (key: string): Promise<void> => {
   try {
+    await ensureConnected();
     await redisClient.del(key);
   } catch (error) {
     console.error("Error deleting from Redis", { key, error });
@@ -125,12 +167,14 @@ export const del = async (key: string): Promise<void> => {
 
 export const keys = async (key: string): Promise<string[]> => {
   try {
+    await ensureConnected();
     return await redisClient.keys(key);
   } catch (error) {
     console.error("Error getting keys from Redis", { key, error });
     throw error;
   }
 };
+
 interface Room {
   name: string;
   numUsers: number;

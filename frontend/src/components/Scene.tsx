@@ -56,6 +56,7 @@ async function throwNPC(
   myUser: UserInfo,
   npc: NPC,
   npcGroups: DefaultMap<userId, NPCGroup>,
+  throws: Map<npcId, throwData>,
   socket: Socket | null
 ) {
   try {
@@ -63,40 +64,26 @@ async function throwNPC(
     npc.position = myUser.position;
     if (npcGroups.get(myUser.id)) {
       npcGroups.get(myUser.id).npcIds.delete(npc.id);
-
-      // Broadcast that the user has been modified
-      if (socket) {
-        socket.emit(
-          "client-npc-group-modified",
-          {
-            id: myUser.id,
-            info: npcGroups.get(myUser.id),
-            room: myUser.room,
-          },
-          (response: { success: boolean }) => {
-            if (!response.success)
-              console.error("NPC group modification failed");
-          }
-        );
-      }
     }
+    npc.phase = NPCPhase.THROWN;
+    const throwData: throwData = {
+      id: npc.id,
+      room: myUser.room,
+      npc: npc,
+      startPosition: myUser.position,
+      throwDuration: 20,
+      timestamp: Date.now(),
+      throwerId: myUser.id,
+      direction: myUser.direction,
+      velocity: 20,
+    };
+    throws.set(npc.id, throwData);
 
     // Then make the socket call to throw the NPC
     if (socket) {
-      socket.emit(
-        "throw-npc",
-        {
-          npcId: npc.id,
-          room: myUser.room,
-          throwerId: myUser.id,
-          direction: myUser.direction,
-          npc: npc,
-          velocity: 20,
-        },
-        (response: { success: boolean }) => {
-          if (!response.success) console.error("NPC throw failed");
-        }
-      );
+      socket.emit("throw-npc", throwData, (response: { success: boolean }) => {
+        if (!response.success) console.error("NPC throw failed");
+      });
     }
   } catch (error) {
     console.error("Error throwing NPC:", error);

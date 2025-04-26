@@ -70,11 +70,18 @@ export default function GuestLogin({
       });
 
       socket.on("npcs-update", (data: { npcs: [string, NPC][] }) => {
-        setNPCs(new Map(data.npcs));
+        if (Array.isArray(data)) {
+          // Handle format: direct array of entries
+          setNPCs(new Map(data as [string, NPC][]));
+        } else if (data && data.npcs && Array.isArray(data.npcs)) {
+          // Handle format: { npcs: [...] }
+          setNPCs(new Map(data.npcs));
+        } else {
+          console.error("Unexpected npcs-update format:", data);
+        }
       });
 
       socket.on("user-left", (data: { userId: string }) => {
-        console.log("user-left", data);
         setUsers((prev) => {
           const newUsers = new Map(prev);
           newUsers.delete(data.userId);
@@ -83,22 +90,47 @@ export default function GuestLogin({
       });
 
       socket.on("throws-update", (data: { throws: [string, throwData][] }) => {
-        setThrows(new Map(data.throws));
+        console.log("throws-update", data);
+        if (Array.isArray(data)) {
+          // Handle format: direct array of entries
+          setThrows(new Map(data as [string, throwData][]));
+        } else if (data && data.throws && Array.isArray(data.throws)) {
+          // Handle format: { throws: [...] }
+          setThrows(new Map(data.throws));
+        } else {
+          console.error("Unexpected throws-update format:", data);
+        }
       });
 
       socket.on(
         "npc-groups-update",
         (data: { groups: [string, NPCGroup][] }) => {
+          console.log("npc-groups-update", data);
           const defaultMap = new DefaultMap<string, NPCGroup>((id: string) => ({
             npcIds: new Set<string>(),
             captorId: id,
           }));
-          data.groups.forEach(([id, group]) =>
-            defaultMap.set(id, {
-              npcIds: new Set<string>(group.npcIds),
-              captorId: group.captorId,
-            })
-          );
+
+          if (Array.isArray(data)) {
+            // Handle format: direct array of entries
+            data.forEach(([id, group]) =>
+              defaultMap.set(id, {
+                npcIds: new Set<string>(group.npcIds),
+                captorId: group.captorId,
+              })
+            );
+          } else if (data && data.groups && Array.isArray(data.groups)) {
+            // Handle format: { groups: [...] }
+            data.groups.forEach(([id, group]) =>
+              defaultMap.set(id, {
+                npcIds: new Set<string>(group.npcIds),
+                captorId: group.captorId,
+              })
+            );
+          } else {
+            console.error("Unexpected npc-groups-update format:", data);
+          }
+
           setNPCGroups(defaultMap);
         }
       );
@@ -128,51 +160,6 @@ export default function GuestLogin({
       // Set initial user state
       setMyUser(user);
       setUsers(new Map([[user.id, user]]));
-
-      // Fetch initial game state
-      // Request initial game state via socket
-      const [npcs, throws, npcGroups] = await Promise.all([
-        new Promise<[string, NPC][]>((resolve) => {
-          console.log("getting npcs");
-          socket.once("npcs-data", (data: { npcs: [string, NPC][] }) => {
-            console.log("npcs-data", data);
-            resolve(data.npcs);
-          });
-          socket.emit("get-npcs", { room: user.room });
-        }),
-        new Promise<[string, throwData][]>((resolve) => {
-          socket.emit("get-throws", { room: user.room });
-          socket.once(
-            "throws-data",
-            (data: { throws: [string, throwData][] }) => {
-              resolve(data.throws);
-            }
-          );
-        }),
-        new Promise<[string, NPCGroup][]>((resolve) => {
-          socket.emit("get-npc-groups", { room: user.room });
-          socket.once(
-            "npc-groups-data",
-            (data: { groups: [string, NPCGroup][] }) => {
-              resolve(data.groups);
-            }
-          );
-        }),
-      ]);
-
-      setNPCs(new Map(npcs));
-      setThrows(new Map(throws));
-      const defaultMap = new DefaultMap<string, NPCGroup>((id: string) => ({
-        npcIds: new Set<string>(),
-        captorId: id,
-      }));
-      npcGroups.forEach(([id, group]) =>
-        defaultMap.set(id, {
-          npcIds: new Set<string>(group.npcIds),
-          captorId: group.captorId,
-        })
-      );
-      setNPCGroups(defaultMap);
     } catch (error) {
       console.error("Login error:", error);
     } finally {

@@ -52,8 +52,25 @@ export const io = new Server(httpServer, {
   transports: ["websocket", "polling"],
 });
 
-// Connect to Redis
-connect().catch(console.error);
+// Connect to Redis before starting server
+const startServer = async () => {
+  try {
+    // Connect to Redis
+    await connect();
+    console.log("Redis connection established successfully");
+
+    const PORT = process.env.PORT || 3001;
+    httpServer.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("Failed to start server:", error);
+    process.exit(1);
+  }
+};
+
+// Start the server
+startServer();
 
 // Import services dynamically to avoid circular dependencies
 const {
@@ -156,29 +173,35 @@ io.on("connection", async (socket) => {
         }
       }, 10000);
 
-      // Now add the new user to the room
-
       // Send other room state to the joining socket
       try {
         // Get existing NPCs
+        console.log("getting npcs from server", data.name);
         const npcsData = await get(`npcs:${data.name}`);
         if (npcsData) {
           const npcs = JSON.parse(npcsData);
-          socket.emit("npcs-update", Array.from(Object.entries(npcs)));
+          const npcsList = Object.entries(npcs);
+          socket.emit("npcs-update", {
+            npcs: npcsList,
+          });
         }
 
         // Get existing throws
         const throwsData = await get(`throws:${data.name}`);
         if (throwsData) {
           const throws = JSON.parse(throwsData);
-          socket.emit("throws-update", Array.from(Object.entries(throws)));
+          socket.emit("throws-update", {
+            throws: Array.from(Object.entries(throws)),
+          });
         }
 
         // Get existing NPC groups
         const groupsData = await get(`npcGroups:${data.name}`);
         if (groupsData) {
           const groups = JSON.parse(groupsData);
-          socket.emit("npc-groups-update", Array.from(Object.entries(groups)));
+          socket.emit("npc-groups-update", {
+            groups: Array.from(Object.entries(groups)),
+          });
         }
       } catch (error) {
         console.error("Error sending room state to new user:", error);
@@ -186,48 +209,6 @@ io.on("connection", async (socket) => {
 
       // Broadcast to room that user joined
       socket.broadcast.to(data.name).emit("user-joined", user);
-    });
-
-    // Handle get-npcs request
-    socket.on("get-npcs", async (data: { room: string }) => {
-      console.log("get-npcs before try", data);
-      try {
-        const npcs = await getNPCsForRoom(data.room);
-        console.log("npcs from get-npcs", npcs);
-        socket.emit("npcs-data", { npcs: Array.from(npcs.entries()) });
-      } catch (error) {
-        console.error("Error getting NPCs:", error);
-        socket.emit("npcs-data", { npcs: [] });
-      }
-    });
-
-    // Handle get-throws request
-    socket.on("get-throws", async ({ room }) => {
-      try {
-        const throws = await getRoomActiveThrows(room);
-        socket.emit("throws-data", {
-          throws: throws.map((throwData: throwData) => [
-            throwData.npc.id,
-            throwData,
-          ]),
-        });
-      } catch (error) {
-        console.error("Error getting throws:", error);
-        socket.emit("throws-data", { throws: [] });
-      }
-    });
-
-    // Handle get-npc-groups request
-    socket.on("get-npc-groups", async ({ room }) => {
-      try {
-        const groups = await getNPCGroupsFromRedis(room);
-        socket.emit("npc-groups-data", {
-          groups: Array.from(groups.entries()),
-        });
-      } catch (error) {
-        console.error("Error getting NPC groups:", error);
-        socket.emit("npc-groups-data", { groups: [] });
-      }
     });
 
     // Handle capture-npc request
@@ -243,7 +224,7 @@ io.on("connection", async (socket) => {
             phase: NPCPhase.CAPTURED,
           };
 
-          await updateNPCInRoom(data.roomName, updatedNPC, true);
+          await updateNPCInRoom(data.roomName, updatedNPC);
           await updateNPCGroupInRoom(data.roomName, data.captorId, data.npcId);
 
           io.to(data.roomName).emit("npc-captured", {
@@ -350,9 +331,4 @@ io.on("connection", async (socket) => {
     console.error("Socket connection error:", error);
     socket.disconnect();
   }
-});
-
-const PORT = process.env.PORT || 3001;
-httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
 });

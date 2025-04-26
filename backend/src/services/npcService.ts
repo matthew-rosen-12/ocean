@@ -13,52 +13,103 @@ const NUM_NPCS = 4;
 import { io } from "../server";
 // Helper functions for Redis storage
 async function getNPCMapFromRedis(room: string): Promise<Map<npcId, NPC>> {
-  const data = await get(`${NPC_KEY_PREFIX}${room}`);
-  return data ? new Map(JSON.parse(data)) : new Map();
+  try {
+    const data = await get(`${NPC_KEY_PREFIX}${room}`);
+    if (!data) return new Map();
+
+    const parsed = JSON.parse(data);
+    // Handle both array of entries and direct object format
+    if (Array.isArray(parsed)) {
+      return new Map(parsed);
+    } else {
+      // Convert object to Map
+      return new Map(
+        Object.entries(parsed).map(([id, npc]) => [id, npc as NPC])
+      );
+    }
+  } catch (error) {
+    console.error(`Error getting NPCs for room ${room}:`, error);
+    return new Map();
+  }
 }
 
 async function setNPCMapToRedis(
   room: string,
   npcs: Map<npcId, NPC>
 ): Promise<void> {
-  await set(
-    `${NPC_KEY_PREFIX}${room}`,
-    JSON.stringify(Array.from(npcs.entries()))
-  );
+  try {
+    // Convert to object format for consistency
+    const npcsObject = Object.fromEntries(npcs.entries());
+    await set(`${NPC_KEY_PREFIX}${room}`, JSON.stringify(npcsObject));
+  } catch (error) {
+    console.error(`Error setting NPCs for room ${room}:`, error);
+    throw error;
+  }
 }
 
 export async function getThrowsFromRedis(room: string): Promise<throwData[]> {
-  const data = await get(`${THROWS_KEY_PREFIX}${room}`);
-  return data ? JSON.parse(data) : [];
+  try {
+    const data = await get(`${THROWS_KEY_PREFIX}${room}`);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error(`Error getting throws for room ${room}:`, error);
+    return [];
+  }
 }
 
 export async function setThrowsToRedis(
   room: string,
   throws: throwData[]
 ): Promise<void> {
-  await set(`${THROWS_KEY_PREFIX}${room}`, JSON.stringify(throws));
+  try {
+    await set(`${THROWS_KEY_PREFIX}${room}`, JSON.stringify(throws));
+  } catch (error) {
+    console.error(`Error setting throws for room ${room}:`, error);
+    throw error;
+  }
 }
 
 async function setNPCGroupsToRedis(
   room: string,
   groups: Map<userId, NPCGroup>
 ): Promise<void> {
-  const serializable = Array.from(groups.entries()).map(([id, group]) => {
-    return [id, { npcIds: Array.from(group.npcIds), captorId: group.captorId }];
-  });
+  try {
+    const serializable = Array.from(groups.entries()).map(([id, group]) => {
+      return [
+        id,
+        { npcIds: Array.from(group.npcIds), captorId: group.captorId },
+      ];
+    });
 
-  await set(`${GROUPS_KEY_PREFIX}${room}`, JSON.stringify(serializable));
+    await set(`${GROUPS_KEY_PREFIX}${room}`, JSON.stringify(serializable));
+  } catch (error) {
+    console.error(`Error setting NPC groups for room ${room}:`, error);
+    throw error;
+  }
 }
 
 // Main service functions
 export async function getNPCsForRoom(
   roomName: string
 ): Promise<Map<npcId, NPC>> {
-  const npcsData = await get(`npcs:${roomName}`);
-  if (!npcsData) return new Map();
-  const parsed = JSON.parse(npcsData);
-  // Convert from array of [id, npc] pairs to Map
-  return new Map(parsed.map(([id, npc]: [string, NPC]) => [id, npc]));
+  try {
+    const npcsData = await get(`npcs:${roomName}`);
+    if (!npcsData) return new Map();
+
+    const parsed = JSON.parse(npcsData);
+
+    // Handle both array format and object format
+    if (Array.isArray(parsed)) {
+      return new Map(parsed.map(([id, npc]: [string, NPC]) => [id, npc]));
+    } else {
+      return new Map(
+        Object.entries(parsed).map(([id, npc]) => [id, npc as NPC])
+      );
+    }
+  } catch (error) {
+    console.error(`Error getting NPCs for room ${roomName}:`, error);
+    return new Map();
+  }
 }
 
 export async function getRoomActiveThrows(
@@ -86,16 +137,20 @@ export async function getNPCGroupsFromRedis(
 export async function updateNPCInRoom(
   roomName: string,
   npc: NPC,
-  message: boolean
+  message: boolean = true
 ): Promise<void> {
-  const npcs = await getNPCMapFromRedis(roomName);
-  npcs.set(npc.id, npc);
-  await setNPCMapToRedis(roomName, npcs);
+  try {
+    const npcs = await getNPCMapFromRedis(roomName);
+    npcs.set(npc.id, npc);
+    await setNPCMapToRedis(roomName, npcs);
 
-  if (message) {
-    io.to(roomName).emit("npc-update", {
-      npc: npc,
-    });
+    if (message) {
+      io.to(roomName).emit("npc-update", {
+        npc: npc,
+      });
+    }
+  } catch (error) {
+    console.error(`Error updating NPC in room ${roomName}:`, error);
   }
 }
 
@@ -173,15 +228,22 @@ export async function setThrowCompleteInRoom(
 }
 
 export async function populateRoom(roomName: string): Promise<void> {
-  const npcs = await createNPCs(NUM_NPCS);
-  const npcMap = new Map<npcId, NPC>();
-  npcs.forEach((npc) => {
-    npcMap.set(npc.id, npc);
-  });
-  await setNPCMapToRedis(roomName, npcMap);
-  io.to(roomName).emit("npcs-populated", {
-    npcs: Array.from(npcMap.entries()),
-  });
+  try {
+    const npcs = await createNPCs(NUM_NPCS);
+    const npcObject: Record<string, NPC> = {};
+
+    npcs.forEach((npc) => {
+      npcObject[npc.id] = npc;
+    });
+
+    await set(`npcs:${roomName}`, JSON.stringify(npcObject));
+
+    io.to(roomName).emit("npcs-populated", {
+      npcs: Object.entries(npcObject),
+    });
+  } catch (error) {
+    console.error(`Error populating room ${roomName}:`, error);
+  }
 }
 
 async function createNPCs(count: number): Promise<NPC[]> {
