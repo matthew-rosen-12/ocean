@@ -1,30 +1,29 @@
 import express from "express";
-import { createServer } from "http";
+import { createServer, get } from "http";
 import { Server } from "socket.io";
 import cors from "cors";
-import { v4 as uuidv4 } from "uuid";
 import {
+  addSocketToRoomInRedis,
   connect,
-  get,
-  set,
-  hgetall,
-  del,
-  keys,
-  addSocketToRoom,
-  removeSocketFromRoom,
-  getSocketRoom,
-  addUserToRoom,
-  getRoomUsers,
-  addUser,
-  removeUser,
-  decrementRoomUsers,
-  mapSocketToUser,
-  getUserIdFromSocket,
-  removeSocketUserMapping,
+  decrementRoomUsersInRedis,
+  getNPCGroupsFromRedis,
+  getNPCsFromRedis,
+  getSocketRoomInRedis,
+  getThrowsFromRedis,
+  getUserIdFromSocketInRedis,
+  mapSocketToUserInRedis,
+  removeNPCFromGroupInRoomInRedis,
+  removeSocketFromRoomInRedis,
+  removeSocketUserMappingInRedis,
+  setThrowsInRedis,
 } from "./db/config";
 import { NPC, NPCPhase, throwData, userId, UserInfo, socketId } from "./types";
 import authRouter from "./routes/auth";
 import { getGameTicker } from "./game-ticker";
+import { updateNPCGroupInRoomInRedis } from "./db/npc-ops";
+import { updateNPCInRoomInRedis } from "./db/npc-ops";
+import { deserialize, serialize } from "./utils/serializers";
+import { getRoomNumUsersInRedis } from "./db/room-ops";
 
 // Initialize game ticker
 getGameTicker();
@@ -72,17 +71,6 @@ const startServer = async () => {
 // Start the server
 startServer();
 
-// Import services dynamically to avoid circular dependencies
-const {
-  getNPCsForRoom,
-  getRoomActiveThrows,
-  getNPCGroupsFromRedis,
-  updateNPCInRoom,
-  updateNPCGroupInRoom,
-  removeNPCFromGroupInRoom,
-  setRoomActiveThrows,
-} = require("./services/npcService");
-
 const usersForSocket = new Map<socketId, Map<userId, UserInfo>>();
 
 io.on("connection", async (socket) => {
@@ -101,199 +89,162 @@ io.on("connection", async (socket) => {
     const user = JSON.parse(Buffer.from(token, "base64").toString());
 
     // Map this socket to the user
-    await mapSocketToUser(socket.id, user.id);
+    await mapSocketToUserInRedis(socket.id, user.id);
 
-    socket.on(
-      "current-user-response",
-      async (data: { user: UserInfo; requestingSocketId: string }) => {
-        // Add the user to the map for the requesting socket
-        let users = usersForSocket.get(data.requestingSocketId);
-        if (!users) {
-          return;
-        }
-        users.set(data.user.id, data.user);
+    socket.on("current-user-response", async (serializedData: string) => {
+      const { user, requestingSocketId } = deserialize(serializedData);
 
-        // Get the room this socket is in
-        const room = await getSocketRoom(socket.id);
-        if (room) {
-          // Get all users in the room
-          const roomUsers = await getRoomUsers(room);
-          const expectedUserCount = Object.keys(roomUsers).length;
-
-          // If we've received responses from all users in the room
-          if (users.size === expectedUserCount) {
-            io.to(data.requestingSocketId).emit("users-update", {
-              users: Array.from(users.entries()),
-            });
-            usersForSocket.delete(data.requestingSocketId);
-          }
-        }
+      let users = usersForSocket.get(requestingSocketId);
+      if (!users) {
+        return;
       }
-    );
+      users.set(user.id, user);
+
+      // Get the room this socket is in
+      const roomName = await getSocketRoomInRedis(socket.id);
+      // Get all users in the room
+      if (!roomName) {
+        return;
+      }
+      const expectedUserCount = await getRoomNumUsersInRedis(roomName);
+
+      // If we've received responses from all users in the room
+      if (users.size === expectedUserCount) {
+        io.to(requestingSocketId).emit(
+          "users-update",
+          serialize({ users: users })
+        );
+        usersForSocket.delete(requestingSocketId);
+      }
+    });
 
     // Join room and broadcast user joined
-    socket.on("join-room", async (data: { name: string }) => {
+    socket.on("join-room", async (serializedData: string) => {
+      console.log("joining room");
+      const { name } = deserialize(serializedData);
       // Check if room exists in Redis
-      const roomExists = await get(`room:${data.name}`);
-      if (!roomExists) {
-        // Create new room if it doesn't exist
-        await set(
-          `room:${data.name}`,
-          JSON.stringify({
-            name: data.name,
-            createdAt: new Date().toISOString(),
-            users: [],
-          })
-        );
-      }
 
-      socket.join(data.name);
-      await addSocketToRoom(socket.id, data.name);
-
-      // Add user data if they're joining for the first time
-      await addUser(user.id, user);
-
-      // Add user to the room
-      await addUserToRoom(data.name, user.id);
+      socket.join(name);
+      await addSocketToRoomInRedis(socket.id, name);
 
       // add user to map for socket
       usersForSocket.set(socket.id, new Map([[user.id, user]]));
 
       // Broadcast request to the entire room
-      console.log("Broadcasting request for current users to room:", data.name);
-      socket.broadcast.to(data.name).emit("request-current-user", socket.id);
+      socket.broadcast
+        .to(name)
+        .emit(
+          "request-current-user",
+          serialize({ requestingSocketId: socket.id })
+        );
       // if after 5 seconds, no response, send to all users
       setTimeout(() => {
         const users = usersForSocket.get(socket.id);
         if (users && users.size > 1) {
-          io.to(socket.id).emit("users-update", {
-            users: Array.from(users.entries()),
-          });
+          console.log("sending users-update", serialize({ users }));
+          io.to(socket.id).emit("users-update", serialize({ users }));
           usersForSocket.delete(socket.id);
         }
-      }, 10000);
+      }, 1000);
 
       // Send other room state to the joining socket
       try {
         // Get existing NPCs
-        console.log("getting npcs from server", data.name);
-        const npcsData = await get(`npcs:${data.name}`);
+        const npcsData = await getNPCsFromRedis(name);
         if (npcsData) {
-          const npcs = JSON.parse(npcsData);
-          const npcsList = Object.entries(npcs);
-          socket.emit("npcs-update", {
-            npcs: npcsList,
-          });
+          socket.emit("npcs-update", serialize({ npcs: npcsData }));
         }
 
         // Get existing throws
-        const throwsData = await get(`throws:${data.name}`);
+        const throwsData = await getThrowsFromRedis(name);
         if (throwsData) {
-          const throws = JSON.parse(throwsData);
-          socket.emit("throws-update", {
-            throws: Array.from(Object.entries(throws)),
-          });
+          console.log("throws-update", throwsData);
+          socket.emit("throws-update", serialize({ throws: throwsData }));
         }
 
         // Get existing NPC groups
-        const groupsData = await get(`npcGroups:${data.name}`);
+        const groupsData = await getNPCGroupsFromRedis(name);
         if (groupsData) {
-          const groups = JSON.parse(groupsData);
-          socket.emit("npc-groups-update", {
-            groups: Array.from(Object.entries(groups)),
-          });
+          socket.emit("npc-groups-update", serialize({ groups: groupsData }));
         }
       } catch (error) {
         console.error("Error sending room state to new user:", error);
       }
 
       // Broadcast to room that user joined
-      socket.broadcast.to(data.name).emit("user-joined", user);
+      socket.broadcast.to(name).emit("user-joined", serialize({ user }));
     });
 
     // Handle capture-npc request
-    socket.on(
-      "capture-npc",
-      async (data: { npcId: string; roomName: string; captorId: string }) => {
-        try {
-          const npcs = await getNPCsForRoom(data.roomName);
-          const npc = npcs.get(data.npcId)!;
+    socket.on("capture-npc", async (serializedData: string) => {
+      const { npcId, room, captorId } = deserialize(serializedData);
+      try {
+        const npcs = await getNPCsFromRedis(room);
+        const npc = npcs.get(npcId)!;
 
-          const updatedNPC: NPC = {
-            ...npc,
-            phase: NPCPhase.CAPTURED,
-          };
+        const updatedNPC: NPC = {
+          ...npc,
+          phase: NPCPhase.CAPTURED,
+        };
 
-          await updateNPCInRoom(data.roomName, updatedNPC);
-          await updateNPCGroupInRoom(data.roomName, data.captorId, data.npcId);
+        await updateNPCInRoomInRedis(room, updatedNPC);
+        await updateNPCGroupInRoomInRedis(room, captorId, npcId);
 
-          io.to(data.roomName).emit("npc-captured", {
-            id: data.captorId,
+        io.to(room).emit(
+          "npc-captured",
+          serialize({
+            id: captorId,
             npc: updatedNPC,
-          });
-        } catch (error) {
-          console.error("Error capturing NPC:", error);
-        }
+          })
+        );
+      } catch (error) {
+        console.error("Error capturing NPC:", error);
       }
-    );
+    });
 
     // Handle throw-npc request
-    socket.on(
-      "throw-npc",
-      async (data: {
-        npcId: string;
-        roomName: string;
-        throwerId: string;
-        direction: { x: number; y: number };
-        npc: NPC;
-        velocity: number;
-      }) => {
-        try {
-          const updatedNPC: NPC = {
-            ...data.npc,
-            phase: NPCPhase.THROWN,
-          };
+    socket.on("throw-npc", async (serializedData: string) => {
+      const { throwData } = deserialize(serializedData);
+      try {
+        const updatedNPC: NPC = {
+          ...throwData.npc,
+          phase: NPCPhase.THROWN,
+        };
 
-          const throwData: throwData = {
-            id: uuidv4(),
-            room: data.roomName,
-            npc: updatedNPC,
-            startPosition: data.npc.position,
-            direction: data.direction,
-            velocity: data.velocity,
-            throwDuration: 1000, // 1 second
-            timestamp: Date.now(),
-            throwerId: data.throwerId,
-          };
+        await updateNPCInRoomInRedis(throwData.room, updatedNPC);
+        const activeThrows = await getThrowsFromRedis(throwData.room);
+        activeThrows.push(throwData);
+        await setThrowsInRedis(throwData.room, activeThrows);
+        await removeNPCFromGroupInRoomInRedis(
+          throwData.room,
+          throwData.throwerId,
+          throwData.npc.id
+        );
 
-          await updateNPCInRoom(data.roomName, updatedNPC);
-          const activeThrows = await getRoomActiveThrows(data.roomName);
-          activeThrows.push(throwData);
-          await setRoomActiveThrows(data.roomName, activeThrows);
-          await removeNPCFromGroupInRoom(
-            data.roomName,
-            data.throwerId,
-            data.npcId
-          );
-
-          io.to(data.roomName).emit("npc-thrown", {
+        io.to(throwData.room).emit(
+          "npc-thrown",
+          serialize({
             throw: throwData,
-          });
-        } catch (error) {
-          console.error("Error throwing NPC:", error);
-        }
+          })
+        );
+      } catch (error) {
+        console.error("Error throwing NPC:", error);
       }
-    );
+    });
 
     // Handle user position updates
-    socket.on("user-updated", async (data: { updatedUser: UserInfo }) => {
+    socket.on("user-updated", async (serializedData: string) => {
+      const { user } = deserialize(serializedData);
       try {
         // Just broadcast to room, don't update Redis
-        const room = await getSocketRoom(socket.id);
+        const room = await getSocketRoomInRedis(socket.id);
         if (room) {
-          socket.broadcast.to(room).emit("user-updated", {
-            updatedUser: data.updatedUser,
-          });
+          socket.broadcast.to(room).emit(
+            "user-updated",
+            serialize({
+              user,
+            })
+          );
         }
       } catch (error) {
         console.error("Error handling user update:", error);
@@ -304,23 +255,25 @@ io.on("connection", async (socket) => {
     socket.on("disconnect", async () => {
       try {
         // Get the socket's room from Redis
-        const room = await getSocketRoom(socket.id);
+        const room = await getSocketRoomInRedis(socket.id);
         if (room) {
+          console.log("disconnecting");
+
           // Get userId from socket
-          const userId = await getUserIdFromSocket(socket.id);
+          const userId = await getUserIdFromSocketInRedis(socket.id);
 
           // Handle room users decrement (this now checks multiple connections)
-          await decrementRoomUsers(room, socket.id);
+          await decrementRoomUsersInRedis(room, socket.id);
 
           // Remove the socket-user mapping
-          await removeSocketUserMapping(socket.id);
+          await removeSocketUserMappingInRedis(socket.id);
 
           // Remove this socket from room
-          await removeSocketFromRoom(socket.id);
+          await removeSocketFromRoomInRedis(socket.id);
 
           // Only broadcast user-left if this was their last connection
           if (userId) {
-            socket.broadcast.to(room).emit("user-left", { userId });
+            socket.broadcast.to(room).emit("user-left", serialize({ userId }));
           }
         }
       } catch (error) {

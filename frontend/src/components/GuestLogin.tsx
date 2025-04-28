@@ -10,6 +10,7 @@ import {
 } from "../utils/types";
 import { DefaultMap } from "../utils/types";
 import { getSocket } from "../socket";
+import { deserialize, serialize } from "../utils/serializers";
 
 interface Props {
   setMyUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
@@ -40,121 +41,99 @@ export default function GuestLogin({
       const { user, token } = await authResponse.json();
 
       const socket = getSocket(token);
-      socket.connect();
 
       // Join room after connection is established
       socket.on("connect", () => {
-        socket.emit("join-room", { name: user.room });
+        socket.emit("join-room", serialize({ name: user.room }));
       });
+
+      socket.connect();
 
       // Set up socket event handlers
-      socket.on("user-joined", (newUser: UserInfo) => {
-        setUsers((prev) => new Map(prev).set(newUser.id, newUser));
+      socket.on("user-joined", (serializedData: string) => {
+        const { user } = deserialize(serializedData);
+        setUsers((prev) => new Map(prev).set(user.id, user));
       });
 
-      socket.on("request-current-user", (requestingSocketId: string) => {
-        socket.emit("current-user-response", {
-          user,
-          requestingSocketId,
-        });
-      });
-
-      socket.on("user-updated", (data: { updatedUser: UserInfo }) => {
-        setUsers((prev) =>
-          new Map(prev).set(data.updatedUser.id, data.updatedUser)
+      socket.on("request-current-user", (serializedData: string) => {
+        const { requestingSocketId } = deserialize(serializedData);
+        console.log("emitting current-user-response");
+        socket.emit(
+          "current-user-response",
+          serialize({
+            user,
+            requestingSocketId,
+          })
         );
       });
 
-      socket.on("users-update", (data: { users: [string, UserInfo][] }) => {
-        setUsers(new Map(data.users));
+      socket.on("user-updated", (serializedData: string) => {
+        const { user } = deserialize(serializedData);
+        setUsers((prev) => new Map(prev).set(user.id, user));
       });
 
-      socket.on("npcs-update", (data: { npcs: [string, NPC][] }) => {
-        if (Array.isArray(data)) {
-          // Handle format: direct array of entries
-          setNPCs(new Map(data as [string, NPC][]));
-        } else if (data && data.npcs && Array.isArray(data.npcs)) {
-          // Handle format: { npcs: [...] }
-          setNPCs(new Map(data.npcs));
-        } else {
-          console.error("Unexpected npcs-update format:", data);
-        }
+      socket.on("users-update", (serializedData: string) => {
+        const { users } = deserialize(serializedData);
+        setUsers(users);
       });
 
-      socket.on("user-left", (data: { userId: string }) => {
+      socket.on("npcs-update", (serializedData: string) => {
+        const { npcs } = deserialize(serializedData);
+        setNPCs(npcs);
+      });
+
+      socket.on("user-left", (serializedData: string) => {
+        const { userId } = deserialize(serializedData);
         setUsers((prev) => {
           const newUsers = new Map(prev);
-          newUsers.delete(data.userId);
+          newUsers.delete(userId);
           return newUsers;
         });
       });
 
-      socket.on("throws-update", (data: { throws: [string, throwData][] }) => {
-        console.log("throws-update", data);
-        if (Array.isArray(data)) {
-          // Handle format: direct array of entries
-          setThrows(new Map(data as [string, throwData][]));
-        } else if (data && data.throws && Array.isArray(data.throws)) {
-          // Handle format: { throws: [...] }
-          setThrows(new Map(data.throws));
-        } else {
-          console.error("Unexpected throws-update format:", data);
-        }
+      socket.on("throws-update", (serializedData: string) => {
+        const { throws } = deserialize(serializedData);
+        setThrows(new Map(throws.map((t: throwData) => [t.id, t])));
       });
 
-      socket.on(
-        "npc-groups-update",
-        (data: { groups: [string, NPCGroup][] }) => {
-          console.log("npc-groups-update", data);
-          const defaultMap = new DefaultMap<string, NPCGroup>((id: string) => ({
-            npcIds: new Set<string>(),
-            captorId: id,
-          }));
+      socket.on("npc-groups-update", (serializedData: string) => {
+        const { groups } = deserialize(serializedData);
+        const defaultMap = new DefaultMap<userId, NPCGroup>((id: userId) => ({
+          npcIds: new Set<string>(),
+          captorId: id,
+        }));
 
-          if (Array.isArray(data)) {
-            // Handle format: direct array of entries
-            data.forEach(([id, group]) =>
-              defaultMap.set(id, {
-                npcIds: new Set<string>(group.npcIds),
-                captorId: group.captorId,
-              })
-            );
-          } else if (data && data.groups && Array.isArray(data.groups)) {
-            // Handle format: { groups: [...] }
-            data.groups.forEach(([id, group]) =>
-              defaultMap.set(id, {
-                npcIds: new Set<string>(group.npcIds),
-                captorId: group.captorId,
-              })
-            );
-          } else {
-            console.error("Unexpected npc-groups-update format:", data);
-          }
-
-          setNPCGroups(defaultMap);
+        //for each key value of groups, set the key and value in the defaultMap
+        for (const [id, group] of groups.entries()) {
+          defaultMap.set(id, group);
         }
-      );
 
-      socket.on("npc-update", (data: { npc: NPC }) => {
-        setNPCs((prev) => new Map(prev).set(data.npc.id, data.npc));
+        setNPCGroups(defaultMap);
       });
 
-      socket.on("npc-thrown", (data: { throw: throwData }) => {
-        setThrows((prev) => new Map(prev).set(data.throw.npc.id, data.throw));
-        setNPCs((prev) => new Map(prev).set(data.throw.npc.id, data.throw.npc));
+      socket.on("npc-update", (serializedData: string) => {
+        const { npc } = deserialize(serializedData);
+        setNPCs((prev) => new Map(prev).set(npc.id, npc));
+      });
+
+      socket.on("npc-thrown", (serializedData: string) => {
+        const { throw: throwData } = deserialize(serializedData);
+        setThrows((prev) => new Map(prev).set(throwData.id, throwData));
+        setNPCs((prev) => new Map(prev).set(throwData.npc.id, throwData.npc));
         setNPCGroups((prev) => {
-          prev.get(data.throw.throwerId).npcIds.delete(data.throw.npc.id);
+          prev.get(throwData.throwerId).npcIds.delete(throwData.npc.id);
           return prev;
         });
       });
 
-      socket.on("throw-complete", (data: { npc: NPC }) => {
+      socket.on("throw-complete", (serializedData: string) => {
+        const { npc } = deserialize(serializedData);
         setThrows((prev) => {
           const newThrows = new Map(prev);
-          newThrows.delete(data.npc.id);
+          newThrows.delete(npc.id);
           return newThrows;
         });
-        setNPCs((prev) => new Map(prev).set(data.npc.id, data.npc));
+        setNPCs((prev) => new Map(prev).set(npc.id, npc));
       });
 
       // Set initial user state

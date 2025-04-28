@@ -57,3 +57,5 @@ export class DefaultMap<K, V> extends Map<K, V> {
     return super.get(key)!;
   }
 }
+
+export type roomId = string;

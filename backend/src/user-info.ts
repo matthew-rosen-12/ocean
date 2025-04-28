@@ -1,6 +1,6 @@
 import { Animal } from "./types";
 
-export const DIRECTION_OFFSET = 0.01;
+export const DIRECTION_OFFSET = 0.001;
 const ANIMALS = ["DOLPHIN", "WOLF"];
 export const ANIMAL_SCALES: Record<Animal, number> = {
   DOLPHIN: 3.0,

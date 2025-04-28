@@ -24,6 +24,8 @@ import CapturedNPCGraphic from "./npc-graphics/CapturedNPCGraphic";
 import IdleNPCGraphic from "./npc-graphics/IdleNPCGraphic";
 import ThrownNPCGraphic from "./npc-graphics/ThrownNPCGraphic";
 import { throttle } from "lodash";
+import { v4 as uuidv4 } from "uuid";
+import { serialize } from "../utils/serializers";
 
 // Speed of movement per keypress/frame
 const MOVEMENT_SPEED = 0.5;
@@ -67,23 +69,34 @@ async function throwNPC(
     }
     npc.phase = NPCPhase.THROWN;
     const throwData: throwData = {
-      id: npc.id,
+      id: uuidv4(),
       room: myUser.room,
       npc: npc,
-      startPosition: myUser.position,
-      throwDuration: 20,
+      startPosition: {
+        x: myUser.position.x,
+        y: myUser.position.y,
+      },
+      throwDuration: 2000,
       timestamp: Date.now(),
       throwerId: myUser.id,
-      direction: myUser.direction,
+      // round the direction to the nearest whole number
+      direction: {
+        x: Math.round(myUser.direction.x),
+        y: Math.round(myUser.direction.y),
+      },
       velocity: 20,
     };
     throws.set(npc.id, throwData);
 
     // Then make the socket call to throw the NPC
     if (socket) {
-      socket.emit("throw-npc", throwData, (response: { success: boolean }) => {
-        if (!response.success) console.error("NPC throw failed");
-      });
+      socket.emit(
+        "throw-npc",
+        serialize({ throwData }),
+        (response: { success: boolean }) => {
+          if (!response.success) console.error("NPC throw failed");
+        }
+      );
     }
   } catch (error) {
     console.error("Error throwing NPC:", error);
@@ -95,7 +108,8 @@ function useKeyboardMovement(
   initialDirection: Direction,
   myUser: UserInfo,
   npcGroups: DefaultMap<userId, NPCGroup>,
-  npcs: Map<npcId, NPC>
+  npcs: Map<npcId, NPC>,
+  throws: Map<npcId, throwData>
 ) {
   const [position, setPosition] = useState(initialPosition);
   const [direction, setDirection] = useState<Direction>(initialDirection);
@@ -120,7 +134,7 @@ function useKeyboardMovement(
         if (npcIdToThrow) {
           const npc = npcs.get(npcIdToThrow);
           if (npc) {
-            throwNPC(myUser, npc, npcGroups, socket());
+            throwNPC(myUser, npc, npcGroups, throws, socket());
           }
         }
       }
@@ -249,7 +263,8 @@ export default function Scene({
     initialDirection,
     myUser,
     npcGroups,
-    npcs
+    npcs,
+    throws
   );
 
   const lastBroadcastPosition = useRef(initialPosition);
@@ -279,9 +294,9 @@ export default function Scene({
           await new Promise<void>((resolve, reject) => {
             currentSocket.emit(
               "user-updated",
-              {
-                updatedUser: user,
-              },
+              serialize({
+                user,
+              }),
               (response: { success: boolean }) => {
                 if (!response.success) reject(new Error("Broadcast failed"));
                 else resolve();
@@ -332,11 +347,11 @@ export default function Scene({
       const currentSocket = socket();
       currentSocket.emit(
         "capture-npc",
-        {
+        serialize({
           npcId: npc.id,
           room: myUser.room,
           captorId: myUser.id,
-        },
+        }),
         (response: { success: boolean }) => {
           if (!response.success) console.error("Capture failed");
         }

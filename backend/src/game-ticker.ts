@@ -1,10 +1,7 @@
 import { throwData } from "./types";
-import {
-  getRoomActiveThrows,
-  setRoomActiveThrows,
-  setThrowCompleteInRoom,
-  getAllRooms,
-} from "./services/npcService";
+import { setThrowCompleteInRoom } from "./services/npcService";
+
+import { getActiveThrowsFromRedis, getAllRoomsFromRedis } from "./db/config";
 
 let gameTickerInstance: GameTicker | null = null;
 
@@ -30,19 +27,19 @@ class GameTicker {
   private async tick() {
     try {
       // Get all room names
-      const roomNames = await getAllRooms();
+      const roomNames = await getAllRoomsFromRedis();
 
       // Process each room
       for (const roomName of roomNames) {
         // Get throws for this room
-        const throws = await getRoomActiveThrows(roomName);
+        const throws = await getActiveThrowsFromRedis(roomName);
         if (!throws || throws.length === 0) continue;
 
         const activeThrows: throwData[] = [];
         const completedThrows: throwData[] = [];
 
         // Use forEach instead of filter to separate active and completed throws
-        throws.forEach((throwData) => {
+        throws.forEach((throwData: throwData) => {
           const now = Date.now();
           const throwEndTime = throwData.timestamp + throwData.throwDuration;
 
@@ -58,11 +55,6 @@ class GameTicker {
         // Process completed throws
         for (const completedThrow of completedThrows) {
           await setThrowCompleteInRoom(roomName, completedThrow);
-        }
-
-        // Update active throws in Redis store
-        if (activeThrows.length !== throws.length) {
-          await setRoomActiveThrows(roomName, activeThrows);
         }
       }
     } catch (error) {

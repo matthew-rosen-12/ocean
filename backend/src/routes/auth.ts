@@ -1,6 +1,4 @@
 import express from "express";
-import { v4 as uuidv4 } from "uuid";
-import { set } from "../db/config";
 import { UserInfo } from "../types";
 import {
   generateGuestId,
@@ -9,14 +7,14 @@ import {
   getDirection,
 } from "../user-info";
 
-import { findRoom } from "../db/config";
+import { findRoomInRedis } from "../db/room-ops";
 
 const router = express.Router();
 
 router.post("/", async (req, res) => {
   try {
     const guestId = generateGuestId();
-    const room = await findRoom();
+    const room = await findRoomInRedis();
 
     // Create guest user
     const guestUser: UserInfo = {

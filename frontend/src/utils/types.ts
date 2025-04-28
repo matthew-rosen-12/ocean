@@ -49,8 +49,8 @@ export type throwData = {
   id: throwId;
   room: roomId;
   npc: NPC;
-  startPosition: Position;
-  direction: Direction;
+  startPosition: { x: number; y: number };
+  direction: { x: number; y: number };
   throwDuration: number;
   velocity: number;
   timestamp: number;

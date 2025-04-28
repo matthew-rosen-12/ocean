@@ -1,14 +1,17 @@
 import { createClient } from "redis";
 import dotenv from "dotenv";
-import { v4 as uuidv4 } from "uuid";
-import { populateRoom } from "../services/npcService";
-import { NPC } from "../types";
+import { NPC, NPCGroup, npcId, roomId, throwData, userId } from "../types";
+import { serialize, deserialize } from "../utils/serializers";
 
 dotenv.config();
 
 // Track client status
 let clientConnected = false;
 let connectionInProgress = false;
+
+const NPC_KEY_PREFIX = "npcs:";
+const THROWS_KEY_PREFIX = "throws:";
+const GROUPS_KEY_PREFIX = "groups:";
 
 export const redisClient = createClient({
   url: process.env.REDIS_URL || "redis://localhost:6379",
@@ -135,16 +138,6 @@ export const get = async (key: string): Promise<string | null> => {
   }
 };
 
-export const hgetall = async (key: string): Promise<Record<string, string>> => {
-  try {
-    await ensureConnected();
-    return await redisClient.hGetAll(key);
-  } catch (error) {
-    console.error("Error getting from Redis", { key, error });
-    throw error;
-  }
-};
-
 export const set = async (key: string, value: string): Promise<void> => {
   try {
     await ensureConnected();
@@ -155,7 +148,7 @@ export const set = async (key: string, value: string): Promise<void> => {
   }
 };
 
-export const del = async (key: string): Promise<void> => {
+const del = async (key: string): Promise<void> => {
   try {
     await ensureConnected();
     await redisClient.del(key);
@@ -165,7 +158,7 @@ export const del = async (key: string): Promise<void> => {
   }
 };
 
-export const keys = async (key: string): Promise<string[]> => {
+const keys = async (key: string): Promise<string[]> => {
   try {
     await ensureConnected();
     return await redisClient.keys(key);
@@ -175,69 +168,8 @@ export const keys = async (key: string): Promise<string[]> => {
   }
 };
 
-interface Room {
-  name: string;
-  numUsers: number;
-  isActive: boolean;
-  lastActive: string;
-  createdAt: string;
-}
-
-export const findRoom = async (): Promise<string> => {
-  try {
-    const roomKeys = await redisClient.keys("room:*");
-
-    const rooms = await Promise.all(
-      roomKeys.map(async (key) => {
-        const roomData = await redisClient.get(key);
-        return roomData ? { ...JSON.parse(roomData), key } : null;
-      })
-    );
-
-    const activeRooms = rooms
-      .filter(
-        (room): room is Room & { key: string } =>
-          room !== null && room.isActive !== false && room.numUsers < 10
-      )
-      .sort((a, b) => a.numUsers - b.numUsers);
-
-    if (activeRooms.length > 0) {
-      const room = activeRooms[0];
-      await incrementRoomUsers(room.name);
-      return room.name;
-    }
-
-    // If no suitable room exists, create a new one
-    const roomName = `room-${uuidv4()}`;
-    console.log("Creating new room:", roomName);
-    await createRoom(roomName);
-    await populateRoom(roomName);
-    return roomName;
-  } catch (error) {
-    console.error("Error in findRoom:", error);
-    throw error;
-  }
-};
-
-export const incrementRoomUsers = async (roomName: string): Promise<void> => {
-  try {
-    const roomKey = `room:${roomName}`;
-    const roomData = await get(roomKey);
-    if (!roomData) throw new Error(`Room ${roomName} not found`);
-
-    const room = JSON.parse(roomData);
-    room.numUsers += 1;
-    room.lastActive = new Date().toISOString();
-
-    await set(roomKey, JSON.stringify(room));
-  } catch (error) {
-    console.error("Error incrementing room users", error);
-    throw error;
-  }
-};
-
 // Socket to user mapping functions
-export const mapSocketToUser = async (
+export const mapSocketToUserInRedis = async (
   socketId: string,
   userId: string
 ): Promise<void> => {
@@ -251,7 +183,7 @@ export const mapSocketToUser = async (
   }
 };
 
-export const getUserIdFromSocket = async (
+export const getUserIdFromSocketInRedis = async (
   socketId: string
 ): Promise<string | null> => {
   try {
@@ -262,7 +194,7 @@ export const getUserIdFromSocket = async (
   }
 };
 
-export const getSocketsFromUserId = async (
+export const getSocketsFromUserIdInRedis = async (
   userId: string
 ): Promise<string[]> => {
   try {
@@ -273,12 +205,12 @@ export const getSocketsFromUserId = async (
   }
 };
 
-export const removeSocketUserMapping = async (
+export const removeSocketUserMappingInRedis = async (
   socketId: string
 ): Promise<void> => {
   try {
     // Get userId before removing the mapping
-    const userId = await getUserIdFromSocket(socketId);
+    const userId = await getUserIdFromSocketInRedis(socketId);
     if (!userId) return;
 
     // Remove socket from user's socket set
@@ -302,20 +234,20 @@ export const removeSocketUserMapping = async (
 };
 
 // Modified to work with userId instead of socketId
-export const decrementRoomUsers = async (
+export const decrementRoomUsersInRedis = async (
   roomName: string,
   socketId: string
 ): Promise<void> => {
   try {
     // Get userId from socketId
-    const userId = await getUserIdFromSocket(socketId);
+    const userId = await getUserIdFromSocketInRedis(socketId);
     if (!userId) {
       console.error("No userId found for socket:", socketId);
       return;
     }
 
     // Check if this is the user's last socket
-    const remainingSockets = await getSocketsFromUserId(userId);
+    const remainingSockets = await getSocketsFromUserIdInRedis(userId);
     if (remainingSockets.length > 1) {
       console.log(
         `User ${userId} still has ${
@@ -335,7 +267,7 @@ export const decrementRoomUsers = async (
     }
 
     // Parse room data
-    const room = JSON.parse(roomData);
+    const room = deserialize(roomData);
 
     if (!room || !room.users) {
       console.error("Room has no users array:", roomName);
@@ -375,7 +307,7 @@ export const decrementRoomUsers = async (
       }
     } else {
       // Update room with remaining users
-      await set(roomKey, JSON.stringify(room));
+      await set(roomKey, serialize(room));
     }
   } catch (error) {
     console.error("Error decrementing room users:", error);
@@ -383,26 +315,8 @@ export const decrementRoomUsers = async (
   }
 };
 
-const createRoom = async (roomName: string): Promise<Room> => {
-  try {
-    const newRoom: Room = {
-      name: roomName,
-      numUsers: 1,
-      isActive: true,
-      lastActive: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-    };
-
-    await set(`room:${roomName}`, JSON.stringify(newRoom));
-    return newRoom;
-  } catch (error) {
-    console.error("Error creating room", error);
-    throw error;
-  }
-};
-
 // Socket to room mapping functions
-export const addSocketToRoom = async (
+export const addSocketToRoomInRedis = async (
   socketId: string,
   roomName: string
 ): Promise<void> => {
@@ -414,7 +328,9 @@ export const addSocketToRoom = async (
   }
 };
 
-export const removeSocketFromRoom = async (socketId: string): Promise<void> => {
+export const removeSocketFromRoomInRedis = async (
+  socketId: string
+): Promise<void> => {
   try {
     await redisClient.del(`socket:${socketId}`);
   } catch (error) {
@@ -423,7 +339,7 @@ export const removeSocketFromRoom = async (socketId: string): Promise<void> => {
   }
 };
 
-export const getSocketRoom = async (
+export const getSocketRoomInRedis = async (
   socketId: string
 ): Promise<string | null> => {
   try {
@@ -435,99 +351,99 @@ export const getSocketRoom = async (
   }
 };
 
-// User management functions
-export const addUser = async (userId: string, userInfo: any): Promise<void> => {
+export async function getThrowsFromRedis(room: string): Promise<throwData[]> {
   try {
-    // Convert userInfo object to array of field-value pairs
-    const entries = Object.entries(userInfo);
-    if (entries.length === 0) return;
-
-    // Use hSet with field-value pairs
-    const tuples: [string, string][] = entries.map(([field, value]) => [
-      field,
-      String(value),
-    ]);
-    await redisClient.hSet(`user:${userId}`, tuples);
+    const data = await get(`${THROWS_KEY_PREFIX}${room}`);
+    return data ? deserialize(data) : [];
   } catch (error) {
-    console.error("Error adding user:", error);
-    throw error;
+    console.error(`Error getting throws for room ${room}:`, error);
+    return [];
   }
-};
+}
 
-export const removeUser = async (userId: string): Promise<void> => {
-  try {
-    await redisClient.del(`user:${userId}`);
-  } catch (error) {
-    console.error("Error removing user:", error);
-    throw error;
-  }
-};
-
-export const getUser = async (userId: string): Promise<any | null> => {
-  try {
-    const userData = await redisClient.hGetAll(`user:${userId}`);
-    return Object.keys(userData).length > 0 ? userData : null;
-  } catch (error) {
-    console.error("Error getting user:", error);
-    throw error;
-  }
-};
-
-// Room user management functions
-export const addUserToRoom = async (
-  roomName: string,
-  userId: string
-): Promise<void> => {
-  try {
-    const roomKey = `room:${roomName}`;
-    const roomData = await get(roomKey);
-    let room = roomData
-      ? JSON.parse(roomData)
-      : {
-          name: roomName,
-          numUsers: 0,
-          isActive: true,
-          lastActive: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-          users: [],
-        };
-
-    room.users = room.users || [];
-    if (!room.users.includes(userId)) {
-      room.users.push(userId);
-      room.numUsers = room.users.length;
-      room.lastActive = new Date().toISOString();
-      await set(roomKey, JSON.stringify(room));
-    }
-  } catch (error) {
-    console.error("Error adding user to room:", error);
-    throw error;
-  }
-};
-
-export const getRoomUsers = async (
+// Main service functions
+export async function getNPCsFromRedis(
   roomName: string
-): Promise<Record<string, any>> => {
+): Promise<Map<npcId, NPC>> {
   try {
-    const roomKey = `room:${roomName}`;
-    const roomData = await get(roomKey);
-    if (!roomData) return {};
-
-    const room = JSON.parse(roomData);
-    const users: Record<string, any> = {};
-
-    if (room.users) {
-      for (const userId of room.users) {
-        const userData = await getUser(userId);
-        if (userData) {
-          users[userId] = userData;
-        }
-      }
-    }
-
-    return users;
+    const npcsData = await get(`npcs:${roomName}`);
+    if (!npcsData) return new Map();
+    return deserialize(npcsData);
   } catch (error) {
-    console.error("Error getting room users:", error);
+    console.error(`Error getting NPCs for room ${roomName}:`, error);
+    return new Map();
+  }
+}
+
+export async function getActiveThrowsFromRedis(
+  roomName: string
+): Promise<throwData[]> {
+  const throws = await get(`throws:${roomName}`);
+  return throws ? deserialize(throws) : [];
+}
+
+export async function getNPCGroupsFromRedis(
+  roomName: string
+): Promise<Map<userId, NPCGroup>> {
+  const groups = await get(`groups:${roomName}`);
+  if (!groups) return new Map();
+
+  return deserialize(groups);
+}
+
+export async function setNPCGroupsInRedis(
+  roomName: roomId,
+  groups: Map<userId, NPCGroup>
+): Promise<void> {
+  try {
+    await set(`${GROUPS_KEY_PREFIX}${roomName}`, serialize(groups));
+  } catch (error) {
+    console.error(`Error setting NPC groups for room ${roomName}:`, error);
     throw error;
   }
-};
+}
+
+export async function setThrowsInRedis(
+  roomName: roomId,
+  throws: throwData[]
+): Promise<void> {
+  try {
+    await set(`${THROWS_KEY_PREFIX}${roomName}`, serialize(throws));
+  } catch (error) {
+    console.error(`Error setting throws for room ${roomName}:`, error);
+    throw error;
+  }
+}
+
+export async function setNPCsInRedis(
+  room: string,
+  npcs: Map<npcId, NPC>
+): Promise<void> {
+  try {
+    await set(`${NPC_KEY_PREFIX}${room}`, serialize(npcs));
+  } catch (error) {
+    console.error(`Error setting NPCs for room ${room}:`, error);
+    throw error;
+  }
+}
+
+export async function getAllRoomsFromRedis(): Promise<string[]> {
+  const room_keys = await keys(`${NPC_KEY_PREFIX}*`);
+
+  // Extract the channel names from the keys
+  return room_keys.map((key: string) => key.substring(NPC_KEY_PREFIX.length));
+}
+
+export async function removeNPCFromGroupInRoomInRedis(
+  roomName: string,
+  captorId: userId,
+  npcId: npcId
+): Promise<void> {
+  const groups = await getNPCGroupsFromRedis(roomName);
+  const group = groups.get(captorId);
+
+  if (group) {
+    group.npcIds.delete(npcId);
+    await setNPCGroupsInRedis(roomName, groups);
+  }
+}
