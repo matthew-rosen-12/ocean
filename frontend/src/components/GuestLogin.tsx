@@ -7,6 +7,7 @@ import {
   NPC,
   npcId,
   userId,
+  NPCPhase,
 } from "../utils/types";
 import { DefaultMap } from "../utils/types";
 import { getSocket } from "../socket";
@@ -89,11 +90,34 @@ export default function GuestLogin({
           newUsers.delete(userId);
           return newUsers;
         });
+
+        // get npcs in room and set their phase to IDLE
+        setNPCs((prev) => {
+          const newNPCs = new Map(prev);
+          newNPCs.forEach((npc) => {
+            npc.phase = NPCPhase.IDLE;
+          });
+          return newNPCs;
+        });
+
+        setNPCGroups((prev) => {
+          const newNPCGroups = new DefaultMap<userId, NPCGroup>(
+            (id: userId) => ({
+              npcIds: new Set<npcId>(),
+              captorId: id,
+            })
+          );
+          Array.from(prev.entries()).forEach(([id, group]) => {
+            newNPCGroups.set(id, group);
+          });
+          newNPCGroups.delete(userId);
+          return newNPCGroups;
+        });
       });
 
       socket.on("throws-update", (serializedData: string) => {
         const { throws } = deserialize(serializedData);
-        setThrows(new Map(throws.map((t: throwData) => [t.id, t])));
+        setThrows(new Map(throws.map((t: throwData) => [t.npc.id, t])));
       });
 
       socket.on("npc-groups-update", (serializedData: string) => {
@@ -116,13 +140,40 @@ export default function GuestLogin({
         setNPCs((prev) => new Map(prev).set(npc.id, npc));
       });
 
+      socket.on("npc-captured", (serializedData: string) => {
+        const { id, npc } = deserialize(serializedData);
+        setNPCs((prev) => new Map(prev).set(npc.id, npc));
+        setNPCGroups((prev) => {
+          const newNPCGroups = new DefaultMap<userId, NPCGroup>(
+            (id: userId) => ({
+              npcIds: new Set<npcId>(),
+              captorId: id,
+            })
+          );
+          Array.from(prev.entries()).forEach(([id, group]) => {
+            newNPCGroups.set(id, group);
+          });
+          newNPCGroups.get(id).npcIds.add(npc.id);
+          return newNPCGroups;
+        });
+      });
+
       socket.on("npc-thrown", (serializedData: string) => {
-        const { throw: throwData } = deserialize(serializedData);
-        setThrows((prev) => new Map(prev).set(throwData.id, throwData));
+        const { throwData } = deserialize(serializedData);
+        setThrows((prev) => new Map(prev).set(throwData.npc.id, throwData));
         setNPCs((prev) => new Map(prev).set(throwData.npc.id, throwData.npc));
         setNPCGroups((prev) => {
-          prev.get(throwData.throwerId).npcIds.delete(throwData.npc.id);
-          return prev;
+          const newNPCGroups = new DefaultMap<userId, NPCGroup>(
+            (id: userId) => ({
+              npcIds: new Set<npcId>(),
+              captorId: id,
+            })
+          );
+          Array.from(prev.entries()).forEach(([id, group]) => {
+            newNPCGroups.set(id, group);
+          });
+          newNPCGroups.get(throwData.throwerId).npcIds.delete(throwData.npc.id);
+          return newNPCGroups;
         });
       });
 

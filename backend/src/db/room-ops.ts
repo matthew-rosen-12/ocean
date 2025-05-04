@@ -1,5 +1,4 @@
 import { redisClient, get, set, setNPCsInRedis } from "./config";
-import { getUserInRedis } from "./user-ops";
 import { createNPCs } from "../services/npcService";
 import { v4 as uuidv4 } from "uuid";
 import { NPC } from "../types";

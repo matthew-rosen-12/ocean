@@ -13,6 +13,7 @@ import {
   getUserIdFromSocketInRedis,
   mapSocketToUserInRedis,
   removeNPCFromGroupInRoomInRedis,
+  removeNPCGroupInRoomInRedis,
   removeSocketFromRoomInRedis,
   removeSocketUserMappingInRedis,
   setThrowsInRedis,
@@ -152,6 +153,7 @@ io.on("connection", async (socket) => {
         // Get existing NPCs
         const npcsData = await getNPCsFromRedis(name);
         if (npcsData) {
+          console.log("npcs-update", npcsData);
           socket.emit("npcs-update", serialize({ npcs: npcsData }));
         }
 
@@ -190,7 +192,7 @@ io.on("connection", async (socket) => {
         await updateNPCInRoomInRedis(room, updatedNPC);
         await updateNPCGroupInRoomInRedis(room, captorId, npcId);
 
-        io.to(room).emit(
+        socket.broadcast.to(room).emit(
           "npc-captured",
           serialize({
             id: captorId,
@@ -224,7 +226,7 @@ io.on("connection", async (socket) => {
         io.to(throwData.room).emit(
           "npc-thrown",
           serialize({
-            throw: throwData,
+            throwData,
           })
         );
       } catch (error) {
@@ -259,10 +261,27 @@ io.on("connection", async (socket) => {
         if (room) {
           console.log("disconnecting");
 
+          // set npcs of this user's npc groups to IDLE
+          const npcGroups = await getNPCGroupsFromRedis(room);
+          const npcGroup = npcGroups.get(user.id);
+          if (npcGroup) {
+            npcGroup.npcIds.forEach(async (npcId) => {
+              const npcs = await getNPCsFromRedis(room);
+              const npc = npcs.get(npcId)!;
+              const updatedNPC: NPC = {
+                ...npc,
+                phase: NPCPhase.IDLE,
+              };
+              await updateNPCInRoomInRedis(room, updatedNPC);
+            });
+          }
+          // remove the user's npc groups from redis
+          await removeNPCGroupInRoomInRedis(room, user.id);
+
           // Get userId from socket
           const userId = await getUserIdFromSocketInRedis(socket.id);
 
-          // Handle room users decrement (this now checks multiple connections)
+          // Handle room users decrement
           await decrementRoomUsersInRedis(room, socket.id);
 
           // Remove the socket-user mapping
@@ -273,6 +292,7 @@ io.on("connection", async (socket) => {
 
           // Only broadcast user-left if this was their last connection
           if (userId) {
+            console.log("emitting that user-left", userId);
             socket.broadcast.to(room).emit("user-left", serialize({ userId }));
           }
         }

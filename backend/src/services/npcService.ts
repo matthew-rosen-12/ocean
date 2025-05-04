@@ -75,6 +75,7 @@ export async function setThrowCompleteInRoom(
   const npc = throwData.npc;
   npc.phase = NPCPhase.IDLE;
   npc.position = calculateLandingPosition(throwData);
+  await updateNPCInRoomInRedis(roomName, npc);
   io.to(roomName).emit("throw-complete", serialize({ npc }));
 }
 

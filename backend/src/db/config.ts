@@ -246,17 +246,6 @@ export const decrementRoomUsersInRedis = async (
       return;
     }
 
-    // Check if this is the user's last socket
-    const remainingSockets = await getSocketsFromUserIdInRedis(userId);
-    if (remainingSockets.length > 1) {
-      console.log(
-        `User ${userId} still has ${
-          remainingSockets.length - 1
-        } active connections. Not removing from room.`
-      );
-      return; // User still has other connections, don't remove from room
-    }
-
     const roomKey = `room:${roomName}`;
 
     // Get room data using get instead of hGetAll
@@ -269,18 +258,15 @@ export const decrementRoomUsersInRedis = async (
     // Parse room data
     const room = deserialize(roomData);
 
-    if (!room || !room.users) {
+    if (!room) {
       console.error("Room has no users array:", roomName);
       return;
     }
 
-    const users = room.users;
-    const updatedUsers = users.filter((id: string) => id !== userId);
-    room.users = updatedUsers;
-    room.numUsers = updatedUsers.length;
+    room.numUsers -= 1;
     room.lastActive = new Date().toISOString();
 
-    if (updatedUsers.length === 0) {
+    if (room.numUsers === 0) {
       // Room is empty, delete all associated data
       console.log("Deleting room and all associated data:", roomName);
 
@@ -446,4 +432,13 @@ export async function removeNPCFromGroupInRoomInRedis(
     group.npcIds.delete(npcId);
     await setNPCGroupsInRedis(roomName, groups);
   }
+}
+
+export async function removeNPCGroupInRoomInRedis(
+  roomName: string,
+  captorId: userId
+): Promise<void> {
+  const groups = await getNPCGroupsFromRedis(roomName);
+  groups.delete(captorId);
+  await setNPCGroupsInRedis(roomName, groups);
 }

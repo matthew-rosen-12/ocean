@@ -69,7 +69,6 @@ async function throwNPC(
     }
     npc.phase = NPCPhase.THROWN;
     const throwData: throwData = {
-      id: uuidv4(),
       room: myUser.room,
       npc: npc,
       startPosition: {
@@ -342,9 +341,13 @@ export default function Scene({
 
   const handleNPCCollision = useCallback(
     (npc: NPC) => {
+      // Only handle collision if NPC is still in IDLE phase
+      // if (npc.phase !== NPCPhase.IDLE) return;
+
       npc.phase = NPCPhase.CAPTURED;
       npcGroups.get(myUser.id).npcIds.add(npc.id);
       const currentSocket = socket();
+      console.log("emitting capture-npc");
       currentSocket.emit(
         "capture-npc",
         serialize({
@@ -383,6 +386,59 @@ export default function Scene({
     }
   };
 
+  function NPCGraphicWrapper({
+    npc,
+    checkForCollision,
+  }: {
+    npc: NPC;
+    checkForCollision: (npc: NPC) => void;
+  }) {
+    // Use a reference or memo to track if a re-render is needed
+    // const prevPhaseRef = useRef(npc.phase);
+
+    // useEffect(() => {
+    //   prevPhaseRef.current = npc.phase;
+    // }, [npc.phase]);
+
+    // Render the appropriate component based on phase
+    if (npc.phase === NPCPhase.IDLE) {
+      return (
+        <IdleNPCGraphic
+          key={npc.id}
+          npc={npc}
+          checkForCollision={checkForNPCCollision}
+        />
+      );
+    } else if (npc.phase === NPCPhase.THROWN) {
+      const throwData = throws.get(npc.id);
+      if (!throwData) {
+        console.warn(`Throw data with id ${npc.id} not found in throws map`);
+        return null;
+      }
+      return <ThrownNPCGraphic key={npc.id} npc={npc} throwData={throwData} />;
+    } else {
+      // filter npcs groups to get the npc group that has the npc id
+      const npcGroup = Array.from(npcGroups.values()).find((group) =>
+        group.npcIds.has(npc.id)
+      );
+      if (!npcGroup) {
+        console.warn(`NPC group with id ${npc.id} not found in npcGroups`);
+        return null;
+      }
+      const captorId = npcGroup.captorId;
+
+      return (
+        <CapturedNPCGraphic
+          key={npc.id}
+          npc={npc}
+          isLocalUser={captorId === myUser.id}
+          followingUser={users.get(captorId)!}
+          offsetIndex={0}
+        />
+      );
+    }
+  }
+
   return (
     <Canvas
       style={{
@@ -409,52 +465,14 @@ export default function Scene({
       {Array.from(users.values()).map((user) => (
         <AnimalGraphic key={user.id} user={user} myUserId={myUser.id} />
       ))}
-      {Array.from(npcGroups.entries()).map(([userId, npcGroup]) =>
-        Array.from(npcGroup.npcIds).map((npcId, index) => {
-          const npc = npcs.get(npcId);
-          if (!npc) {
-            console.warn(`NPC with id ${npcId} not found in npcs map`);
-            return null;
-          }
-          if (!users.get(userId)) {
-            console.warn(`User with id ${userId} not found in users map`);
-            return null;
-          }
-          return (
-            <CapturedNPCGraphic
-              key={npcId}
-              npc={npc}
-              isLocalUser={userId === myUser.id}
-              followingUser={users.get(userId)!}
-              offsetIndex={index}
-            />
-          );
-        })
-      )}
-      {/* Idle NPCs with collision detection */}
-      {Array.from(npcs.values())
-        .filter((npc) => npc.phase === NPCPhase.IDLE)
-        .map((npc) => (
-          <IdleNPCGraphic
-            key={npc.id}
-            npc={npc}
-            checkForCollision={checkForNPCCollision}
-          />
-        ))}
-      {Array.from(npcs.values())
-        .filter((npc) => npc.phase === NPCPhase.THROWN)
-        .map((npc) => {
-          const throwData = throws.get(npc.id);
-          if (!throwData) {
-            console.warn(
-              `Throw data with id ${npc.id} not found in throws map`
-            );
-            return null;
-          }
-          return (
-            <ThrownNPCGraphic key={npc.id} npc={npc} throwData={throwData} />
-          );
-        })}
+
+      {Array.from(npcs.values()).map((npc) => (
+        <NPCGraphicWrapper
+          key={npc.id}
+          npc={npc}
+          checkForCollision={checkForNPCCollision}
+        />
+      ))}
     </Canvas>
   );
 }
