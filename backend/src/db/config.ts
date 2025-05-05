@@ -168,84 +168,11 @@ const keys = async (key: string): Promise<string[]> => {
   }
 };
 
-// Socket to user mapping functions
-export const mapSocketToUserInRedis = async (
-  socketId: string,
-  userId: string
-): Promise<void> => {
-  try {
-    // Create bidirectional mapping
-    await redisClient.set(`socket_to_user:${socketId}`, userId);
-    await redisClient.sAdd(`user_sockets:${userId}`, socketId);
-  } catch (error) {
-    console.error("Error mapping socket to user:", error);
-    throw error;
-  }
-};
-
-export const getUserIdFromSocketInRedis = async (
-  socketId: string
-): Promise<string | null> => {
-  try {
-    return await redisClient.get(`socket_to_user:${socketId}`);
-  } catch (error) {
-    console.error("Error getting userId from socket:", error);
-    throw error;
-  }
-};
-
-export const getSocketsFromUserIdInRedis = async (
-  userId: string
-): Promise<string[]> => {
-  try {
-    return await redisClient.sMembers(`user_sockets:${userId}`);
-  } catch (error) {
-    console.error("Error getting sockets from userId:", error);
-    throw error;
-  }
-};
-
-export const removeSocketUserMappingInRedis = async (
-  socketId: string
-): Promise<void> => {
-  try {
-    // Get userId before removing the mapping
-    const userId = await getUserIdFromSocketInRedis(socketId);
-    if (!userId) return;
-
-    // Remove socket from user's socket set
-    await redisClient.sRem(`user_sockets:${userId}`, socketId);
-
-    // Check if this was the user's last socket
-    const remainingSockets = await redisClient.sMembers(
-      `user_sockets:${userId}`
-    );
-    if (remainingSockets.length === 0) {
-      // If no sockets left, clean up the user's socket set
-      await redisClient.del(`user_sockets:${userId}`);
-    }
-
-    // Remove the socket mapping
-    await redisClient.del(`socket_to_user:${socketId}`);
-  } catch (error) {
-    console.error("Error removing socket user mapping:", error);
-    throw error;
-  }
-};
-
-// Modified to work with userId instead of socketId
 export const decrementRoomUsersInRedis = async (
   roomName: string,
-  socketId: string
+  userId: string
 ): Promise<void> => {
   try {
-    // Get userId from socketId
-    const userId = await getUserIdFromSocketInRedis(socketId);
-    if (!userId) {
-      console.error("No userId found for socket:", socketId);
-      return;
-    }
-
     const roomKey = `room:${roomName}`;
 
     // Get room data using get instead of hGetAll
@@ -297,42 +224,6 @@ export const decrementRoomUsersInRedis = async (
     }
   } catch (error) {
     console.error("Error decrementing room users:", error);
-    throw error;
-  }
-};
-
-// Socket to room mapping functions
-export const addSocketToRoomInRedis = async (
-  socketId: string,
-  roomName: string
-): Promise<void> => {
-  try {
-    await redisClient.hSet(`socket:${socketId}`, "room", roomName);
-  } catch (error) {
-    console.error("Error adding socket to room mapping:", error);
-    throw error;
-  }
-};
-
-export const removeSocketFromRoomInRedis = async (
-  socketId: string
-): Promise<void> => {
-  try {
-    await redisClient.del(`socket:${socketId}`);
-  } catch (error) {
-    console.error("Error removing socket from room mapping:", error);
-    throw error;
-  }
-};
-
-export const getSocketRoomInRedis = async (
-  socketId: string
-): Promise<string | null> => {
-  try {
-    const room = await redisClient.hGet(`socket:${socketId}`, "room");
-    return room || null;
-  } catch (error) {
-    console.error("Error getting socket room:", error);
     throw error;
   }
 };

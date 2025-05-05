@@ -3,19 +3,13 @@ import { createServer, get } from "http";
 import { Server } from "socket.io";
 import cors from "cors";
 import {
-  addSocketToRoomInRedis,
   connect,
   decrementRoomUsersInRedis,
   getNPCGroupsFromRedis,
   getNPCsFromRedis,
-  getSocketRoomInRedis,
   getThrowsFromRedis,
-  getUserIdFromSocketInRedis,
-  mapSocketToUserInRedis,
   removeNPCFromGroupInRoomInRedis,
   removeNPCGroupInRoomInRedis,
-  removeSocketFromRoomInRedis,
-  removeSocketUserMappingInRedis,
   setThrowsInRedis,
 } from "./db/config";
 import { NPC, NPCPhase, throwData, userId, UserInfo, socketId } from "./types";
@@ -88,9 +82,10 @@ io.on("connection", async (socket) => {
 
     // Decode user info from token
     const user = JSON.parse(Buffer.from(token, "base64").toString());
+    socket.data.lastPosition = user.position;
 
     // Map this socket to the user
-    await mapSocketToUserInRedis(socket.id, user.id);
+    socket.data.user = user;
 
     socket.on("current-user-response", async (serializedData: string) => {
       const { user, requestingSocketId } = deserialize(serializedData);
@@ -101,12 +96,8 @@ io.on("connection", async (socket) => {
       }
       users.set(user.id, user);
 
-      // Get the room this socket is in
-      const roomName = await getSocketRoomInRedis(socket.id);
-      // Get all users in the room
-      if (!roomName) {
-        return;
-      }
+      const roomName = socket.data.room;
+
       const expectedUserCount = await getRoomNumUsersInRedis(roomName);
 
       // If we've received responses from all users in the room
@@ -126,7 +117,7 @@ io.on("connection", async (socket) => {
       // Check if room exists in Redis
 
       socket.join(name);
-      await addSocketToRoomInRedis(socket.id, name);
+      socket.data.room = name;
 
       // add user to map for socket
       usersForSocket.set(socket.id, new Map([[user.id, user]]));
@@ -142,7 +133,6 @@ io.on("connection", async (socket) => {
       setTimeout(() => {
         const users = usersForSocket.get(socket.id);
         if (users && users.size > 1) {
-          console.log("sending users-update", serialize({ users }));
           io.to(socket.id).emit("users-update", serialize({ users }));
           usersForSocket.delete(socket.id);
         }
@@ -153,14 +143,12 @@ io.on("connection", async (socket) => {
         // Get existing NPCs
         const npcsData = await getNPCsFromRedis(name);
         if (npcsData) {
-          console.log("npcs-update", npcsData);
           socket.emit("npcs-update", serialize({ npcs: npcsData }));
         }
 
         // Get existing throws
         const throwsData = await getThrowsFromRedis(name);
         if (throwsData) {
-          console.log("throws-update", throwsData);
           socket.emit("throws-update", serialize({ throws: throwsData }));
         }
 
@@ -236,10 +224,11 @@ io.on("connection", async (socket) => {
 
     // Handle user position updates
     socket.on("user-updated", async (serializedData: string) => {
-      const { user } = deserialize(serializedData);
       try {
+        const { user } = deserialize(serializedData);
+        socket.data.lastPosition = user.position;
         // Just broadcast to room, don't update Redis
-        const room = await getSocketRoomInRedis(socket.id);
+        const room = socket.data.room;
         if (room) {
           socket.broadcast.to(room).emit(
             "user-updated",
@@ -256,11 +245,14 @@ io.on("connection", async (socket) => {
     // Handle disconnection
     socket.on("disconnect", async () => {
       try {
+        const lastPosition = socket.data.lastPosition;
+
         // Get the socket's room from Redis
-        const room = await getSocketRoomInRedis(socket.id);
+        const room = socket.data.room;
         if (room) {
           console.log("disconnecting");
 
+          const userId = socket.data.user.id;
           // set npcs of this user's npc groups to IDLE
           const npcGroups = await getNPCGroupsFromRedis(room);
           const npcGroup = npcGroups.get(user.id);
@@ -270,6 +262,7 @@ io.on("connection", async (socket) => {
               const npc = npcs.get(npcId)!;
               const updatedNPC: NPC = {
                 ...npc,
+                position: user.position,
                 phase: NPCPhase.IDLE,
               };
               await updateNPCInRoomInRedis(room, updatedNPC);
@@ -279,21 +272,18 @@ io.on("connection", async (socket) => {
           await removeNPCGroupInRoomInRedis(room, user.id);
 
           // Get userId from socket
-          const userId = await getUserIdFromSocketInRedis(socket.id);
 
           // Handle room users decrement
           await decrementRoomUsersInRedis(room, socket.id);
 
-          // Remove the socket-user mapping
-          await removeSocketUserMappingInRedis(socket.id);
-
-          // Remove this socket from room
-          await removeSocketFromRoomInRedis(socket.id);
-
           // Only broadcast user-left if this was their last connection
           if (userId) {
-            console.log("emitting that user-left", userId);
-            socket.broadcast.to(room).emit("user-left", serialize({ userId }));
+            socket.broadcast
+              .to(room)
+              .emit(
+                "user-left",
+                serialize({ lastPosition: lastPosition, userId })
+              );
           }
         }
       } catch (error) {

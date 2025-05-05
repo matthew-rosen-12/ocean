@@ -46,6 +46,7 @@ export type NPC = {
 export type throwId = string;
 export type roomId = string;
 export type throwData = {
+  id: throwId;
   room: roomId;
   npc: NPC;
   startPosition: { x: number; y: number };

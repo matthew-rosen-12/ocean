@@ -58,7 +58,6 @@ export default function GuestLogin({
 
       socket.on("request-current-user", (serializedData: string) => {
         const { requestingSocketId } = deserialize(serializedData);
-        console.log("emitting current-user-response");
         socket.emit(
           "current-user-response",
           serialize({
@@ -84,7 +83,7 @@ export default function GuestLogin({
       });
 
       socket.on("user-left", (serializedData: string) => {
-        const { userId } = deserialize(serializedData);
+        const { lastPosition, userId } = deserialize(serializedData);
         setUsers((prev) => {
           const newUsers = new Map(prev);
           newUsers.delete(userId);
@@ -96,6 +95,7 @@ export default function GuestLogin({
           const newNPCs = new Map(prev);
           newNPCs.forEach((npc) => {
             npc.phase = NPCPhase.IDLE;
+            npc.position = lastPosition;
           });
           return newNPCs;
         });
@@ -179,12 +179,16 @@ export default function GuestLogin({
 
       socket.on("throw-complete", (serializedData: string) => {
         const { npc } = deserialize(serializedData);
+        setNPCs((prev) => {
+          const newNPCs = new Map(prev);
+          newNPCs.set(npc.id, npc);
+          return newNPCs;
+        });
         setThrows((prev) => {
           const newThrows = new Map(prev);
           newThrows.delete(npc.id);
           return newThrows;
         });
-        setNPCs((prev) => new Map(prev).set(npc.id, npc));
       });
 
       // Set initial user state

@@ -35,7 +35,6 @@ class GameTicker {
         const throws = await getActiveThrowsFromRedis(roomName);
         if (!throws || throws.length === 0) continue;
 
-        const activeThrows: throwData[] = [];
         const completedThrows: throwData[] = [];
 
         // Use forEach instead of filter to separate active and completed throws
@@ -46,9 +45,6 @@ class GameTicker {
           if (now >= throwEndTime) {
             // Throw is complete
             completedThrows.push(throwData);
-          } else {
-            // Throw is still active
-            activeThrows.push(throwData);
           }
         });
 

@@ -26,6 +26,7 @@ import ThrownNPCGraphic from "./npc-graphics/ThrownNPCGraphic";
 import { throttle } from "lodash";
 import { v4 as uuidv4 } from "uuid";
 import { serialize } from "../utils/serializers";
+import NPCGraphicWrapper from "./npc-graphics/NPCGraphicWrapper";
 
 // Speed of movement per keypress/frame
 const MOVEMENT_SPEED = 0.5;
@@ -69,6 +70,7 @@ async function throwNPC(
     }
     npc.phase = NPCPhase.THROWN;
     const throwData: throwData = {
+      id: uuidv4(),
       room: myUser.room,
       npc: npc,
       startPosition: {
@@ -342,7 +344,6 @@ export default function Scene({
   const handleNPCCollision = useCallback(
     (npc: NPC) => {
       // Only handle collision if NPC is still in IDLE phase
-      // if (npc.phase !== NPCPhase.IDLE) return;
 
       npc.phase = NPCPhase.CAPTURED;
       npcGroups.get(myUser.id).npcIds.add(npc.id);
@@ -386,59 +387,6 @@ export default function Scene({
     }
   };
 
-  function NPCGraphicWrapper({
-    npc,
-    checkForCollision,
-  }: {
-    npc: NPC;
-    checkForCollision: (npc: NPC) => void;
-  }) {
-    // Use a reference or memo to track if a re-render is needed
-    // const prevPhaseRef = useRef(npc.phase);
-
-    // useEffect(() => {
-    //   prevPhaseRef.current = npc.phase;
-    // }, [npc.phase]);
-
-    // Render the appropriate component based on phase
-    if (npc.phase === NPCPhase.IDLE) {
-      return (
-        <IdleNPCGraphic
-          key={npc.id}
-          npc={npc}
-          checkForCollision={checkForNPCCollision}
-        />
-      );
-    } else if (npc.phase === NPCPhase.THROWN) {
-      const throwData = throws.get(npc.id);
-      if (!throwData) {
-        console.warn(`Throw data with id ${npc.id} not found in throws map`);
-        return null;
-      }
-      return <ThrownNPCGraphic key={npc.id} npc={npc} throwData={throwData} />;
-    } else {
-      // filter npcs groups to get the npc group that has the npc id
-      const npcGroup = Array.from(npcGroups.values()).find((group) =>
-        group.npcIds.has(npc.id)
-      );
-      if (!npcGroup) {
-        console.warn(`NPC group with id ${npc.id} not found in npcGroups`);
-        return null;
-      }
-      const captorId = npcGroup.captorId;
-
-      return (
-        <CapturedNPCGraphic
-          key={npc.id}
-          npc={npc}
-          isLocalUser={captorId === myUser.id}
-          followingUser={users.get(captorId)!}
-          offsetIndex={0}
-        />
-      );
-    }
-  }
-
   return (
     <Canvas
       style={{
@@ -471,6 +419,14 @@ export default function Scene({
           key={npc.id}
           npc={npc}
           checkForCollision={checkForNPCCollision}
+          myUser={myUser}
+          throwData={throws.get(npc.id)}
+          // filter the npcs groups to find the one that has the npc
+          followingUser={
+            Array.from(npcGroups.values())
+              .filter((group) => group.npcIds.has(npc.id))
+              .map((group) => users.get(group.captorId))[0]
+          }
         />
       ))}
     </Canvas>
