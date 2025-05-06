@@ -90,15 +90,7 @@ export default function GuestLogin({
           return newUsers;
         });
 
-        // get npcs in room and set their phase to IDLE
-        setNPCs((prev) => {
-          const newNPCs = new Map(prev);
-          newNPCs.forEach((npc) => {
-            npc.phase = NPCPhase.IDLE;
-            npc.position = lastPosition;
-          });
-          return newNPCs;
-        });
+        let npcsWithoutCaptor: npcId[] = [];
 
         setNPCGroups((prev) => {
           const newNPCGroups = new DefaultMap<userId, NPCGroup>(
@@ -110,8 +102,18 @@ export default function GuestLogin({
           Array.from(prev.entries()).forEach(([id, group]) => {
             newNPCGroups.set(id, group);
           });
+          npcsWithoutCaptor = Array.from(prev.get(userId).npcIds);
           newNPCGroups.delete(userId);
           return newNPCGroups;
+        });
+
+        setNPCs((prev) => {
+          const newNPCs = new Map(prev);
+          npcsWithoutCaptor.forEach((npcId) => {
+            newNPCs.get(npcId)!.phase = NPCPhase.IDLE;
+            newNPCs.get(npcId)!.position = lastPosition;
+          });
+          return newNPCs;
         });
       });
 
