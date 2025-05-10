@@ -40,6 +40,9 @@ function App() {
         npcs={npcs}
         throws={throws}
         npcGroups={npcGroups}
+        setThrows={setThrows}
+        setNpcGroups={setNPCGroups}
+        setNpcs={setNPCs}
       />
 
       {/* Fixed overlay */}

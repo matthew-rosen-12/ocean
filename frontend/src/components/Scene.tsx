@@ -55,14 +55,14 @@ function CameraController({
 async function throwNPC(
   myUser: UserInfo,
   npc: NPC,
+  npcs: Map<npcId, NPC>,
   npcGroups: DefaultMap<userId, NPCGroup>,
   throws: Map<npcId, throwData>,
-  socket: Socket | null
-): Promise<{
-  updatedNpc: NPC;
-  updatedNpcGroups: DefaultMap<userId, NPCGroup>;
-  updatedThrows: Map<npcId, throwData>;
-}> {
+  socket: Socket | null,
+  setThrows: (throws: Map<npcId, throwData>) => void,
+  setNpcGroups: (npcGroups: DefaultMap<userId, NPCGroup>) => void,
+  setNpcs: (npcs: Map<npcId, NPC>) => void
+) {
   try {
     // Create new objects instead of mutating
     const updatedNpc: NPC = {
@@ -126,15 +126,13 @@ async function throwNPC(
       );
     }
 
-    return { updatedNpc, updatedNpcGroups, updatedThrows };
+    setThrows(updatedThrows);
+    setNpcGroups(updatedNpcGroups);
+    const updatedNpcs = new Map(npcs);
+    updatedNpcs.set(npc.id, updatedNpc);
+    setNpcs(updatedNpcs);
   } catch (error) {
     console.error("Error throwing NPC:", error);
-    // Return original values in case of error
-    return {
-      updatedNpc: npc,
-      updatedNpcGroups: npcGroups,
-      updatedThrows: throws,
-    };
   }
 }
 
@@ -144,7 +142,10 @@ function useKeyboardMovement(
   myUser: UserInfo,
   npcGroups: DefaultMap<userId, NPCGroup>,
   npcs: Map<npcId, NPC>,
-  throws: Map<npcId, throwData>
+  throws: Map<npcId, throwData>,
+  setThrows: (throws: Map<npcId, throwData>) => void,
+  setNpcGroups: (npcGroups: DefaultMap<userId, NPCGroup>) => void,
+  setNpcs: (npcs: Map<npcId, NPC>) => void
 ) {
   const [position, setPosition] = useState(initialPosition);
   const [direction, setDirection] = useState<Direction>(initialDirection);
@@ -169,7 +170,17 @@ function useKeyboardMovement(
         if (npcIdToThrow) {
           const npc = npcs.get(npcIdToThrow);
           if (npc) {
-            throwNPC(myUser, npc, npcGroups, throws, socket());
+            throwNPC(
+              myUser,
+              npc,
+              npcs,
+              npcGroups,
+              throws,
+              socket(),
+              setThrows,
+              setNpcGroups,
+              setNpcs
+            );
           }
         }
       }
@@ -273,6 +284,9 @@ interface Props {
   npcs: Map<string, NPC>;
   throws: Map<string, throwData>;
   npcGroups: DefaultMap<string, NPCGroup>;
+  setThrows: (throws: Map<npcId, throwData>) => void;
+  setNpcGroups: (npcGroups: DefaultMap<userId, NPCGroup>) => void;
+  setNpcs: (npcs: Map<npcId, NPC>) => void;
 }
 
 export default function Scene({
@@ -281,6 +295,9 @@ export default function Scene({
   npcs,
   throws,
   npcGroups,
+  setThrows,
+  setNpcGroups,
+  setNpcs,
 }: Props) {
   const initialPosition = new Vector3(
     myUser.position.x,
@@ -299,7 +316,10 @@ export default function Scene({
     myUser,
     npcGroups,
     npcs,
-    throws
+    throws,
+    setThrows,
+    setNpcGroups,
+    setNpcs
   );
 
   const lastBroadcastPosition = useRef(initialPosition);
