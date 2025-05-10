@@ -68,4 +68,4 @@ const ThrownNPCGraphic: React.FC<ThrownNPCGraphicProps> = ({
   return <primitive object={group} />;
 };
 
-export default ThrownNPCGraphic;
+export default React.memo(ThrownNPCGraphic);

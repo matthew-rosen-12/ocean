@@ -10,6 +10,7 @@ import {
   getThrowsFromRedis,
   removeNPCFromGroupInRoomInRedis,
   removeNPCGroupInRoomInRedis,
+  setNPCsInRedis,
   setThrowsInRedis,
 } from "./db/config";
 import { NPC, NPCPhase, throwData, userId, UserInfo, socketId } from "./types";
@@ -257,26 +258,25 @@ io.on("connection", async (socket) => {
           const npcGroups = await getNPCGroupsFromRedis(room);
           const npcGroup = npcGroups.get(user.id);
           if (npcGroup) {
+            const npcs = await getNPCsFromRedis(room);
+
             npcGroup.npcIds.forEach(async (npcId) => {
-              const npcs = await getNPCsFromRedis(room);
               const npc = npcs.get(npcId)!;
               const updatedNPC: NPC = {
                 ...npc,
-                position: user.position,
+                position: lastPosition,
                 phase: NPCPhase.IDLE,
               };
-              await updateNPCInRoomInRedis(room, updatedNPC);
+              npcs.set(npcId, updatedNPC);
             });
+            await setNPCsInRedis(room, npcs);
           }
           // remove the user's npc groups from redis
           await removeNPCGroupInRoomInRedis(room, user.id);
 
-          // Get userId from socket
-
           // Handle room users decrement
           await decrementRoomUsersInRedis(room, socket.id);
 
-          // Only broadcast user-left if this was their last connection
           if (userId) {
             socket.broadcast
               .to(room)

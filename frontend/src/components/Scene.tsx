@@ -20,14 +20,11 @@ import { ANIMAL_SCALES, DIRECTION_OFFSET } from "../utils/user-info";
 import { NPC } from "../utils/types";
 import AnimalGraphic from "./AnimalGraphic";
 import { DefaultMap } from "../utils/types";
-import CapturedNPCGraphic from "./npc-graphics/CapturedNPCGraphic";
-import IdleNPCGraphic from "./npc-graphics/IdleNPCGraphic";
-import ThrownNPCGraphic from "./npc-graphics/ThrownNPCGraphic";
 import { throttle } from "lodash";
 import { v4 as uuidv4 } from "uuid";
 import { serialize } from "../utils/serializers";
 import NPCGraphicWrapper from "./npc-graphics/NPCGraphicWrapper";
-
+import NPCGroupGraphic from "./npc-graphics/NPCGroupGraphic";
 // Speed of movement per keypress/frame
 const MOVEMENT_SPEED = 0.5;
 // Min distance before broadcasting position change
@@ -61,18 +58,45 @@ async function throwNPC(
   npcGroups: DefaultMap<userId, NPCGroup>,
   throws: Map<npcId, throwData>,
   socket: Socket | null
-) {
+): Promise<{
+  updatedNpc: NPC;
+  updatedNpcGroups: DefaultMap<userId, NPCGroup>;
+  updatedThrows: Map<npcId, throwData>;
+}> {
   try {
-    // First remove the NPC from the myUser's NPC group immediately
-    npc.position = myUser.position;
-    if (npcGroups.get(myUser.id)) {
-      npcGroups.get(myUser.id).npcIds.delete(npc.id);
-    }
-    npc.phase = NPCPhase.THROWN;
-    const throwData: throwData = {
+    // Create new objects instead of mutating
+    const updatedNpc: NPC = {
+      ...npc,
+      position: myUser.position,
+      phase: NPCPhase.THROWN,
+    };
+
+    // Create new npcGroups map
+    const updatedNpcGroups = new DefaultMap<userId, NPCGroup>((id: userId) => ({
+      npcIds: new Set<npcId>(),
+      captorId: id,
+    }));
+
+    // Copy all groups except modify the user's group
+    Array.from(npcGroups.entries()).forEach(([id, group]) => {
+      if (id === myUser.id) {
+        // Create a new Set without the thrown NPC
+        const newNpcIds = new Set(group.npcIds);
+        newNpcIds.delete(npc.id);
+        updatedNpcGroups.set(id, {
+          ...group,
+          npcIds: newNpcIds,
+        });
+      } else {
+        updatedNpcGroups.set(id, group);
+      }
+    });
+
+    // Create new throw data
+    const newThrowData: throwData = {
       id: uuidv4(),
       room: myUser.room,
-      npc: npc,
+      npc: updatedNpc,
       startPosition: {
         x: myUser.position.x,
         y: myUser.position.y,
@@ -80,27 +104,37 @@ async function throwNPC(
       throwDuration: 2000,
       timestamp: Date.now(),
       throwerId: myUser.id,
-      // round the direction to the nearest whole number
       direction: {
         x: Math.round(myUser.direction.x),
         y: Math.round(myUser.direction.y),
       },
       velocity: 20,
     };
-    throws.set(npc.id, throwData);
 
-    // Then make the socket call to throw the NPC
+    // Create new throws map
+    const updatedThrows = new Map(throws);
+    updatedThrows.set(npc.id, newThrowData);
+
+    // Socket call to throw the NPC
     if (socket) {
       socket.emit(
         "throw-npc",
-        serialize({ throwData }),
+        serialize({ throwData: newThrowData }),
         (response: { success: boolean }) => {
           if (!response.success) console.error("NPC throw failed");
         }
       );
     }
+
+    return { updatedNpc, updatedNpcGroups, updatedThrows };
   } catch (error) {
     console.error("Error throwing NPC:", error);
+    // Return original values in case of error
+    return {
+      updatedNpc: npc,
+      updatedNpcGroups: npcGroups,
+      updatedThrows: throws,
+    };
   }
 }
 
@@ -365,27 +399,30 @@ export default function Scene({
   );
 
   // Function to check for collisions with NPCs
-  const checkForNPCCollision = (npc: NPC) => {
-    const COLLISION_THRESHOLD = 2.5;
+  const checkForNPCCollision = useCallback(
+    (npc: NPC) => {
+      const COLLISION_THRESHOLD = 2.5;
 
-    const userPos = new Vector3(
-      myUser.position.x,
-      myUser.position.y,
-      myUser.position.z
-    );
+      const userPos = new Vector3(
+        myUser.position.x,
+        myUser.position.y,
+        myUser.position.z
+      );
 
-    const npcPosition = new Vector3(
-      npc.position.x,
-      npc.position.y,
-      npc.position.z
-    );
+      const npcPosition = new Vector3(
+        npc.position.x,
+        npc.position.y,
+        npc.position.z
+      );
 
-    const distance = npcPosition.distanceTo(userPos);
+      const distance = npcPosition.distanceTo(userPos);
 
-    if (distance < COLLISION_THRESHOLD) {
-      handleNPCCollision(npc);
-    }
-  };
+      if (distance < COLLISION_THRESHOLD) {
+        handleNPCCollision(npc);
+      }
+    },
+    [handleNPCCollision]
+  );
 
   return (
     <Canvas
@@ -414,19 +451,23 @@ export default function Scene({
         <AnimalGraphic key={user.id} user={user} myUserId={myUser.id} />
       ))}
 
-      {Array.from(npcs.values()).map((npc) => (
-        <NPCGraphicWrapper
-          key={npc.id}
-          npc={npc}
-          checkForCollision={checkForNPCCollision}
-          myUser={myUser}
-          throwData={throws.get(npc.id)}
-          // filter the npcs groups to find the one that has the npc
-          followingUser={
-            Array.from(npcGroups.values())
-              .filter((group) => group.npcIds.has(npc.id))
-              .map((group) => users.get(group.captorId))[0]
-          }
+      {Array.from(npcs.values())
+        .filter((npc: NPC) => npc.phase !== NPCPhase.CAPTURED)
+        .map((npc) => (
+          <NPCGraphicWrapper
+            key={npc.id}
+            npc={npc}
+            checkForCollision={checkForNPCCollision}
+            throwData={throws.get(npc.id)}
+          />
+        ))}
+      {Array.from(npcGroups.values()).map((group) => (
+        <NPCGroupGraphic
+          key={`${group.captorId}-group`}
+          group={group}
+          groupSize={group.npcIds.size}
+          user={users.get(group.captorId)}
+          npcs={npcs}
         />
       ))}
     </Canvas>

@@ -242,10 +242,12 @@ export async function getThrowsFromRedis(room: string): Promise<throwData[]> {
 export async function getNPCsFromRedis(
   roomName: string
 ): Promise<Map<npcId, NPC>> {
+  // filter for npc with filename that is nb.png
   try {
     const npcsData = await get(`npcs:${roomName}`);
     if (!npcsData) return new Map();
-    return deserialize(npcsData);
+    const npcs: Map<npcId, NPC> = deserialize(npcsData);
+    return npcs;
   } catch (error) {
     console.error(`Error getting NPCs for room ${roomName}:`, error);
     return new Map();
@@ -296,6 +298,7 @@ export async function setNPCsInRedis(
   room: string,
   npcs: Map<npcId, NPC>
 ): Promise<void> {
+  // filter for npc with filename that is nb.png
   try {
     await set(`${NPC_KEY_PREFIX}${room}`, serialize(npcs));
   } catch (error) {

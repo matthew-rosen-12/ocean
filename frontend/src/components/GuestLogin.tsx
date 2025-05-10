@@ -40,7 +40,6 @@ export default function GuestLogin({
         method: "POST",
       });
       const { user, token } = await authResponse.json();
-
       const socket = getSocket(token);
 
       // Join room after connection is established
