@@ -1,9 +1,14 @@
-import React, { useMemo } from "react";
-import { NPC, NPCGroup, UserInfo, NPCPhase } from "../../utils/types";
+import React, { useEffect, useMemo, useRef } from "react";
+import { NPC, NPCGroup, UserInfo } from "../../utils/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { smoothMove } from "../../utils/movement";
 import { useMount, useNPCBase } from "../../hooks/useNPCBase";
+import {
+  getAnimalBorderColor,
+  getAnimalIndicatorColor,
+} from "../../utils/animal-colors";
+import { Text } from "@react-three/drei";
 
 interface NPCGroupGraphicProps {
   group: NPCGroup;
@@ -37,8 +42,8 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
 
     // Logarithmic scaling function - log base 2 gives a nice curve
     // Scale starts at 1 for 1 NPC and roughly doubles for each doubling of NPCs
-    const baseScale = 1;
-    const logScale = Math.log(numNpcs) / Math.log(2);
+    const baseScale = 3;
+    const logScale = Math.log(numNpcs) / Math.log(4);
 
     return baseScale * (1 + logScale);
   }, [group.npcIds.size]);
@@ -58,8 +63,19 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
   // Reference to store the indicator position
   const indicatorPosition = useMemo(() => new THREE.Vector3(), []);
 
+  // Create a border outline for the NPC group
+  const outlineMaterial = useMemo(() => {
+    const material = new THREE.LineBasicMaterial({
+      color: getAnimalBorderColor(user.animal),
+      linewidth: 2,
+    });
+    return material;
+  }, [user.animal]);
+
+  const outlineRef = useRef<THREE.Line | null>(null);
+
   // Set initial position
-  useMount(() => {
+  useEffect(() => {
     updatePositionWithTracking(
       new THREE.Vector3(user.position.x, user.position.y, user.position.z),
       "NPCGroup-initial"
@@ -68,18 +84,38 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
 
     // Apply the scale based on number of NPCs
     if (mesh.current) {
-      // Get the base scale from mesh (which is normally 3 * aspect ratio)
-      const currentXScale = mesh.current.scale.x;
-      const currentYScale = mesh.current.scale.y;
-
       // Apply our logarithmic scaling
-      mesh.current.scale.set(
-        currentXScale * scaleFactor,
-        currentYScale * scaleFactor,
-        1
-      );
+      mesh.current.scale.set(scaleFactor, scaleFactor, 1);
+
+      // Create outline based on mesh size
+      if (outlineRef.current) {
+        threeGroup.remove(outlineRef.current);
+      }
+
+      const width = mesh.current.scale.x * 1.1; // Slightly larger than the NPC
+      const height = mesh.current.scale.y * 1.1;
+
+      const outlineGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(-width / 2, -height / 2, 0),
+        new THREE.Vector3(width / 2, -height / 2, 0),
+        new THREE.Vector3(width / 2, height / 2, 0),
+        new THREE.Vector3(-width / 2, height / 2, 0),
+        new THREE.Vector3(-width / 2, -height / 2, 0),
+      ]);
+
+      outlineRef.current = new THREE.Line(outlineGeometry, outlineMaterial);
+      outlineRef.current.renderOrder = 1; // Ensure it renders on top
+      threeGroup.add(outlineRef.current);
     }
-  });
+  }, [
+    user.position,
+    scaleFactor,
+    threeGroup,
+    positionRef,
+    updatePositionWithTracking,
+    mesh,
+    outlineMaterial,
+  ]);
 
   // Handle position updates to follow the user
   useFrame(() => {
@@ -100,7 +136,7 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
 
       // Update indicator position to follow the group
       indicatorPosition.copy(positionRef.current);
-      indicatorPosition.y += 2; // Position above the NPC
+      indicatorPosition.y += mesh.current ? mesh.current.scale.y / 2 + 0.5 : 2; // Position above the NPC
     }
 
     // Make a subtle oscillation to indicate this is a group
@@ -121,6 +157,35 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
         baseY * scaleFactor * pulseEffect,
         1
       );
+
+      // Update outline to match the mesh size if it exists
+      if (outlineRef.current) {
+        const width = mesh.current.scale.x * 1.1;
+        const height = mesh.current.scale.y * 1.1;
+
+        const outlinePositions = new Float32Array([
+          -width / 2,
+          -height / 2,
+          0,
+          width / 2,
+          -height / 2,
+          0,
+          width / 2,
+          height / 2,
+          0,
+          -width / 2,
+          height / 2,
+          0,
+          -width / 2,
+          -height / 2,
+          0,
+        ]);
+
+        outlineRef.current.geometry.setAttribute(
+          "position",
+          new THREE.BufferAttribute(outlinePositions, 3)
+        );
+      }
     }
   });
 
@@ -128,12 +193,33 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
     <>
       <primitive object={threeGroup} />
 
-      {/* Optional: Add a text label showing the number of NPCs */}
+      {/* Counter indicator showing the number of NPCs */}
       {npcsCount > 1 && (
-        <mesh position={indicatorPosition.toArray()}>
-          <sphereGeometry args={[0.5, 16, 16]} />
-          <meshBasicMaterial color="#2277ff" />
-        </mesh>
+        <group position={indicatorPosition.toArray()}>
+          {/* Background circle */}
+          <mesh>
+            <circleGeometry args={[0.7, 32]} />
+            <meshBasicMaterial color={getAnimalIndicatorColor(user.animal)} />
+          </mesh>
+
+          {/* Outline for the counter */}
+          <lineSegments>
+            <circleGeometry args={[0.7, 32]} />
+            <lineBasicMaterial color={getAnimalBorderColor(user.animal)} />
+          </lineSegments>
+
+          {/* Text showing count */}
+          <Text
+            position={[0, 0, 0.1]}
+            fontSize={0.5}
+            color="#FFFFFF"
+            font="/fonts/Inter-Bold.woff"
+            anchorX="center"
+            anchorY="middle"
+          >
+            {npcsCount}
+          </Text>
+        </group>
       )}
     </>
   );

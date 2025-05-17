@@ -12,7 +12,7 @@ const textureLoader = new THREE.TextureLoader();
 const debug = DEBUG.NPC_MOVEMENT;
 
 export function useNPCBase(npc: NPC) {
-  const group = useMemo(() => new THREE.Group(), []);
+  const group = useMemo(() => new THREE.Group(), [npc.id]);
   const texture = useRef<THREE.Texture | null>(null);
   const material = useRef<THREE.MeshBasicMaterial | null>(null);
   const mesh = useRef<THREE.Mesh | null>(null);
@@ -42,6 +42,9 @@ export function useNPCBase(npc: NPC) {
 
   // Regular useEffect for texture loading and setup
   useEffect(() => {
+    // Reset texture loaded flag when NPC changes
+    textureLoaded.current = false;
+
     // Position update
     previousPosition.copy(positionRef.current);
     group.position.copy(previousPosition);
