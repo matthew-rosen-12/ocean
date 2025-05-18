@@ -10,7 +10,14 @@ import {
   userId,
   UserInfo,
 } from "../utils/types";
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+  createRef,
+} from "react";
 import { Vector3 } from "three";
 import { useFrame } from "@react-three/fiber";
 import { socket } from "../socket";
@@ -444,6 +451,14 @@ export default function Scene({
     [handleNPCCollision]
   );
 
+  // Animal width map (per animal type)
+  const animalWidths = useRef<{ [animal: string]: number }>({});
+  const setAnimalWidth = useCallback((animal: string, width: number) => {
+    if (!animalWidths.current[animal]) {
+      animalWidths.current[animal] = width;
+    }
+  }, []);
+
   return (
     <Canvas
       style={{
@@ -468,7 +483,12 @@ export default function Scene({
       <WaveGrid />
       {/* Render all users with their NPCs */}
       {Array.from(users.values()).map((user) => (
-        <AnimalGraphic key={user.id} user={user} myUserId={myUser.id} />
+        <AnimalGraphic
+          key={user.id}
+          user={user}
+          myUserId={myUser.id}
+          setAnimalWidth={setAnimalWidth}
+        />
       ))}
 
       {Array.from(npcs.values())
@@ -486,8 +506,9 @@ export default function Scene({
           key={`${group.captorId}-group`}
           group={group}
           groupSize={group.npcIds.size}
-          user={users.get(group.captorId)}
+          user={users.get(group.captorId)!}
           npcs={npcs}
+          animalWidths={animalWidths.current}
         />
       ))}
     </Canvas>

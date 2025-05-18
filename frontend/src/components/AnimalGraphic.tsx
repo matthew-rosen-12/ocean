@@ -7,6 +7,7 @@ import { Animal } from "../utils/types";
 import { ANIMAL_SCALES } from "../utils/user-info";
 import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUtils";
 import { smoothMove } from "../utils/movement";
+import { getAnimalBorderColor } from "../utils/animal-colors";
 
 const ANIMAL_ORIENTATION = {
   WOLF: { rotation: 0, flipY: true },
@@ -23,12 +24,16 @@ function AnimalSprite({
   positionRef,
   directionRef,
   isLocalPlayer,
+  user,
+  setAnimalWidth,
 }: {
   animal: Animal;
   scale?: number;
   positionRef: React.MutableRefObject<THREE.Vector3>;
   directionRef: React.MutableRefObject<THREE.Vector3 | null>;
   isLocalPlayer: boolean;
+  user: UserInfo;
+  setAnimalWidth: (animal: string, width: number) => void;
 }) {
   const group = useMemo(() => new THREE.Group(), []);
   const previousPosition = useMemo(() => new THREE.Vector3(), []);
@@ -44,6 +49,17 @@ function AnimalSprite({
     ANIMAL_ORIENTATION[animal] || { rotation: 0, flipY: false }
   );
 
+  // Create a reference for the outline
+  const outlineRef = useRef<THREE.Line | null>(null);
+
+  // Create outline material using animal's color
+  const outlineMaterial = useMemo(() => {
+    return new THREE.LineBasicMaterial({
+      color: getAnimalBorderColor(user),
+      linewidth: 3, // Make outline more prominent
+    });
+  }, [user]);
+
   useEffect(() => {
     const loader = new SVGLoader();
 
@@ -53,6 +69,9 @@ function AnimalSprite({
         // Group paths by color
         const geometriesByColor = new Map<number, THREE.BufferGeometry[]>();
 
+        // Store all path points for outline creation
+        const allOutlinePoints: THREE.Vector2[] = [];
+
         // Calculate the bounding box of all paths first
         let minX = Infinity,
           minY = Infinity,
@@ -61,11 +80,19 @@ function AnimalSprite({
 
         data.paths.forEach((path) => {
           path.subPaths.forEach((subPath) => {
-            subPath.getPoints().forEach((point) => {
+            // Get points for this subpath and add to outline collection
+            const points = subPath.getPoints();
+
+            // Only use the outer paths for the outline (those that form the external silhouette)
+            // For simplicity, we'll assume paths near the bounding box edges are part of the outline
+            points.forEach((point) => {
               minX = Math.min(minX, point.x);
               minY = Math.min(minY, point.y);
               maxX = Math.max(maxX, point.x);
               maxY = Math.max(maxY, point.y);
+
+              // Add points to our outline collection
+              allOutlinePoints.push(point.clone());
             });
           });
         });
@@ -118,6 +145,55 @@ function AnimalSprite({
         const normalizeScale = 5 / maxDim;
 
         group.scale.multiplyScalar(normalizeScale * scale);
+
+        // After scaling, measure width and set if not set
+        const scaledBox = new THREE.Box3().setFromObject(group);
+        const scaledSize = scaledBox.getSize(new THREE.Vector3());
+        setAnimalWidth(animal, scaledSize.x);
+
+        // Create outline based on the SVG path points
+        if (outlineRef.current) {
+          group.remove(outlineRef.current);
+        }
+
+        // For the outline, we'll use a convex hull algorithm to create a simplified outline
+        // For this demo, we'll use a simpler approach - outline from original SVG paths
+
+        // Convert all outline points to 3D and apply the same transforms as the mesh
+        const outlinePoints3D: THREE.Vector3[] = [];
+
+        // Process the outline points - add a small offset to create a visible outline
+        const outlineOffset = 0.1; // Small offset to make outline visible
+
+        // Filter points to reduce to only boundary points (simple algorithm)
+        // For a proper outline, you would use a convex hull or outline extraction algorithm
+        // This simplified approach just uses the bounding box with padding
+        const boundaryPoints = [
+          new THREE.Vector2(minX - outlineOffset, minY - outlineOffset),
+          new THREE.Vector2(maxX + outlineOffset, minY - outlineOffset),
+          new THREE.Vector2(maxX + outlineOffset, maxY + outlineOffset),
+          new THREE.Vector2(minX - outlineOffset, maxY + outlineOffset),
+          new THREE.Vector2(minX - outlineOffset, minY - outlineOffset),
+        ];
+
+        // Convert 2D points to 3D and center/flip like the mesh
+        boundaryPoints.forEach((point) => {
+          outlinePoints3D.push(
+            new THREE.Vector3(
+              (point.x - centerX) * normalizeScale * scale,
+              -(point.y - centerY) * normalizeScale * scale, // Flip Y like we did for mesh
+              0.01 // Small Z offset to ensure outline renders above mesh
+            )
+          );
+        });
+
+        // Create outline geometry and line
+        const outlineGeometry = new THREE.BufferGeometry().setFromPoints(
+          outlinePoints3D
+        );
+        outlineRef.current = new THREE.Line(outlineGeometry, outlineMaterial);
+        outlineRef.current.renderOrder = 2; // Ensure it renders on top
+        group.add(outlineRef.current);
 
         // Apply initial orientation to make the animal face right
         const orientation = ANIMAL_ORIENTATION[animal] || {
@@ -191,6 +267,8 @@ function AnimalSprite({
     positionRef,
     isLocalPlayer,
     directionRef,
+    outlineMaterial,
+    setAnimalWidth,
   ]);
 
   function setRotation(direction: THREE.Vector3) {
@@ -331,6 +409,41 @@ function AnimalSprite({
           currentFlipState.current = 1;
         }
       }
+
+      // Update the outline if it exists during flipping
+      if (outlineRef.current && outlineRef.current.parent === group) {
+        const currScale = group.scale.clone();
+        const outlineBox = new THREE.Box3().setFromObject(group);
+        const outlineSize = outlineBox.getSize(new THREE.Vector3());
+
+        // Add padding
+        const paddingX = outlineSize.x * 0.1;
+        const paddingY = outlineSize.y * 0.1;
+
+        // Create points for the outline rectangle, respecting the current flip state
+        const outlinePositions = new Float32Array([
+          (-outlineSize.x / 2 - paddingX) * Math.sign(currScale.x),
+          (-outlineSize.y / 2 - paddingY) * Math.sign(currScale.y),
+          0,
+          (outlineSize.x / 2 + paddingX) * Math.sign(currScale.x),
+          (-outlineSize.y / 2 - paddingY) * Math.sign(currScale.y),
+          0,
+          (outlineSize.x / 2 + paddingX) * Math.sign(currScale.x),
+          (outlineSize.y / 2 + paddingY) * Math.sign(currScale.y),
+          0,
+          (-outlineSize.x / 2 - paddingX) * Math.sign(currScale.x),
+          (outlineSize.y / 2 + paddingY) * Math.sign(currScale.y),
+          0,
+          (-outlineSize.x / 2 - paddingX) * Math.sign(currScale.x),
+          (-outlineSize.y / 2 - paddingY) * Math.sign(currScale.y),
+          0,
+        ]);
+
+        outlineRef.current.geometry.setAttribute(
+          "position",
+          new THREE.BufferAttribute(outlinePositions, 3)
+        );
+      }
     }
   });
 
@@ -340,9 +453,11 @@ function AnimalSprite({
 export default function AnimalGraphic({
   user,
   myUserId,
+  setAnimalWidth,
 }: {
   user: UserInfo;
   myUserId: string;
+  setAnimalWidth: (animal: string, width: number) => void;
 }) {
   // Create position ref as Vector3
   const isLocalPlayer = myUserId === user.id;
@@ -374,6 +489,8 @@ export default function AnimalGraphic({
         positionRef={positionRef}
         directionRef={directionRef}
         isLocalPlayer={isLocalPlayer}
+        user={user}
+        setAnimalWidth={setAnimalWidth}
       />
     </>
   );

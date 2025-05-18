@@ -2,28 +2,38 @@ import React, { useEffect, useMemo, useRef } from "react";
 import { NPC, NPCGroup, UserInfo } from "../../utils/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
+import { Text } from "@react-three/drei";
 import { smoothMove } from "../../utils/movement";
-import { useMount, useNPCBase } from "../../hooks/useNPCBase";
+import { useNPCBase } from "../../hooks/useNPCBase";
 import {
   getAnimalBorderColor,
   getAnimalIndicatorColor,
 } from "../../utils/animal-colors";
-import { Text } from "@react-three/drei";
+
+// Constants for positioning
+const FOLLOW_DISTANCE = 2; // Distance behind the user
+const OUTLINE_WIDTH = 0.2; // Width of the outline effect
 
 interface NPCGroupGraphicProps {
   group: NPCGroup;
   groupSize: number;
-  user: UserInfo | undefined;
+  user: UserInfo;
   npcs: Map<string, NPC>;
+  animalWidths: { [animal: string]: number };
 }
 
 const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
   group,
   user,
   npcs,
+  animalWidths,
 }) => {
   // Skip rendering if no user or no NPCs
   if (!user || group.npcIds.size === 0) return null;
+
+  // If animal width is not set, don't render
+  const animalWidth = animalWidths[user.animal];
+  if (!animalWidth) return null;
 
   // Get first NPC id from the group and find the actual NPC
   const firstNpcId =
@@ -63,23 +73,98 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
   // Reference to store the indicator position
   const indicatorPosition = useMemo(() => new THREE.Vector3(), []);
 
-  // Create a border outline for the NPC group
-  const outlineMaterial = useMemo(() => {
-    const material = new THREE.LineBasicMaterial({
-      color: getAnimalBorderColor(user.animal),
-      linewidth: 2,
-    });
-    return material;
-  }, [user.animal]);
+  // Create a border color for the NPC group
+  const outlineColor = useMemo(() => getAnimalBorderColor(user), [user]);
 
-  const outlineRef = useRef<THREE.Line | null>(null);
+  // Reference for the outline mesh
+  const outlineRef = useRef<THREE.Mesh | null>(null);
+
+  // Calculate target position behind the user based on their direction
+  const calculateTargetPosition = (
+    userPosition: THREE.Vector3
+  ): THREE.Vector3 => {
+    // Default direction if not specified (backward is -x)
+    let directionX = -1;
+    let directionY = 0;
+
+    // If user has a direction, use the inverse of it to position behind
+    if (user.direction) {
+      // Normalize direction
+      const length = Math.sqrt(
+        user.direction.x * user.direction.x +
+          user.direction.y * user.direction.y
+      );
+      if (length > 0.001) {
+        directionX = -user.direction.x / length; // Opposite X direction
+        directionY = -user.direction.y / length; // Opposite Y direction
+      }
+    }
+
+    // Calculate position that is animalWidth + scaled NPC width + FOLLOW_DISTANCE units behind the user
+    let npcWidth = 0;
+    if (mesh.current) {
+      npcWidth = mesh.current.scale.x; // width of the NPC mesh
+    }
+    return new THREE.Vector3(
+      userPosition.x +
+        directionX * (animalWidth / 2 + npcWidth / 2 + FOLLOW_DISTANCE),
+      userPosition.y +
+        directionY * (animalWidth / 2 + npcWidth / 2 + FOLLOW_DISTANCE),
+      -0.1 // Place slightly behind in z-index
+    );
+  };
+
+  // Create outline shape from mesh dimensions
+  const createOutline = (width: number, height: number) => {
+    if (outlineRef.current) {
+      threeGroup.remove(outlineRef.current);
+    }
+
+    // Create a slightly larger rectangle for the outline
+    const outlineWidth = width + OUTLINE_WIDTH;
+    const outlineHeight = height + OUTLINE_WIDTH;
+
+    // Create a shape with a hole for the outline effect
+    const outlineShape = new THREE.Shape();
+    outlineShape.moveTo(-outlineWidth / 2, -outlineHeight / 2);
+    outlineShape.lineTo(outlineWidth / 2, -outlineHeight / 2);
+    outlineShape.lineTo(outlineWidth / 2, outlineHeight / 2);
+    outlineShape.lineTo(-outlineWidth / 2, outlineHeight / 2);
+    outlineShape.lineTo(-outlineWidth / 2, -outlineHeight / 2);
+
+    // Create inner hole (slightly smaller than the actual NPC image)
+    const innerWidth = width - 1.5;
+    const innerHeight = height - 1.5;
+
+    const hole = new THREE.Path();
+    hole.moveTo(-innerWidth / 2, -innerHeight / 2);
+    hole.lineTo(innerWidth / 2, -innerHeight / 2);
+    hole.lineTo(innerWidth / 2, innerHeight / 2);
+    hole.lineTo(-innerWidth / 2, innerHeight / 2);
+    hole.lineTo(-innerWidth / 2, -innerHeight / 2);
+
+    outlineShape.holes.push(hole);
+
+    // Create geometry from shape
+    const geometry = new THREE.ShapeGeometry(outlineShape);
+    const material = new THREE.MeshBasicMaterial({
+      color: outlineColor,
+      side: THREE.DoubleSide,
+    });
+
+    outlineRef.current = new THREE.Mesh(geometry, material);
+    outlineRef.current.renderOrder = 1; // Ensure it renders behind the NPC but visible
+    threeGroup.add(outlineRef.current);
+  };
 
   // Set initial position
   useEffect(() => {
-    updatePositionWithTracking(
-      new THREE.Vector3(user.position.x, user.position.y, user.position.z),
-      "NPCGroup-initial"
+    // Start with initial position behind user
+    const initialPosition = calculateTargetPosition(
+      new THREE.Vector3(user.position.x, user.position.y, user.position.z)
     );
+
+    updatePositionWithTracking(initialPosition, "NPCGroup-initial");
     threeGroup.position.copy(positionRef.current);
 
     // Apply the scale based on number of NPCs
@@ -88,43 +173,29 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
       mesh.current.scale.set(scaleFactor, scaleFactor, 1);
 
       // Create outline based on mesh size
-      if (outlineRef.current) {
-        threeGroup.remove(outlineRef.current);
-      }
-
       const width = mesh.current.scale.x * 1.1; // Slightly larger than the NPC
       const height = mesh.current.scale.y * 1.1;
 
-      const outlineGeometry = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(-width / 2, -height / 2, 0),
-        new THREE.Vector3(width / 2, -height / 2, 0),
-        new THREE.Vector3(width / 2, height / 2, 0),
-        new THREE.Vector3(-width / 2, height / 2, 0),
-        new THREE.Vector3(-width / 2, -height / 2, 0),
-      ]);
-
-      outlineRef.current = new THREE.Line(outlineGeometry, outlineMaterial);
-      outlineRef.current.renderOrder = 1; // Ensure it renders on top
-      threeGroup.add(outlineRef.current);
+      createOutline(width, height);
     }
   }, [
     user.position,
+    user.direction,
     scaleFactor,
     threeGroup,
     positionRef,
     updatePositionWithTracking,
     mesh,
-    outlineMaterial,
+    outlineColor,
   ]);
 
   // Handle position updates to follow the user
   useFrame(() => {
     if (!threeGroup || !textureLoaded.current) return;
 
-    const targetPosition = new THREE.Vector3(
-      user.position.x,
-      user.position.y,
-      0
+    // Calculate target position with offset from user
+    const targetPosition = calculateTargetPosition(
+      new THREE.Vector3(user.position.x, user.position.y, user.position.z)
     );
 
     if (!positionRef.current.equals(targetPosition)) {
@@ -144,47 +215,18 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
     const oscillation = Math.sin(time * 2) * 0.05; // Reduced oscillation
     threeGroup.rotation.z = oscillation;
 
-    // Ensure scale is always maintained with very subtle pulse
+    // Keep scale constant - no more pulsing
     if (mesh.current) {
-      // Get the base scale
-      const baseX = mesh.current.scale.x / scaleFactor;
-      const baseY = mesh.current.scale.y / scaleFactor;
-
-      // Apply scaling with a MUCH more subtle pulse effect
-      const pulseEffect = 1 + Math.sin(time * 3) * 0.01; // Very subtle 1% pulse
-      mesh.current.scale.set(
-        baseX * scaleFactor * pulseEffect,
-        baseY * scaleFactor * pulseEffect,
-        1
-      );
+      // Ensure the mesh scale remains consistent with the scaleFactor
+      mesh.current.scale.set(scaleFactor, scaleFactor, 1);
 
       // Update outline to match the mesh size if it exists
       if (outlineRef.current) {
         const width = mesh.current.scale.x * 1.1;
         const height = mesh.current.scale.y * 1.1;
 
-        const outlinePositions = new Float32Array([
-          -width / 2,
-          -height / 2,
-          0,
-          width / 2,
-          -height / 2,
-          0,
-          width / 2,
-          height / 2,
-          0,
-          -width / 2,
-          height / 2,
-          0,
-          -width / 2,
-          -height / 2,
-          0,
-        ]);
-
-        outlineRef.current.geometry.setAttribute(
-          "position",
-          new THREE.BufferAttribute(outlinePositions, 3)
-        );
+        // Remove and recreate the outline with the new dimensions
+        createOutline(width, height);
       }
     }
   });
@@ -199,21 +241,20 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
           {/* Background circle */}
           <mesh>
             <circleGeometry args={[0.7, 32]} />
-            <meshBasicMaterial color={getAnimalIndicatorColor(user.animal)} />
+            <meshBasicMaterial color={getAnimalIndicatorColor(user)} />
           </mesh>
 
           {/* Outline for the counter */}
-          <lineSegments>
-            <circleGeometry args={[0.7, 32]} />
-            <lineBasicMaterial color={getAnimalBorderColor(user.animal)} />
-          </lineSegments>
+          <mesh>
+            <ringGeometry args={[0.65, 0.75, 32]} />
+            <meshBasicMaterial color={outlineColor} />
+          </mesh>
 
           {/* Text showing count */}
           <Text
             position={[0, 0, 0.1]}
             fontSize={0.5}
             color="#FFFFFF"
-            font="/fonts/Inter-Bold.woff"
             anchorX="center"
             anchorY="middle"
           >
