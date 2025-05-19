@@ -16,7 +16,6 @@ const OUTLINE_WIDTH = 0.2; // Width of the outline effect
 
 interface NPCGroupGraphicProps {
   group: NPCGroup;
-  groupSize: number;
   user: UserInfo;
   npcs: Map<string, NPC>;
   animalWidths: { [animal: string]: number };
@@ -209,7 +208,7 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
     // Always update indicator position to follow the group
     if (indicatorRef.current && mesh.current) {
       indicatorRef.current.position.copy(positionRef.current);
-      indicatorRef.current.position.y += mesh.current.scale.y / 2 + 2;
+      indicatorRef.current.position.y += mesh.current.scale.y / 2 + 2.8;
     }
 
     // Make a subtle oscillation to indicate this is a group
@@ -242,18 +241,14 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
         <group ref={indicatorRef}>
           {/* Background circle */}
           <mesh>
-            <circleGeometry args={[1.1, 32]} />
+            <circleGeometry args={[1.5, 32]} />
             <meshBasicMaterial color={getAnimalIndicatorColor(user)} />
           </mesh>
           {/* Outline for the counter */}
-          <mesh>
-            <ringGeometry args={[1.0, 1.2, 32]} />
-            <meshBasicMaterial color={outlineColor} />
-          </mesh>
           {/* Text showing count */}
           <Text
-            position={[0, 0, 0.1]}
-            fontSize={0.8}
+            position={[0, -0.2, 0]}
+            fontSize={2.2}
             color="#FFFFFF"
             anchorX="center"
             anchorY="middle"
@@ -267,4 +262,13 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
   );
 };
 
-export default React.memo(NPCGroupGraphic);
+export default React.memo(NPCGroupGraphic, (prevProps, nextProps) => {
+  // Only re-render if the group’s npcIds set changes
+  console.log(
+    "prevProps.group.npcIds.size",
+    prevProps.group.npcIds.size,
+    "nextProps.group.npcIds.size",
+    nextProps.group.npcIds.size
+  );
+  return prevProps.group === nextProps.group;
+});

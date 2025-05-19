@@ -292,8 +292,14 @@ interface Props {
   throws: Map<string, throwData>;
   npcGroups: DefaultMap<string, NPCGroup>;
   setThrows: (throws: Map<npcId, throwData>) => void;
-  setNpcGroups: (npcGroups: DefaultMap<userId, NPCGroup>) => void;
-  setNpcs: (npcs: Map<npcId, NPC>) => void;
+  setNpcGroups: (
+    value:
+      | DefaultMap<userId, NPCGroup>
+      | ((prev: DefaultMap<userId, NPCGroup>) => DefaultMap<userId, NPCGroup>)
+  ) => void;
+  setNpcs: (
+    npcs: Map<npcId, NPC> | ((prev: Map<npcId, NPC>) => Map<npcId, NPC>)
+  ) => void;
 }
 
 export default function Scene({
@@ -406,8 +412,6 @@ export default function Scene({
     (npc: NPC) => {
       // Only handle collision if NPC is still in IDLE phase
 
-      npc.phase = NPCPhase.CAPTURED;
-      npcGroups.get(myUser.id).npcIds.add(npc.id);
       const currentSocket = socket();
       console.log("emitting capture-npc");
       currentSocket.emit(
@@ -421,6 +425,38 @@ export default function Scene({
           if (!response.success) console.error("Capture failed");
         }
       );
+
+      // create new npc
+      const updatedNpc: NPC = {
+        ...npc,
+        position: myUser.position,
+        phase: NPCPhase.CAPTURED,
+      };
+      setNpcGroups((prevNpcGroups: DefaultMap<userId, NPCGroup>) => {
+        const updatedNpcGroups = new DefaultMap<userId, NPCGroup>(
+          (id: userId) => ({
+            npcIds: new Set<npcId>(),
+            captorId: id,
+          })
+        );
+        // Copy all groups
+        Array.from(prevNpcGroups.entries()).forEach(([id, group]) => {
+          updatedNpcGroups.set(id, group);
+        });
+        // Add the new NPC to the user's group
+        const newNpcIds = new Set(updatedNpcGroups.get(myUser.id).npcIds);
+        newNpcIds.add(updatedNpc.id);
+        updatedNpcGroups.set(myUser.id, {
+          ...updatedNpcGroups.get(myUser.id),
+          npcIds: newNpcIds,
+        });
+        return updatedNpcGroups;
+      });
+      setNpcs((prev) => {
+        const newNpcs = new Map(prev);
+        newNpcs.set(npc.id, updatedNpc);
+        return newNpcs;
+      });
     },
     [npcGroups, myUser.id, myUser.room]
   );
@@ -505,7 +541,6 @@ export default function Scene({
         <NPCGroupGraphic
           key={`${group.captorId}-group`}
           group={group}
-          groupSize={group.npcIds.size}
           user={users.get(group.captorId)!}
           npcs={npcs}
           animalWidths={animalWidths.current}

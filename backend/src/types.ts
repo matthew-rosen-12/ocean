@@ -24,11 +24,11 @@ export interface throwData {
   velocity: number;
   throwDuration: number;
   timestamp: number;
-  throwerId: string;
+  throwerId: userId;
 }
 
 export interface UserInfo {
-  id: string;
+  id: userId;
   animal: Animal;
   room: string;
   position: { x: number; y: number };
@@ -38,7 +38,7 @@ export interface UserInfo {
 
 export interface NPCGroup {
   npcIds: Set<npcId>;
-  captorId: string;
+  captorId: userId;
 }
 
 export type npcId = string;
