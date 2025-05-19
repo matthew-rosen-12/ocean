@@ -29,6 +29,7 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
   animalWidths,
 }) => {
   // Skip rendering if no user or no NPCs
+  console.log("rendering npc group graphic");
   if (!user || group.npcIds.size === 0) return null;
 
   // If animal width is not set, don't render
@@ -71,7 +72,7 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
   const npcsCount = group.npcIds.size;
 
   // Reference to store the indicator position
-  const indicatorPosition = useMemo(() => new THREE.Vector3(), []);
+  const indicatorRef = useRef<THREE.Group>(null);
 
   // Create a border color for the NPC group
   const outlineColor = useMemo(() => getAnimalBorderColor(user), [user]);
@@ -204,10 +205,11 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
         "NPCGroup"
       );
       threeGroup.position.copy(positionRef.current);
-
-      // Update indicator position to follow the group
-      indicatorPosition.copy(positionRef.current);
-      indicatorPosition.y += mesh.current ? mesh.current.scale.y / 2 + 0.5 : 2; // Position above the NPC
+    }
+    // Always update indicator position to follow the group
+    if (indicatorRef.current && mesh.current) {
+      indicatorRef.current.position.copy(positionRef.current);
+      indicatorRef.current.position.y += mesh.current.scale.y / 2 + 2;
     }
 
     // Make a subtle oscillation to indicate this is a group
@@ -237,26 +239,25 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
 
       {/* Counter indicator showing the number of NPCs */}
       {npcsCount > 1 && (
-        <group position={indicatorPosition.toArray()}>
+        <group ref={indicatorRef}>
           {/* Background circle */}
           <mesh>
-            <circleGeometry args={[0.7, 32]} />
+            <circleGeometry args={[1.1, 32]} />
             <meshBasicMaterial color={getAnimalIndicatorColor(user)} />
           </mesh>
-
           {/* Outline for the counter */}
           <mesh>
-            <ringGeometry args={[0.65, 0.75, 32]} />
+            <ringGeometry args={[1.0, 1.2, 32]} />
             <meshBasicMaterial color={outlineColor} />
           </mesh>
-
           {/* Text showing count */}
           <Text
             position={[0, 0, 0.1]}
-            fontSize={0.5}
+            fontSize={0.8}
             color="#FFFFFF"
             anchorX="center"
             anchorY="middle"
+            font="https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxM.woff"
           >
             {npcsCount}
           </Text>
