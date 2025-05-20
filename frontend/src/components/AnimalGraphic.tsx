@@ -8,6 +8,7 @@ import { ANIMAL_SCALES } from "../utils/user-info";
 import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUtils";
 import { smoothMove } from "../utils/movement";
 import { getAnimalBorderColor } from "../utils/animal-colors";
+import { useMount } from "../hooks/useNPCBase";
 
 const ANIMAL_ORIENTATION = {
   WOLF: { rotation: 0, flipY: true },
@@ -60,7 +61,7 @@ function AnimalSprite({
     });
   }, [user]);
 
-  useEffect(() => {
+  useMount(() => {
     const loader = new SVGLoader();
 
     loader.load(
@@ -207,6 +208,7 @@ function AnimalSprite({
 
         // Apply initial flip if needed
         if (orientation.flipY) {
+          console.log("flipping y");
           group.scale.x = -group.scale.x;
         }
 
@@ -259,17 +261,7 @@ function AnimalSprite({
     return () => {
       group.clear();
     };
-  }, [
-    animal,
-    scale,
-    group,
-    previousPosition,
-    positionRef,
-    isLocalPlayer,
-    directionRef,
-    outlineMaterial,
-    setAnimalWidth,
-  ]);
+  });
 
   function setRotation(direction: THREE.Vector3) {
     if (direction.length() > 0) {
@@ -466,10 +458,13 @@ export default function AnimalGraphic({
   );
 
   // Create direction ref as Vector3
-  const directionRef = useRef<THREE.Vector3 | null>(null);
+  const directionRef = useRef<THREE.Vector3>(
+    new THREE.Vector3(user.direction.x, user.direction.y, 0)
+  );
 
   // Update refs when user data changes
   useEffect(() => {
+    console.log("updating direction to ", user.direction);
     positionRef.current.set(user.position.x, user.position.y, user.position.z);
 
     // Update direction ref if direction exists, preserving z=0

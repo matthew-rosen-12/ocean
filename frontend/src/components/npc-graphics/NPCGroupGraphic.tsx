@@ -28,7 +28,6 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
   animalWidths,
 }) => {
   // Skip rendering if no user or no NPCs
-  console.log("rendering npc group graphic");
   if (!user || group.npcIds.size === 0) return null;
 
   // If animal width is not set, don't render
@@ -263,12 +262,5 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
 };
 
 export default React.memo(NPCGroupGraphic, (prevProps, nextProps) => {
-  // Only re-render if the group’s npcIds set changes
-  console.log(
-    "prevProps.group.npcIds.size",
-    prevProps.group.npcIds.size,
-    "nextProps.group.npcIds.size",
-    nextProps.group.npcIds.size
-  );
   return prevProps.group === nextProps.group;
 });

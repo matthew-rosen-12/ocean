@@ -335,85 +335,65 @@ export default function Scene({
     setNpcs
   );
 
-  const lastBroadcastPosition = useRef(initialPosition);
-  const lastBroadcastDirection = useRef(initialDirection);
+  // --- REFACTOR: Use refs for last broadcasted position/direction ---
+  const lastBroadcastPosition = useRef(position.clone());
+  const lastBroadcastDirection = useRef({ ...direction });
 
-  // Create a throttled broadcast function using lodash
-  const broadcastPosition = useCallback(
-    async (
-      currentPosition: Vector3,
-      currentDirection: { x: number; y: number },
-      user: UserInfo
-    ) => {
-      try {
-        // Calculate position delta to see if worth broadcasting
-        const positionDelta = new Vector3()
-          .copy(currentPosition)
-          .sub(lastBroadcastPosition.current);
-        const positionChanged = positionDelta.length() >= POSITION_THRESHOLD;
+  // Only broadcast if position or direction actually changed
+  const broadcastPosition = useCallback(() => {
+    const positionDelta = new Vector3()
+      .copy(position)
+      .sub(lastBroadcastPosition.current);
+    const positionChanged = positionDelta.length() >= POSITION_THRESHOLD;
 
-        const directionChanged =
-          lastBroadcastDirection.current.x !== currentDirection.x ||
-          lastBroadcastDirection.current.y !== currentDirection.y;
+    const directionChanged =
+      lastBroadcastDirection.current.x !== direction.x ||
+      lastBroadcastDirection.current.y !== direction.y;
 
-        if (positionChanged || directionChanged) {
-          // Use the existing direction directly
-          const currentSocket = socket();
-          await new Promise<void>((resolve, reject) => {
-            currentSocket.emit(
-              "user-updated",
-              serialize({
-                user,
-              }),
-              (response: { success: boolean }) => {
-                if (!response.success) reject(new Error("Broadcast failed"));
-                else resolve();
-              }
-            );
-          });
-
-          // Update last broadcast values
-          lastBroadcastPosition.current.copy(currentPosition);
-          lastBroadcastDirection.current = { ...currentDirection };
+    if (positionChanged || directionChanged) {
+      // Emit socket event
+      const currentSocket = socket();
+      currentSocket.emit(
+        "user-updated",
+        serialize({
+          user: {
+            ...myUser,
+            position: position.clone(),
+            direction: { ...direction },
+          },
+        }),
+        (response: { success: boolean }) => {
+          if (!response.success) console.error("Broadcast failed");
         }
-      } catch (error) {
-        console.error("Broadcast failed:", error);
-      }
-    },
-    []
-  );
+      );
+      lastBroadcastPosition.current.copy(position);
+      lastBroadcastDirection.current = { ...direction };
+    }
+  }, [position, direction, myUser]);
 
-  // Create a throttled version of the broadcast function
-  const throttledBroadcast = useMemo(
+  // Throttle the broadcast function ONCE, not per render
+  const throttledBroadcast = useCallback(
     () =>
-      throttle(
-        () => {
-          if (myUser) {
-            broadcastPosition(position, direction, myUser);
-          }
-        },
-        THROTTLE_MS,
-        { leading: true, trailing: true }
-      ),
-    [position, direction, myUser, broadcastPosition]
+      throttle(broadcastPosition, THROTTLE_MS, {
+        leading: true,
+        trailing: true,
+      }),
+    [broadcastPosition]
   );
 
-  // Effect to update myUser position and direction continuously
+  // Effect to broadcast position/direction changes
   useEffect(() => {
     myUser.position = position.clone();
     myUser.direction = { ...direction };
     users.set(myUser.id, myUser);
-
-    // Attempt to broadcast whenever position/direction changes
     throttledBroadcast();
-  }, [position, direction, myUser, throttledBroadcast, users]);
+  }, [position, direction]);
 
   const handleNPCCollision = useCallback(
     (npc: NPC) => {
       // Only handle collision if NPC is still in IDLE phase
 
       const currentSocket = socket();
-      console.log("emitting capture-npc");
       currentSocket.emit(
         "capture-npc",
         serialize({
