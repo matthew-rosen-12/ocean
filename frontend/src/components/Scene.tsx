@@ -10,14 +10,7 @@ import {
   userId,
   UserInfo,
 } from "../utils/types";
-import {
-  useEffect,
-  useState,
-  useRef,
-  useCallback,
-  useMemo,
-  createRef,
-} from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Vector3 } from "three";
 import { useFrame } from "@react-three/fiber";
 import { socket } from "../socket";
@@ -334,7 +327,6 @@ export default function Scene({
     setNpcGroups,
     setNpcs
   );
-
   // --- REFACTOR: Use refs for last broadcasted position/direction ---
   const lastBroadcastPosition = useRef(position.clone());
   const lastBroadcastDirection = useRef({ ...direction });
@@ -372,14 +364,12 @@ export default function Scene({
   }, [position, direction, myUser]);
 
   // Throttle the broadcast function ONCE, not per render
-  const throttledBroadcast = useCallback(
-    () =>
-      throttle(broadcastPosition, THROTTLE_MS, {
-        leading: true,
-        trailing: true,
-      }),
-    [broadcastPosition]
-  );
+  const throttledBroadcast = useMemo(() => {
+    return throttle(broadcastPosition, THROTTLE_MS, {
+      leading: true,
+      trailing: true,
+    });
+  }, [broadcastPosition]);
 
   // Effect to broadcast position/direction changes
   useEffect(() => {

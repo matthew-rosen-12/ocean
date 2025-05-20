@@ -161,6 +161,7 @@ export default function GuestLogin({
 
       socket.on("npc-thrown", (serializedData: string) => {
         const { throwData } = deserialize(serializedData);
+        console.log("npc-thrown", throwData);
         setThrows((prev) => new Map(prev).set(throwData.npc.id, throwData));
         setNPCs((prev) => new Map(prev).set(throwData.npc.id, throwData.npc));
         setNPCGroups((prev) => {

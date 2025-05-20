@@ -212,7 +212,7 @@ io.on("connection", async (socket) => {
           throwData.npc.id
         );
 
-        io.to(throwData.room).emit(
+        socket.broadcast.to(throwData.room).emit(
           "npc-thrown",
           serialize({
             throwData,

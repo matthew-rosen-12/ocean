@@ -157,44 +157,41 @@ function AnimalSprite({
           group.remove(outlineRef.current);
         }
 
-        // For the outline, we'll use a convex hull algorithm to create a simplified outline
-        // For this demo, we'll use a simpler approach - outline from original SVG paths
-
-        // Convert all outline points to 3D and apply the same transforms as the mesh
-        const outlinePoints3D: THREE.Vector3[] = [];
-
-        // Process the outline points - add a small offset to create a visible outline
-        const outlineOffset = 0.1; // Small offset to make outline visible
-
-        // Filter points to reduce to only boundary points (simple algorithm)
-        // For a proper outline, you would use a convex hull or outline extraction algorithm
-        // This simplified approach just uses the bounding box with padding
-        const boundaryPoints = [
-          new THREE.Vector2(minX - outlineOffset, minY - outlineOffset),
-          new THREE.Vector2(maxX + outlineOffset, minY - outlineOffset),
-          new THREE.Vector2(maxX + outlineOffset, maxY + outlineOffset),
-          new THREE.Vector2(minX - outlineOffset, maxY + outlineOffset),
-          new THREE.Vector2(minX - outlineOffset, minY - outlineOffset),
-        ];
-
-        // Convert 2D points to 3D and center/flip like the mesh
-        boundaryPoints.forEach((point) => {
-          outlinePoints3D.push(
-            new THREE.Vector3(
-              (point.x - centerX) * normalizeScale * scale,
-              -(point.y - centerY) * normalizeScale * scale, // Flip Y like we did for mesh
-              0.01 // Small Z offset to ensure outline renders above mesh
-            )
+        // --- NEW OUTLINE: Use SVG path points for outline ---
+        if (allOutlinePoints.length > 1) {
+          // Convert all outline points to 3D and apply the same transforms as the mesh
+          const outlinePoints3D: THREE.Vector3[] = allOutlinePoints.map(
+            (point) =>
+              new THREE.Vector3(
+                (point.x - centerX) * normalizeScale * scale,
+                -(point.y - centerY) * normalizeScale * scale, // Flip Y like we did for mesh
+                0.01 // Small Z offset to ensure outline renders above mesh
+              )
           );
-        });
+          // Close the outline loop if not already closed
+          const first = outlinePoints3D[0];
+          const last = outlinePoints3D[outlinePoints3D.length - 1];
+          if (!first.equals(last)) {
+            outlinePoints3D.push(first.clone());
+          }
 
-        // Create outline geometry and line
-        const outlineGeometry = new THREE.BufferGeometry().setFromPoints(
-          outlinePoints3D
-        );
-        outlineRef.current = new THREE.Line(outlineGeometry, outlineMaterial);
-        outlineRef.current.renderOrder = 2; // Ensure it renders on top
-        group.add(outlineRef.current);
+          const outlineGeometry = new THREE.BufferGeometry().setFromPoints(
+            outlinePoints3D
+          );
+          if (outlineRef.current) {
+            outlineRef.current.geometry.dispose();
+          }
+          outlineRef.current = new THREE.Line(
+            outlineGeometry,
+            new THREE.LineBasicMaterial({
+              color: getAnimalBorderColor(user),
+              linewidth: 3,
+            })
+          );
+          outlineRef.current.renderOrder = 2; // Ensure it renders on top
+          group.add(outlineRef.current);
+        }
+        // --- END NEW OUTLINE ---
 
         // Apply initial orientation to make the animal face right
         const orientation = ANIMAL_ORIENTATION[animal] || {
@@ -464,7 +461,6 @@ export default function AnimalGraphic({
 
   // Update refs when user data changes
   useEffect(() => {
-    console.log("updating direction to ", user.direction);
     positionRef.current.set(user.position.x, user.position.y, user.position.z);
 
     // Update direction ref if direction exists, preserving z=0
