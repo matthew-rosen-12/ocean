@@ -384,6 +384,7 @@ export default function Scene({
       // Only handle collision if NPC is still in IDLE phase
 
       const currentSocket = socket();
+      console.log("capturing npc", npc.id);
       currentSocket.emit(
         "capture-npc",
         serialize({
@@ -458,12 +459,22 @@ export default function Scene({
   );
 
   // Animal width map (per animal type)
-  const animalWidths = useRef<{ [animal: string]: number }>({});
-  const setAnimalWidth = useCallback((animal: string, width: number) => {
-    if (!animalWidths.current[animal]) {
-      animalWidths.current[animal] = width;
-    }
-  }, []);
+  const [animalWidths, setAnimalWidths] = useState<{
+    [animal: string]: number;
+  }>({});
+
+  const setAnimalWidth = useCallback(
+    (animal: string, width: number) => {
+      if (!animalWidths[animal]) {
+        // Create a new object to ensure React detects the change
+        setAnimalWidths((prev) => ({
+          ...prev,
+          [animal]: width,
+        }));
+      }
+    },
+    [animalWidths]
+  );
 
   return (
     <Canvas
@@ -507,15 +518,19 @@ export default function Scene({
             throwData={throws.get(npc.id)}
           />
         ))}
-      {Array.from(npcGroups.values()).map((group) => (
-        <NPCGroupGraphic
-          key={`${group.captorId}-group`}
-          group={group}
-          user={users.get(group.captorId)!}
-          npcs={npcs}
-          animalWidths={animalWidths.current}
-        />
-      ))}
+      {Array.from(npcGroups.values()).map((group) => {
+        const user = users.get(group.captorId);
+        if (!user) return null;
+        return (
+          <NPCGroupGraphic
+            key={`${group.captorId}-group`}
+            group={group}
+            user={user}
+            npcs={npcs}
+            animalWidth={animalWidths[user.animal]}
+          />
+        );
+      })}
     </Canvas>
   );
 }

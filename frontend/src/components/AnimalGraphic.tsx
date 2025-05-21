@@ -50,9 +50,6 @@ function AnimalSprite({
     ANIMAL_ORIENTATION[animal] || { rotation: 0, flipY: false }
   );
 
-  // Create a reference for the outline
-  const outlineRef = useRef<THREE.Line | null>(null);
-
   // Create outline material using animal's color
   const outlineMaterial = useMemo(() => {
     return new THREE.LineBasicMaterial({
@@ -70,9 +67,6 @@ function AnimalSprite({
         // Group paths by color
         const geometriesByColor = new Map<number, THREE.BufferGeometry[]>();
 
-        // Store all path points for outline creation
-        const allOutlinePoints: THREE.Vector2[] = [];
-
         // Calculate the bounding box of all paths first
         let minX = Infinity,
           minY = Infinity,
@@ -81,19 +75,13 @@ function AnimalSprite({
 
         data.paths.forEach((path) => {
           path.subPaths.forEach((subPath) => {
-            // Get points for this subpath and add to outline collection
             const points = subPath.getPoints();
 
-            // Only use the outer paths for the outline (those that form the external silhouette)
-            // For simplicity, we'll assume paths near the bounding box edges are part of the outline
             points.forEach((point) => {
               minX = Math.min(minX, point.x);
               minY = Math.min(minY, point.y);
               maxX = Math.max(maxX, point.x);
               maxY = Math.max(maxY, point.y);
-
-              // Add points to our outline collection
-              allOutlinePoints.push(point.clone());
             });
           });
         });
@@ -152,47 +140,6 @@ function AnimalSprite({
         const scaledSize = scaledBox.getSize(new THREE.Vector3());
         setAnimalWidth(animal, scaledSize.x);
 
-        // Create outline based on the SVG path points
-        if (outlineRef.current) {
-          group.remove(outlineRef.current);
-        }
-
-        // --- NEW OUTLINE: Use SVG path points for outline ---
-        if (allOutlinePoints.length > 1) {
-          // Convert all outline points to 3D and apply the same transforms as the mesh
-          const outlinePoints3D: THREE.Vector3[] = allOutlinePoints.map(
-            (point) =>
-              new THREE.Vector3(
-                (point.x - centerX) * normalizeScale * scale,
-                -(point.y - centerY) * normalizeScale * scale, // Flip Y like we did for mesh
-                0.01 // Small Z offset to ensure outline renders above mesh
-              )
-          );
-          // Close the outline loop if not already closed
-          const first = outlinePoints3D[0];
-          const last = outlinePoints3D[outlinePoints3D.length - 1];
-          if (!first.equals(last)) {
-            outlinePoints3D.push(first.clone());
-          }
-
-          const outlineGeometry = new THREE.BufferGeometry().setFromPoints(
-            outlinePoints3D
-          );
-          if (outlineRef.current) {
-            outlineRef.current.geometry.dispose();
-          }
-          outlineRef.current = new THREE.Line(
-            outlineGeometry,
-            new THREE.LineBasicMaterial({
-              color: getAnimalBorderColor(user),
-              linewidth: 3,
-            })
-          );
-          outlineRef.current.renderOrder = 2; // Ensure it renders on top
-          group.add(outlineRef.current);
-        }
-        // --- END NEW OUTLINE ---
-
         // Apply initial orientation to make the animal face right
         const orientation = ANIMAL_ORIENTATION[animal] || {
           rotation: 0,
@@ -205,7 +152,6 @@ function AnimalSprite({
 
         // Apply initial flip if needed
         if (orientation.flipY) {
-          console.log("flipping y");
           group.scale.x = -group.scale.x;
         }
 
@@ -397,41 +343,6 @@ function AnimalSprite({
           // Update current flip state
           currentFlipState.current = 1;
         }
-      }
-
-      // Update the outline if it exists during flipping
-      if (outlineRef.current && outlineRef.current.parent === group) {
-        const currScale = group.scale.clone();
-        const outlineBox = new THREE.Box3().setFromObject(group);
-        const outlineSize = outlineBox.getSize(new THREE.Vector3());
-
-        // Add padding
-        const paddingX = outlineSize.x * 0.1;
-        const paddingY = outlineSize.y * 0.1;
-
-        // Create points for the outline rectangle, respecting the current flip state
-        const outlinePositions = new Float32Array([
-          (-outlineSize.x / 2 - paddingX) * Math.sign(currScale.x),
-          (-outlineSize.y / 2 - paddingY) * Math.sign(currScale.y),
-          0,
-          (outlineSize.x / 2 + paddingX) * Math.sign(currScale.x),
-          (-outlineSize.y / 2 - paddingY) * Math.sign(currScale.y),
-          0,
-          (outlineSize.x / 2 + paddingX) * Math.sign(currScale.x),
-          (outlineSize.y / 2 + paddingY) * Math.sign(currScale.y),
-          0,
-          (-outlineSize.x / 2 - paddingX) * Math.sign(currScale.x),
-          (outlineSize.y / 2 + paddingY) * Math.sign(currScale.y),
-          0,
-          (-outlineSize.x / 2 - paddingX) * Math.sign(currScale.x),
-          (-outlineSize.y / 2 - paddingY) * Math.sign(currScale.y),
-          0,
-        ]);
-
-        outlineRef.current.geometry.setAttribute(
-          "position",
-          new THREE.BufferAttribute(outlinePositions, 3)
-        );
       }
     }
   });

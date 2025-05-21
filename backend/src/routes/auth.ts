@@ -26,8 +26,6 @@ router.post("/", async (req, res) => {
       npcGroup: { npcIds: new Set(), captorId: guestId },
     };
 
-    console.log("guestUser", guestUser);
-
     // Generate token (base64 encoded user info)
     const token = Buffer.from(JSON.stringify(guestUser)).toString("base64");
 

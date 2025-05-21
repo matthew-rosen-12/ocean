@@ -270,27 +270,42 @@ export async function getNPCGroupsFromRedis(
   return deserialize(groups);
 }
 
-export async function setNPCGroupsInRedis(
-  roomName: roomId,
-  groups: Map<userId, NPCGroup>
-): Promise<void> {
-  try {
-    await set(`${GROUPS_KEY_PREFIX}${roomName}`, serialize(groups));
-  } catch (error) {
-    console.error(`Error setting NPC groups for room ${roomName}:`, error);
-    throw error;
-  }
-}
-
 export async function setThrowsInRedis(
   roomName: roomId,
   throws: throwData[]
 ): Promise<void> {
-  try {
-    await set(`${THROWS_KEY_PREFIX}${roomName}`, serialize(throws));
-  } catch (error) {
-    console.error(`Error setting throws for room ${roomName}:`, error);
-    throw error;
+  const throwsKey = `${THROWS_KEY_PREFIX}${roomName}`;
+  let retries = 3;
+
+  while (retries > 0) {
+    try {
+      // Watch the key for changes
+      await redisClient.watch(throwsKey);
+
+      // Start transaction
+      const multi = redisClient.multi();
+      multi.set(throwsKey, serialize(throws));
+
+      // Execute transaction
+      const result = await multi.exec();
+
+      if (result === null) {
+        // Key was modified, retry
+        console.log(`Transaction failed for ${throwsKey}, retrying...`);
+        retries--;
+        continue;
+      }
+
+      // Success
+      return;
+    } catch (error) {
+      console.error(`Error setting throws for room ${roomName}:`, error);
+      retries--;
+      if (retries === 0) throw error;
+    } finally {
+      // Unwatch in case of error or early return
+      await redisClient.unwatch();
+    }
   }
 }
 
@@ -298,12 +313,38 @@ export async function setNPCsInRedis(
   room: string,
   npcs: Map<npcId, NPC>
 ): Promise<void> {
-  // filter for npc with filename that is nb.png
-  try {
-    await set(`${NPC_KEY_PREFIX}${room}`, serialize(npcs));
-  } catch (error) {
-    console.error(`Error setting NPCs for room ${room}:`, error);
-    throw error;
+  const npcsKey = `${NPC_KEY_PREFIX}${room}`;
+  let retries = 3;
+
+  while (retries > 0) {
+    try {
+      // Watch the key for changes
+      await redisClient.watch(npcsKey);
+
+      // Start transaction
+      const multi = redisClient.multi();
+      multi.set(npcsKey, serialize(npcs));
+
+      // Execute transaction
+      const result = await multi.exec();
+
+      if (result === null) {
+        // Key was modified, retry
+        console.log(`Transaction failed for ${npcsKey}, retrying...`);
+        retries--;
+        continue;
+      }
+
+      // Success
+      return;
+    } catch (error) {
+      console.error(`Error setting NPCs for room ${room}:`, error);
+      retries--;
+      if (retries === 0) throw error;
+    } finally {
+      // Unwatch in case of error or early return
+      await redisClient.unwatch();
+    }
   }
 }
 
@@ -319,12 +360,50 @@ export async function removeNPCFromGroupInRoomInRedis(
   captorId: userId,
   npcId: npcId
 ): Promise<void> {
-  const groups = await getNPCGroupsFromRedis(roomName);
-  const group = groups.get(captorId);
+  const groupsKey = `${GROUPS_KEY_PREFIX}${roomName}`;
+  let retries = 3;
 
-  if (group) {
-    group.npcIds.delete(npcId);
-    await setNPCGroupsInRedis(roomName, groups);
+  while (retries > 0) {
+    try {
+      // Watch the key for changes
+      await redisClient.watch(groupsKey);
+
+      // Get current groups
+      const groups = await getNPCGroupsFromRedis(roomName);
+      const group = groups.get(captorId);
+
+      if (group) {
+        group.npcIds.delete(npcId);
+        groups.set(captorId, group);
+
+        // Start transaction
+        const multi = redisClient.multi();
+        multi.set(groupsKey, serialize(groups));
+
+        // Execute transaction
+        const result = await multi.exec();
+
+        if (result === null) {
+          // Key was modified, retry
+          console.log(`Transaction failed for ${groupsKey}, retrying...`);
+          retries--;
+          continue;
+        }
+      }
+
+      // Success or no group found
+      return;
+    } catch (error) {
+      console.error(
+        `Error removing NPC from group in room ${roomName}:`,
+        error
+      );
+      retries--;
+      if (retries === 0) throw error;
+    } finally {
+      // Unwatch in case of error or early return
+      await redisClient.unwatch();
+    }
   }
 }
 
@@ -332,7 +411,127 @@ export async function removeNPCGroupInRoomInRedis(
   roomName: string,
   captorId: userId
 ): Promise<void> {
-  const groups = await getNPCGroupsFromRedis(roomName);
-  groups.delete(captorId);
-  await setNPCGroupsInRedis(roomName, groups);
+  const groupsKey = `${GROUPS_KEY_PREFIX}${roomName}`;
+  let retries = 3;
+
+  while (retries > 0) {
+    try {
+      // Watch the key for changes
+      await redisClient.watch(groupsKey);
+
+      // Get current groups
+      const groups = await getNPCGroupsFromRedis(roomName);
+      groups.delete(captorId);
+
+      // Start transaction
+      const multi = redisClient.multi();
+      multi.set(groupsKey, serialize(groups));
+
+      // Execute transaction
+      const result = await multi.exec();
+
+      if (result === null) {
+        // Key was modified, retry
+        console.log(`Transaction failed for ${groupsKey}, retrying...`);
+        retries--;
+        continue;
+      }
+
+      // Success
+      return;
+    } catch (error) {
+      console.error(`Error removing NPC group in room ${roomName}:`, error);
+      retries--;
+      if (retries === 0) throw error;
+    } finally {
+      // Unwatch in case of error or early return
+      await redisClient.unwatch();
+    }
+  }
+}
+
+// Add this after the redisClient definition
+// Simple Redis connection pool implementation
+class RedisConnectionPool {
+  private pool: Array<any> = [];
+  private maxSize: number = 5;
+  private inUse: Set<any> = new Set();
+
+  constructor(maxSize: number = 5) {
+    this.maxSize = maxSize;
+    console.log(`Created Redis connection pool with max size ${maxSize}`);
+  }
+
+  async getClient() {
+    // Check if we have an available client
+    if (this.pool.length > 0) {
+      const client = this.pool.pop();
+      this.inUse.add(client);
+      return client;
+    }
+
+    // If pool is empty but we haven't reached max, create new client
+    if (this.inUse.size < this.maxSize) {
+      const client = createClient({
+        url: process.env.REDIS_URL || "redis://localhost:6379",
+      });
+
+      await client.connect();
+      this.inUse.add(client);
+      return client;
+    }
+
+    // Pool is at capacity, wait for a connection to become available
+    console.log(
+      "Redis connection pool at capacity, waiting for available connection"
+    );
+    return new Promise((resolve) => {
+      const checkInterval = setInterval(() => {
+        if (this.pool.length > 0) {
+          clearInterval(checkInterval);
+          const client = this.pool.pop();
+          this.inUse.add(client);
+          resolve(client);
+        }
+      }, 100);
+    });
+  }
+
+  releaseClient(client: any) {
+    if (this.inUse.has(client)) {
+      this.inUse.delete(client);
+      this.pool.push(client);
+    }
+  }
+
+  async closeAll() {
+    // Close all connections in the pool
+    for (const client of this.pool) {
+      await client.quit();
+    }
+
+    // Close all in-use connections
+    for (const client of this.inUse) {
+      await client.quit();
+    }
+
+    this.pool = [];
+    this.inUse.clear();
+  }
+}
+
+// Create a pool instance
+export const redisPool = new RedisConnectionPool(10);
+
+// Helper function to perform a transaction with a pooled connection
+export async function withRedisTransaction<T>(
+  operation: (client: any) => Promise<T>
+): Promise<T> {
+  const client = await redisPool.getClient();
+
+  try {
+    return await operation(client);
+  } finally {
+    redisPool.releaseClient(client);
+  }
 }

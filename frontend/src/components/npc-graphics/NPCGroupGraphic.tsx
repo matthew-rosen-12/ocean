@@ -18,21 +18,28 @@ interface NPCGroupGraphicProps {
   group: NPCGroup;
   user: UserInfo;
   npcs: Map<string, NPC>;
-  animalWidths: { [animal: string]: number };
+  animalWidth: number | undefined;
 }
 
 const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
   group,
   user,
   npcs,
-  animalWidths,
+  animalWidth,
 }) => {
   // Skip rendering if no user or no NPCs
-  if (!user || group.npcIds.size === 0) return null;
+  console.log("rendering npc group graphic");
+  if (!user || group.npcIds.size === 0) {
+    console.log("skipping npc group graphic 1");
+    return null;
+  }
 
   // If animal width is not set, don't render
-  const animalWidth = animalWidths[user.animal];
-  if (!animalWidth) return null;
+  console.log("animalWidth", animalWidth);
+  if (!animalWidth) {
+    console.log("skipping npc group graphic 2");
+    return null;
+  }
 
   // Get first NPC id from the group and find the actual NPC
   const firstNpcId =
@@ -262,5 +269,9 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
 };
 
 export default React.memo(NPCGroupGraphic, (prevProps, nextProps) => {
-  return prevProps.group === nextProps.group;
+  return (
+    prevProps.group.npcIds.size === nextProps.group.npcIds.size &&
+    prevProps.animalWidth !== undefined &&
+    prevProps.user === nextProps.user
+  );
 });
