@@ -7,7 +7,7 @@ import { FXAAShader } from "three/examples/jsm/shaders/FXAAShader.js";
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
-
+import { useMount } from "../hooks/useNPCBase";
 const objectsToOutline = new Set<THREE.Object3D>();
 
 export default function useOutlineEffect() {
@@ -18,7 +18,7 @@ export default function useOutlineEffect() {
   const outlinePassRef = useRef<OutlinePass | null>(null);
 
   // Initialize effect composer
-  useEffect(() => {
+  useMount(() => {
     // Create effect composer if not already created
     if (!composerRef.current) {
       composerRef.current = new EffectComposer(gl);

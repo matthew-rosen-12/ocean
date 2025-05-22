@@ -71,10 +71,6 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
 
   const { addToOutline, removeFromOutline } = useOutlineEffect();
 
-  useMount(() => {
-    addToOutline(threeGroup, getAnimalBorderColor(user));
-  });
-
   // Add a badge showing the number of NPCs in the group
   const npcsCount = group.npcIds.size;
 
@@ -133,18 +129,12 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
       // Apply our logarithmic scaling
       mesh.current.scale.set(scaleFactor, scaleFactor, 1);
     }
-
-    // Add outline to the NPC group
-    addToOutline(threeGroup, getAnimalBorderColor(user));
-
-    // Add outline to the background circle when it's ready
-    if (npcsCount > 1 && backgroundCircleRef.current) {
-      addToOutline(backgroundCircleRef.current, getAnimalBorderColor(user));
-    }
   });
 
   // Add effect to add outline to the circle when it's available
   useEffect(() => {
+    addToOutline(threeGroup, getAnimalBorderColor(user));
+
     if (npcsCount > 1 && backgroundCircleRef.current) {
       addToOutline(backgroundCircleRef.current, getAnimalBorderColor(user));
 
