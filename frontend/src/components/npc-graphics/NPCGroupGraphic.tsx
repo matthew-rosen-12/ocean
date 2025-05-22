@@ -1,18 +1,18 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useMemo, useRef, useEffect } from "react";
 import { NPC, NPCGroup, UserInfo } from "../../utils/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { Text } from "@react-three/drei";
 import { smoothMove } from "../../utils/movement";
-import { useNPCBase } from "../../hooks/useNPCBase";
+import { useNPCBase, useMount } from "../../hooks/useNPCBase";
 import {
   getAnimalBorderColor,
   getAnimalIndicatorColor,
 } from "../../utils/animal-colors";
+import useOutlineEffect from "../../utils/graphics";
 
 // Constants for positioning
 const FOLLOW_DISTANCE = 2; // Distance behind the user
-const OUTLINE_WIDTH = 0.2; // Width of the outline effect
 
 interface NPCGroupGraphicProps {
   group: NPCGroup;
@@ -28,16 +28,12 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
   animalWidth,
 }) => {
   // Skip rendering if no user or no NPCs
-  console.log("rendering npc group graphic");
   if (!user || group.npcIds.size === 0) {
-    console.log("skipping npc group graphic 1");
     return null;
   }
 
   // If animal width is not set, don't render
-  console.log("animalWidth", animalWidth);
   if (!animalWidth) {
-    console.log("skipping npc group graphic 2");
     return null;
   }
 
@@ -73,17 +69,19 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
     mesh,
   } = useNPCBase(npc);
 
+  const { addToOutline, removeFromOutline } = useOutlineEffect();
+
+  useMount(() => {
+    addToOutline(threeGroup, getAnimalBorderColor(user));
+  });
+
   // Add a badge showing the number of NPCs in the group
   const npcsCount = group.npcIds.size;
 
   // Reference to store the indicator position
   const indicatorRef = useRef<THREE.Group>(null);
-
-  // Create a border color for the NPC group
-  const outlineColor = useMemo(() => getAnimalBorderColor(user), [user]);
-
-  // Reference for the outline mesh
-  const outlineRef = useRef<THREE.Mesh | null>(null);
+  // Reference for the background circle
+  const backgroundCircleRef = useRef<THREE.Mesh>(null);
 
   // Calculate target position behind the user based on their direction
   const calculateTargetPosition = (
@@ -120,51 +118,8 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
     );
   };
 
-  // Create outline shape from mesh dimensions
-  const createOutline = (width: number, height: number) => {
-    if (outlineRef.current) {
-      threeGroup.remove(outlineRef.current);
-    }
-
-    // Create a slightly larger rectangle for the outline
-    const outlineWidth = width + OUTLINE_WIDTH;
-    const outlineHeight = height + OUTLINE_WIDTH;
-
-    // Create a shape with a hole for the outline effect
-    const outlineShape = new THREE.Shape();
-    outlineShape.moveTo(-outlineWidth / 2, -outlineHeight / 2);
-    outlineShape.lineTo(outlineWidth / 2, -outlineHeight / 2);
-    outlineShape.lineTo(outlineWidth / 2, outlineHeight / 2);
-    outlineShape.lineTo(-outlineWidth / 2, outlineHeight / 2);
-    outlineShape.lineTo(-outlineWidth / 2, -outlineHeight / 2);
-
-    // Create inner hole (slightly smaller than the actual NPC image)
-    const innerWidth = width - 1.5;
-    const innerHeight = height - 1.5;
-
-    const hole = new THREE.Path();
-    hole.moveTo(-innerWidth / 2, -innerHeight / 2);
-    hole.lineTo(innerWidth / 2, -innerHeight / 2);
-    hole.lineTo(innerWidth / 2, innerHeight / 2);
-    hole.lineTo(-innerWidth / 2, innerHeight / 2);
-    hole.lineTo(-innerWidth / 2, -innerHeight / 2);
-
-    outlineShape.holes.push(hole);
-
-    // Create geometry from shape
-    const geometry = new THREE.ShapeGeometry(outlineShape);
-    const material = new THREE.MeshBasicMaterial({
-      color: outlineColor,
-      side: THREE.DoubleSide,
-    });
-
-    outlineRef.current = new THREE.Mesh(geometry, material);
-    outlineRef.current.renderOrder = 1; // Ensure it renders behind the NPC but visible
-    threeGroup.add(outlineRef.current);
-  };
-
   // Set initial position
-  useEffect(() => {
+  useMount(() => {
     // Start with initial position behind user
     const initialPosition = calculateTargetPosition(
       new THREE.Vector3(user.position.x, user.position.y, user.position.z)
@@ -177,23 +132,29 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
     if (mesh.current) {
       // Apply our logarithmic scaling
       mesh.current.scale.set(scaleFactor, scaleFactor, 1);
-
-      // Create outline based on mesh size
-      const width = mesh.current.scale.x * 1.1; // Slightly larger than the NPC
-      const height = mesh.current.scale.y * 1.1;
-
-      createOutline(width, height);
     }
-  }, [
-    user.position,
-    user.direction,
-    scaleFactor,
-    threeGroup,
-    positionRef,
-    updatePositionWithTracking,
-    mesh,
-    outlineColor,
-  ]);
+
+    // Add outline to the NPC group
+    addToOutline(threeGroup, getAnimalBorderColor(user));
+
+    // Add outline to the background circle when it's ready
+    if (npcsCount > 1 && backgroundCircleRef.current) {
+      addToOutline(backgroundCircleRef.current, getAnimalBorderColor(user));
+    }
+  });
+
+  // Add effect to add outline to the circle when it's available
+  useEffect(() => {
+    if (npcsCount > 1 && backgroundCircleRef.current) {
+      addToOutline(backgroundCircleRef.current, getAnimalBorderColor(user));
+
+      return () => {
+        if (backgroundCircleRef.current) {
+          removeFromOutline(backgroundCircleRef.current);
+        }
+      };
+    }
+  }, [npcsCount, backgroundCircleRef.current]);
 
   // Handle position updates to follow the user
   useFrame(() => {
@@ -226,15 +187,6 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
     if (mesh.current) {
       // Ensure the mesh scale remains consistent with the scaleFactor
       mesh.current.scale.set(scaleFactor, scaleFactor, 1);
-
-      // Update outline to match the mesh size if it exists
-      if (outlineRef.current) {
-        const width = mesh.current.scale.x * 1.1;
-        const height = mesh.current.scale.y * 1.1;
-
-        // Remove and recreate the outline with the new dimensions
-        createOutline(width, height);
-      }
     }
   });
 
@@ -246,11 +198,10 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
       {npcsCount > 1 && (
         <group ref={indicatorRef}>
           {/* Background circle */}
-          <mesh>
+          <mesh ref={backgroundCircleRef}>
             <circleGeometry args={[1.5, 32]} />
             <meshBasicMaterial color={getAnimalIndicatorColor(user)} />
           </mesh>
-          {/* Outline for the counter */}
           {/* Text showing count */}
           <Text
             position={[0, -0.2, 0]}
