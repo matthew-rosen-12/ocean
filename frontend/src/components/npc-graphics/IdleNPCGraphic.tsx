@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { NPC } from "../../utils/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
@@ -45,6 +45,7 @@ const IdleNPCGraphic: React.FC<IdleNPCGraphicProps> = ({
     checkForCollision(npc);
   });
 
+  // Add effect to track useFrame lifecycles
   return <primitive object={group} />;
 };
 

@@ -12,6 +12,11 @@ import {
 import { DefaultMap } from "../utils/types";
 import { getSocket } from "../socket";
 import { deserialize, serialize } from "../utils/serializers";
+import {
+  addNPCToGroup,
+  removeNPCFromGroup,
+  updateNPCGroupsPreservingIdentity,
+} from "../utils/npc-group-utils";
 
 interface Props {
   setMyUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
@@ -92,18 +97,20 @@ export default function GuestLogin({
         let npcsWithoutCaptor: npcId[] = [];
 
         setNPCGroups((prev) => {
-          const newNPCGroups = new DefaultMap<userId, NPCGroup>(
-            (id: userId) => ({
-              npcIds: new Set<npcId>(),
-              captorId: id,
-            })
-          );
-          Array.from(prev.entries()).forEach(([id, group]) => {
-            newNPCGroups.set(id, group);
-          });
           npcsWithoutCaptor = Array.from(prev.get(userId).npcIds);
-          newNPCGroups.delete(userId);
-          return newNPCGroups;
+
+          // Create a updates map to remove the user's group
+          const updates = new Map();
+          Array.from(prev.entries()).forEach(([id, group]) => {
+            if (id !== userId) {
+              updates.set(id, {
+                captorId: group.captorId,
+                npcIds: group.npcIds,
+              });
+            }
+          });
+
+          return updateNPCGroupsPreservingIdentity(prev, updates);
         });
 
         setNPCs((prev) => {
@@ -123,17 +130,17 @@ export default function GuestLogin({
 
       socket.on("npc-groups-update", (serializedData: string) => {
         const { groups } = deserialize(serializedData);
-        const defaultMap = new DefaultMap<userId, NPCGroup>((id: userId) => ({
-          npcIds: new Set<string>(),
-          captorId: id,
-        }));
 
-        //for each key value of groups, set the key and value in the defaultMap
-        for (const [id, group] of groups.entries()) {
-          defaultMap.set(id, group);
-        }
+        setNPCGroups((prev) => {
+          // Create updates map from the incoming groups
+          const updates = new Map();
+          for (const [id, group] of groups.entries()) {
+            updates.set(id, { captorId: group.captorId, npcIds: group.npcIds });
+          }
 
-        setNPCGroups(defaultMap);
+          // Use utility to preserve object identity where possible
+          return updateNPCGroupsPreservingIdentity(prev, updates);
+        });
       });
 
       socket.on("npc-update", (serializedData: string) => {
@@ -145,17 +152,7 @@ export default function GuestLogin({
         const { id, npc } = deserialize(serializedData);
         setNPCs((prev) => new Map(prev).set(npc.id, npc));
         setNPCGroups((prev) => {
-          const newNPCGroups = new DefaultMap<userId, NPCGroup>(
-            (id: userId) => ({
-              npcIds: new Set<npcId>(),
-              captorId: id,
-            })
-          );
-          Array.from(prev.entries()).forEach(([id, group]) => {
-            newNPCGroups.set(id, group);
-          });
-          newNPCGroups.get(id).npcIds.add(npc.id);
-          return newNPCGroups;
+          return addNPCToGroup(prev, id, npc.id);
         });
       });
 
@@ -165,17 +162,11 @@ export default function GuestLogin({
         setThrows((prev) => new Map(prev).set(throwData.npc.id, throwData));
         setNPCs((prev) => new Map(prev).set(throwData.npc.id, throwData.npc));
         setNPCGroups((prev) => {
-          const newNPCGroups = new DefaultMap<userId, NPCGroup>(
-            (id: userId) => ({
-              npcIds: new Set<npcId>(),
-              captorId: id,
-            })
+          return removeNPCFromGroup(
+            prev,
+            throwData.throwerId,
+            throwData.npc.id
           );
-          Array.from(prev.entries()).forEach(([id, group]) => {
-            newNPCGroups.set(id, group);
-          });
-          newNPCGroups.get(throwData.throwerId).npcIds.delete(throwData.npc.id);
-          return newNPCGroups;
         });
       });
 

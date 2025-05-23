@@ -5,14 +5,29 @@ import { DEBUG } from "../utils/config";
 
 // Create a global texture cache
 const textureCache = new Map<string, THREE.Texture>();
+// Create a global material cache
+const materialCache = new Map<string, THREE.MeshBasicMaterial>();
 // Create a single shared loader
 const textureLoader = new THREE.TextureLoader();
+
+console.log(
+  `[NPC CACHE] Texture cache initialized, size: ${textureCache.size}`
+);
 
 // Use the specific debug flag
 const debug = DEBUG.NPC_MOVEMENT;
 
 export function useNPCBase(npc: NPC) {
-  const group = useMemo(() => new THREE.Group(), [npc.id]);
+  const group = useMemo(() => {
+    const newGroup = new THREE.Group();
+    // Reduced logging - only log when debugging specific issues
+    if (DEBUG.NPC_MOVEMENT) {
+      console.log(
+        `[useNPCBase] Creating new Group ${newGroup.uuid} for NPC ${npc.id}`
+      );
+    }
+    return newGroup;
+  }, [npc.id]);
   const texture = useRef<THREE.Texture | null>(null);
   const material = useRef<THREE.MeshBasicMaterial | null>(null);
   const mesh = useRef<THREE.Mesh | null>(null);
@@ -60,21 +75,38 @@ export function useNPCBase(npc: NPC) {
 
     // If we get here, we need to set up the mesh
     const texturePath = `/npcs/${npc.filename}`;
-
     // Clean up any existing mesh first to avoid adding duplicates
     if (mesh.current && mesh.current.parent === group) {
       group.remove(mesh.current);
     }
 
     if (textureCache.has(texturePath)) {
+      console.log(
+        `[NPC CACHE] Using cached texture for NPC ${npc.id}, cache size: ${textureCache.size}`
+      );
       texture.current = textureCache.get(texturePath)!;
 
-      // Create material and mesh using cached texture
-      material.current = new THREE.MeshBasicMaterial({
-        map: texture.current,
-        transparent: true,
-        side: THREE.DoubleSide,
-      });
+      // Check if we also have a cached material
+      if (materialCache.has(texturePath)) {
+        console.log(
+          `[NPC CACHE] Using cached material for NPC ${npc.id}, material cache size: ${materialCache.size}`
+        );
+        material.current = materialCache.get(texturePath)!;
+      } else {
+        console.log(
+          `[NPC CACHE] Creating new material for cached texture for NPC ${npc.id}`
+        );
+        // Create material and cache it
+        material.current = new THREE.MeshBasicMaterial({
+          map: texture.current,
+          transparent: true,
+          side: THREE.DoubleSide,
+        });
+        materialCache.set(texturePath, material.current);
+        console.log(
+          `[NPC CACHE] Material cached, new material cache size: ${materialCache.size}`
+        );
+      }
 
       const geometry = new THREE.PlaneGeometry(1, 1);
       mesh.current = new THREE.Mesh(geometry, material.current);
@@ -88,12 +120,21 @@ export function useNPCBase(npc: NPC) {
       group.add(mesh.current);
       textureLoaded.current = true;
     } else {
+      console.log(
+        `[NPC CACHE] Loading texture (not cached) for NPC ${npc.id}: ${texturePath}`
+      );
       // Load texture if not cached
       textureLoader.load(
         texturePath,
         (loadedTexture) => {
+          console.log(
+            `[NPC CACHE] Texture loaded successfully for ${npc.id}, caching...`
+          );
           // Cache the texture
           textureCache.set(texturePath, loadedTexture);
+          console.log(
+            `[NPC CACHE] Texture cached, new cache size: ${textureCache.size}`
+          );
 
           // Double-check we don't already have a mesh (in case of rapid re-renders)
           if (mesh.current && mesh.current.parent === group) {
@@ -102,12 +143,13 @@ export function useNPCBase(npc: NPC) {
 
           texture.current = loadedTexture;
 
-          // Create material and mesh
+          // Create material and cache it
           material.current = new THREE.MeshBasicMaterial({
             map: loadedTexture,
             transparent: true,
             side: THREE.DoubleSide,
           });
+          materialCache.set(texturePath, material.current);
 
           const geometry = new THREE.PlaneGeometry(1, 1);
           mesh.current = new THREE.Mesh(geometry, material.current);
@@ -129,10 +171,34 @@ export function useNPCBase(npc: NPC) {
     }
 
     return () => {
-      if (texture.current) texture.current.dispose();
-      if (material.current) material.current.dispose();
-      if (mesh.current && mesh.current.geometry)
+      if (DEBUG.NPC_MOVEMENT) {
+        console.log(
+          `[useNPCBase] Cleaning up Group ${group.uuid} for NPC ${npc.id}`
+        );
+      }
+      // Only dispose texture if it's not in the cache (i.e., if it failed to load)
+      if (texture.current && !textureCache.has(`/npcs/${npc.filename}`)) {
+        texture.current.dispose();
+      } else if (texture.current) {
+      }
+
+      // Only dispose material if it's not in the cache
+      if (material.current && !materialCache.has(`/npcs/${npc.filename}`)) {
+        material.current.dispose();
+      } else if (material.current) {
+      }
+
+      if (mesh.current && mesh.current.geometry) {
         mesh.current.geometry.dispose();
+      }
+
+      group.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry?.dispose();
+          // Don't dispose materials here since they might be cached
+        }
+      });
+      group.clear();
     };
   }, [npc.filename]);
 

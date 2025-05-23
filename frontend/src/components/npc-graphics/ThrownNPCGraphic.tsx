@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { NPC, throwData } from "../../utils/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
@@ -64,6 +64,9 @@ const ThrownNPCGraphic: React.FC<ThrownNPCGraphicProps> = ({
 
     group.position.copy(positionRef.current);
   });
+
+  // Add effect to track useFrame lifecycle
+  useEffect(() => {}, [npc.id]);
 
   return <primitive object={group} />;
 };

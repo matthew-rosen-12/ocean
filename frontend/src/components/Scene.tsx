@@ -26,6 +26,20 @@ import { serialize } from "../utils/serializers";
 import NPCGraphicWrapper from "./npc-graphics/NPCGraphicWrapper";
 import NPCGroupGraphic from "./npc-graphics/NPCGroupGraphic";
 import { useMount } from "../hooks/useNPCBase";
+import * as THREE from "three";
+import { removeNPCFromGroup, addNPCToGroup } from "../utils/npc-group-utils";
+
+// Extend Performance interface for Chrome's memory API
+declare global {
+  interface Performance {
+    memory?: {
+      usedJSHeapSize: number;
+      totalJSHeapSize: number;
+      jsHeapSizeLimit: number;
+    };
+  }
+}
+
 // Speed of movement per keypress/frame
 const MOVEMENT_SPEED = 0.5;
 // Min distance before broadcasting position change
@@ -72,26 +86,8 @@ async function throwNPC(
       phase: NPCPhase.THROWN,
     };
 
-    // Create new npcGroups map
-    const updatedNpcGroups = new DefaultMap<userId, NPCGroup>((id: userId) => ({
-      npcIds: new Set<npcId>(),
-      captorId: id,
-    }));
-
-    // Copy all groups except modify the user's group
-    Array.from(npcGroups.entries()).forEach(([id, group]) => {
-      if (id === myUser.id) {
-        // Create a new Set without the thrown NPC
-        const newNpcIds = new Set(group.npcIds);
-        newNpcIds.delete(npc.id);
-        updatedNpcGroups.set(id, {
-          ...group,
-          npcIds: newNpcIds,
-        });
-      } else {
-        updatedNpcGroups.set(id, group);
-      }
-    });
+    // Use the utility function to preserve group object identity
+    const updatedNpcGroups = removeNPCFromGroup(npcGroups, myUser.id, npc.id);
 
     // Create new throw data
     const newThrowData: throwData = {
@@ -311,6 +307,32 @@ interface Props {
   ) => void;
 }
 
+// Track texture loading without monkey-patching
+const originalTextureLoader = THREE.TextureLoader.prototype.load;
+
+// Patch TextureLoader only (this should work)
+THREE.TextureLoader.prototype.load = function (
+  url,
+  onLoad,
+  onProgress,
+  onError
+) {
+  console.log(`[TEXTURE LOADER] Loading texture from: ${url}`);
+  return originalTextureLoader.call(
+    this,
+    url,
+    (texture) => {
+      console.log(`[TEXTURE LOADED] Successfully loaded: ${url}`, {
+        uuid: texture.uuid,
+        dimensions: `${texture.image?.width}x${texture.image?.height}`,
+      });
+      if (onLoad) onLoad(texture);
+    },
+    onProgress,
+    onError
+  );
+};
+
 export default function Scene({
   users,
   myUser,
@@ -343,6 +365,7 @@ export default function Scene({
     setNpcGroups,
     setNpcs
   );
+
   // --- REFACTOR: Use refs for last broadcasted position/direction ---
   const lastBroadcastPosition = useRef(position.clone());
   const lastBroadcastDirection = useRef({ ...direction });
@@ -418,26 +441,12 @@ export default function Scene({
         position: myUser.position,
         phase: NPCPhase.CAPTURED,
       };
+
       setNpcGroups((prevNpcGroups: DefaultMap<userId, NPCGroup>) => {
-        const updatedNpcGroups = new DefaultMap<userId, NPCGroup>(
-          (id: userId) => ({
-            npcIds: new Set<npcId>(),
-            captorId: id,
-          })
-        );
-        // Copy all groups
-        Array.from(prevNpcGroups.entries()).forEach(([id, group]) => {
-          updatedNpcGroups.set(id, group);
-        });
-        // Add the new NPC to the user's group
-        const newNpcIds = new Set(updatedNpcGroups.get(myUser.id).npcIds);
-        newNpcIds.add(updatedNpc.id);
-        updatedNpcGroups.set(myUser.id, {
-          ...updatedNpcGroups.get(myUser.id),
-          npcIds: newNpcIds,
-        });
-        return updatedNpcGroups;
+        // Use the utility function to preserve group object identity
+        return addNPCToGroup(prevNpcGroups, myUser.id, updatedNpc.id);
       });
+
       setNpcs((prev) => {
         const newNpcs = new Map(prev);
         newNpcs.set(npc.id, updatedNpc);
@@ -491,6 +500,41 @@ export default function Scene({
     [animalWidths]
   );
 
+  // Memory monitoring component
+  function MemoryMonitor() {
+    const { gl } = useThree();
+
+    useEffect(() => {
+      const monitorMemory = () => {
+        console.log(`[Memory] Three.js Info:`, {
+          geometries: gl.info.memory.geometries,
+          textures: gl.info.memory.textures,
+          programs: gl.info.programs?.length || "unknown",
+          calls: gl.info.render.calls,
+          triangles: gl.info.render.triangles,
+          points: gl.info.render.points,
+          lines: gl.info.render.lines,
+        });
+
+        // Log Chrome's memory usage if available
+        if (performance.memory) {
+          console.log(
+            `[Memory] JS Heap: ${Math.round(
+              performance.memory.usedJSHeapSize / 1024 / 1024
+            )}MB`
+          );
+        }
+      };
+
+      // Monitor memory every 2 seconds (reduced from 5)
+      const interval = setInterval(monitorMemory, 2000);
+
+      return () => clearInterval(interval);
+    }, [gl]);
+
+    return null;
+  }
+
   return (
     <Canvas
       style={{
@@ -536,6 +580,7 @@ export default function Scene({
       {Array.from(npcGroups.values()).map((group) => {
         const user = users.get(group.captorId);
         if (!user) return null;
+
         return (
           <NPCGroupGraphic
             key={`${group.captorId}-group`}
@@ -546,6 +591,7 @@ export default function Scene({
           />
         );
       })}
+      <MemoryMonitor />
     </Canvas>
   );
 }

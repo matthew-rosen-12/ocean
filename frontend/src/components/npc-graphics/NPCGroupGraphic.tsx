@@ -37,6 +37,25 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
     return null;
   }
 
+  // Add effect to track component lifecycle
+  useEffect(() => {
+    // Only log mounting in debug mode
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        `[NPCGroupGraphic] Component MOUNTED for user ${user.id}, captorId: ${
+          group.captorId
+        }, npcIds: ${Array.from(group.npcIds).join(",")}`
+      );
+    }
+    return () => {
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          `[NPCGroupGraphic] Component UNMOUNTING for user ${user.id}, captorId: ${group.captorId}`
+        );
+      }
+    };
+  }, []);
+
   // Get first NPC id from the group and find the actual NPC
   const firstNpcId =
     group.npcIds.size === 0 ? null : group.npcIds.values().next().value;
@@ -131,20 +150,39 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
     }
   });
 
-  // Add effect to add outline to the circle when it's available
+  // Add effect to add outline to the main group (only once)
   useEffect(() => {
+    console.log(
+      `[NPCGroupGraphic] Adding group ${threeGroup.uuid} to outline for user ${user.id}`
+    );
     addToOutline(threeGroup, getAnimalBorderColor(user));
 
+    return () => {
+      console.log(
+        `[NPCGroupGraphic] Removing group ${threeGroup.uuid} from outline for user ${user.id}`
+      );
+      removeFromOutline(threeGroup);
+    };
+  }, [threeGroup.uuid, user.id]); // Fixed: depend on threeGroup.uuid so it re-runs when Group changes
+
+  // Separate effect for background circle outline (when count > 1)
+  useEffect(() => {
     if (npcsCount > 1 && backgroundCircleRef.current) {
+      console.log(
+        `[NPCGroupGraphic] Adding background circle to outline for user ${user.id}, count: ${npcsCount}`
+      );
       addToOutline(backgroundCircleRef.current, getAnimalBorderColor(user));
 
       return () => {
         if (backgroundCircleRef.current) {
+          console.log(
+            `[NPCGroupGraphic] Removing background circle from outline for user ${user.id}`
+          );
           removeFromOutline(backgroundCircleRef.current);
         }
       };
     }
-  }, [npcsCount]);
+  }, [npcsCount > 1, user.id, backgroundCircleRef.current]); // Fixed: include backgroundCircleRef.current
 
   // Handle position updates to follow the user
   useFrame(() => {
@@ -210,9 +248,37 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
 };
 
 export default React.memo(NPCGroupGraphic, (prevProps, nextProps) => {
-  return (
-    prevProps.group.npcIds.size === nextProps.group.npcIds.size &&
-    prevProps.animalWidth !== undefined &&
-    prevProps.user === nextProps.user
-  );
+  // Compare group properties
+  const captorIdSame = prevProps.group.captorId === nextProps.group.captorId;
+  const sizeSame = prevProps.group.npcIds.size === nextProps.group.npcIds.size;
+  const prevNpcIds = Array.from(prevProps.group.npcIds).sort();
+  const nextNpcIds = Array.from(nextProps.group.npcIds).sort();
+  const npcIdsSame = prevNpcIds.every((id, index) => id === nextNpcIds[index]);
+
+  const groupsSame = captorIdSame && sizeSame && npcIdsSame;
+
+  // Compare other props
+  const userSame = prevProps.user.id === nextProps.user.id;
+  const animalWidthSame = prevProps.animalWidth === nextProps.animalWidth;
+
+  const shouldNotRerender = groupsSame && userSame && animalWidthSame;
+
+  // Only log when legitimately re-rendering due to content changes
+  if (!shouldNotRerender && (!groupsSame || !userSame || !animalWidthSame)) {
+    console.log(
+      `[NPCGroupGraphic] Re-rendering for user ${nextProps.user.id}:`,
+      {
+        groupsSame,
+        userSame,
+        animalWidthSame,
+        reason: !groupsSame
+          ? "group changed"
+          : !userSame
+          ? "user changed"
+          : "animalWidth changed",
+      }
+    );
+  }
+
+  return shouldNotRerender;
 });

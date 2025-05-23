@@ -24,10 +24,11 @@ const NPCGraphicWrapper = ({
     );
   } else if (npc.phase === NPCPhase.THROWN) {
     if (!throwData) {
-      console.warn(`Throw data with id ${npc.id} not found in throws map`);
       return null;
     }
     return <ThrownNPCGraphic key={npc.id} npc={npc} throwData={throwData} />;
   }
+
+  return null;
 };
 export default React.memo(NPCGraphicWrapper);
