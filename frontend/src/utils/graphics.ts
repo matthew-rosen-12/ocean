@@ -66,7 +66,7 @@ export default function useOutlineEffect() {
       composerRef.current = null;
       outlinePassRef.current = null;
     };
-  }, [gl, scene, camera, size]);
+  });
 
   // Render using composer on each frame
   useFrame(() => {

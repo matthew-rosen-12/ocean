@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Animal, UserInfo } from "./types";
 import * as THREE from "three";
 

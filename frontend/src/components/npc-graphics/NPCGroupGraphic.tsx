@@ -144,7 +144,7 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
         }
       };
     }
-  }, [npcsCount, backgroundCircleRef.current]);
+  }, [npcsCount]);
 
   // Handle position updates to follow the user
   useFrame(() => {
