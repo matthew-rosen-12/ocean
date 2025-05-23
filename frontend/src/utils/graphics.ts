@@ -4,7 +4,7 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { OutlinePass } from "three/examples/jsm/postprocessing/OutlinePass.js";
 import { FXAAShader } from "three/examples/jsm/shaders/FXAAShader.js";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useMount } from "../hooks/useNPCBase";

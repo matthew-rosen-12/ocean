@@ -134,7 +134,7 @@ export function useNPCBase(npc: NPC) {
       if (mesh.current && mesh.current.geometry)
         mesh.current.geometry.dispose();
     };
-  }, [group, npc.filename, npc.id, previousPosition]);
+  }, [npc.filename]);
 
   return {
     group,
