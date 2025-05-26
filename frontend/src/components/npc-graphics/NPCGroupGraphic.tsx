@@ -9,8 +9,6 @@ import {
   getAnimalBorderColor,
   getAnimalIndicatorColor,
 } from "../../utils/animal-colors";
-import useOutlineEffect from "../../utils/graphics";
-
 // Constants for positioning
 const FOLLOW_DISTANCE = 2; // Distance behind the user
 
@@ -39,20 +37,8 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
 
   // Add effect to track component lifecycle
   useEffect(() => {
-    // Only log mounting in debug mode
-    if (process.env.NODE_ENV === "development") {
-      console.log(
-        `[NPCGroupGraphic] Component MOUNTED for user ${user.id}, captorId: ${
-          group.captorId
-        }, npcIds: ${Array.from(group.npcIds).join(",")}`
-      );
-    }
     return () => {
-      if (process.env.NODE_ENV === "development") {
-        console.log(
-          `[NPCGroupGraphic] Component UNMOUNTING for user ${user.id}, captorId: ${group.captorId}`
-        );
-      }
+      // Cleanup if needed
     };
   }, []);
 
@@ -87,8 +73,6 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
     updatePositionWithTracking,
     mesh,
   } = useNPCBase(npc);
-
-  const { addToOutline, removeFromOutline } = useOutlineEffect();
 
   // Add a badge showing the number of NPCs in the group
   const npcsCount = group.npcIds.size;
@@ -149,40 +133,6 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
       mesh.current.scale.set(scaleFactor, scaleFactor, 1);
     }
   });
-
-  // Add effect to add outline to the main group (only once)
-  useEffect(() => {
-    console.log(
-      `[NPCGroupGraphic] Adding group ${threeGroup.uuid} to outline for user ${user.id}`
-    );
-    addToOutline(threeGroup, getAnimalBorderColor(user));
-
-    return () => {
-      console.log(
-        `[NPCGroupGraphic] Removing group ${threeGroup.uuid} from outline for user ${user.id}`
-      );
-      removeFromOutline(threeGroup);
-    };
-  }, [threeGroup.uuid, user.id]); // Fixed: depend on threeGroup.uuid so it re-runs when Group changes
-
-  // Separate effect for background circle outline (when count > 1)
-  useEffect(() => {
-    if (npcsCount > 1 && backgroundCircleRef.current) {
-      console.log(
-        `[NPCGroupGraphic] Adding background circle to outline for user ${user.id}, count: ${npcsCount}`
-      );
-      addToOutline(backgroundCircleRef.current, getAnimalBorderColor(user));
-
-      return () => {
-        if (backgroundCircleRef.current) {
-          console.log(
-            `[NPCGroupGraphic] Removing background circle from outline for user ${user.id}`
-          );
-          removeFromOutline(backgroundCircleRef.current);
-        }
-      };
-    }
-  }, [npcsCount > 1, user.id, backgroundCircleRef.current]); // Fixed: include backgroundCircleRef.current
 
   // Handle position updates to follow the user
   useFrame(() => {
@@ -262,23 +212,6 @@ export default React.memo(NPCGroupGraphic, (prevProps, nextProps) => {
   const animalWidthSame = prevProps.animalWidth === nextProps.animalWidth;
 
   const shouldNotRerender = groupsSame && userSame && animalWidthSame;
-
-  // Only log when legitimately re-rendering due to content changes
-  if (!shouldNotRerender && (!groupsSame || !userSame || !animalWidthSame)) {
-    console.log(
-      `[NPCGroupGraphic] Re-rendering for user ${nextProps.user.id}:`,
-      {
-        groupsSame,
-        userSame,
-        animalWidthSame,
-        reason: !groupsSame
-          ? "group changed"
-          : !userSame
-          ? "user changed"
-          : "animalWidth changed",
-      }
-    );
-  }
 
   return shouldNotRerender;
 });

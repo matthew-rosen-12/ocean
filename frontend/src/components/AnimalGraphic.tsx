@@ -1,29 +1,18 @@
 import React, { useMemo, useEffect, useRef } from "react";
 import { UserInfo } from "../utils/types";
 import * as THREE from "three";
-import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader";
 import { useFrame } from "@react-three/fiber";
 import { Animal } from "../utils/types";
 import { ANIMAL_SCALES } from "../utils/user-info";
-import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUtils";
 import { smoothMove } from "../utils/movement";
 import { useMount } from "../hooks/useNPCBase";
-import useOutlineEffect from "../utils/graphics";
-import { getAnimalBorderColor } from "../utils/animal-colors";
+import {
+  loadAnimalSVG,
+  animalGraphicsCache,
+  ANIMAL_ORIENTATION,
+} from "../utils/load-animal-svg";
 
 // Global cache for animal graphics
-const animalGraphicsCache = new Map<
-  string,
-  {
-    group: THREE.Group;
-    meshes: THREE.Mesh[];
-  }
->();
-
-const ANIMAL_ORIENTATION = {
-  WOLF: { rotation: 0, flipY: true },
-  DOLPHIN: { rotation: 0, flipY: false },
-};
 
 export const MOVE_SPEED = 0.5;
 const ROTATION_SPEED = 0.25;
@@ -63,23 +52,26 @@ function AnimalSprite({
   );
 
   // Get outline effect functions
-  const { addToOutline, removeFromOutline } = useOutlineEffect();
 
   useMount(() => {
     const cacheKey = animal;
 
     // Check if we have cached graphics for this animal
     if (animalGraphicsCache.has(cacheKey)) {
-      console.log(`[AnimalGraphic] Using cached graphics for ${animal}`);
       const cached = animalGraphicsCache.get(cacheKey)!;
 
-      // Clone the cached meshes for this instance
-      cached.meshes.forEach((cachedMesh) => {
-        const clonedMesh = cachedMesh.clone();
-        // Materials are shared (safe since they're read-only for rendering)
-        // Geometries are shared (safe since they're read-only for rendering)
-        group.add(clonedMesh);
+      // Create material with cached texture
+      const material = new THREE.MeshBasicMaterial({
+        map: cached.texture,
+        transparent: true,
+        side: THREE.DoubleSide,
+        depthWrite: false,
       });
+
+      // Create mesh with cached geometry
+      const mesh = new THREE.Mesh(cached.geometry.clone(), material);
+      mesh.renderOrder = isLocalPlayer ? 1 : 0;
+      group.add(mesh);
 
       // Apply initial scale and positioning
       const box = new THREE.Box3().setFromObject(group);
@@ -132,189 +124,33 @@ function AnimalSprite({
         }
       }
 
-      addToOutline(group, getAnimalBorderColor(user));
-      console.log(
-        `[AnimalSprite] Added group ${group.uuid} to outline for ${animal} (user: ${user.id})`
-      );
       return;
     }
 
-    console.log(`[AnimalGraphic] Loading SVG for ${animal} (not cached)`);
-    const loader = new SVGLoader();
-
-    loader.load(
-      `/public/animals/${animal}.svg`,
-      (data) => {
-        // Group paths by color
-        const geometriesByColor = new Map<number, THREE.BufferGeometry[]>();
-
-        // Calculate the bounding box of all paths first
-        let minX = Infinity,
-          minY = Infinity,
-          maxX = -Infinity,
-          maxY = -Infinity;
-
-        data.paths.forEach((path) => {
-          path.subPaths.forEach((subPath) => {
-            const points = subPath.getPoints();
-
-            points.forEach((point) => {
-              minX = Math.min(minX, point.x);
-              minY = Math.min(minY, point.y);
-              maxX = Math.max(maxX, point.x);
-              maxY = Math.max(maxY, point.y);
-            });
-          });
-        });
-
-        // Calculate center offset
-        const centerX = (minX + maxX) / 2;
-        const centerY = (minY + maxY) / 2;
-
-        data.paths.forEach((path) => {
-          const color = path.color || 0x000000;
-
-          // Use an offset when creating shapes to slightly expand them
-          const shapes = path.toShapes(true);
-
-          shapes.forEach((shape) => {
-            // Create shape with a small expansion using ShapeGeometry options
-            const geometry = new THREE.ShapeGeometry(shape);
-
-            // Center and flip the geometry
-            geometry.translate(-centerX, -centerY, 0);
-            geometry.scale(1, -1, 1);
-
-            if (!geometriesByColor.has(color.getHex())) {
-              geometriesByColor.set(color.getHex(), []);
-            }
-            geometriesByColor.get(color.getHex())!.push(geometry);
-          });
-        });
-
-        // Merge geometries of the same color and create meshes
-        const createdMeshes: THREE.Mesh[] = [];
-        geometriesByColor.forEach((geometries, color) => {
-          const mergedGeometry =
-            BufferGeometryUtils.mergeGeometries(geometries);
-          const material = new THREE.MeshBasicMaterial({
-            color: color,
-            side: THREE.DoubleSide,
-            depthWrite: false,
-            transparent: true,
-          });
-
-          const mesh = new THREE.Mesh(mergedGeometry, material);
-          mesh.renderOrder = isLocalPlayer ? 1 : 0;
-          group.add(mesh);
-          createdMeshes.push(mesh);
-
-          // Clean up individual geometries
-          geometries.forEach((g) => g.dispose());
-        });
-
-        // Cache the meshes for future use
-        animalGraphicsCache.set(cacheKey, {
-          group: group.clone(), // Not used, but keeping for future reference
-          meshes: createdMeshes,
-        });
-        console.log(`[AnimalGraphic] Cached graphics for ${animal}`);
-
-        // Scale the group
-        const box = new THREE.Box3().setFromObject(group);
-        const size = box.getSize(new THREE.Vector3());
-        const maxDim = Math.max(size.x, size.y);
-        const normalizeScale = 5 / maxDim;
-
-        group.scale.multiplyScalar(normalizeScale * scale);
-
-        // After scaling, measure width and set if not set
-        const scaledBox = new THREE.Box3().setFromObject(group);
-        const scaledSize = scaledBox.getSize(new THREE.Vector3());
-        setAnimalWidth(animal, scaledSize.x);
-
-        // Apply initial orientation to make the animal face right
-        const orientation = ANIMAL_ORIENTATION[animal] || {
-          rotation: 0,
-          flipY: false,
-        };
-        initialOrientation.current = orientation;
-
-        // Apply initial rotation
-        group.rotation.z = orientation.rotation;
-
-        // Apply initial flip if needed
-        if (orientation.flipY) {
-          group.scale.x = -group.scale.x;
-        }
-
-        // Store the initial scale AFTER applying orientation flips
-        initialScale.current = group.scale.clone();
-
-        // Reset rotation references to 0 after applying initial orientation
-        // This makes the resulting orientation the new "zero" rotation
-        previousRotation.current = 0;
-        targetRotation.current = 0;
-
-        // Reset the facing direction reference based on the initial state
-        svgLoaded.current = true;
-
-        // Set initial position
-        previousPosition.copy(positionRef.current);
-        group.position.copy(previousPosition);
-
-        // Apply initial rotation based on directionRef if available
-        if (directionRef.current && directionRef.current.length() > 0.01) {
-          // Calculate angle between direction and base direction (1,0,0)
-          const direction = directionRef.current.clone().normalize();
-          const angle = Math.atan2(direction.y, direction.x);
-
-          // Set current and target rotation immediately to avoid initial jump
-          previousRotation.current = angle;
-          targetRotation.current = angle;
-          group.rotation.z = angle;
-
-          // Set initial flip state based on x direction
-          if (direction.x < 0 && initialScale.current) {
-            // If facing left and not already flipped
-            if (currentFlipState.current > 0) {
-              currentFlipState.current = -1;
-              group.scale.set(
-                initialScale.current.x,
-                -initialScale.current.y,
-                initialScale.current.z
-              );
-            }
-          }
-        }
-
-        addToOutline(group, getAnimalBorderColor(user));
-        console.log(
-          `[AnimalSprite] Added group ${group.uuid} to outline for ${animal} (user: ${user.id})`
-        );
-      },
-      undefined,
-      (error) => {
-        console.error("Error loading SVG:", error);
-      }
-    );
+    loadAnimalSVG(
+      animal,
+      group,
+      scale,
+      isLocalPlayer,
+      setAnimalWidth,
+      positionRef,
+      directionRef,
+      initialScale,
+      previousRotation,
+      targetRotation,
+      svgLoaded,
+      previousPosition,
+      currentFlipState
+    ).catch((error) => {
+      console.error("Error loading SVG:", error);
+    });
 
     return () => {
-      console.log(
-        `[AnimalGraphic] Cleaning up animal ${animal} for user ${user.id}`
-      );
-
       // Only dispose if this animal type is NOT cached (i.e., loading failed)
       if (!animalGraphicsCache.has(animal)) {
-        console.log(
-          `[AnimalGraphic] Disposing non-cached resources for ${animal}`
-        );
         // Properly dispose of all geometries and materials
         group.traverse((child) => {
           if (child instanceof THREE.Mesh) {
-            console.log(
-              `[AnimalGraphic] Disposing mesh resources for ${animal}`
-            );
             if (child.geometry) {
               child.geometry.dispose();
             }
@@ -327,32 +163,18 @@ function AnimalSprite({
             }
           }
         });
-      } else {
-        console.log(
-          `[AnimalGraphic] NOT disposing cached resources for ${animal} (shared)`
-        );
       }
 
       group.clear();
-      removeFromOutline(group);
-      console.log(
-        `[AnimalSprite] Removed group ${group.uuid} from outline during cleanup for ${animal} (user: ${user.id})`
-      );
-      console.log(`[AnimalGraphic] Cleanup completed for animal ${animal}`);
     };
   });
 
   // Track component lifecycle
   useEffect(() => {
-    console.log(
-      `[AnimalSprite] Component mounted for ${animal} (user: ${user.id}), group UUID: ${group.uuid}`
-    );
     return () => {
-      console.log(
-        `[AnimalSprite] Component unmounting for ${animal} (user: ${user.id}), group UUID: ${group.uuid}`
-      );
+      // Component cleanup
     };
-  }, [animal, user.id, group.uuid]);
+  }, []);
 
   function setRotation(direction: THREE.Vector3) {
     if (direction.length() > 0) {

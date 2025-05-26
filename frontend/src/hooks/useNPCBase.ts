@@ -20,12 +20,6 @@ const debug = DEBUG.NPC_MOVEMENT;
 export function useNPCBase(npc: NPC) {
   const group = useMemo(() => {
     const newGroup = new THREE.Group();
-    // Reduced logging - only log when debugging specific issues
-    if (DEBUG.NPC_MOVEMENT) {
-      console.log(
-        `[useNPCBase] Creating new Group ${newGroup.uuid} for NPC ${npc.id}`
-      );
-    }
     return newGroup;
   }, [npc.id]);
   const texture = useRef<THREE.Texture | null>(null);
@@ -81,21 +75,12 @@ export function useNPCBase(npc: NPC) {
     }
 
     if (textureCache.has(texturePath)) {
-      console.log(
-        `[NPC CACHE] Using cached texture for NPC ${npc.id}, cache size: ${textureCache.size}`
-      );
       texture.current = textureCache.get(texturePath)!;
 
       // Check if we also have a cached material
       if (materialCache.has(texturePath)) {
-        console.log(
-          `[NPC CACHE] Using cached material for NPC ${npc.id}, material cache size: ${materialCache.size}`
-        );
         material.current = materialCache.get(texturePath)!;
       } else {
-        console.log(
-          `[NPC CACHE] Creating new material for cached texture for NPC ${npc.id}`
-        );
         // Create material and cache it
         material.current = new THREE.MeshBasicMaterial({
           map: texture.current,
@@ -103,9 +88,6 @@ export function useNPCBase(npc: NPC) {
           side: THREE.DoubleSide,
         });
         materialCache.set(texturePath, material.current);
-        console.log(
-          `[NPC CACHE] Material cached, new material cache size: ${materialCache.size}`
-        );
       }
 
       const geometry = new THREE.PlaneGeometry(1, 1);
@@ -120,21 +102,12 @@ export function useNPCBase(npc: NPC) {
       group.add(mesh.current);
       textureLoaded.current = true;
     } else {
-      console.log(
-        `[NPC CACHE] Loading texture (not cached) for NPC ${npc.id}: ${texturePath}`
-      );
       // Load texture if not cached
       textureLoader.load(
         texturePath,
         (loadedTexture) => {
-          console.log(
-            `[NPC CACHE] Texture loaded successfully for ${npc.id}, caching...`
-          );
           // Cache the texture
           textureCache.set(texturePath, loadedTexture);
-          console.log(
-            `[NPC CACHE] Texture cached, new cache size: ${textureCache.size}`
-          );
 
           // Double-check we don't already have a mesh (in case of rapid re-renders)
           if (mesh.current && mesh.current.parent === group) {
@@ -171,21 +144,14 @@ export function useNPCBase(npc: NPC) {
     }
 
     return () => {
-      if (DEBUG.NPC_MOVEMENT) {
-        console.log(
-          `[useNPCBase] Cleaning up Group ${group.uuid} for NPC ${npc.id}`
-        );
-      }
       // Only dispose texture if it's not in the cache (i.e., if it failed to load)
       if (texture.current && !textureCache.has(`/npcs/${npc.filename}`)) {
         texture.current.dispose();
-      } else if (texture.current) {
       }
 
       // Only dispose material if it's not in the cache
       if (material.current && !materialCache.has(`/npcs/${npc.filename}`)) {
         material.current.dispose();
-      } else if (material.current) {
       }
 
       if (mesh.current && mesh.current.geometry) {

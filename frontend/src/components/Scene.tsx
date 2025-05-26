@@ -28,6 +28,7 @@ import NPCGroupGraphic from "./npc-graphics/NPCGroupGraphic";
 import { useMount } from "../hooks/useNPCBase";
 import * as THREE from "three";
 import { removeNPCFromGroup, addNPCToGroup } from "../utils/npc-group-utils";
+import { Select } from "@react-three/postprocessing";
 
 // Extend Performance interface for Chrome's memory API
 declare global {
@@ -307,32 +308,6 @@ interface Props {
   ) => void;
 }
 
-// Track texture loading without monkey-patching
-const originalTextureLoader = THREE.TextureLoader.prototype.load;
-
-// Patch TextureLoader only (this should work)
-THREE.TextureLoader.prototype.load = function (
-  url,
-  onLoad,
-  onProgress,
-  onError
-) {
-  console.log(`[TEXTURE LOADER] Loading texture from: ${url}`);
-  return originalTextureLoader.call(
-    this,
-    url,
-    (texture) => {
-      console.log(`[TEXTURE LOADED] Successfully loaded: ${url}`, {
-        uuid: texture.uuid,
-        dimensions: `${texture.image?.width}x${texture.image?.height}`,
-      });
-      if (onLoad) onLoad(texture);
-    },
-    onProgress,
-    onError
-  );
-};
-
 export default function Scene({
   users,
   myUser,
@@ -500,41 +475,6 @@ export default function Scene({
     [animalWidths]
   );
 
-  // Memory monitoring component
-  function MemoryMonitor() {
-    const { gl } = useThree();
-
-    useEffect(() => {
-      const monitorMemory = () => {
-        console.log(`[Memory] Three.js Info:`, {
-          geometries: gl.info.memory.geometries,
-          textures: gl.info.memory.textures,
-          programs: gl.info.programs?.length || "unknown",
-          calls: gl.info.render.calls,
-          triangles: gl.info.render.triangles,
-          points: gl.info.render.points,
-          lines: gl.info.render.lines,
-        });
-
-        // Log Chrome's memory usage if available
-        if (performance.memory) {
-          console.log(
-            `[Memory] JS Heap: ${Math.round(
-              performance.memory.usedJSHeapSize / 1024 / 1024
-            )}MB`
-          );
-        }
-      };
-
-      // Monitor memory every 2 seconds (reduced from 5)
-      const interval = setInterval(monitorMemory, 2000);
-
-      return () => clearInterval(interval);
-    }, [gl]);
-
-    return null;
-  }
-
   return (
     <Canvas
       style={{
@@ -591,7 +531,6 @@ export default function Scene({
           />
         );
       })}
-      <MemoryMonitor />
     </Canvas>
   );
 }
