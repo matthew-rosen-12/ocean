@@ -46,131 +46,49 @@ function createSVGTexture(
 ): Promise<THREE.Texture> {
   return new Promise((resolve, reject) => {
     try {
-      // Create a canvas to render the SVG
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("Could not get canvas context"));
-        return;
-      }
-
-      // Set canvas size with high resolution for crisp textures
-      const scale = 2; // Higher resolution for better quality
-      canvas.width = width * scale;
-      canvas.height = height * scale;
-      ctx.scale(scale, scale);
-
-      // Serialize SVG to string
       const svgString = new XMLSerializer().serializeToString(svgElement);
+      const svgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+        svgString
+      )}`;
 
-      // Create blob and object URL
-      const svgBlob = new Blob([svgString], {
-        type: "image/svg+xml;charset=utf-8",
-      });
-      const url = URL.createObjectURL(svgBlob);
+      const loader = new THREE.TextureLoader();
 
-      // Create image and load SVG
-      const img = new Image();
+      const texture = loader.load(
+        svgDataUrl,
+        (loadedTexture) => {
+          // Key color preservation settings:
+          loadedTexture.flipY = false;
 
-      // Set a timeout to prevent hanging
-      const timeout = setTimeout(() => {
-        URL.revokeObjectURL(url);
-        reject(new Error("SVG texture loading timeout"));
-      }, 5000);
+          // Color space - try different options:
+          loadedTexture.colorSpace = THREE.SRGBColorSpace; // Try this first
+          // loadedTexture.colorSpace = THREE.LinearSRGBColorSpace; // Alternative
+          //   loadedTexture.colorSpace = THREE.NoColorSpace; // Last resort
 
-      img.onload = () => {
-        clearTimeout(timeout);
+          // Alpha handling - this is often the culprit:
+          //   loadedTexture.premultiplyAlpha = false; // IMPORTANT: prevents color washing
 
-        try {
-          // Clear canvas with transparent background
-          ctx.clearRect(0, 0, width, height);
+          // Filtering - use nearest for exact color preservation:
+          loadedTexture.minFilter = THREE.NearestFilter;
+          loadedTexture.magFilter = THREE.NearestFilter;
+          // Or try linear if nearest looks too pixelated:
+          //   loadedTexture.minFilter = THREE.LinearFilter;
+          //   loadedTexture.magFilter = THREE.LinearFilter;
 
-          // Draw SVG to canvas
-          ctx.drawImage(img, 0, 0, width, height);
+          // Disable mipmaps to prevent color averaging:
+          loadedTexture.generateMipmaps = false;
 
-          // Create Three.js texture from canvas
-          const texture = new THREE.CanvasTexture(canvas);
-          texture.needsUpdate = true;
-          texture.flipY = false; // Important for correct orientation
-
-          // Clean up
-          URL.revokeObjectURL(url);
-
-          resolve(texture);
-        } catch (drawError) {
-          URL.revokeObjectURL(url);
-          reject(new Error(`Failed to draw SVG to canvas: ${drawError}`));
+          loadedTexture.needsUpdate = true;
+          resolve(loadedTexture);
+        },
+        undefined,
+        (error) => {
+          reject(new Error(`Failed to load SVG texture: ${error}`));
         }
-      };
-
-      img.onerror = () => {
-        clearTimeout(timeout);
-        URL.revokeObjectURL(url);
-        reject(new Error("Failed to load SVG image"));
-      };
-
-      img.src = url;
+      );
     } catch (error) {
       reject(error);
     }
   });
-}
-
-// Extract outline from SVG paths and create a single geometry
-function createOutlineGeometry(svgData: any): THREE.BufferGeometry {
-  const allPoints: THREE.Vector2[] = [];
-
-  // Process all paths to get outline points
-  svgData.paths.forEach((path: any) => {
-    const shapes = path.toShapes(true);
-
-    shapes.forEach((shape: THREE.Shape) => {
-      // Get points from the shape
-      const points = shape.getPoints();
-      allPoints.push(...points);
-    });
-  });
-
-  if (allPoints.length === 0) {
-    // Fallback: create a simple rectangle
-    return new THREE.PlaneGeometry(1, 1);
-  }
-
-  // Find bounding box of all points
-  let minX = Infinity,
-    minY = Infinity,
-    maxX = -Infinity,
-    maxY = -Infinity;
-  allPoints.forEach((point) => {
-    minX = Math.min(minX, point.x);
-    minY = Math.min(minY, point.y);
-    maxX = Math.max(maxX, point.x);
-    maxY = Math.max(maxY, point.y);
-  });
-
-  // Center the points
-  const centerX = (minX + maxX) / 2;
-  const centerY = (minY + maxY) / 2;
-  const width = maxX - minX;
-  const height = maxY - minY;
-
-  // Create a shape from the convex hull of all points
-  // For simplicity, we'll use a rectangle that encompasses all shapes
-  // This could be improved with actual convex hull calculation
-  const shape = new THREE.Shape();
-  shape.moveTo(-width / 2, -height / 2);
-  shape.lineTo(width / 2, -height / 2);
-  shape.lineTo(width / 2, height / 2);
-  shape.lineTo(-width / 2, height / 2);
-  shape.closePath();
-
-  // Create geometry from shape
-  const geometry = new THREE.ShapeGeometry(shape);
-
-  // Flip Y coordinate to match SVG coordinate system
-  geometry.scale(1, -1, 1);
-
-  return geometry;
 }
 
 // Improved outline extraction using concaveman for better shape detection
@@ -196,7 +114,7 @@ function createDetailedOutlineGeometry(svgData: any): THREE.BufferGeometry {
   try {
     // Use concaveman to create a concave hull of all points
     // concavity = 2 gives a good balance between detail and simplicity
-    const hullPoints = concaveman(allPoints, 2, 0);
+    const hullPoints = concaveman(allPoints, 5);
 
     if (hullPoints.length < 3) {
       throw new Error("Hull has too few points");
@@ -256,6 +174,102 @@ function createDetailedOutlineGeometry(svgData: any): THREE.BufferGeometry {
   }
 }
 
+function createGeometryFromOutlinePath(
+  svgData: any,
+  outlineId: string = "outline"
+): THREE.BufferGeometry {
+  // Find the outline path specifically
+  const outlinePath = svgData.paths.find(
+    (path: any) =>
+      path.userData && path.userData.node && path.userData.node.id === outlineId
+  );
+
+  if (!outlinePath) {
+    console.warn(`No outline path found with id "${outlineId}"`);
+    return createDetailedOutlineGeometry(svgData); // fallback
+  }
+
+  console.log(`[OUTLINE] Using dedicated outline path with id: ${outlineId}`);
+
+  // Create geometry from just the outline path
+  const shapes = outlinePath.toShapes(true);
+
+  if (shapes.length === 0) {
+    console.warn("Outline path created no shapes");
+    return new THREE.PlaneGeometry(1, 1);
+  }
+
+  // Use the first (and usually only) shape
+  const shape = shapes[0];
+  const geometry = new THREE.ShapeGeometry(shape);
+
+  // Apply the standard transformations
+  geometry.scale(1, -1, 1);
+
+  return geometry;
+}
+
+// Set up proper UV coordinates for texture mapping
+function setupUVCoordinates(
+  geometry: THREE.BufferGeometry,
+  svgMinX: number,
+  svgMinY: number,
+  svgWidth: number,
+  svgHeight: number
+): void {
+  const positions = geometry.attributes.position;
+  if (!positions) {
+    console.warn("Geometry has no position attribute for UV mapping");
+    return;
+  }
+
+  const uvs: number[] = [];
+
+  // Note: The geometry has been transformed with scale(1, -1, 1) and translated to center
+  // We need to map the current vertex positions back to the original SVG coordinate space
+  // to get proper UV coordinates
+
+  // First, compute the current bounding box to understand the transformation
+  geometry.computeBoundingBox();
+  if (!geometry.boundingBox) {
+    console.warn("Could not compute bounding box for UV mapping");
+    return;
+  }
+
+  const bbox = geometry.boundingBox;
+  const geoWidth = bbox.max.x - bbox.min.x;
+  const geoHeight = bbox.max.y - bbox.min.y;
+
+  for (let i = 0; i < positions.count; i++) {
+    const x = positions.getX(i);
+    const y = positions.getY(i);
+
+    // // Method 1: Map based on current geometry bounds (recommended)
+    // // This should work regardless of transformations applied to geometry
+    // const u = (x - bbox.min.x) / geoWidth;
+    // const v = (y - bbox.min.y) / geoHeight;
+
+    // // Clamp values to 0-1 range
+    // uvs.push(Math.max(0, Math.min(1, u)), Math.max(0, Math.min(1, v)));
+
+    // Alternative Method 2: If Method 1 doesn't work, try this approach
+    // Map vertices back to original SVG space (accounting for transformations)
+    const originalX = x; // If geometry was translated, add back the translation
+    const originalY = -y; // Account for Y flip from scale(1, -1, 1)
+    const u = (originalX - svgMinX) / svgWidth;
+    const v = (originalY - svgMinY) / svgHeight; // Flip V for texture
+    uvs.push(Math.max(0, Math.min(1, u)), Math.max(0, Math.min(1, v)));
+  }
+
+  // Set UV attribute
+  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.attributes.uv.needsUpdate = true;
+
+  console.log(
+    `[UV MAPPING] Set up UV coordinates for ${positions.count} vertices`
+  );
+}
+
 export function loadAnimalSVG(
   animal: Animal,
   group: THREE.Group,
@@ -281,6 +295,7 @@ export function loadAnimalSVG(
           `[SVG LOADER] Successfully loaded SVG for ${animal}:`,
           data
         );
+
         try {
           // Validate that we have paths with data
           if (!data.paths || data.paths.length === 0) {
@@ -408,7 +423,7 @@ export function loadAnimalSVG(
           let geometry: THREE.BufferGeometry;
           try {
             console.log(`[SVG LOADER] Creating geometry for ${animal}`);
-            geometry = createDetailedOutlineGeometry(data);
+            geometry = createGeometryFromOutlinePath(data);
             console.log(
               `[SVG LOADER] Successfully created geometry for ${animal}`
             );
@@ -423,14 +438,22 @@ export function loadAnimalSVG(
             ); // Scale down to reasonable size
           }
 
-          // Create material with solid color (no texture for now)
+          // Set up UV coordinates BEFORE centering the geometry
+          // This ensures UV mapping corresponds to the original geometry layout
+          setupUVCoordinates(geometry, minX, minY, finalWidth, finalHeight);
+
+          // Create material with texture
           const material = new THREE.MeshBasicMaterial({
-            // map: texture, // Commented out for debugging
-            transparent: false,
+            map: texture,
+            transparent: true, // Try setting this to false if you don't need transparency
+            alphaTest: 0.1, // Add this to handle semi-transparent pixels better
             side: THREE.DoubleSide,
             depthWrite: true,
-            color: 0xff0000, // Bright red for visibility
             opacity: 1.0,
+
+            // Try these additional settings:
+            premultipliedAlpha: false, // Match texture setting
+            toneMapped: false, // Prevent tone mapping from affecting colors
           });
 
           // Create mesh
@@ -451,8 +474,23 @@ export function loadAnimalSVG(
 
           group.add(mesh);
 
+          // Create edge geometry for outline
+          const edgeGeometry = new THREE.EdgesGeometry(geometry);
+          const edgeMaterial = new THREE.LineBasicMaterial({
+            color: "red", // Black outline
+            // Note: linewidth > 1 may not work on all platforms (WebGL limitation)
+            // For wider lines, consider using THREE.Line2 or other alternatives
+            linewidth: 2,
+            transparent: true,
+            opacity: 0.8,
+          });
+          const edgeLines = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+          edgeLines.renderOrder = isLocalPlayer ? 2 : 1; // Render after the main mesh
+          edgeLines.position.z = 0.11; // Slightly in front of the main mesh
+          group.add(edgeLines);
+
           console.log(
-            `[SVG LOADER] Successfully created mesh for ${animal}, added to group`
+            `[SVG LOADER] Successfully created mesh and outline for ${animal}, added to group`
           );
 
           // Log detailed geometry information
@@ -462,12 +500,19 @@ export function loadAnimalSVG(
             vertexCount: geometry.attributes.position
               ? geometry.attributes.position.count
               : "no vertices",
+            hasUVs: !!geometry.attributes.uv,
+            uvCount: geometry.attributes.uv
+              ? geometry.attributes.uv.count
+              : "no UVs",
             boundingBoxMin: bbox.min.toArray(),
             boundingBoxMax: bbox.max.toArray(),
             boundingBoxSize: bbox.getSize(new THREE.Vector3()).toArray(),
             meshVisible: mesh.visible,
             meshPosition: mesh.position.toArray(),
-            materialColor: material.color.getHex(),
+            hasTexture: !!material.map,
+            edgeLineCount: edgeGeometry.attributes.position
+              ? edgeGeometry.attributes.position.count
+              : "no edges",
           });
 
           // Cache the results
@@ -571,13 +616,34 @@ export function loadAnimalSVG(
           // Create a simple colored texture as fallback
           const fallbackTexture = createFallbackTexture(0x888888);
 
+          // Set up basic UV coordinates for fallback geometry
+          if (fallbackGeometry.attributes.position) {
+            const positions = fallbackGeometry.attributes.position;
+            const uvs: number[] = [];
+
+            // Simple UV mapping for plane geometry
+            for (let i = 0; i < positions.count; i++) {
+              const x = positions.getX(i);
+              const y = positions.getY(i);
+
+              // Map to 0-1 range (assuming plane is -0.5 to 0.5)
+              uvs.push(x + 0.5, y + 0.5);
+            }
+
+            fallbackGeometry.setAttribute(
+              "uv",
+              new THREE.Float32BufferAttribute(uvs, 2)
+            );
+          }
+
           // Create material with texture
           const material = new THREE.MeshBasicMaterial({
-            // map: fallbackTexture, // Commented out for debugging
+            map: fallbackTexture,
             transparent: false,
             side: THREE.DoubleSide,
             depthWrite: true,
-            color: 0x00ff00, // Green for fallback to distinguish from main case
+            // Use green for fallback to distinguish from main case
+            color: 0x00ff00,
           });
 
           // Create mesh
@@ -599,6 +665,24 @@ export function loadAnimalSVG(
           }
 
           group.add(mesh);
+
+          // Add edge geometry for fallback too
+          const fallbackEdgeGeometry = new THREE.EdgesGeometry(
+            fallbackGeometry
+          );
+          const fallbackEdgeMaterial = new THREE.LineBasicMaterial({
+            color: 0x000000,
+            linewidth: 2,
+            transparent: true,
+            opacity: 0.8,
+          });
+          const fallbackEdgeLines = new THREE.LineSegments(
+            fallbackEdgeGeometry,
+            fallbackEdgeMaterial
+          );
+          fallbackEdgeLines.renderOrder = isLocalPlayer ? 2 : 1;
+          fallbackEdgeLines.position.z = 0.11;
+          group.add(fallbackEdgeLines);
 
           // Cache the fallback results
           animalGraphicsCache.set(animal, {
@@ -643,7 +727,7 @@ export function loadAnimalSVG(
           previousPosition.copy(positionRef.current);
           group.position.copy(previousPosition);
 
-          console.log(`[SVG LOADER] Final setup for ${animal}:`, {
+          console.log(`[SVG LOADER] Final fallback setup for ${animal}:`, {
             position: group.position.toArray(),
             scale: group.scale.toArray(),
             rotation: group.rotation.z,
