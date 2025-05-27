@@ -10,7 +10,9 @@ import {
   loadAnimalSVG,
   animalGraphicsCache,
   ANIMAL_ORIENTATION,
+  createEdgeGeometry,
 } from "../utils/load-animal-svg";
+import { getAnimalBorderColor } from "../utils/animal-colors";
 
 // Global cache for animal graphics
 
@@ -72,6 +74,16 @@ function AnimalSprite({
       const mesh = new THREE.Mesh(cached.geometry.clone(), material);
       mesh.renderOrder = isLocalPlayer ? 1 : 0;
       group.add(mesh);
+
+      // Create edge geometry with user-specific color
+      const borderColor = getAnimalBorderColor(user);
+      const edgeLines = createEdgeGeometry(
+        borderColor,
+        isLocalPlayer,
+        cached.outlineLineGeometry,
+        cached.geometry
+      );
+      group.add(edgeLines);
 
       // Apply initial scale and positioning
       const box = new THREE.Box3().setFromObject(group);
@@ -141,9 +153,24 @@ function AnimalSprite({
       svgLoaded,
       previousPosition,
       currentFlipState
-    ).catch((error) => {
-      console.error("Error loading SVG:", error);
-    });
+    )
+      .then(() => {
+        // After SVG is loaded, add edge geometry with user-specific color
+        if (animalGraphicsCache.has(animal)) {
+          const cached = animalGraphicsCache.get(animal)!;
+          const borderColor = getAnimalBorderColor(user);
+          const edgeLines = createEdgeGeometry(
+            borderColor,
+            isLocalPlayer,
+            cached.outlineLineGeometry,
+            cached.geometry
+          );
+          group.add(edgeLines);
+        }
+      })
+      .catch((error) => {
+        console.error("Error loading SVG:", error);
+      });
 
     return () => {
       // Only dispose if this animal type is NOT cached (i.e., loading failed)
@@ -151,6 +178,18 @@ function AnimalSprite({
         // Properly dispose of all geometries and materials
         group.traverse((child) => {
           if (child instanceof THREE.Mesh) {
+            if (child.geometry) {
+              child.geometry.dispose();
+            }
+            if (child.material) {
+              if (Array.isArray(child.material)) {
+                child.material.forEach((mat) => mat.dispose());
+              } else {
+                child.material.dispose();
+              }
+            }
+          }
+          if (child instanceof THREE.LineSegments) {
             if (child.geometry) {
               child.geometry.dispose();
             }
