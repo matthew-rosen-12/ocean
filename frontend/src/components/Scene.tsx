@@ -58,12 +58,11 @@ function CameraController({
   animalScale,
 }: CameraControllerProps) {
   const { camera } = useThree();
-  const baseDistance = 10;
-  const zdistance = baseDistance * animalScale;
+  const zdistance = 30;
 
-  useFrame(() => {
+  useEffect(() => {
     camera.position.set(targetPosition.x, targetPosition.y, zdistance);
-  });
+  }, [camera, targetPosition.x, targetPosition.y, zdistance]);
 
   return null;
 }

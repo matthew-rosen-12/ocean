@@ -72,8 +72,6 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
   // Add a badge showing the number of NPCs in the group
   const npcsCount = group.npcIds.size;
 
-  // Reference to store the indicator position
-  const indicatorRef = useRef<THREE.Group>(null);
   // Reference for the edge geometry outline
   const edgeGeometryRef = useRef<THREE.Object3D | null>(null);
 
@@ -141,7 +139,107 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
 
       edgeGeometryRef.current = null;
     }
-  }, [group.npcIds.size, scaleFactor]);
+
+    // Add counter text directly to the threeGroup if npcsCount > 1
+    if (npcsCount > 1 && mesh.current && textureLoaded.current) {
+      console.log(
+        `[NPC COUNTER] Creating counter for group with ${npcsCount} NPCs`
+      );
+
+      // Remove existing counter if any
+      const existingCounter = threeGroup.getObjectByName("npc-counter");
+      if (existingCounter) {
+        console.log(`[NPC COUNTER] Removing existing counter`);
+        threeGroup.remove(existingCounter);
+      }
+
+      // Create new counter text using Three.js Canvas texture approach
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d");
+
+      if (context) {
+        console.log(
+          `[NPC COUNTER] Creating canvas texture for number: ${npcsCount}`
+        );
+
+        // Set canvas size
+        canvas.width = 128;
+        canvas.height = 128;
+
+        // Get animal color
+        const borderColor = getAnimalBorderColor(user);
+        const colorHex = `#${borderColor
+          .getHex()
+          .toString(16)
+          .padStart(6, "0")}`;
+        console.log(`[NPC COUNTER] Using color: ${colorHex}`);
+
+        // Clear canvas
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Add a semi-transparent background for visibility
+        context.fillStyle = "rgba(255, 255, 255, 0.8)";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Set text properties
+        context.font = "bold 64px Arial";
+        context.fillStyle = colorHex;
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+
+        // Draw text
+        context.fillText(
+          npcsCount.toString(),
+          canvas.width / 2,
+          canvas.height / 2
+        );
+        console.log(`[NPC COUNTER] Drew text "${npcsCount}" on canvas`);
+
+        // Create texture from canvas
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+
+        // Create material
+        const material = new THREE.MeshBasicMaterial({
+          map: texture,
+          transparent: true,
+          alphaTest: 0.01,
+          side: THREE.DoubleSide,
+          depthTest: false,
+          depthWrite: false,
+        });
+
+        // Create geometry (larger plane for testing)
+        const geometry = new THREE.PlaneGeometry(1.0, 1.0);
+
+        // Create mesh
+        const counterMesh = new THREE.Mesh(geometry, material);
+        counterMesh.name = "npc-counter";
+
+        // Position at center for testing (in local coordinates)
+        counterMesh.position.set(0, 0, 0.5);
+        console.log(
+          `[NPC COUNTER] Positioned counter at:`,
+          counterMesh.position.toArray()
+        );
+
+        // Add to the group
+        threeGroup.add(counterMesh);
+        console.log(
+          `[NPC COUNTER] Added counter to threeGroup. Group children count:`,
+          threeGroup.children.length
+        );
+      } else {
+        console.error(`[NPC COUNTER] Failed to get canvas context`);
+      }
+    } else {
+      console.log(
+        `[NPC COUNTER] Not creating counter. npcsCount: ${npcsCount}, mesh.current: ${!!mesh.current}, textureLoaded: ${
+          textureLoaded.current
+        }`
+      );
+    }
+  }, [group.npcIds.size, scaleFactor, npcsCount, textureLoaded.current]);
 
   // Calculate target position behind the user based on their direction
   const calculateTargetPosition = (
@@ -233,11 +331,6 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
       );
       threeGroup.position.copy(positionRef.current);
     }
-    // Always update indicator position to follow the group
-    if (indicatorRef.current && mesh.current) {
-      indicatorRef.current.position.copy(positionRef.current);
-      indicatorRef.current.position.y += mesh.current.scale.y / 2 + 2.8;
-    }
 
     // Make a subtle oscillation to indicate this is a group
     const time = Date.now() / 1000;
@@ -275,30 +368,7 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
     }
   });
 
-  return (
-    <>
-      <primitive object={threeGroup} />
-
-      {/* Counter indicator showing the number of NPCs */}
-      {npcsCount > 1 && (
-        <group ref={indicatorRef}>
-          {/* Text showing count with outline */}
-          <Text
-            position={[0, -0.5, 0]}
-            fontSize={2.8}
-            color={getAnimalBorderColor(user)}
-            anchorX="center"
-            anchorY="middle"
-            font="https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxM.woff"
-            // outlineWidth={0.5}
-            // outlineColor="#000000"
-          >
-            {npcsCount}
-          </Text>
-        </group>
-      )}
-    </>
-  );
+  return <primitive object={threeGroup} />;
 };
 
 export default React.memo(NPCGroupGraphic, (prevProps, nextProps) => {
