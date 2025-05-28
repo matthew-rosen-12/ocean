@@ -9,6 +9,8 @@ import {
   getAnimalBorderColor,
   getAnimalIndicatorColor,
 } from "../../utils/animal-colors";
+import { createEdgeGeometry } from "../../utils/load-animal-svg";
+import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
 // Constants for positioning
 const FOLLOW_DISTANCE = 2; // Distance behind the user
 
@@ -35,23 +37,6 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
     return null;
   }
 
-  // Add effect to track component lifecycle
-  useEffect(() => {
-    return () => {
-      // Cleanup if needed
-    };
-  }, []);
-
-  // Get first NPC id from the group and find the actual NPC
-  const firstNpcId =
-    group.npcIds.size === 0 ? null : group.npcIds.values().next().value;
-
-  // If there's no NPC in the group, don't render anything
-  if (!firstNpcId) return null;
-
-  // Get the real NPC from the npcs map
-  const npc = npcs.get(firstNpcId)!;
-
   // Calculate logarithmic scale factor based on number of NPCs
   const scaleFactor = useMemo(() => {
     const numNpcs = group.npcIds.size;
@@ -64,6 +49,16 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
 
     return baseScale * (1 + logScale);
   }, [group.npcIds.size]);
+
+  // Get first NPC id from the group and find the actual NPC
+  const firstNpcId =
+    group.npcIds.size === 0 ? null : group.npcIds.values().next().value;
+
+  // If there's no NPC in the group, don't render anything
+  if (!firstNpcId) return null;
+
+  // Get the real NPC from the npcs map
+  const npc = npcs.get(firstNpcId)!;
 
   // Use the NPCBase hook with the real NPC
   const {
@@ -79,8 +74,74 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
 
   // Reference to store the indicator position
   const indicatorRef = useRef<THREE.Group>(null);
-  // Reference for the background circle
-  const backgroundCircleRef = useRef<THREE.Mesh>(null);
+  // Reference for the edge geometry outline
+  const edgeGeometryRef = useRef<THREE.Object3D | null>(null);
+
+  // Add effect to track component lifecycle
+  useEffect(() => {
+    return () => {
+      // Cleanup edge geometry
+      if (edgeGeometryRef.current) {
+        // Dispose of edge geometry materials and geometry
+        edgeGeometryRef.current.traverse((child) => {
+          if (
+            child instanceof THREE.Mesh ||
+            child instanceof THREE.LineSegments
+          ) {
+            if (child.geometry) {
+              child.geometry.dispose();
+            }
+            if (child.material) {
+              if (Array.isArray(child.material)) {
+                child.material.forEach((mat) => mat.dispose());
+              } else {
+                child.material.dispose();
+              }
+            }
+          }
+        });
+
+        // Remove from parent if still attached
+        if (edgeGeometryRef.current.parent) {
+          edgeGeometryRef.current.parent.remove(edgeGeometryRef.current);
+        }
+
+        edgeGeometryRef.current = null;
+      }
+    };
+  }, []);
+
+  // Add effect to recreate outline when group size changes
+  useEffect(() => {
+    // Remove existing edge geometry when group size changes
+    if (edgeGeometryRef.current) {
+      // Dispose of edge geometry materials and geometry
+      edgeGeometryRef.current.traverse((child) => {
+        if (
+          child instanceof THREE.Mesh ||
+          child instanceof THREE.LineSegments
+        ) {
+          if (child.geometry) {
+            child.geometry.dispose();
+          }
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach((mat) => mat.dispose());
+            } else {
+              child.material.dispose();
+            }
+          }
+        }
+      });
+
+      // Remove from parent if still attached
+      if (edgeGeometryRef.current.parent) {
+        edgeGeometryRef.current.parent.remove(edgeGeometryRef.current);
+      }
+
+      edgeGeometryRef.current = null;
+    }
+  }, [group.npcIds.size, scaleFactor]);
 
   // Calculate target position behind the user based on their direction
   const calculateTargetPosition = (
@@ -113,7 +174,7 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
         directionX * (animalWidth / 2 + npcWidth / 2 + FOLLOW_DISTANCE),
       userPosition.y +
         directionY * (animalWidth / 2 + npcWidth / 2 + FOLLOW_DISTANCE),
-      -0.1 // Place slightly behind in z-index
+      0.05 // Place in front of wave grid
     );
   };
 
@@ -131,6 +192,28 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
     if (mesh.current) {
       // Apply our logarithmic scaling
       mesh.current.scale.set(scaleFactor, scaleFactor, 1);
+
+      // Create edge geometry outline for the NPC
+      const borderColor = getAnimalBorderColor(user);
+
+      // Create a square outline instead of using EdgesGeometry to avoid diagonal lines
+      const squareOutlineGeometry = createSquareOutlineGeometry(1, 1); // 1x1 square, will be scaled
+      const edgeGeometry = createEdgeGeometry(
+        borderColor,
+        false, // NPCs are never local player
+        squareOutlineGeometry, // Use our custom square outline
+        undefined // No fallback needed
+      );
+
+      // Position the outline behind the NPC
+      edgeGeometry.position.z = -0.01;
+
+      // Add the edge geometry to the group
+      threeGroup.add(edgeGeometry);
+      edgeGeometryRef.current = edgeGeometry;
+
+      // Scale the edge geometry to match the mesh
+      edgeGeometry.scale.set(scaleFactor, scaleFactor, 1);
     }
   });
 
@@ -165,6 +248,30 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
     if (mesh.current) {
       // Ensure the mesh scale remains consistent with the scaleFactor
       mesh.current.scale.set(scaleFactor, scaleFactor, 1);
+
+      // Create or update edge geometry if needed
+      if (!edgeGeometryRef.current && textureLoaded.current) {
+        const borderColor = getAnimalBorderColor(user);
+
+        // Create a square outline instead of using EdgesGeometry to avoid diagonal lines
+        const squareOutlineGeometry = createSquareOutlineGeometry(1, 1); // 1x1 square, will be scaled
+        const edgeGeometry = createEdgeGeometry(
+          borderColor,
+          false, // NPCs are never local player
+          squareOutlineGeometry, // Use our custom square outline
+          undefined // No fallback needed
+        );
+
+        // Position the outline behind the NPC
+        edgeGeometry.position.z = -0.01;
+
+        // Add the edge geometry to the group
+        threeGroup.add(edgeGeometry);
+        edgeGeometryRef.current = edgeGeometry;
+
+        // Scale the edge geometry to match the mesh
+        edgeGeometry.scale.set(scaleFactor, scaleFactor, 1);
+      }
     }
   });
 
@@ -175,19 +282,16 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
       {/* Counter indicator showing the number of NPCs */}
       {npcsCount > 1 && (
         <group ref={indicatorRef}>
-          {/* Background circle */}
-          <mesh ref={backgroundCircleRef}>
-            <circleGeometry args={[1.5, 32]} />
-            <meshBasicMaterial color={getAnimalIndicatorColor(user)} />
-          </mesh>
-          {/* Text showing count */}
+          {/* Text showing count with outline */}
           <Text
-            position={[0, -0.2, 0]}
-            fontSize={2.2}
-            color="#FFFFFF"
+            position={[0, -0.5, 0]}
+            fontSize={2.8}
+            color={getAnimalBorderColor(user)}
             anchorX="center"
             anchorY="middle"
             font="https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxM.woff"
+            // outlineWidth={0.5}
+            // outlineColor="#000000"
           >
             {npcsCount}
           </Text>
@@ -215,3 +319,48 @@ export default React.memo(NPCGroupGraphic, (prevProps, nextProps) => {
 
   return shouldNotRerender;
 });
+
+// Function to create a square outline geometry
+function createSquareOutlineGeometry(
+  width: number,
+  height: number
+): LineGeometry {
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+
+  // Create square outline points (clockwise)
+  const linePositions = [
+    // Bottom edge
+    -halfWidth,
+    -halfHeight,
+    0,
+    halfWidth,
+    -halfHeight,
+    0,
+    // Right edge
+    halfWidth,
+    -halfHeight,
+    0,
+    halfWidth,
+    halfHeight,
+    0,
+    // Top edge
+    halfWidth,
+    halfHeight,
+    0,
+    -halfWidth,
+    halfHeight,
+    0,
+    // Left edge
+    -halfWidth,
+    halfHeight,
+    0,
+    -halfWidth,
+    -halfHeight,
+    0,
+  ];
+
+  const lineGeometry = new LineGeometry();
+  lineGeometry.setPositions(new Float32Array(linePositions));
+  return lineGeometry;
+}

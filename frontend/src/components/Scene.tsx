@@ -515,6 +515,7 @@ export default function Scene({
             npc={npc}
             checkForCollision={checkForNPCCollision}
             throwData={throws.get(npc.id)}
+            users={users}
           />
         ))}
       {Array.from(npcGroups.values()).map((group) => {

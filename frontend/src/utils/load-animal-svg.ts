@@ -67,7 +67,7 @@ export function createEdgeGeometry(
 
   const edgeLines = new LineSegments2(lineSegmentsGeometry, edgeMaterial);
   edgeLines.renderOrder = isLocalPlayer ? 10 : 9;
-  edgeLines.position.z = 0.0001;
+  edgeLines.position.z = 0.09;
 
   edgeLines.matrixAutoUpdate = true;
 
