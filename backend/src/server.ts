@@ -7,19 +7,20 @@ import {
   decrementRoomUsersInRedis,
   getNPCGroupsFromRedis,
   getNPCsFromRedis,
-  getThrowsFromRedis,
+  getpathsFromRedis,
   removeNPCFromGroupInRoomInRedis,
   removeNPCGroupInRoomInRedis,
   setNPCsInRedis,
-  setThrowsInRedis,
+  setPathsInRedis,
 } from "./db/config";
-import { NPC, NPCPhase, throwData, userId, UserInfo, socketId } from "./types";
+import { NPC, NPCPhase, pathData, userId, UserInfo, socketId } from "./types";
 import authRouter from "./routes/auth";
 import { getGameTicker } from "./game-ticker";
 import { updateNPCGroupInRoomInRedis } from "./db/npc-ops";
 import { updateNPCInRoomInRedis } from "./db/npc-ops";
 import { deserialize, serialize } from "./utils/serializers";
 import { getRoomNumUsersInRedis } from "./db/room-ops";
+import { setPathCompleteInRoom } from "./services/npcService";
 
 // Initialize game ticker
 getGameTicker();
@@ -147,10 +148,10 @@ io.on("connection", async (socket) => {
           socket.emit("npcs-update", serialize({ npcs: npcsData }));
         }
 
-        // Get existing throws
-        const throwsData = await getThrowsFromRedis(name);
-        if (throwsData) {
-          socket.emit("throws-update", serialize({ throws: throwsData }));
+        // Get existing paths
+        const pathsData = await getpathsFromRedis(name);
+        if (pathsData) {
+          socket.emit("paths-update", serialize({ paths: pathsData }));
         }
 
         // Get existing NPC groups
@@ -178,6 +179,7 @@ io.on("connection", async (socket) => {
           phase: NPCPhase.CAPTURED,
         };
 
+        await setPathCompleteInRoom(room, npc);
         await updateNPCInRoomInRedis(room, updatedNPC);
         await updateNPCGroupInRoomInRedis(room, captorId, npcId);
 
@@ -193,33 +195,37 @@ io.on("connection", async (socket) => {
       }
     });
 
-    // Handle throw-npc request
-    socket.on("throw-npc", async (serializedData: string) => {
-      const { throwData } = deserialize(serializedData);
+    // Handle path-npc request
+    socket.on("path-npc", async (serializedData: string) => {
+      const { pathData } = deserialize(serializedData);
       try {
         const updatedNPC: NPC = {
-          ...throwData.npc,
-          phase: NPCPhase.THROWN,
+          ...pathData.npc,
+          phase: NPCPhase.path,
         };
 
-        await updateNPCInRoomInRedis(throwData.room, updatedNPC);
-        const activeThrows = await getThrowsFromRedis(throwData.room);
-        activeThrows.push(throwData);
-        await setThrowsInRedis(throwData.room, activeThrows);
-        await removeNPCFromGroupInRoomInRedis(
-          throwData.room,
-          throwData.throwerId,
-          throwData.npc.id
-        );
+        await updateNPCInRoomInRedis(pathData.room, updatedNPC);
+        const activepaths = await getpathsFromRedis(pathData.room);
+        activepaths.push(pathData);
+        await setPathsInRedis(pathData.room, activepaths);
 
-        socket.broadcast.to(throwData.room).emit(
-          "npc-thrown",
+        // Only remove from group if there's a captorId (fleeing NPCs don't have groups)
+        if (pathData.captorId) {
+          await removeNPCFromGroupInRoomInRedis(
+            pathData.room,
+            pathData.captorId,
+            pathData.npc.id
+          );
+        }
+
+        socket.broadcast.to(pathData.room).emit(
+          "npc-path",
           serialize({
-            throwData,
+            pathData,
           })
         );
       } catch (error) {
-        console.error("Error throwing NPC:", error);
+        console.error("Error pathing NPC:", error);
       }
     });
 

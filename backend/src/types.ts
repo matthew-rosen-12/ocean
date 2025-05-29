@@ -3,7 +3,7 @@ export type Animal = "DOLPHIN" | "WOLF";
 export enum NPCPhase {
   IDLE = "IDLE",
   CAPTURED = "CAPTURED",
-  THROWN = "THROWN",
+  path = "path",
 }
 
 export interface NPC {
@@ -15,16 +15,16 @@ export interface NPC {
   phase: NPCPhase;
 }
 
-export interface throwData {
+export interface pathData {
   id: string;
   room: string;
   npc: NPC;
   startPosition: { x: number; y: number };
   direction: { x: number; y: number };
   velocity: number;
-  throwDuration: number;
+  pathDuration: number;
   timestamp: number;
-  throwerId: userId;
+  captorId?: userId;
 }
 
 export interface UserInfo {

@@ -1,6 +1,6 @@
 import { createClient } from "redis";
 import dotenv from "dotenv";
-import { NPC, NPCGroup, npcId, roomId, throwData, userId } from "../types";
+import { NPC, NPCGroup, npcId, roomId, pathData, userId } from "../types";
 import { serialize, deserialize } from "../utils/serializers";
 
 dotenv.config();
@@ -10,7 +10,7 @@ let clientConnected = false;
 let connectionInProgress = false;
 
 const NPC_KEY_PREFIX = "npcs:";
-const THROWS_KEY_PREFIX = "throws:";
+const pathS_KEY_PREFIX = "paths:";
 const GROUPS_KEY_PREFIX = "groups:";
 
 export const redisClient = createClient({
@@ -203,8 +203,8 @@ export const decrementRoomUsersInRedis = async (
       // Delete NPCs
       await del(`npcs:${roomName}`);
 
-      // Delete throws
-      await del(`throws:${roomName}`);
+      // Delete paths
+      await del(`paths:${roomName}`);
 
       // Delete NPC groups
       await del(`npcGroups:${roomName}`);
@@ -228,12 +228,12 @@ export const decrementRoomUsersInRedis = async (
   }
 };
 
-export async function getThrowsFromRedis(room: string): Promise<throwData[]> {
+export async function getpathsFromRedis(room: string): Promise<pathData[]> {
   try {
-    const data = await get(`${THROWS_KEY_PREFIX}${room}`);
+    const data = await get(`${pathS_KEY_PREFIX}${room}`);
     return data ? deserialize(data) : [];
   } catch (error) {
-    console.error(`Error getting throws for room ${room}:`, error);
+    console.error(`Error getting paths for room ${room}:`, error);
     return [];
   }
 }
@@ -254,11 +254,11 @@ export async function getNPCsFromRedis(
   }
 }
 
-export async function getActiveThrowsFromRedis(
+export async function getActivepathsFromRedis(
   roomName: string
-): Promise<throwData[]> {
-  const throws = await get(`throws:${roomName}`);
-  return throws ? deserialize(throws) : [];
+): Promise<pathData[]> {
+  const paths = await get(`paths:${roomName}`);
+  return paths ? deserialize(paths) : [];
 }
 
 export async function getNPCGroupsFromRedis(
@@ -270,28 +270,28 @@ export async function getNPCGroupsFromRedis(
   return deserialize(groups);
 }
 
-export async function setThrowsInRedis(
+export async function setPathsInRedis(
   roomName: roomId,
-  throws: throwData[]
+  paths: pathData[]
 ): Promise<void> {
-  const throwsKey = `${THROWS_KEY_PREFIX}${roomName}`;
+  const pathsKey = `${pathS_KEY_PREFIX}${roomName}`;
   let retries = 3;
 
   while (retries > 0) {
     try {
       // Watch the key for changes
-      await redisClient.watch(throwsKey);
+      await redisClient.watch(pathsKey);
 
       // Start transaction
       const multi = redisClient.multi();
-      multi.set(throwsKey, serialize(throws));
+      multi.set(pathsKey, serialize(paths));
 
       // Execute transaction
       const result = await multi.exec();
 
       if (result === null) {
         // Key was modified, retry
-        console.log(`Transaction failed for ${throwsKey}, retrying...`);
+        console.log(`Transaction failed for ${pathsKey}, retrying...`);
         retries--;
         continue;
       }
@@ -299,7 +299,7 @@ export async function setThrowsInRedis(
       // Success
       return;
     } catch (error) {
-      console.error(`Error setting throws for room ${roomName}:`, error);
+      console.error(`Error setting paths for room ${roomName}:`, error);
       retries--;
       if (retries === 0) throw error;
     } finally {

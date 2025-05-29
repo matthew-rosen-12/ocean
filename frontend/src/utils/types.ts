@@ -24,7 +24,7 @@ export interface UserInfo {
 export enum NPCPhase {
   IDLE = "IDLE",
   CAPTURED = "CAPTURED",
-  THROWN = "THROWN",
+  path = "path",
 }
 
 export type NPC = {
@@ -43,18 +43,18 @@ export type NPC = {
   phase: NPCPhase;
 };
 
-export type throwId = string;
+export type pathId = string;
 export type roomId = string;
-export type throwData = {
-  id: throwId;
+export type pathData = {
+  id: pathId;
   room: roomId;
   npc: NPC;
   startPosition: { x: number; y: number };
   direction: { x: number; y: number };
-  throwDuration: number;
+  pathDuration: number;
   velocity: number;
   timestamp: number;
-  throwerId: userId;
+  captorId?: userId;
 };
 
 export type NPCGroup = {

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import {
   NPCGroup,
-  throwData,
+  pathData,
   UserInfo,
   NPC,
   npcId,
@@ -22,7 +22,7 @@ interface Props {
   setMyUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
   setUsers: React.Dispatch<React.SetStateAction<Map<userId, UserInfo>>>;
   setNPCs: React.Dispatch<React.SetStateAction<Map<npcId, NPC>>>;
-  setThrows: React.Dispatch<React.SetStateAction<Map<npcId, throwData>>>;
+  setPaths: React.Dispatch<React.SetStateAction<Map<npcId, pathData>>>;
   setNPCGroups: React.Dispatch<
     React.SetStateAction<DefaultMap<userId, NPCGroup>>
   >;
@@ -32,7 +32,7 @@ export default function GuestLogin({
   setMyUser,
   setUsers,
   setNPCs,
-  setThrows,
+  setPaths,
   setNPCGroups,
 }: Props) {
   const [loading, setLoading] = useState(false);
@@ -123,9 +123,9 @@ export default function GuestLogin({
         });
       });
 
-      socket.on("throws-update", (serializedData: string) => {
-        const { throws } = deserialize(serializedData);
-        setThrows(new Map(throws.map((t: throwData) => [t.npc.id, t])));
+      socket.on("paths-update", (serializedData: string) => {
+        const { paths } = deserialize(serializedData);
+        setPaths(new Map(paths.map((t: pathData) => [t.npc.id, t])));
       });
 
       socket.on("npc-groups-update", (serializedData: string) => {
@@ -156,31 +156,27 @@ export default function GuestLogin({
         });
       });
 
-      socket.on("npc-thrown", (serializedData: string) => {
-        const { throwData } = deserialize(serializedData);
-        console.log("npc-thrown", throwData);
-        setThrows((prev) => new Map(prev).set(throwData.npc.id, throwData));
-        setNPCs((prev) => new Map(prev).set(throwData.npc.id, throwData.npc));
+      socket.on("npc-path", (serializedData: string) => {
+        const { pathData } = deserialize(serializedData);
+        console.log("npc-path", pathData);
+        setPaths((prev) => new Map(prev).set(pathData.npc.id, pathData));
+        setNPCs((prev) => new Map(prev).set(pathData.npc.id, pathData.npc));
         setNPCGroups((prev) => {
-          return removeNPCFromGroup(
-            prev,
-            throwData.throwerId,
-            throwData.npc.id
-          );
+          return removeNPCFromGroup(prev, pathData.captorId, pathData.npc.id);
         });
       });
 
-      socket.on("throw-complete", (serializedData: string) => {
+      socket.on("path-complete", (serializedData: string) => {
         const { npc } = deserialize(serializedData);
         setNPCs((prev) => {
           const newNPCs = new Map(prev);
           newNPCs.set(npc.id, npc);
           return newNPCs;
         });
-        setThrows((prev) => {
-          const newThrows = new Map(prev);
-          newThrows.delete(npc.id);
-          return newThrows;
+        setPaths((prev) => {
+          const newpaths = new Map(prev);
+          newpaths.delete(npc.id);
+          return newpaths;
         });
       });
 

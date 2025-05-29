@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { NPC, throwData } from "../../utils/types";
+import { NPC, pathData, UserInfo } from "../../utils/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { useMount, useNPCBase } from "../../hooks/useNPCBase";
@@ -52,16 +52,18 @@ function createSquareOutlineGeometry(
   return lineGeometry;
 }
 
-interface ThrownNPCGraphicProps {
+interface pathPCGraphicProps {
   npc: NPC;
-  throwData: throwData;
-  user: any; // User who threw the NPC for border color
+  pathData: pathData;
+  user?: UserInfo; // User who threw the NPC for border color (optional for fleeing NPCs)
+  checkForCollision?: (npc: NPC, npcPosition?: THREE.Vector3) => void; // Collision checking for fleeing NPCs
 }
 
-const ThrownNPCGraphic: React.FC<ThrownNPCGraphicProps> = ({
+const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
   npc,
-  throwData,
+  pathData,
   user,
+  checkForCollision,
 }) => {
   const { group, positionRef, textureLoaded, updatePositionWithTracking } =
     useNPCBase(npc);
@@ -73,36 +75,33 @@ const ThrownNPCGraphic: React.FC<ThrownNPCGraphicProps> = ({
   useMount(() => {
     updatePositionWithTracking(
       new THREE.Vector3(npc.position.x, npc.position.y, npc.position.z),
-      "ThrownNPC-initial"
+      "pathPC-initial"
     );
     group.position.copy(positionRef.current);
   });
 
-  // Calculate position for thrown NPCs
-  const calculateThrowPosition = (
-    throwData: throwData,
-    currentTime: number
-  ) => {
+  // Calculate position for path NPCs
+  const calculatepathPosition = (pathData: pathData, currentTime: number) => {
     // Calculate elapsed time in seconds
-    const elapsedTime = (currentTime - throwData.timestamp) / 1000;
-    const throwDurationSec = throwData.throwDuration / 1000;
-    const progress = Math.min(elapsedTime / throwDurationSec, 1);
+    const elapsedTime = (currentTime - pathData.timestamp) / 1000;
+    const pathDurationSec = pathData.pathDuration / 1000;
+    const progress = Math.min(elapsedTime / pathDurationSec, 1);
 
-    // If we've reached the end of the throw, use exact same calculation as server
+    // If we've reached the end of the path, use exact same calculation as server
     if (progress >= 1) {
-      const finalDistance = throwData.velocity * throwDurationSec;
+      const finalDistance = pathData.velocity * pathDurationSec;
       return new THREE.Vector3(
-        throwData.startPosition.x + throwData.direction.x * finalDistance,
-        throwData.startPosition.y + throwData.direction.y * finalDistance,
+        pathData.startPosition.x + pathData.direction.x * finalDistance,
+        pathData.startPosition.y + pathData.direction.y * finalDistance,
         0
       );
     }
 
     // For animation, calculate intermediate position
-    const distance = throwData.velocity * elapsedTime;
+    const distance = pathData.velocity * elapsedTime;
     return new THREE.Vector3(
-      throwData.startPosition.x + throwData.direction.x * distance,
-      throwData.startPosition.y + throwData.direction.y * distance,
+      pathData.startPosition.x + pathData.direction.x * distance,
+      pathData.startPosition.y + pathData.direction.y * distance,
       0
     );
   };
@@ -111,11 +110,16 @@ const ThrownNPCGraphic: React.FC<ThrownNPCGraphicProps> = ({
   useFrame(() => {
     if (!group || !textureLoaded.current) return;
 
-    // Calculate current position based on time for thrown objects
-    const throwPosition = calculateThrowPosition(throwData, Date.now());
-    updatePositionWithTracking(throwPosition, "ThrownNPC-update");
+    // Calculate current position based on time for path objects
+    const pathPosition = calculatepathPosition(pathData, Date.now());
+    updatePositionWithTracking(pathPosition, "pathPC-update");
 
     group.position.copy(positionRef.current);
+
+    // For fleeing NPCs (no captorId), check for collision
+    if (!pathData.captorId && checkForCollision) {
+      checkForCollision(npc, pathPosition);
+    }
 
     // Create edge geometry if needed and mesh is available
     if (!edgeGeometryRef.current && textureLoaded.current) {
@@ -123,7 +127,7 @@ const ThrownNPCGraphic: React.FC<ThrownNPCGraphicProps> = ({
       const mesh = group.children.find(
         (child) => child instanceof THREE.Mesh
       ) as THREE.Mesh;
-      if (mesh) {
+      if (mesh && user) {
         const borderColor = getAnimalBorderColor(user);
 
         // Set the mesh z-position to be in front of animal graphics
@@ -133,7 +137,7 @@ const ThrownNPCGraphic: React.FC<ThrownNPCGraphicProps> = ({
         const squareOutlineGeometry = createSquareOutlineGeometry(1, 1); // 1x1 square, will be scaled
         const edgeGeometry = createEdgeGeometry(
           borderColor,
-          false, // Thrown NPCs are never local player
+          false, // path NPCs are never local player
           squareOutlineGeometry, // Use our custom square outline
           undefined // No fallback needed
         );
@@ -188,4 +192,4 @@ const ThrownNPCGraphic: React.FC<ThrownNPCGraphicProps> = ({
   return <primitive object={group} />;
 };
 
-export default React.memo(ThrownNPCGraphic);
+export default React.memo(pathPCGraphic);

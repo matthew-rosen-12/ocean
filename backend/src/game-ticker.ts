@@ -1,7 +1,7 @@
-import { throwData } from "./types";
-import { setThrowCompleteInRoom } from "./services/npcService";
+import { pathData } from "./types";
+import { setPathCompleteInRoom } from "./services/npcService";
 
-import { getActiveThrowsFromRedis, getAllRoomsFromRedis } from "./db/config";
+import { getActivepathsFromRedis, getAllRoomsFromRedis } from "./db/config";
 
 let gameTickerInstance: GameTicker | null = null;
 
@@ -31,26 +31,26 @@ class GameTicker {
 
       // Process each room
       for (const roomName of roomNames) {
-        // Get throws for this room
-        const throws = await getActiveThrowsFromRedis(roomName);
-        if (!throws || throws.length === 0) continue;
+        // Get paths for this room
+        const paths = await getActivepathsFromRedis(roomName);
+        if (!paths || paths.length === 0) continue;
 
-        const completedThrows: throwData[] = [];
+        const completedpaths: pathData[] = [];
 
-        // Use forEach instead of filter to separate active and completed throws
-        throws.forEach((throwData: throwData) => {
+        // Use forEach instead of filter to separate active and completed paths
+        paths.forEach((pathData: pathData) => {
           const now = Date.now();
-          const throwEndTime = throwData.timestamp + throwData.throwDuration;
+          const pathEndTime = pathData.timestamp + pathData.pathDuration;
 
-          if (now >= throwEndTime) {
-            // Throw is complete
-            completedThrows.push(throwData);
+          if (now >= pathEndTime) {
+            // path is complete
+            completedpaths.push(pathData);
           }
         });
 
-        // Process completed throws
-        for (const completedThrow of completedThrows) {
-          await setThrowCompleteInRoom(roomName, completedThrow);
+        // Process completed paths
+        for (const completedpath of completedpaths) {
+          await setPathCompleteInRoom(roomName, completedpath.npc);
         }
       }
     } catch (error) {

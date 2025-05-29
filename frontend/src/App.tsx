@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   NPC,
-  throwData,
+  pathData,
   UserInfo,
   NPCGroup,
   DefaultMap,
@@ -15,7 +15,7 @@ function App() {
   const [myUser, setMyUser] = useState<UserInfo | null>(null);
   const [users, setUsers] = useState<Map<userId, UserInfo>>(new Map());
   const [npcs, setNPCs] = useState<Map<npcId, NPC>>(new Map());
-  const [throws, setThrows] = useState<Map<npcId, throwData>>(new Map());
+  const [paths, setPaths] = useState<Map<npcId, pathData>>(new Map());
   const [npcGroups, setNPCGroups] = useState<DefaultMap<userId, NPCGroup>>(
     new DefaultMap((id) => ({ npcIds: new Set(), captorId: id }))
   );
@@ -26,7 +26,7 @@ function App() {
         setMyUser={setMyUser}
         setUsers={setUsers}
         setNPCs={setNPCs}
-        setThrows={setThrows}
+        setPaths={setPaths}
         setNPCGroups={setNPCGroups}
       />
     );
@@ -38,9 +38,9 @@ function App() {
         users={users}
         myUser={myUser}
         npcs={npcs}
-        throws={throws}
+        paths={paths}
         npcGroups={npcGroups}
-        setThrows={setThrows}
+        setPaths={setPaths}
         setNpcGroups={setNPCGroups}
         setNpcs={setNPCs}
       />

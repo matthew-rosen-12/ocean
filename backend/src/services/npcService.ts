@@ -1,4 +1,4 @@
-import { NPC, throwData, NPCGroup, NPCPhase, roomId } from "../types";
+import { NPC, pathData, NPCGroup, NPCPhase, roomId } from "../types";
 import { getPosition, getDirection } from "../user-info";
 import { npcId, userId } from "../types";
 import { v4 as uuidv4 } from "uuid";
@@ -8,9 +8,9 @@ const NUM_NPCS = 4;
 
 import { io } from "../server";
 import {
-  getActiveThrowsFromRedis,
+  getActivepathsFromRedis,
   removeNPCFromGroupInRoomInRedis,
-  setThrowsInRedis,
+  setPathsInRedis,
 } from "../db/config";
 import {
   updateNPCGroupInRoomInRedis,
@@ -52,9 +52,9 @@ export async function removeNPCFromGroupInRoom(
   );
 }
 
-function calculateLandingPosition(throwData: throwData) {
-  const { startPosition, direction, velocity, throwDuration } = throwData;
-  const distance = velocity * (throwDuration / 1000);
+function calculateLandingPosition(pathData: pathData) {
+  const { startPosition, direction, velocity, pathDuration } = pathData;
+  const distance = velocity * (pathDuration / 1000);
   const landingPosition = {
     x: startPosition.x + direction.x * distance,
     y: startPosition.y + direction.y * distance,
@@ -63,20 +63,20 @@ function calculateLandingPosition(throwData: throwData) {
   return landingPosition;
 }
 
-export async function setThrowCompleteInRoom(
+export async function setPathCompleteInRoom(
   roomName: string,
-  throwData: throwData
+  npc: NPC
 ): Promise<void> {
-  const throws = await getActiveThrowsFromRedis(roomName);
-  const updatedThrows = throws.filter((t) => t.id !== throwData.id);
-  await setThrowsInRedis(roomName, updatedThrows);
+  const paths = await getActivepathsFromRedis(roomName);
+  const pathData = paths.filter((t) => t.npc.id === npc.id)[0];
+  const updatedpaths = paths.filter((t) => t.npc.id !== npc.id);
+  await setPathsInRedis(roomName, updatedpaths);
 
-  // update npc from throw to have phase IDLE
-  const npc = throwData.npc;
+  // update npc from path to have phase IDLE
   npc.phase = NPCPhase.IDLE;
-  npc.position = calculateLandingPosition(throwData);
+  npc.position = calculateLandingPosition(pathData);
   await updateNPCInRoomInRedis(roomName, npc);
-  io.to(roomName).emit("throw-complete", serialize({ npc }));
+  io.to(roomName).emit("path-complete", serialize({ npc }));
 }
 
 export async function createNPCs(): Promise<NPC[]> {

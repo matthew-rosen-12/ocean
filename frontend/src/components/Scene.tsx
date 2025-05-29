@@ -6,12 +6,11 @@ import {
   NPCGroup,
   npcId,
   NPCPhase,
-  throwData,
+  pathData,
   userId,
   UserInfo,
 } from "../utils/types";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { Vector3 } from "three";
 import { useFrame } from "@react-three/fiber";
 import { socket } from "../socket";
 import { Socket } from "socket.io-client";
@@ -28,8 +27,7 @@ import NPCGroupGraphic from "./npc-graphics/NPCGroupGraphic";
 import { useMount } from "../hooks/useNPCBase";
 import * as THREE from "three";
 import { removeNPCFromGroup, addNPCToGroup } from "../utils/npc-group-utils";
-import { Select } from "@react-three/postprocessing";
-
+("@react-three/fiber");
 // Extend Performance interface for Chrome's memory API
 declare global {
   interface Performance {
@@ -49,14 +47,11 @@ const POSITION_THRESHOLD = 0.01;
 const THROTTLE_MS = 100;
 
 interface CameraControllerProps {
-  targetPosition: Vector3;
+  targetPosition: THREE.Vector3;
   animalScale: number;
 }
 
-function CameraController({
-  targetPosition,
-  animalScale,
-}: CameraControllerProps) {
+function CameraController({ targetPosition }: CameraControllerProps) {
   const { camera } = useThree();
   const zdistance = 30;
 
@@ -67,14 +62,14 @@ function CameraController({
   return null;
 }
 
-async function throwNPC(
+async function pathNPC(
   myUser: UserInfo,
   npc: NPC,
   npcs: Map<npcId, NPC>,
   npcGroups: DefaultMap<userId, NPCGroup>,
-  throws: Map<npcId, throwData>,
+  paths: Map<npcId, pathData>,
   socket: Socket | null,
-  setThrows: (throws: Map<npcId, throwData>) => void,
+  setPaths: (paths: Map<npcId, pathData>) => void,
   setNpcGroups: (npcGroups: DefaultMap<userId, NPCGroup>) => void,
   setNpcs: (npcs: Map<npcId, NPC>) => void
 ) {
@@ -83,14 +78,14 @@ async function throwNPC(
     const updatedNpc: NPC = {
       ...npc,
       position: myUser.position,
-      phase: NPCPhase.THROWN,
+      phase: NPCPhase.path,
     };
 
     // Use the utility function to preserve group object identity
     const updatedNpcGroups = removeNPCFromGroup(npcGroups, myUser.id, npc.id);
 
-    // Create new throw data
-    const newThrowData: throwData = {
+    // Create new path data
+    const newpathData: pathData = {
       id: uuidv4(),
       room: myUser.room,
       npc: updatedNpc,
@@ -98,9 +93,9 @@ async function throwNPC(
         x: myUser.position.x,
         y: myUser.position.y,
       },
-      throwDuration: 2000,
+      pathDuration: 2000,
       timestamp: Date.now(),
-      throwerId: myUser.id,
+      captorId: myUser.id,
       direction: {
         x: Math.round(myUser.direction.x),
         y: Math.round(myUser.direction.y),
@@ -108,39 +103,39 @@ async function throwNPC(
       velocity: 20,
     };
 
-    // Create new throws map
-    const updatedThrows = new Map(throws);
-    updatedThrows.set(npc.id, newThrowData);
+    // Create new paths map
+    const updatedpaths = new Map(paths);
+    updatedpaths.set(npc.id, newpathData);
 
-    // Socket call to throw the NPC
+    // Socket call to path the NPC
     if (socket) {
       socket.emit(
-        "throw-npc",
-        serialize({ throwData: newThrowData }),
+        "path-npc",
+        serialize({ pathData: newpathData }),
         (response: { success: boolean }) => {
-          if (!response.success) console.error("NPC throw failed");
+          if (!response.success) console.error("NPC path failed");
         }
       );
     }
 
-    setThrows(updatedThrows);
+    setPaths(updatedpaths);
     setNpcGroups(updatedNpcGroups);
     const updatedNpcs = new Map(npcs);
     updatedNpcs.set(npc.id, updatedNpc);
     setNpcs(updatedNpcs);
   } catch (error) {
-    console.error("Error throwing NPC:", error);
+    console.error("Error pathing NPC:", error);
   }
 }
 
 function useKeyboardMovement(
-  initialPosition: Vector3,
+  initialPosition: THREE.Vector3,
   initialDirection: Direction,
   myUser: UserInfo,
   npcGroups: DefaultMap<userId, NPCGroup>,
   npcs: Map<npcId, NPC>,
-  throws: Map<npcId, throwData>,
-  setThrows: (throws: Map<npcId, throwData>) => void,
+  paths: Map<npcId, pathData>,
+  setPaths: (paths: Map<npcId, pathData>) => void,
   setNpcGroups: (npcGroups: DefaultMap<userId, NPCGroup>) => void,
   setNpcs: (npcs: Map<npcId, NPC>) => void
 ) {
@@ -152,28 +147,25 @@ function useKeyboardMovement(
   const handleKeyDown = (event: KeyboardEvent) => {
     setKeysPressed((prev) => new Set(prev).add(event.key));
 
-    // Handle space bar press for throwing NPCs
+    // Handle space bar press for pathing NPCs
     if (
       (event.key === " " || event.key === "Spacebar") &&
       npcGroups.get(myUser.id).npcIds.size > 0
     ) {
       // Get the first NPC ID from the set
-      const npcIdToThrow = npcGroups
-        .get(myUser.id)
-        .npcIds.values()
-        .next().value;
+      const npcIdTopath = npcGroups.get(myUser.id).npcIds.values().next().value;
 
-      if (npcIdToThrow) {
-        const npc = npcs.get(npcIdToThrow);
+      if (npcIdTopath) {
+        const npc = npcs.get(npcIdTopath);
         if (npc) {
-          throwNPC(
+          pathNPC(
             myUser,
             npc,
             npcs,
             npcGroups,
-            throws,
+            paths,
             socket(),
-            setThrows,
+            setPaths,
             setNpcGroups,
             setNpcs
           );
@@ -191,7 +183,7 @@ function useKeyboardMovement(
   };
 
   const updatePosition = () => {
-    const change = new Vector3(0, 0, 0);
+    const change = new THREE.Vector3(0, 0, 0);
 
     // Check which keys are pressed
     const up = keysPressed.has("ArrowUp") || keysPressed.has("w");
@@ -294,9 +286,13 @@ interface Props {
   users: Map<string, UserInfo>;
   myUser: UserInfo;
   npcs: Map<string, NPC>;
-  throws: Map<string, throwData>;
+  paths: Map<string, pathData>;
   npcGroups: DefaultMap<string, NPCGroup>;
-  setThrows: (throws: Map<npcId, throwData>) => void;
+  setPaths: (
+    value:
+      | Map<npcId, pathData>
+      | ((prev: Map<npcId, pathData>) => Map<npcId, pathData>)
+  ) => void;
   setNpcGroups: (
     value:
       | DefaultMap<userId, NPCGroup>
@@ -311,13 +307,13 @@ export default function Scene({
   users,
   myUser,
   npcs,
-  throws,
+  paths,
   npcGroups,
-  setThrows,
+  setPaths,
   setNpcGroups,
   setNpcs,
 }: Props) {
-  const initialPosition = new Vector3(
+  const initialPosition = new THREE.Vector3(
     myUser.position.x,
     myUser.position.y,
     0 // Explicitly set z to 0
@@ -334,8 +330,8 @@ export default function Scene({
     myUser,
     npcGroups,
     npcs,
-    throws,
-    setThrows,
+    paths,
+    setPaths,
     setNpcGroups,
     setNpcs
   );
@@ -346,7 +342,7 @@ export default function Scene({
 
   // Only broadcast if position or direction actually changed
   const broadcastPosition = useCallback(() => {
-    const positionDelta = new Vector3()
+    const positionDelta = new THREE.Vector3()
       .copy(position)
       .sub(lastBroadcastPosition.current);
     const positionChanged = positionDelta.length() >= POSITION_THRESHOLD;
@@ -415,6 +411,11 @@ export default function Scene({
         position: myUser.position,
         phase: NPCPhase.CAPTURED,
       };
+      setPaths((prev: Map<npcId, pathData>) => {
+        const newPaths = new Map(prev);
+        newPaths.delete(npc.id); // remove the path data for the captured NPC
+        return newPaths as Map<npcId, pathData>;
+      });
 
       setNpcGroups((prevNpcGroups: DefaultMap<userId, NPCGroup>) => {
         // Use the utility function to preserve group object identity
@@ -430,30 +431,113 @@ export default function Scene({
     [npcGroups, myUser.id, myUser.room]
   );
 
+  const normalizeDirection = useCallback((direction: Direction) => {
+    const length = Math.sqrt(
+      direction.x * direction.x + direction.y * direction.y
+    );
+    return { x: direction.x / length, y: direction.y / length };
+  }, []);
+
+  // Function to make an NPC flee from the player
+  const makeNPCFlee = useCallback(
+    (npc: NPC, npcPosition: THREE.Vector3) => {
+      // Calculate flee direction (away from player)
+      const fleeDirection = normalizeDirection({
+        x: npcPosition.x - myUser.position.x,
+        y: npcPosition.y - myUser.position.y,
+      });
+
+      // Create new objects instead of mutating
+      const updatedNpc: NPC = {
+        ...npc,
+        phase: NPCPhase.path,
+      };
+
+      // Normalize the direction
+
+      // get current path data, update timestamp and add flee direction to current direction
+      const currentPathData = paths.get(npc.id);
+      const newPathData: pathData = currentPathData
+        ? {
+            ...currentPathData,
+            direction: {
+              x: currentPathData.direction.x + fleeDirection.x,
+              y: currentPathData.direction.y + fleeDirection.y,
+            },
+          }
+        : {
+            // create new path data
+            id: uuidv4(),
+            room: myUser.room,
+            npc: updatedNpc,
+            startPosition: {
+              x: npcPosition.x,
+              y: npcPosition.y,
+            },
+            pathDuration: 1500, // Shorter flee duration
+            timestamp: Date.now(),
+            // No captorId - this is a flee path
+            direction: fleeDirection,
+            velocity: 0.25, // Moderate flee speed
+          };
+
+      // Socket call to create the flee path
+      // const currentSocket = socket();
+      // if (currentSocket) {
+      //   currentSocket.emit(
+      //     "path-npc",
+      //     serialize({ pathData: newPathData }),
+      //     (response: { success: boolean }) => {
+      //       if (!response.success) console.error("NPC flee path failed");
+      //     }
+      //   );
+      // }
+
+      setPaths((prev: Map<npcId, pathData>) => {
+        const newPaths = new Map(prev);
+        newPaths.set(npc.id, newPathData);
+        return newPaths as Map<npcId, pathData>;
+      });
+
+      setNpcs((prev: Map<npcId, NPC>) => {
+        const newNpcs = new Map(prev);
+        newNpcs.set(npc.id, updatedNpc);
+        return newNpcs;
+      });
+    },
+    [myUser, npcs, paths, setPaths, setNpcs]
+  );
+
   // Function to check for collisions with NPCs
   const checkForNPCCollision = useCallback(
-    (npc: NPC) => {
-      const COLLISION_THRESHOLD = 2.5;
+    (npc: NPC, npcPosition?: THREE.Vector3) => {
+      const CAPTURE_THRESHOLD = 2.5; // Close range for capturing
+      const FLEE_THRESHOLD = 25.0; // Farther range for triggering flee
 
-      const userPos = new Vector3(
+      const userPos = new THREE.Vector3(
         myUser.position.x,
         myUser.position.y,
         myUser.position.z
       );
 
-      const npcPosition = new Vector3(
-        npc.position.x,
-        npc.position.y,
-        npc.position.z
-      );
+      const npcPos = npcPosition
+        ? npcPosition
+        : new THREE.Vector3(npc.position.x, npc.position.y, npc.position.z);
 
-      const distance = npcPosition.distanceTo(userPos);
+      const distance = npcPos.distanceTo(userPos);
 
-      if (distance < COLLISION_THRESHOLD) {
-        handleNPCCollision(npc);
+      // Only trigger actions for IDLE NPCs
+      if (npc.phase === NPCPhase.IDLE || npc.phase === NPCPhase.path) {
+        if (distance < CAPTURE_THRESHOLD) {
+          // Close enough to capture
+          handleNPCCollision(npc);
+        } else if (distance < FLEE_THRESHOLD) {
+          // Far enough to not capture, but close enough to flee
+          makeNPCFlee(npc, npcPos);
+        }
       }
     },
-    [handleNPCCollision]
+    [handleNPCCollision, makeNPCFlee]
   );
 
   // Animal width map (per animal type)
@@ -513,7 +597,7 @@ export default function Scene({
             key={npc.id}
             npc={npc}
             checkForCollision={checkForNPCCollision}
-            throwData={throws.get(npc.id)}
+            pathData={paths.get(npc.id)}
             users={users}
           />
         ))}

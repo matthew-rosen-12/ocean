@@ -494,7 +494,6 @@ export function loadAnimalSVG(
           }
 
           // Create outline geometry - always try to use the actual SVG shape
-          console.log(`[SVG LOADER] Creating geometry for ${animal}`);
           const { geometry, outlineShape } =
             createGeometryFromOutlinePath(data);
 
@@ -588,8 +587,6 @@ export function loadAnimalSVG(
             outlineLineGeometry: outlineLineGeometry,
           });
 
-          console.log(`[SVG LOADER] Cached graphics for ${animal}`);
-
           // Scale the group
           const box = new THREE.Box3().setFromObject(group);
           const size = box.getSize(new THREE.Vector3());
@@ -625,14 +622,6 @@ export function loadAnimalSVG(
           // Set initial position
           previousPosition.copy(positionRef.current);
           group.position.copy(previousPosition);
-
-          console.log(`[SVG LOADER] Final setup for ${animal}:`, {
-            position: group.position.toArray(),
-            scale: group.scale.toArray(),
-            rotation: group.rotation.z,
-            meshCount: group.children.length,
-            boundingBox: new THREE.Box3().setFromObject(group),
-          });
 
           // Apply initial rotation based on directionRef if available
           if (directionRef.current && directionRef.current.length() > 0.01) {
@@ -775,14 +764,6 @@ export function loadAnimalSVG(
           // Set initial position
           previousPosition.copy(positionRef.current);
           group.position.copy(previousPosition);
-
-          console.log(`[SVG LOADER] Final fallback setup for ${animal}:`, {
-            position: group.position.toArray(),
-            scale: group.scale.toArray(),
-            rotation: group.rotation.z,
-            meshCount: group.children.length,
-            boundingBox: new THREE.Box3().setFromObject(group),
-          });
 
           // Apply initial rotation based on directionRef if available
           if (directionRef.current && directionRef.current.length() > 0.01) {
