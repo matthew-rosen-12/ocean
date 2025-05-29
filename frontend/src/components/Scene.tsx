@@ -616,6 +616,7 @@ export default function Scene({
             user={user}
             npcs={npcs}
             animalWidth={animalWidths[user.animal]}
+            isLocalUser={user.id === myUser.id}
           />
         );
       })}

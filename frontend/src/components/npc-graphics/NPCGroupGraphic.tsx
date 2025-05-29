@@ -19,6 +19,7 @@ interface NPCGroupGraphicProps {
   user: UserInfo;
   npcs: Map<string, NPC>;
   animalWidth: number | undefined;
+  isLocalUser?: boolean; // Add flag to distinguish local vs non-local users
 }
 
 const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
@@ -26,6 +27,7 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
   user,
   npcs,
   animalWidth,
+  isLocalUser = false, // Default to false for non-local users
 }) => {
   // Skip rendering if no user or no NPCs
   if (!user || group.npcIds.size === 0) {
@@ -76,6 +78,8 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
   const indicatorRef = useRef<THREE.Group>(null);
   // Reference for the edge geometry outline
   const edgeGeometryRef = useRef<THREE.Object3D | null>(null);
+  // Reference for smooth movement interpolation (non-local users)
+  const previousPosition = useMemo(() => new THREE.Vector3(), []);
 
   // Add effect to track component lifecycle
   useEffect(() => {
@@ -188,6 +192,9 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
     updatePositionWithTracking(initialPosition, "NPCGroup-initial");
     threeGroup.position.copy(positionRef.current);
 
+    // Initialize previousPosition for smooth interpolation
+    previousPosition.copy(positionRef.current);
+
     // Apply the scale based on number of NPCs
     if (mesh.current) {
       // Apply our logarithmic scaling
@@ -226,16 +233,40 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
       new THREE.Vector3(user.position.x, user.position.y, user.position.z)
     );
 
+    // Both local and non-local users use smoothMove for nice interpolated following:
+    // - Local: interpolates towards target calculated from immediate user position
+    // - Non-local: interpolates towards target calculated from discrete socket user position
+    // For non-local users, we need SLOWER interpolation so NPC group lags behind
+    // the already-interpolated animal position
     if (!positionRef.current.equals(targetPosition)) {
+      const interpolationParams = {
+        // Local users: standard interpolation creates nice lag relative to immediate movement
+        lerpFactor: 0.1,
+        moveSpeed: 0.5,
+        minDistance: 0.01,
+        useConstantSpeed: true,
+      };
+
       updatePositionWithTracking(
-        smoothMove(positionRef.current.clone(), targetPosition),
+        smoothMove(
+          positionRef.current.clone(),
+          isLocalUser
+            ? targetPosition
+            : smoothMove(
+                positionRef.current.clone(),
+                targetPosition,
+                interpolationParams
+              ),
+          interpolationParams
+        ),
         "NPCGroup"
       );
       threeGroup.position.copy(positionRef.current);
     }
+
     // Always update indicator position to follow the group
     if (indicatorRef.current && mesh.current) {
-      indicatorRef.current.position.copy(positionRef.current);
+      indicatorRef.current.position.copy(threeGroup.position);
       indicatorRef.current.position.y += mesh.current.scale.y / 2 + 2.8;
     }
 
@@ -311,11 +342,23 @@ export default React.memo(NPCGroupGraphic, (prevProps, nextProps) => {
 
   const groupsSame = captorIdSame && sizeSame && npcIdsSame;
 
-  // Compare other props
+  // Compare other props including user position
   const userSame = prevProps.user.id === nextProps.user.id;
+  const userPositionSame =
+    prevProps.user.position.x === nextProps.user.position.x &&
+    prevProps.user.position.y === nextProps.user.position.y &&
+    prevProps.user.position.z === nextProps.user.position.z;
+  const userDirectionSame =
+    prevProps.user.direction.x === nextProps.user.direction.x &&
+    prevProps.user.direction.y === nextProps.user.direction.y;
   const animalWidthSame = prevProps.animalWidth === nextProps.animalWidth;
 
-  const shouldNotRerender = groupsSame && userSame && animalWidthSame;
+  const shouldNotRerender =
+    groupsSame &&
+    userSame &&
+    userPositionSame &&
+    userDirectionSame &&
+    animalWidthSame;
 
   return shouldNotRerender;
 });

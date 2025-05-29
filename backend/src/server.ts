@@ -179,7 +179,11 @@ io.on("connection", async (socket) => {
           phase: NPCPhase.CAPTURED,
         };
 
-        await setPathCompleteInRoom(room, npc);
+        // Only call setPathCompleteInRoom if the NPC is actually in PATH phase
+        if (npc.phase === NPCPhase.path) {
+          await setPathCompleteInRoom(room, npc);
+        }
+
         await updateNPCInRoomInRedis(room, updatedNPC);
         await updateNPCGroupInRoomInRedis(room, captorId, npcId);
 
