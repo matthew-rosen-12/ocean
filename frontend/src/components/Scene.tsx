@@ -511,8 +511,12 @@ export default function Scene({
   // Function to check for collisions with NPCs
   const checkForNPCCollision = useCallback(
     (npc: NPC, npcPosition?: THREE.Vector3) => {
-      const CAPTURE_THRESHOLD = 2.5; // Close range for capturing
-      const FLEE_THRESHOLD = 25.0; // Farther range for triggering flee
+      // Get the animal width for dynamic thresholds
+      const animalWidth = animalWidths[myUser.animal] || 2.0; // Fallback to 2.0 if width not yet measured
+
+      // Use animal width as base for thresholds
+      const CAPTURE_THRESHOLD = animalWidth * 1.2; // Slightly larger than animal width for capture
+      const FLEE_THRESHOLD = animalWidth * 8.0; // Much larger range for flee behavior
 
       const userPos = new THREE.Vector3(
         myUser.position.x,
