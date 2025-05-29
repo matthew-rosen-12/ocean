@@ -206,6 +206,13 @@ io.on("connection", async (socket) => {
 
         await updateNPCInRoomInRedis(pathData.room, updatedNPC);
         const activepaths = await getpathsFromRedis(pathData.room);
+        // if pathData already exists, update it
+        const existingPath = activepaths.find(
+          (p) => p.npc.id === pathData.npc.id
+        );
+        if (existingPath) {
+          activepaths.splice(activepaths.indexOf(existingPath), 1);
+        }
         activepaths.push(pathData);
         await setPathsInRedis(pathData.room, activepaths);
 
