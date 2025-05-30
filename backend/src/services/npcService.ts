@@ -11,6 +11,7 @@ import {
   getActivepathsFromRedis,
   removeNPCFromGroupInRoomInRedis,
   setPathsInRedis,
+  deletePathInRedis,
 } from "../db/config";
 import {
   updateNPCGroupInRoomInRedis,
@@ -69,8 +70,9 @@ export async function setPathCompleteInRoom(
 ): Promise<void> {
   const paths = await getActivepathsFromRedis(roomName);
   const pathData = paths.filter((t) => t.npc.id === npc.id)[0];
-  const updatedpaths = paths.filter((t) => t.npc.id !== npc.id);
-  await setPathsInRedis(roomName, updatedpaths);
+
+  // Direct delete operation - no read-modify-set needed
+  await deletePathInRedis(roomName, npc.id);
 
   // update npc from path to have phase IDLE
   npc.phase = NPCPhase.IDLE;

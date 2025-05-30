@@ -111,6 +111,40 @@ export async function setNPCsInRedis(
   }
 }
 
+// Direct NPC operations - no read-modify-set needed
+export async function setNPCInRedis(
+  roomName: string,
+  npcId: npcId,
+  npc: NPC
+): Promise<void> {
+  try {
+    let roomNPCs = npcStore.get(roomName);
+    if (!roomNPCs) {
+      roomNPCs = new Map();
+      npcStore.set(roomName, roomNPCs);
+    }
+    roomNPCs.set(npcId, npc);
+  } catch (error) {
+    console.error(`Error setting NPC ${npcId} in room ${roomName}:`, error);
+    throw error;
+  }
+}
+
+export async function deleteNPCInRedis(
+  roomName: string,
+  npcId: npcId
+): Promise<void> {
+  try {
+    const roomNPCs = npcStore.get(roomName);
+    if (roomNPCs) {
+      roomNPCs.delete(npcId);
+    }
+  } catch (error) {
+    console.error(`Error deleting NPC ${npcId} from room ${roomName}:`, error);
+    throw error;
+  }
+}
+
 // Path functions - direct Map access, no serialization
 export async function getpathsFromRedis(room: string): Promise<pathData[]> {
   try {
@@ -181,6 +215,46 @@ export async function setPathsMapInRedis(
   }
 }
 
+// Direct Path operations - no read-modify-set needed
+export async function setPathInRedis(
+  roomName: string,
+  npcId: npcId,
+  pathData: pathData
+): Promise<void> {
+  try {
+    let roomPaths = pathStore.get(roomName);
+    if (!roomPaths) {
+      roomPaths = new Map();
+      pathStore.set(roomName, roomPaths);
+    }
+    roomPaths.set(npcId, pathData);
+  } catch (error) {
+    console.error(
+      `Error setting path for NPC ${npcId} in room ${roomName}:`,
+      error
+    );
+    throw error;
+  }
+}
+
+export async function deletePathInRedis(
+  roomName: string,
+  npcId: npcId
+): Promise<void> {
+  try {
+    const roomPaths = pathStore.get(roomName);
+    if (roomPaths) {
+      roomPaths.delete(npcId);
+    }
+  } catch (error) {
+    console.error(
+      `Error deleting path for NPC ${npcId} from room ${roomName}:`,
+      error
+    );
+    throw error;
+  }
+}
+
 // NPC Group functions - direct Map access, no serialization
 export async function getNPCGroupsFromRedis(
   roomName: string
@@ -212,24 +286,47 @@ export async function setNPCGroupsInRedis(
   }
 }
 
+// Direct Group operations - no read-modify-set needed
+export async function addNPCToGroupInRedis(
+  roomName: string,
+  captorId: userId,
+  npcId: npcId
+): Promise<void> {
+  try {
+    let roomGroups = npcGroupStore.get(roomName);
+    if (!roomGroups) {
+      roomGroups = new Map();
+      npcGroupStore.set(roomName, roomGroups);
+    }
+
+    let group = roomGroups.get(captorId);
+    if (!group) {
+      group = { npcIds: new Set(), captorId };
+      roomGroups.set(captorId, group);
+    }
+
+    group.npcIds.add(npcId);
+  } catch (error) {
+    console.error(
+      `Error adding NPC ${npcId} to group ${captorId} in room ${roomName}:`,
+      error
+    );
+    throw error;
+  }
+}
+
 export async function removeNPCFromGroupInRoomInRedis(
   roomName: string,
   captorId: userId,
   npcId: npcId
 ): Promise<void> {
   try {
-    // Get the room's groups map
-    let roomGroups = npcGroupStore.get(roomName);
-    if (!roomGroups) {
-      return; // No groups for this room
-    }
+    const roomGroups = npcGroupStore.get(roomName);
+    if (!roomGroups) return;
 
     const group = roomGroups.get(captorId);
     if (group) {
       group.npcIds.delete(npcId);
-      roomGroups.set(captorId, group);
-      // Update the store (though the reference is already updated)
-      npcGroupStore.set(roomName, roomGroups);
     }
   } catch (error) {
     console.error(`Error removing NPC from group in room ${roomName}:`, error);
@@ -242,15 +339,10 @@ export async function removeNPCGroupInRoomInRedis(
   captorId: userId
 ): Promise<void> {
   try {
-    // Get the room's groups map
-    let roomGroups = npcGroupStore.get(roomName);
-    if (!roomGroups) {
-      return; // No groups for this room
-    }
+    const roomGroups = npcGroupStore.get(roomName);
+    if (!roomGroups) return;
 
     roomGroups.delete(captorId);
-    // Update the store
-    npcGroupStore.set(roomName, roomGroups);
   } catch (error) {
     console.error(`Error removing NPC group in room ${roomName}:`, error);
     throw error;
