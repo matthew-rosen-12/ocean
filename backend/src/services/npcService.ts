@@ -8,14 +8,14 @@ const NUM_NPCS = 4;
 
 import { io } from "../server";
 import {
-  getActivepathsFromRedis,
-  removeNPCFromGroupInRoomInRedis,
-  setPathsInRedis,
-  deletePathInRedis,
+  getActivepathsfromMemory,
+  removeNPCFromGroupInRoomInMemory,
+  setPathsInMemory,
+  deletePathInMemory,
 } from "../db/config";
 import {
-  updateNPCGroupInRoomInRedis,
-  updateNPCInRoomInRedis,
+  updateNPCGroupInRoomInMemory,
+  updateNPCInRoomInMemory,
 } from "../db/npc-ops";
 import { serialize } from "../utils/serializers";
 
@@ -23,7 +23,7 @@ export async function updateNPCInRoom(
   roomName: roomId,
   npc: NPC
 ): Promise<void> {
-  updateNPCInRoomInRedis(roomName, npc);
+  updateNPCInRoomInMemory(roomName, npc);
   io.to(roomName).emit("npc-update", serialize({ npc }));
 }
 
@@ -32,7 +32,7 @@ export async function updateNPCGroupInRoom(
   captorId: userId,
   npcId: npcId
 ): Promise<void> {
-  await updateNPCGroupInRoomInRedis(roomName, captorId, npcId);
+  await updateNPCGroupInRoomInMemory(roomName, captorId, npcId);
   io.to(roomName).emit("group-update", serialize({ groupId: captorId, npcId }));
 }
 
@@ -41,7 +41,7 @@ export async function removeNPCFromGroupInRoom(
   captorId: userId,
   npcId: npcId
 ): Promise<void> {
-  await removeNPCFromGroupInRoomInRedis(roomName, captorId, npcId);
+  await removeNPCFromGroupInRoomInMemory(roomName, captorId, npcId);
 
   io.to(roomName).emit(
     "group-update",
@@ -68,16 +68,16 @@ export async function setPathCompleteInRoom(
   roomName: string,
   npc: NPC
 ): Promise<void> {
-  const paths = await getActivepathsFromRedis(roomName);
+  const paths = await getActivepathsfromMemory(roomName);
   const pathData = paths.filter((t) => t.npc.id === npc.id)[0];
 
   // Direct delete operation - no read-modify-set needed
-  await deletePathInRedis(roomName, npc.id);
+  await deletePathInMemory(roomName, npc.id);
 
   // update npc from path to have phase IDLE
   npc.phase = NPCPhase.IDLE;
   npc.position = calculateLandingPosition(pathData);
-  await updateNPCInRoomInRedis(roomName, npc);
+  await updateNPCInRoomInMemory(roomName, npc);
 
   // Only emit final position for thrown NPCs (with captorId), not fleeing NPCs
   if (pathData.captorId) {

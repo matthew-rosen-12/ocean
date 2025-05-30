@@ -7,14 +7,14 @@ import {
   getDirection,
 } from "../user-info";
 
-import { findRoomInRedis } from "../db/room-ops";
+import { findRoomInMemory } from "../db/room-ops";
 
 const router = express.Router();
 
 router.post("/", async (req, res) => {
   try {
     const guestId = generateGuestId();
-    const room = await findRoomInRedis();
+    const room = await findRoomInMemory();
 
     // Create guest user
     const guestUser: UserInfo = {

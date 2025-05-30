@@ -2,7 +2,7 @@
 const userStore: Map<string, any> = new Map();
 
 // User management functions
-export const addUserInRedis = async (
+export const addUserInMemory = async (
   userId: string,
   userInfo: any
 ): Promise<void> => {
@@ -14,7 +14,7 @@ export const addUserInRedis = async (
   }
 };
 
-export const removeUserInRedis = async (userId: string): Promise<void> => {
+export const removeUserInMemory = async (userId: string): Promise<void> => {
   try {
     userStore.delete(userId);
   } catch (error) {
@@ -23,7 +23,7 @@ export const removeUserInRedis = async (userId: string): Promise<void> => {
   }
 };
 
-export const getUserInRedis = async (userId: string): Promise<any | null> => {
+export const getUserInMemory = async (userId: string): Promise<any | null> => {
   try {
     return userStore.get(userId) || null;
   } catch (error) {

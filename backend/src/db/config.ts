@@ -48,7 +48,7 @@ export const getAllRoomKeys = async (): Promise<string[]> => {
   return Array.from(roomStore.keys());
 };
 
-export const decrementRoomUsersInRedis = async (
+export const decrementRoomUsersInMemory = async (
   roomName: string,
   userId: string
 ): Promise<void> => {
@@ -81,7 +81,7 @@ export const decrementRoomUsersInRedis = async (
 };
 
 // NPC functions - direct Map access, no serialization
-export async function getNPCsFromRedis(
+export async function getNPCsfromMemory(
   roomName: string
 ): Promise<Map<npcId, NPC>> {
   try {
@@ -98,7 +98,7 @@ export async function getNPCsFromRedis(
   }
 }
 
-export async function setNPCsInRedis(
+export async function setNPCsInMemory(
   room: string,
   npcs: Map<npcId, NPC>
 ): Promise<void> {
@@ -112,7 +112,7 @@ export async function setNPCsInRedis(
 }
 
 // Direct NPC operations - no read-modify-set needed
-export async function setNPCInRedis(
+export async function setNPCInMemory(
   roomName: string,
   npcId: npcId,
   npc: NPC
@@ -130,7 +130,7 @@ export async function setNPCInRedis(
   }
 }
 
-export async function deleteNPCInRedis(
+export async function deleteNPCInMemory(
   roomName: string,
   npcId: npcId
 ): Promise<void> {
@@ -146,7 +146,7 @@ export async function deleteNPCInRedis(
 }
 
 // Path functions - direct Map access, no serialization
-export async function getpathsFromRedis(room: string): Promise<pathData[]> {
+export async function getpathsfromMemory(room: string): Promise<pathData[]> {
   try {
     // Get the room's path map directly, or create a new one if it doesn't exist
     const roomPaths = pathStore.get(room);
@@ -161,13 +161,13 @@ export async function getpathsFromRedis(room: string): Promise<pathData[]> {
   }
 }
 
-export async function getActivepathsFromRedis(
+export async function getActivepathsfromMemory(
   roomName: string
 ): Promise<pathData[]> {
-  return getpathsFromRedis(roomName);
+  return getpathsfromMemory(roomName);
 }
 
-export async function setPathsInRedis(
+export async function setPathsInMemory(
   roomName: roomId,
   paths: pathData[]
 ): Promise<void> {
@@ -185,7 +185,7 @@ export async function setPathsInRedis(
   }
 }
 
-export async function getPathsMapFromRedis(
+export async function getPathsMapfromMemory(
   room: string
 ): Promise<Map<npcId, pathData>> {
   try {
@@ -202,7 +202,7 @@ export async function getPathsMapFromRedis(
   }
 }
 
-export async function setPathsMapInRedis(
+export async function setPathsMapInMemory(
   room: string,
   paths: Map<npcId, pathData>
 ): Promise<void> {
@@ -216,7 +216,7 @@ export async function setPathsMapInRedis(
 }
 
 // Direct Path operations - no read-modify-set needed
-export async function setPathInRedis(
+export async function setPathInMemory(
   roomName: string,
   npcId: npcId,
   pathData: pathData
@@ -237,7 +237,7 @@ export async function setPathInRedis(
   }
 }
 
-export async function deletePathInRedis(
+export async function deletePathInMemory(
   roomName: string,
   npcId: npcId
 ): Promise<void> {
@@ -256,7 +256,7 @@ export async function deletePathInRedis(
 }
 
 // NPC Group functions - direct Map access, no serialization
-export async function getNPCGroupsFromRedis(
+export async function getNPCGroupsfromMemory(
   roomName: string
 ): Promise<Map<userId, NPCGroup>> {
   try {
@@ -273,7 +273,7 @@ export async function getNPCGroupsFromRedis(
   }
 }
 
-export async function setNPCGroupsInRedis(
+export async function setNPCGroupsInMemory(
   room: string,
   groups: Map<userId, NPCGroup>
 ): Promise<void> {
@@ -287,7 +287,7 @@ export async function setNPCGroupsInRedis(
 }
 
 // Direct Group operations - no read-modify-set needed
-export async function addNPCToGroupInRedis(
+export async function addNPCToGroupInMemory(
   roomName: string,
   captorId: userId,
   npcId: npcId
@@ -315,7 +315,7 @@ export async function addNPCToGroupInRedis(
   }
 }
 
-export async function removeNPCFromGroupInRoomInRedis(
+export async function removeNPCFromGroupInRoomInMemory(
   roomName: string,
   captorId: userId,
   npcId: npcId
@@ -334,7 +334,7 @@ export async function removeNPCFromGroupInRoomInRedis(
   }
 }
 
-export async function removeNPCGroupInRoomInRedis(
+export async function removeNPCGroupInRoomInMemory(
   roomName: string,
   captorId: userId
 ): Promise<void> {
@@ -350,7 +350,7 @@ export async function removeNPCGroupInRoomInRedis(
 }
 
 // Room discovery
-export async function getAllRoomsFromRedis(): Promise<string[]> {
+export async function getAllRoomsfromMemory(): Promise<string[]> {
   // Get room names from all stores, merge and deduplicate
   const roomDataKeys = Array.from(roomStore.keys());
   const npcRooms = Array.from(npcStore.keys());

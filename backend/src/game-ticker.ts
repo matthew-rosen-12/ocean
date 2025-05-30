@@ -2,9 +2,9 @@ import { pathData } from "./types";
 import { setPathCompleteInRoom } from "./services/npcService";
 
 import {
-  getActivepathsFromRedis,
-  getAllRoomsFromRedis,
-  getNPCsFromRedis,
+  getActivepathsfromMemory,
+  getAllRoomsfromMemory,
+  getNPCsfromMemory,
 } from "./db/config";
 import { NPCPhase } from "./types";
 
@@ -32,12 +32,12 @@ class GameTicker {
   private async tick() {
     try {
       // Get all room names
-      const roomNames = await getAllRoomsFromRedis();
+      const roomNames = await getAllRoomsfromMemory();
 
       // Process each room
       for (const roomName of roomNames) {
         // Get paths for this room
-        const paths = await getActivepathsFromRedis(roomName);
+        const paths = await getActivepathsfromMemory(roomName);
         if (!paths || paths.length === 0) continue;
 
         const completedpaths: pathData[] = [];
@@ -56,7 +56,7 @@ class GameTicker {
         // Process completed paths
         for (const completedpath of completedpaths) {
           // Get current NPC state to check if it's still in PATH phase
-          const npcs = await getNPCsFromRedis(roomName);
+          const npcs = await getNPCsfromMemory(roomName);
           const currentNpc = npcs.get(completedpath.npc.id);
 
           // Only complete path if NPC is still in PATH phase

@@ -1,7 +1,7 @@
 import {
   getRoomData,
   setRoomData,
-  setNPCsInRedis,
+  setNPCsInMemory,
   getAllRoomKeys,
   Room,
 } from "./config";
@@ -9,7 +9,7 @@ import { createNPCs } from "../services/npcService";
 import { v4 as uuidv4 } from "uuid";
 import { NPC } from "../types";
 
-export const findRoomInRedis = async (): Promise<string> => {
+export const findRoomInMemory = async (): Promise<string> => {
   try {
     const roomKeys = await getAllRoomKeys();
 
@@ -29,13 +29,13 @@ export const findRoomInRedis = async (): Promise<string> => {
 
     if (activeRooms.length > 0) {
       const room = activeRooms[0];
-      await incrementRoomUsersInRedis(room.name);
+      await incrementRoomUsersInMemory(room.name);
       return room.name;
     }
 
     // If no suitable room exists, create a new one
     const roomName = `room-${uuidv4()}`;
-    await createRoomInRedis(roomName);
+    await createRoomInMemory(roomName);
     await populateRoom(roomName);
     return roomName;
   } catch (error) {
@@ -44,7 +44,7 @@ export const findRoomInRedis = async (): Promise<string> => {
   }
 };
 
-export const incrementRoomUsersInRedis = async (
+export const incrementRoomUsersInMemory = async (
   roomName: string
 ): Promise<void> => {
   try {
@@ -61,7 +61,7 @@ export const incrementRoomUsersInRedis = async (
   }
 };
 
-const createRoomInRedis = async (roomName: string): Promise<Room> => {
+const createRoomInMemory = async (roomName: string): Promise<Room> => {
   try {
     const newRoom: Room = {
       name: roomName,
@@ -79,7 +79,7 @@ const createRoomInRedis = async (roomName: string): Promise<Room> => {
   }
 };
 
-export const getRoomNumUsersInRedis = async (
+export const getRoomNumUsersInMemory = async (
   roomName: string
 ): Promise<number> => {
   try {
@@ -102,7 +102,7 @@ export async function populateRoom(roomName: string): Promise<void> {
       npcMap.set(npc.id, npc);
     });
 
-    setNPCsInRedis(roomName, npcMap);
+    setNPCsInMemory(roomName, npcMap);
   } catch (error) {
     console.error(`Error populating room ${roomName}:`, error);
   }

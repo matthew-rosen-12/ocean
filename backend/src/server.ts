@@ -4,22 +4,22 @@ import { Server } from "socket.io";
 import cors from "cors";
 import {
   connect,
-  decrementRoomUsersInRedis,
-  getNPCGroupsFromRedis,
-  getNPCsFromRedis,
-  getpathsFromRedis,
-  removeNPCFromGroupInRoomInRedis,
-  removeNPCGroupInRoomInRedis,
-  setNPCsInRedis,
-  setPathsInRedis,
+  decrementRoomUsersInMemory,
+  getNPCGroupsfromMemory,
+  getNPCsfromMemory,
+  getpathsfromMemory,
+  removeNPCFromGroupInRoomInMemory,
+  removeNPCGroupInRoomInMemory,
+  setNPCsInMemory,
+  setPathsInMemory,
 } from "./db/config";
 import { NPC, NPCPhase, pathData, userId, UserInfo, socketId } from "./types";
 import authRouter from "./routes/auth";
 import { getGameTicker } from "./game-ticker";
-import { updateNPCGroupInRoomInRedis } from "./db/npc-ops";
-import { updateNPCInRoomInRedis } from "./db/npc-ops";
+import { updateNPCGroupInRoomInMemory } from "./db/npc-ops";
+import { updateNPCInRoomInMemory } from "./db/npc-ops";
 import { deserialize, serialize } from "./utils/serializers";
-import { getRoomNumUsersInRedis } from "./db/room-ops";
+import { getRoomNumUsersInMemory } from "./db/room-ops";
 import { setPathCompleteInRoom } from "./services/npcService";
 
 // Initialize game ticker
@@ -100,7 +100,7 @@ io.on("connection", async (socket) => {
 
       const roomName = socket.data.room;
 
-      const expectedUserCount = await getRoomNumUsersInRedis(roomName);
+      const expectedUserCount = await getRoomNumUsersInMemory(roomName);
 
       // If we've received responses from all users in the room
       if (users.size === expectedUserCount) {
@@ -143,19 +143,19 @@ io.on("connection", async (socket) => {
       // Send other room state to the joining socket
       try {
         // Get existing NPCs
-        const npcsData = await getNPCsFromRedis(name);
+        const npcsData = await getNPCsfromMemory(name);
         if (npcsData) {
           socket.emit("npcs-update", serialize({ npcs: npcsData }));
         }
 
         // Get existing paths
-        const pathsData = await getpathsFromRedis(name);
+        const pathsData = await getpathsfromMemory(name);
         if (pathsData) {
           socket.emit("paths-update", serialize({ paths: pathsData }));
         }
 
         // Get existing NPC groups
-        const groupsData = await getNPCGroupsFromRedis(name);
+        const groupsData = await getNPCGroupsfromMemory(name);
         if (groupsData) {
           socket.emit("npc-groups-update", serialize({ groups: groupsData }));
         }
@@ -171,7 +171,7 @@ io.on("connection", async (socket) => {
     socket.on("capture-npc", async (serializedData: string) => {
       const { npcId, room, captorId } = deserialize(serializedData);
       try {
-        const npcs = await getNPCsFromRedis(room);
+        const npcs = await getNPCsfromMemory(room);
         const npc = npcs.get(npcId)!;
 
         const updatedNPC: NPC = {
@@ -184,8 +184,8 @@ io.on("connection", async (socket) => {
           await setPathCompleteInRoom(room, npc);
         }
 
-        await updateNPCInRoomInRedis(room, updatedNPC);
-        await updateNPCGroupInRoomInRedis(room, captorId, npcId);
+        await updateNPCInRoomInMemory(room, updatedNPC);
+        await updateNPCGroupInRoomInMemory(room, captorId, npcId);
 
         socket.broadcast.to(room).emit(
           "npc-captured",
@@ -208,8 +208,8 @@ io.on("connection", async (socket) => {
           phase: NPCPhase.path,
         };
 
-        await updateNPCInRoomInRedis(pathData.room, updatedNPC);
-        const activepaths = await getpathsFromRedis(pathData.room);
+        await updateNPCInRoomInMemory(pathData.room, updatedNPC);
+        const activepaths = await getpathsfromMemory(pathData.room);
         // if pathData already exists, update it
         const existingPath = activepaths.find(
           (p) => p.npc.id === pathData.npc.id
@@ -218,11 +218,11 @@ io.on("connection", async (socket) => {
           activepaths.splice(activepaths.indexOf(existingPath), 1);
         }
         activepaths.push(pathData);
-        await setPathsInRedis(pathData.room, activepaths);
+        await setPathsInMemory(pathData.room, activepaths);
 
         // Only remove from group if there's a captorId (fleeing NPCs don't have groups)
         if (pathData.captorId) {
-          await removeNPCFromGroupInRoomInRedis(
+          await removeNPCFromGroupInRoomInMemory(
             pathData.room,
             pathData.captorId,
             pathData.npc.id
@@ -245,7 +245,6 @@ io.on("connection", async (socket) => {
       try {
         const { user } = deserialize(serializedData);
         socket.data.lastPosition = user.position;
-        // Just broadcast to room, don't update Redis
         const room = socket.data.room;
         if (room) {
           socket.broadcast.to(room).emit(
@@ -265,17 +264,16 @@ io.on("connection", async (socket) => {
       try {
         const lastPosition = socket.data.lastPosition;
 
-        // Get the socket's room from Redis
         const room = socket.data.room;
         if (room) {
           console.log("disconnecting");
 
           const userId = socket.data.user.id;
           // set npcs of this user's npc groups to IDLE
-          const npcGroups = await getNPCGroupsFromRedis(room);
+          const npcGroups = await getNPCGroupsfromMemory(room);
           const npcGroup = npcGroups.get(user.id);
           if (npcGroup) {
-            const npcs = await getNPCsFromRedis(room);
+            const npcs = await getNPCsfromMemory(room);
 
             npcGroup.npcIds.forEach(async (npcId) => {
               const npc = npcs.get(npcId)!;
@@ -286,13 +284,13 @@ io.on("connection", async (socket) => {
               };
               npcs.set(npcId, updatedNPC);
             });
-            await setNPCsInRedis(room, npcs);
+            await setNPCsInMemory(room, npcs);
           }
           // remove the user's npc groups from redis
-          await removeNPCGroupInRoomInRedis(room, user.id);
+          await removeNPCGroupInRoomInMemory(room, user.id);
 
           // Handle room users decrement
-          await decrementRoomUsersInRedis(room, socket.id);
+          await decrementRoomUsersInMemory(room, socket.id);
 
           if (userId) {
             socket.broadcast
