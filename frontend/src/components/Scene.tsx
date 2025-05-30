@@ -515,8 +515,8 @@ export default function Scene({
       const animalWidth = animalWidths[myUser.animal] || 2.0; // Fallback to 2.0 if width not yet measured
 
       // Use animal width as base for thresholds
-      const CAPTURE_THRESHOLD = animalWidth * 1.2; // Slightly larger than animal width for capture
-      const FLEE_THRESHOLD = animalWidth * 8.0; // Much larger range for flee behavior
+      const CAPTURE_THRESHOLD = animalWidth * 0.5; // Slightly larger than animal width for capture
+      const FLEE_THRESHOLD = animalWidth * 5.0; // Much larger range for flee behavior
 
       const userPos = new THREE.Vector3(
         myUser.position.x,

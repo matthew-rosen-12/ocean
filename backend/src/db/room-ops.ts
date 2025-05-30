@@ -1,4 +1,4 @@
-import { redisClient, get, set, setNPCsInRedis } from "./config";
+import { get, set, setNPCsInRedis, keys } from "./config";
 import { createNPCs } from "../services/npcService";
 import { v4 as uuidv4 } from "uuid";
 import { NPC } from "../types";
@@ -14,11 +14,11 @@ interface Room {
 
 export const findRoomInRedis = async (): Promise<string> => {
   try {
-    const roomKeys = await redisClient.keys("room:*");
+    const roomKeys = await keys("room:*");
 
     const rooms = await Promise.all(
       roomKeys.map(async (key) => {
-        const roomData = await redisClient.get(key);
+        const roomData = await get(key);
         return roomData ? { ...deserialize(roomData), key } : null;
       })
     );
