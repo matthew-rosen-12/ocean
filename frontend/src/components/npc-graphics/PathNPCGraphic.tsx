@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { NPC, pathData, UserInfo } from "../../utils/types";
+import { NPC, NPCPhase, pathData, UserInfo } from "../../utils/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { useMount, useNPCBase } from "../../hooks/useNPCBase";
@@ -109,6 +109,9 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
   // Handle position updates
   useFrame(() => {
     if (!group || !textureLoaded.current) return;
+
+    // Safety check: don't calculate path position if NPC phase changed
+    if (npc.phase !== NPCPhase.path) return;
 
     // Calculate current position based on time for path objects
     const pathPosition = calculatepathPosition(pathData, Date.now());

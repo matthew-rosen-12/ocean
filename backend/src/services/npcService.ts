@@ -76,7 +76,11 @@ export async function setPathCompleteInRoom(
   npc.phase = NPCPhase.IDLE;
   npc.position = calculateLandingPosition(pathData);
   await updateNPCInRoomInRedis(roomName, npc);
-  io.to(roomName).emit("path-complete", serialize({ npc }));
+
+  // Only emit final position for thrown NPCs (with captorId), not fleeing NPCs
+  if (pathData.captorId) {
+    io.to(roomName).emit("path-complete", serialize({ npc }));
+  }
 }
 
 export async function createNPCs(): Promise<NPC[]> {

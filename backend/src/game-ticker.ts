@@ -1,7 +1,12 @@
 import { pathData } from "./types";
 import { setPathCompleteInRoom } from "./services/npcService";
 
-import { getActivepathsFromRedis, getAllRoomsFromRedis } from "./db/config";
+import {
+  getActivepathsFromRedis,
+  getAllRoomsFromRedis,
+  getNPCsFromRedis,
+} from "./db/config";
+import { NPCPhase } from "./types";
 
 let gameTickerInstance: GameTicker | null = null;
 
@@ -50,7 +55,14 @@ class GameTicker {
 
         // Process completed paths
         for (const completedpath of completedpaths) {
-          await setPathCompleteInRoom(roomName, completedpath.npc);
+          // Get current NPC state to check if it's still in PATH phase
+          const npcs = await getNPCsFromRedis(roomName);
+          const currentNpc = npcs.get(completedpath.npc.id);
+
+          // Only complete path if NPC is still in PATH phase
+          if (currentNpc && currentNpc.phase === NPCPhase.path) {
+            await setPathCompleteInRoom(roomName, completedpath.npc);
+          }
         }
       }
     } catch (error) {

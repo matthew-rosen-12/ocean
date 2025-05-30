@@ -242,13 +242,13 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
       const interpolationParams = isLocalUser
         ? {
             // Local users: standard interpolation creates nice lag relative to immediate movement
-            lerpFactor: 0.1,
+            lerpFactor: 0.2,
             moveSpeed: 0.5,
             minDistance: 0.01,
             useConstantSpeed: true,
           }
         : {
-            lerpFactor: 0.05,
+            lerpFactor: 0.1,
             moveSpeed: 0.5,
             minDistance: 0.01,
             useConstantSpeed: true,

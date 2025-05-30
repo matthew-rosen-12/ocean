@@ -460,11 +460,15 @@ export default function Scene({
       const newPathData: pathData = currentPathData
         ? {
             ...currentPathData,
+            startPosition: {
+              x: npcPosition.x,
+              y: npcPosition.y,
+            },
             direction: {
               x: currentPathData.direction.x + fleeDirection.x,
               y: currentPathData.direction.y + fleeDirection.y,
             },
-            pathDuration: 1500 + Date.now() - currentPathData.timestamp,
+            timestamp: Date.now(), // Reset timestamp for smooth transition
           }
         : {
             // create new path data
