@@ -1,25 +1,22 @@
-import { get, set, setNPCsInRedis, keys } from "./config";
+import {
+  getRoomData,
+  setRoomData,
+  setNPCsInRedis,
+  getAllRoomKeys,
+  Room,
+} from "./config";
 import { createNPCs } from "../services/npcService";
 import { v4 as uuidv4 } from "uuid";
 import { NPC } from "../types";
-import { deserialize, serialize } from "../utils/serializers";
-
-interface Room {
-  name: string;
-  numUsers: number;
-  isActive: boolean;
-  lastActive: string;
-  createdAt: string;
-}
 
 export const findRoomInRedis = async (): Promise<string> => {
   try {
-    const roomKeys = await keys("room:*");
+    const roomKeys = await getAllRoomKeys();
 
     const rooms = await Promise.all(
-      roomKeys.map(async (key) => {
-        const roomData = await get(key);
-        return roomData ? { ...deserialize(roomData), key } : null;
+      roomKeys.map(async (roomName) => {
+        const roomData = await getRoomData(roomName);
+        return roomData ? { ...roomData, key: roomName } : null;
       })
     );
 
@@ -51,15 +48,13 @@ export const incrementRoomUsersInRedis = async (
   roomName: string
 ): Promise<void> => {
   try {
-    const roomKey = `room:${roomName}`;
-    const roomData = await get(roomKey);
-    if (!roomData) throw new Error(`Room ${roomName} not found`);
+    const room = await getRoomData(roomName);
+    if (!room) throw new Error(`Room ${roomName} not found`);
 
-    const room = deserialize(roomData);
     room.numUsers += 1;
     room.lastActive = new Date().toISOString();
 
-    await set(roomKey, serialize(room));
+    await setRoomData(roomName, room);
   } catch (error) {
     console.error("Error incrementing room users", error);
     throw error;
@@ -76,7 +71,7 @@ const createRoomInRedis = async (roomName: string): Promise<Room> => {
       createdAt: new Date().toISOString(),
     };
 
-    await set(`room:${roomName}`, serialize(newRoom));
+    await setRoomData(roomName, newRoom);
     return newRoom;
   } catch (error) {
     console.error("Error creating room", error);
@@ -88,10 +83,8 @@ export const getRoomNumUsersInRedis = async (
   roomName: string
 ): Promise<number> => {
   try {
-    const roomKey = `room:${roomName}`;
-    const roomData = await get(roomKey);
-    if (!roomData) return 0;
-    const room = deserialize(roomData);
+    const room = await getRoomData(roomName);
+    if (!room) return 0;
 
     return room.numUsers;
   } catch (error) {

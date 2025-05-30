@@ -464,6 +464,7 @@ export default function Scene({
               x: currentPathData.direction.x + fleeDirection.x,
               y: currentPathData.direction.y + fleeDirection.y,
             },
+            pathDuration: 1500 + Date.now() - currentPathData.timestamp,
           }
         : {
             // create new path data
@@ -482,16 +483,16 @@ export default function Scene({
           };
 
       // Socket call to create the flee path
-      // const currentSocket = socket();
-      // if (currentSocket) {
-      //   currentSocket.emit(
-      //     "path-npc",
-      //     serialize({ pathData: newPathData }),
-      //     (response: { success: boolean }) => {
-      //       if (!response.success) console.error("NPC flee path failed");
-      //     }
-      //   );
-      // }
+      const currentSocket = socket();
+      if (currentSocket) {
+        currentSocket.emit(
+          "path-npc",
+          serialize({ pathData: newPathData }),
+          (response: { success: boolean }) => {
+            if (!response.success) console.error("NPC flee path failed");
+          }
+        );
+      }
 
       setPaths((prev: Map<npcId, pathData>) => {
         const newPaths = new Map(prev);

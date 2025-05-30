@@ -1,4 +1,5 @@
-import { redisClient } from "./config";
+// Simple in-memory user storage
+const userStore: Map<string, any> = new Map();
 
 // User management functions
 export const addUserInRedis = async (
@@ -6,16 +7,7 @@ export const addUserInRedis = async (
   userInfo: any
 ): Promise<void> => {
   try {
-    // Convert userInfo object to array of field-value pairs
-    const entries = Object.entries(userInfo);
-    if (entries.length === 0) return;
-
-    // Use hSet with field-value pairs
-    const tuples: [string, string][] = entries.map(([field, value]) => [
-      field,
-      String(value),
-    ]);
-    await redisClient.hSet(`user:${userId}`, tuples);
+    userStore.set(userId, userInfo);
   } catch (error) {
     console.error("Error adding user:", error);
     throw error;
@@ -24,7 +16,7 @@ export const addUserInRedis = async (
 
 export const removeUserInRedis = async (userId: string): Promise<void> => {
   try {
-    await redisClient.del(`user:${userId}`);
+    userStore.delete(userId);
   } catch (error) {
     console.error("Error removing user:", error);
     throw error;
@@ -33,8 +25,7 @@ export const removeUserInRedis = async (userId: string): Promise<void> => {
 
 export const getUserInRedis = async (userId: string): Promise<any | null> => {
   try {
-    const userData = await redisClient.hGetAll(`user:${userId}`);
-    return Object.keys(userData).length > 0 ? userData : null;
+    return userStore.get(userId) || null;
   } catch (error) {
     console.error("Error getting user:", error);
     throw error;

@@ -239,24 +239,25 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
     // For non-local users, we need SLOWER interpolation so NPC group lags behind
     // the already-interpolated animal position
     if (!positionRef.current.equals(targetPosition)) {
-      const interpolationParams = {
-        // Local users: standard interpolation creates nice lag relative to immediate movement
-        lerpFactor: 0.1,
-        moveSpeed: 0.5,
-        minDistance: 0.01,
-        useConstantSpeed: true,
-      };
+      const interpolationParams = isLocalUser
+        ? {
+            // Local users: standard interpolation creates nice lag relative to immediate movement
+            lerpFactor: 0.1,
+            moveSpeed: 0.5,
+            minDistance: 0.01,
+            useConstantSpeed: true,
+          }
+        : {
+            lerpFactor: 0.05,
+            moveSpeed: 0.5,
+            minDistance: 0.01,
+            useConstantSpeed: true,
+          };
 
       updatePositionWithTracking(
         smoothMove(
           positionRef.current.clone(),
-          isLocalUser
-            ? targetPosition
-            : smoothMove(
-                positionRef.current.clone(),
-                targetPosition,
-                interpolationParams
-              ),
+          targetPosition,
           interpolationParams
         ),
         "NPCGroup"
