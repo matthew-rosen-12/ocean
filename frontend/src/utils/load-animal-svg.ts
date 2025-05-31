@@ -337,7 +337,10 @@ export function loadAnimalSVG(
   group: THREE.Group,
   scale: number,
   isLocalPlayer: boolean,
-  setAnimalWidth: (animal: string, width: number) => void,
+  setAnimalDimensions: (
+    animal: string,
+    dimensions: { width: number; height: number }
+  ) => void,
   positionRef: React.MutableRefObject<THREE.Vector3>,
   directionRef: React.MutableRefObject<THREE.Vector3 | null>,
   initialScale: React.MutableRefObject<THREE.Vector3 | null>,
@@ -595,11 +598,6 @@ export function loadAnimalSVG(
 
           group.scale.multiplyScalar(normalizeScale * scale); // Back to normal scale
 
-          // After scaling, measure width and set if not set
-          const scaledBox = new THREE.Box3().setFromObject(group);
-          const scaledSize = scaledBox.getSize(new THREE.Vector3());
-          setAnimalWidth(animal, scaledSize.x);
-
           // Apply initial orientation
           const orientation = ANIMAL_ORIENTATION[animal] || {
             rotation: 0,
@@ -610,6 +608,23 @@ export function loadAnimalSVG(
           if (orientation.flipY) {
             group.scale.x = -group.scale.x;
           }
+
+          // After scaling AND orientation, measure width and height
+          const scaledBox = new THREE.Box3().setFromObject(group);
+          const scaledSize = scaledBox.getSize(new THREE.Vector3());
+          setAnimalDimensions(animal, {
+            width: scaledSize.x,
+            height: scaledSize.y,
+          });
+          console.log(
+            `[SVG LOADER] Final dimensions for ${animal}: width=${scaledSize.x.toFixed(
+              2
+            )}, height=${scaledSize.y.toFixed(
+              2
+            )} (after orientation: rotation=${orientation.rotation}, flipY=${
+              orientation.flipY
+            })`
+          );
 
           // Store the initial scale AFTER applying orientation flips
           initialScale.current = group.scale.clone();
@@ -737,11 +752,6 @@ export function loadAnimalSVG(
 
           group.scale.multiplyScalar(normalizeScale * scale); // Back to normal scale
 
-          // After scaling, measure width and set if not set
-          const scaledBox = new THREE.Box3().setFromObject(group);
-          const scaledSize = scaledBox.getSize(new THREE.Vector3());
-          setAnimalWidth(animal, scaledSize.x);
-
           // Apply initial orientation
           const orientation = ANIMAL_ORIENTATION[animal] || {
             rotation: 0,
@@ -752,6 +762,14 @@ export function loadAnimalSVG(
           if (orientation.flipY) {
             group.scale.x = -group.scale.x;
           }
+
+          // After scaling AND orientation, measure width and height
+          const scaledBox = new THREE.Box3().setFromObject(group);
+          const scaledSize = scaledBox.getSize(new THREE.Vector3());
+          setAnimalDimensions(animal, {
+            width: scaledSize.x,
+            height: scaledSize.y,
+          });
 
           // Store the initial scale AFTER applying orientation flips
           initialScale.current = group.scale.clone();

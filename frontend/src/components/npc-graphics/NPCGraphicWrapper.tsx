@@ -3,12 +3,14 @@ import { NPC, NPCPhase, pathData, UserInfo, npcId } from "../../utils/types";
 import IdleNPCGraphic from "./IdleNPCGraphic";
 import PathNPCGraphic from "./PathNPCGraphic";
 import * as THREE from "three";
+import { TerrainBoundaries } from "../../utils/terrain";
 
 interface NPCGraphicWrapperProps {
   npc: NPC;
   checkForCollision: (npc: NPC, npcPosition?: THREE.Vector3) => void;
   pathData: pathData | undefined;
   users: Map<string, UserInfo>;
+  terrainBoundaries?: TerrainBoundaries;
 }
 
 const NPCGraphicWrapper = ({
@@ -16,6 +18,7 @@ const NPCGraphicWrapper = ({
   checkForCollision,
   pathData,
   users,
+  terrainBoundaries,
 }: NPCGraphicWrapperProps) => {
   if (npc.phase === NPCPhase.IDLE) {
     return (
@@ -41,6 +44,7 @@ const NPCGraphicWrapper = ({
         pathData={pathData}
         user={captorUser}
         checkForCollision={checkForCollision}
+        terrainBoundaries={terrainBoundaries}
       />
     );
   }

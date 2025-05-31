@@ -21,6 +21,7 @@ import { updateNPCInRoomInMemory } from "./db/npc-ops";
 import { deserialize, serialize } from "./utils/serializers";
 import { getRoomNumUsersInMemory } from "./db/room-ops";
 import { setPathCompleteInRoom } from "./services/npcService";
+import { generateRoomTerrain } from "./utils/terrain";
 
 // Initialize game ticker
 getGameTicker();
@@ -142,6 +143,10 @@ io.on("connection", async (socket) => {
 
       // Send other room state to the joining socket
       try {
+        // Send terrain configuration for this room
+        const terrainConfig = generateRoomTerrain(name);
+        socket.emit("terrain-config", serialize({ terrainConfig }));
+
         // Get existing NPCs
         const npcsData = await getNPCsfromMemory(name);
         if (npcsData) {

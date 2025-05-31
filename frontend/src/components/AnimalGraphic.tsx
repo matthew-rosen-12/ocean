@@ -13,6 +13,7 @@ import {
   createEdgeGeometry,
 } from "../utils/load-animal-svg";
 import { getAnimalBorderColor } from "../utils/animal-colors";
+import { TerrainBoundaries } from "../utils/terrain";
 
 // Global cache for animal graphics
 
@@ -29,7 +30,8 @@ function AnimalSprite({
   directionRef,
   isLocalPlayer,
   user,
-  setAnimalWidth,
+  setAnimalDimensions,
+  terrainBoundaries,
 }: {
   animal: Animal;
   scale?: number;
@@ -37,7 +39,11 @@ function AnimalSprite({
   directionRef: React.MutableRefObject<THREE.Vector3 | null>;
   isLocalPlayer: boolean;
   user: UserInfo;
-  setAnimalWidth: (animal: string, width: number) => void;
+  setAnimalDimensions: (
+    animal: string,
+    dimensions: { width: number; height: number }
+  ) => void;
+  terrainBoundaries?: TerrainBoundaries;
 }) {
   const group = useMemo(() => new THREE.Group(), []);
   const previousPosition = useMemo(() => new THREE.Vector3(), []);
@@ -92,10 +98,13 @@ function AnimalSprite({
       const normalizeScale = 5 / maxDim;
       group.scale.multiplyScalar(normalizeScale * scale);
 
-      // Measure and set width
+      // Measure and set width and height
       const scaledBox = new THREE.Box3().setFromObject(group);
       const scaledSize = scaledBox.getSize(new THREE.Vector3());
-      setAnimalWidth(animal, scaledSize.x);
+      setAnimalDimensions(animal, {
+        width: scaledSize.x,
+        height: scaledSize.y,
+      });
 
       // Apply orientation
       const orientation = ANIMAL_ORIENTATION[animal] || {
@@ -144,7 +153,7 @@ function AnimalSprite({
       group,
       scale,
       isLocalPlayer,
-      setAnimalWidth,
+      setAnimalDimensions,
       positionRef,
       directionRef,
       initialScale,
@@ -362,11 +371,16 @@ function AnimalSprite({
 export default function AnimalGraphic({
   user,
   myUserId,
-  setAnimalWidth,
+  setAnimalDimensions,
+  terrainBoundaries,
 }: {
   user: UserInfo;
   myUserId: string;
-  setAnimalWidth: (animal: string, width: number) => void;
+  setAnimalDimensions: (
+    animal: string,
+    dimensions: { width: number; height: number }
+  ) => void;
+  terrainBoundaries?: TerrainBoundaries;
 }) {
   // Create position ref as Vector3
   const isLocalPlayer = myUserId === user.id;
@@ -401,7 +415,8 @@ export default function AnimalGraphic({
         directionRef={directionRef}
         isLocalPlayer={isLocalPlayer}
         user={user}
-        setAnimalWidth={setAnimalWidth}
+        setAnimalDimensions={setAnimalDimensions}
+        terrainBoundaries={terrainBoundaries}
       />
     </>
   );

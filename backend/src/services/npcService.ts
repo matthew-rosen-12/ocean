@@ -17,7 +17,8 @@ import {
   updateNPCGroupInRoomInMemory,
   updateNPCInRoomInMemory,
 } from "../db/npc-ops";
-import { serialize } from "../utils/serializers";
+import { serialize, deserialize } from "../utils/serializers";
+import { generateRoomTerrain } from "../utils/terrain";
 
 export async function updateNPCInRoom(
   roomName: roomId,
@@ -53,6 +54,97 @@ export async function removeNPCFromGroupInRoom(
   );
 }
 
+export async function setPathCompleteInRoom(room: string, npc: NPC) {
+  try {
+    // Get room-specific terrain configuration
+    const terrainConfig = generateRoomTerrain(room);
+
+    // Get the path data for this NPC
+    const paths = await getActivepathsfromMemory(room);
+    const pathDataForNPC = paths.find((p: pathData) => p.npc.id === npc.id);
+
+    if (!pathDataForNPC) {
+      console.log(`No path data found for NPC ${npc.id} in room ${room}`);
+      return;
+    }
+
+    console.log(`Setting path complete for NPC ${npc.id} in room ${room}`);
+
+    // Calculate landing position with wrap-around
+    const landingPosition = calculateLandingPositionWithWrap(
+      pathDataForNPC,
+      terrainConfig
+    );
+
+    const updatedNPC: NPC = {
+      ...npc,
+      position: landingPosition,
+      phase: NPCPhase.IDLE,
+    };
+
+    await updateNPCInRoomInMemory(room, updatedNPC);
+
+    // Remove this path from active paths
+    const updatedPaths = paths.filter((p: pathData) => p.npc.id !== npc.id);
+    await setPathsInMemory(room, updatedPaths);
+
+    // Only broadcast for thrown NPCs (ones with captorId)
+    if (pathDataForNPC.captorId) {
+      io.to(room).emit(
+        "path-complete",
+        serialize({
+          npc: updatedNPC,
+        })
+      );
+    }
+
+    console.log(
+      `Path completed for NPC ${npc.id}. Landing position:`,
+      landingPosition
+    );
+  } catch (error) {
+    console.error(
+      `Error setting path complete for NPC ${npc.id} in room ${room}:`,
+      error
+    );
+  }
+}
+
+function calculateLandingPositionWithWrap(
+  pathData: pathData,
+  terrainConfig: any
+) {
+  const { startPosition, direction, velocity, pathDuration } = pathData;
+  const distance = velocity * (pathDuration / 1000);
+
+  // Calculate unwrapped landing position
+  let landingPosition = {
+    x: startPosition.x + direction.x * distance,
+    y: startPosition.y + direction.y * distance,
+    z: 0,
+  };
+
+  // Apply wrap-around using terrain boundaries
+  const { boundaries } = terrainConfig;
+
+  // Wrap X coordinate
+  landingPosition.x =
+    ((((landingPosition.x - boundaries.minX) % boundaries.width) +
+      boundaries.width) %
+      boundaries.width) +
+    boundaries.minX;
+
+  // Wrap Y coordinate
+  landingPosition.y =
+    ((((landingPosition.y - boundaries.minY) % boundaries.height) +
+      boundaries.height) %
+      boundaries.height) +
+    boundaries.minY;
+
+  return landingPosition;
+}
+
+// Legacy function for backward compatibility
 function calculateLandingPosition(pathData: pathData) {
   const { startPosition, direction, velocity, pathDuration } = pathData;
   const distance = velocity * (pathDuration / 1000);
@@ -62,27 +154,6 @@ function calculateLandingPosition(pathData: pathData) {
     z: 0,
   };
   return landingPosition;
-}
-
-export async function setPathCompleteInRoom(
-  roomName: string,
-  npc: NPC
-): Promise<void> {
-  const paths = await getActivepathsfromMemory(roomName);
-  const pathData = paths.filter((t) => t.npc.id === npc.id)[0];
-
-  // Direct delete operation - no read-modify-set needed
-  await deletePathInMemory(roomName, npc.id);
-
-  // update npc from path to have phase IDLE
-  npc.phase = NPCPhase.IDLE;
-  npc.position = calculateLandingPosition(pathData);
-  await updateNPCInRoomInMemory(roomName, npc);
-
-  // Only emit final position for thrown NPCs (with captorId), not fleeing NPCs
-  if (pathData.captorId) {
-    io.to(roomName).emit("path-complete", serialize({ npc }));
-  }
 }
 
 export async function createNPCs(): Promise<NPC[]> {

@@ -11,6 +11,7 @@ import {
 } from "../../utils/animal-colors";
 import { createEdgeGeometry } from "../../utils/load-animal-svg";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
+import { TerrainBoundaries } from "../../utils/terrain";
 // Constants for positioning
 const FOLLOW_DISTANCE = 2; // Distance behind the user
 
@@ -20,6 +21,7 @@ interface NPCGroupGraphicProps {
   npcs: Map<string, NPC>;
   animalWidth: number | undefined;
   isLocalUser?: boolean; // Add flag to distinguish local vs non-local users
+  terrainBoundaries?: TerrainBoundaries; // Add terrain boundaries for wrapping
 }
 
 const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
@@ -28,6 +30,7 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
   npcs,
   animalWidth,
   isLocalUser = false, // Default to false for non-local users
+  terrainBoundaries,
 }) => {
   // Skip rendering if no user or no NPCs
   if (!user || group.npcIds.size === 0) {
@@ -173,13 +176,16 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
     if (mesh.current) {
       npcWidth = mesh.current.scale.x; // width of the NPC mesh
     }
-    return new THREE.Vector3(
+
+    let targetPosition = new THREE.Vector3(
       userPosition.x +
         directionX * (animalWidth / 2 + npcWidth / 2 + FOLLOW_DISTANCE),
       userPosition.y +
         directionY * (animalWidth / 2 + npcWidth / 2 + FOLLOW_DISTANCE),
       0.05 // Place in front of wave grid
     );
+
+    return targetPosition;
   };
 
   // Set initial position

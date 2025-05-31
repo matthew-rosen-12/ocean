@@ -14,7 +14,6 @@ import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import { socket } from "../socket";
 import { Socket } from "socket.io-client";
-import WaveGrid from "./WaveGrid";
 import { ANIMAL_SCALES, DIRECTION_OFFSET } from "../utils/user-info";
 import { NPC } from "../utils/types";
 import AnimalGraphic from "./AnimalGraphic";
@@ -27,6 +26,12 @@ import NPCGroupGraphic from "./npc-graphics/NPCGroupGraphic";
 import { useMount } from "../hooks/useNPCBase";
 import * as THREE from "three";
 import { removeNPCFromGroup, addNPCToGroup } from "../utils/npc-group-utils";
+import { TerrainConfig } from "../utils/terrain";
+import CloudBackground from "./backgrounds/CloudBackground";
+import FloralPattern from "./backgrounds/FloralPattern";
+import ForestPattern from "./backgrounds/ForestPattern";
+import AnimalPattern from "./backgrounds/AnimalPattern";
+import CosmicPattern from "./backgrounds/CosmicPattern";
 ("@react-three/fiber");
 // Extend Performance interface for Chrome's memory API
 declare global {
@@ -60,6 +65,34 @@ function CameraController({ targetPosition }: CameraControllerProps) {
   }, [camera, targetPosition.x, targetPosition.y, zdistance]);
 
   return null;
+}
+
+// Component to render the appropriate terrain pattern
+function TerrainBackground({ terrain }: { terrain: TerrainConfig }) {
+  const renderPattern = () => {
+    switch (terrain.backgroundType) {
+      case "floral":
+      case "grass":
+        return <FloralPattern boundaries={terrain.boundaries} />;
+      case "forest":
+        return <ForestPattern boundaries={terrain.boundaries} />;
+      case "animals":
+      case "sand":
+        return <AnimalPattern boundaries={terrain.boundaries} />;
+      case "cosmic":
+      case "rock":
+        return <CosmicPattern boundaries={terrain.boundaries} />;
+      default:
+        return <FloralPattern boundaries={terrain.boundaries} />;
+    }
+  };
+
+  return (
+    <>
+      <CloudBackground />
+      {renderPattern()}
+    </>
+  );
 }
 
 async function pathNPC(
@@ -137,7 +170,15 @@ function useKeyboardMovement(
   paths: Map<npcId, pathData>,
   setPaths: (paths: Map<npcId, pathData>) => void,
   setNpcGroups: (npcGroups: DefaultMap<userId, NPCGroup>) => void,
-  setNpcs: (npcs: Map<npcId, NPC>) => void
+  setNpcs: (npcs: Map<npcId, NPC>) => void,
+  terrain: TerrainConfig,
+  animalDimensions: { [animal: string]: { width: number; height: number } },
+  checkBoundaryCollision: (
+    position: THREE.Vector3,
+    change: THREE.Vector3,
+    rotation: number,
+    dimensions: { width: number; height: number }
+  ) => THREE.Vector3
 ) {
   const [position, setPosition] = useState(initialPosition);
   const [direction, setDirection] = useState<Direction>(initialDirection);
@@ -233,8 +274,36 @@ function useKeyboardMovement(
       newDirection.y /= length;
     }
 
+    // Apply boundary constraints with rotated bounding box
     if (change.x !== 0 || change.y !== 0) {
-      setPosition((current) => current.clone().add(change));
+      setPosition((current) => {
+        // Get animal dimensions
+        const dimensions = animalDimensions[myUser.animal];
+        if (!dimensions) {
+          // Fallback to simple position blocking if dimensions not available
+          const newPosition = current.clone().add(change);
+          newPosition.x = Math.max(
+            terrain.boundaries.minX,
+            Math.min(terrain.boundaries.maxX, newPosition.x)
+          );
+          newPosition.y = Math.max(
+            terrain.boundaries.minY,
+            Math.min(terrain.boundaries.maxY, newPosition.y)
+          );
+          return newPosition;
+        }
+
+        // Calculate current rotation based on direction
+        const currentRotation = Math.atan2(newDirection.y, newDirection.x);
+
+        // Use rotated bounding box collision detection
+        return checkBoundaryCollision(
+          current,
+          change,
+          currentRotation,
+          dimensions
+        );
+      });
       setDirection(newDirection);
     }
   };
@@ -301,6 +370,7 @@ interface Props {
   setNpcs: (
     npcs: Map<npcId, NPC> | ((prev: Map<npcId, NPC>) => Map<npcId, NPC>)
   ) => void;
+  terrain: TerrainConfig;
 }
 
 export default function Scene({
@@ -312,6 +382,7 @@ export default function Scene({
   setPaths,
   setNpcGroups,
   setNpcs,
+  terrain,
 }: Props) {
   const initialPosition = new THREE.Vector3(
     myUser.position.x,
@@ -324,6 +395,72 @@ export default function Scene({
     y: myUser.direction.y,
   };
 
+  const [animalWidths, setAnimalWidths] = useState<{
+    [animal: string]: number;
+  }>({});
+
+  const [animalDimensions, setAnimalDimensions] = useState<{
+    [animal: string]: { width: number; height: number };
+  }>({});
+
+  // Helper function to check rotated bounding box collision with terrain boundaries
+  const checkBoundaryCollision = (
+    position: THREE.Vector3,
+    change: THREE.Vector3,
+    rotation: number,
+    dimensions: { width: number; height: number }
+  ): THREE.Vector3 => {
+    const newPosition = position.clone().add(change);
+    const { width, height } = dimensions;
+
+    // Calculate the four corners of the rotated animal bounding box
+    const halfWidth = width / 2;
+    const halfHeight = height / 2;
+
+    // Corners in local space (before rotation)
+    const corners = [
+      { x: -halfWidth, y: -halfHeight }, // Bottom-left
+      { x: halfWidth, y: -halfHeight }, // Bottom-right
+      { x: halfWidth, y: halfHeight }, // Top-right
+      { x: -halfWidth, y: halfHeight }, // Top-left
+    ];
+
+    // Rotate corners and translate to world position
+    const cos = Math.cos(rotation);
+    const sin = Math.sin(rotation);
+
+    const worldCorners = corners.map((corner) => ({
+      x: newPosition.x + (corner.x * cos - corner.y * sin),
+      y: newPosition.y + (corner.x * sin + corner.y * cos),
+    }));
+
+    // Find the actual bounds after rotation
+    const minX = Math.min(...worldCorners.map((c) => c.x));
+    const maxX = Math.max(...worldCorners.map((c) => c.x));
+    const minY = Math.min(...worldCorners.map((c) => c.y));
+    const maxY = Math.max(...worldCorners.map((c) => c.y));
+
+    // Check boundaries and clamp position
+    let adjustedX = newPosition.x;
+    let adjustedY = newPosition.y;
+
+    // Check X boundaries
+    if (minX < terrain.boundaries.minX) {
+      adjustedX = newPosition.x + (terrain.boundaries.minX - minX);
+    } else if (maxX > terrain.boundaries.maxX) {
+      adjustedX = newPosition.x + (terrain.boundaries.maxX - maxX);
+    }
+
+    // Check Y boundaries
+    if (minY < terrain.boundaries.minY) {
+      adjustedY = newPosition.y + (terrain.boundaries.minY - minY);
+    } else if (maxY > terrain.boundaries.maxY) {
+      adjustedY = newPosition.y + (terrain.boundaries.maxY - maxY);
+    }
+
+    return new THREE.Vector3(adjustedX, adjustedY, newPosition.z);
+  };
+
   const { position, direction } = useKeyboardMovement(
     initialPosition,
     initialDirection,
@@ -333,7 +470,10 @@ export default function Scene({
     paths,
     setPaths,
     setNpcGroups,
-    setNpcs
+    setNpcs,
+    terrain,
+    animalDimensions,
+    checkBoundaryCollision
   );
 
   // --- REFACTOR: Use refs for last broadcasted position/direction ---
@@ -516,8 +656,9 @@ export default function Scene({
   // Function to check for collisions with NPCs
   const checkForNPCCollision = useCallback(
     (npc: NPC, npcPosition?: THREE.Vector3) => {
-      // Get the animal width for dynamic thresholds
-      const animalWidth = animalWidths[myUser.animal] || 2.0; // Fallback to 2.0 if width not yet measured
+      // Get the animal dimensions for dynamic thresholds
+      const dimensions = animalDimensions[myUser.animal];
+      const animalWidth = dimensions?.width || 2.0; // Fallback to 2.0 if dimensions not yet measured
 
       // Use animal width as base for thresholds
       const CAPTURE_THRESHOLD = animalWidth * 0.5; // Slightly larger than animal width for capture
@@ -546,13 +687,8 @@ export default function Scene({
         }
       }
     },
-    [handleNPCCollision, makeNPCFlee]
+    [handleNPCCollision, makeNPCFlee, animalDimensions, myUser.animal]
   );
-
-  // Animal width map (per animal type)
-  const [animalWidths, setAnimalWidths] = useState<{
-    [animal: string]: number;
-  }>({});
 
   const setAnimalWidth = useCallback(
     (animal: string, width: number) => {
@@ -565,6 +701,19 @@ export default function Scene({
       }
     },
     [animalWidths]
+  );
+
+  const setAnimalDimensionsCallback = useCallback(
+    (animal: string, dimensions: { width: number; height: number }) => {
+      if (!animalDimensions[animal]) {
+        // Create a new object to ensure React detects the change
+        setAnimalDimensions((prev) => ({
+          ...prev,
+          [animal]: dimensions,
+        }));
+      }
+    },
+    [animalDimensions]
   );
 
   return (
@@ -588,14 +737,14 @@ export default function Scene({
         intensity={Math.PI}
       />
       <pointLight position={[-10, -10, -10]} decay={0} intensity={Math.PI} />
-      <WaveGrid />
+      <TerrainBackground terrain={terrain} />
       {/* Render all users with their NPCs */}
       {Array.from(users.values()).map((user) => (
         <AnimalGraphic
           key={user.id}
           user={user}
           myUserId={myUser.id}
-          setAnimalWidth={setAnimalWidth}
+          setAnimalDimensions={setAnimalDimensionsCallback}
         />
       ))}
 
@@ -620,7 +769,9 @@ export default function Scene({
             group={group}
             user={user}
             npcs={npcs}
-            animalWidth={animalWidths[user.animal]}
+            animalWidth={
+              animalDimensions[user.animal]?.width || animalWidths[user.animal]
+            }
             isLocalUser={user.id === myUser.id}
           />
         );

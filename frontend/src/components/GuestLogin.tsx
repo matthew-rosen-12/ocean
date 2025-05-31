@@ -17,6 +17,7 @@ import {
   removeNPCFromGroup,
   updateNPCGroupsPreservingIdentity,
 } from "../utils/npc-group-utils";
+import { ServerTerrainConfig } from "../utils/terrain";
 
 interface Props {
   setMyUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
@@ -26,6 +27,9 @@ interface Props {
   setNPCGroups: React.Dispatch<
     React.SetStateAction<DefaultMap<userId, NPCGroup>>
   >;
+  setTerrainConfig: React.Dispatch<
+    React.SetStateAction<ServerTerrainConfig | null>
+  >;
 }
 
 export default function GuestLogin({
@@ -34,6 +38,7 @@ export default function GuestLogin({
   setNPCs,
   setPaths,
   setNPCGroups,
+  setTerrainConfig,
 }: Props) {
   const [loading, setLoading] = useState(false);
 
@@ -79,6 +84,11 @@ export default function GuestLogin({
       socket.on("users-update", (serializedData: string) => {
         const { users } = deserialize(serializedData);
         setUsers(users);
+      });
+
+      socket.on("terrain-config", (serializedData: string) => {
+        const { terrainConfig } = deserialize(serializedData);
+        setTerrainConfig(terrainConfig);
       });
 
       socket.on("npcs-update", (serializedData: string) => {

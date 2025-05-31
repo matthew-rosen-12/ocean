@@ -6,6 +6,7 @@ import { useMount, useNPCBase } from "../../hooks/useNPCBase";
 import { createEdgeGeometry } from "../../utils/load-animal-svg";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
 import { getAnimalBorderColor } from "../../utils/animal-colors";
+import { TerrainBoundaries } from "../../utils/terrain";
 
 // Function to create a square outline geometry
 function createSquareOutlineGeometry(
@@ -57,6 +58,7 @@ interface pathPCGraphicProps {
   pathData: pathData;
   user?: UserInfo; // User who threw the NPC for border color (optional for fleeing NPCs)
   checkForCollision?: (npc: NPC, npcPosition?: THREE.Vector3) => void; // Collision checking for fleeing NPCs
+  terrainBoundaries?: TerrainBoundaries; // Add terrain boundaries for wrapping
 }
 
 const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
@@ -64,6 +66,7 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
   pathData,
   user,
   checkForCollision,
+  terrainBoundaries,
 }) => {
   const { group, positionRef, textureLoaded, updatePositionWithTracking } =
     useNPCBase(npc);
@@ -87,23 +90,27 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
     const pathDurationSec = pathData.pathDuration / 1000;
     const progress = Math.min(elapsedTime / pathDurationSec, 1);
 
+    let position: THREE.Vector3;
+
     // If we've reached the end of the path, use exact same calculation as server
     if (progress >= 1) {
       const finalDistance = pathData.velocity * pathDurationSec;
-      return new THREE.Vector3(
+      position = new THREE.Vector3(
         pathData.startPosition.x + pathData.direction.x * finalDistance,
         pathData.startPosition.y + pathData.direction.y * finalDistance,
         0
       );
+    } else {
+      // For animation, calculate intermediate position
+      const distance = pathData.velocity * elapsedTime;
+      position = new THREE.Vector3(
+        pathData.startPosition.x + pathData.direction.x * distance,
+        pathData.startPosition.y + pathData.direction.y * distance,
+        0
+      );
     }
 
-    // For animation, calculate intermediate position
-    const distance = pathData.velocity * elapsedTime;
-    return new THREE.Vector3(
-      pathData.startPosition.x + pathData.direction.x * distance,
-      pathData.startPosition.y + pathData.direction.y * distance,
-      0
-    );
+    return position;
   };
 
   // Handle position updates

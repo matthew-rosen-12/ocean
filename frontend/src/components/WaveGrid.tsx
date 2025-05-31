@@ -1,9 +1,16 @@
 import { extend } from "@react-three/fiber";
 import * as THREE from "three";
+import { TerrainBoundaries } from "../utils/terrain";
+
 extend({ GridHelper: THREE.GridHelper });
 
-export default function WaveGrid() {
-  const size = 100;
+interface WaveGridProps {
+  boundaries: TerrainBoundaries;
+}
+
+export default function WaveGrid({ boundaries }: WaveGridProps) {
+  // Use boundaries if provided, otherwise fallback to default
+  const size = boundaries.width;
   const divisions = 100;
 
   return (

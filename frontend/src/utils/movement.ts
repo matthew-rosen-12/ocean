@@ -26,6 +26,7 @@ export function smoothMove(
     useConstantSpeed = true,
   } = options;
 
+  // Standard linear interpolation (no wrapping)
   const positionDelta = new THREE.Vector3().subVectors(
     targetPosition,
     currentPosition

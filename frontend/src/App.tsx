@@ -11,6 +11,12 @@ import {
 import Scene from "./components/Scene";
 import GuestLogin from "./components/GuestLogin";
 import { ANIMAL_FACTS } from "../public/facts";
+import {
+  createTerrain,
+  createTerrainFromServer,
+  ServerTerrainConfig,
+} from "./utils/terrain";
+
 function App() {
   const [myUser, setMyUser] = useState<UserInfo | null>(null);
   const [users, setUsers] = useState<Map<userId, UserInfo>>(new Map());
@@ -19,6 +25,13 @@ function App() {
   const [npcGroups, setNPCGroups] = useState<DefaultMap<userId, NPCGroup>>(
     new DefaultMap((id) => ({ npcIds: new Set(), captorId: id }))
   );
+  const [serverTerrainConfig, setServerTerrainConfig] =
+    useState<ServerTerrainConfig | null>(null);
+
+  // Generate terrain configuration
+  const terrain = serverTerrainConfig
+    ? createTerrainFromServer(serverTerrainConfig)
+    : createTerrain();
 
   if (!myUser) {
     return (
@@ -28,6 +41,7 @@ function App() {
         setNPCs={setNPCs}
         setPaths={setPaths}
         setNPCGroups={setNPCGroups}
+        setTerrainConfig={setServerTerrainConfig}
       />
     );
   }
@@ -43,6 +57,7 @@ function App() {
         setPaths={setPaths}
         setNpcGroups={setNPCGroups}
         setNpcs={setNPCs}
+        terrain={terrain}
       />
 
       {/* Fixed overlay */}
