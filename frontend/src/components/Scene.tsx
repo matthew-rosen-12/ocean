@@ -11,7 +11,6 @@ import {
   UserInfo,
 } from "../utils/types";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { useFrame } from "@react-three/fiber";
 import { socket } from "../socket";
 import { Socket } from "socket.io-client";
 import { ANIMAL_SCALES, DIRECTION_OFFSET } from "../utils/user-info";
@@ -27,11 +26,6 @@ import { useMount } from "../hooks/useNPCBase";
 import * as THREE from "three";
 import { removeNPCFromGroup, addNPCToGroup } from "../utils/npc-group-utils";
 import { TerrainConfig } from "../utils/terrain";
-import CloudBackground from "./backgrounds/CloudBackground";
-import FloralPattern from "./backgrounds/FloralPattern";
-import ForestPattern from "./backgrounds/ForestPattern";
-import AnimalPattern from "./backgrounds/AnimalPattern";
-import CosmicPattern from "./backgrounds/CosmicPattern";
 ("@react-three/fiber");
 // Extend Performance interface for Chrome's memory API
 declare global {
@@ -65,34 +59,6 @@ function CameraController({ targetPosition }: CameraControllerProps) {
   }, [camera, targetPosition.x, targetPosition.y, zdistance]);
 
   return null;
-}
-
-// Component to render the appropriate terrain pattern
-function TerrainBackground({ terrain }: { terrain: TerrainConfig }) {
-  const renderPattern = () => {
-    switch (terrain.backgroundType) {
-      case "floral":
-      case "grass":
-        return <FloralPattern boundaries={terrain.boundaries} />;
-      case "forest":
-        return <ForestPattern boundaries={terrain.boundaries} />;
-      case "animals":
-      case "sand":
-        return <AnimalPattern boundaries={terrain.boundaries} />;
-      case "cosmic":
-      case "rock":
-        return <CosmicPattern boundaries={terrain.boundaries} />;
-      default:
-        return <FloralPattern boundaries={terrain.boundaries} />;
-    }
-  };
-
-  return (
-    <>
-      <CloudBackground />
-      {renderPattern()}
-    </>
-  );
 }
 
 async function pathNPC(
@@ -403,7 +369,7 @@ export default function Scene({
     [animal: string]: { width: number; height: number };
   }>({});
 
-  // Helper function to check rotated bounding box collision with terrain boundaries
+  // Helper function to check simple center-based collision with terrain boundaries
   const checkBoundaryCollision = (
     position: THREE.Vector3,
     change: THREE.Vector3,
@@ -411,51 +377,25 @@ export default function Scene({
     dimensions: { width: number; height: number }
   ): THREE.Vector3 => {
     const newPosition = position.clone().add(change);
-    const { width, height } = dimensions;
 
-    // Calculate the four corners of the rotated animal bounding box
-    const halfWidth = width / 2;
-    const halfHeight = height / 2;
-
-    // Corners in local space (before rotation)
-    const corners = [
-      { x: -halfWidth, y: -halfHeight }, // Bottom-left
-      { x: halfWidth, y: -halfHeight }, // Bottom-right
-      { x: halfWidth, y: halfHeight }, // Top-right
-      { x: -halfWidth, y: halfHeight }, // Top-left
-    ];
-
-    // Rotate corners and translate to world position
-    const cos = Math.cos(rotation);
-    const sin = Math.sin(rotation);
-
-    const worldCorners = corners.map((corner) => ({
-      x: newPosition.x + (corner.x * cos - corner.y * sin),
-      y: newPosition.y + (corner.x * sin + corner.y * cos),
-    }));
-
-    // Find the actual bounds after rotation
-    const minX = Math.min(...worldCorners.map((c) => c.x));
-    const maxX = Math.max(...worldCorners.map((c) => c.x));
-    const minY = Math.min(...worldCorners.map((c) => c.y));
-    const maxY = Math.max(...worldCorners.map((c) => c.y));
+    // Use a simple buffer distance from the center
 
     // Check boundaries and clamp position
     let adjustedX = newPosition.x;
     let adjustedY = newPosition.y;
 
     // Check X boundaries
-    if (minX < terrain.boundaries.minX) {
-      adjustedX = newPosition.x + (terrain.boundaries.minX - minX);
-    } else if (maxX > terrain.boundaries.maxX) {
-      adjustedX = newPosition.x + (terrain.boundaries.maxX - maxX);
+    if (newPosition.x < terrain.boundaries.minX) {
+      adjustedX = terrain.boundaries.minX;
+    } else if (newPosition.x > terrain.boundaries.maxX) {
+      adjustedX = terrain.boundaries.maxX;
     }
 
     // Check Y boundaries
-    if (minY < terrain.boundaries.minY) {
-      adjustedY = newPosition.y + (terrain.boundaries.minY - minY);
-    } else if (maxY > terrain.boundaries.maxY) {
-      adjustedY = newPosition.y + (terrain.boundaries.maxY - maxY);
+    if (newPosition.y < terrain.boundaries.minY) {
+      adjustedY = terrain.boundaries.minY;
+    } else if (newPosition.y > terrain.boundaries.maxY) {
+      adjustedY = terrain.boundaries.maxY;
     }
 
     return new THREE.Vector3(adjustedX, adjustedY, newPosition.z);
@@ -737,7 +677,7 @@ export default function Scene({
         intensity={Math.PI}
       />
       <pointLight position={[-10, -10, -10]} decay={0} intensity={Math.PI} />
-      <TerrainBackground terrain={terrain} />
+      {terrain.renderBackground()}
       {/* Render all users with their NPCs */}
       {Array.from(users.values()).map((user) => (
         <AnimalGraphic

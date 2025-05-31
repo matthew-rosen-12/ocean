@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import React from "react";
 import CloudBackground from "../components/backgrounds/CloudBackground";
 import FloralPattern from "../components/backgrounds/FloralPattern";
 import ForestPattern from "../components/backgrounds/ForestPattern";
@@ -122,6 +123,7 @@ export interface TerrainConfig {
   boundaries: TerrainBoundaries;
   walls: THREE.Mesh[] | null;
   backgroundType: string;
+  renderBackground(): React.JSX.Element;
 }
 
 // Create terrain from server configuration
@@ -139,6 +141,9 @@ export function createTerrainFromServer(
     boundaries: boundaries,
     walls: null,
     backgroundType: serverConfig.backgroundType,
+    renderBackground(): React.JSX.Element {
+      return renderTerrainBackground(boundaries, serverConfig.backgroundType);
+    },
   };
 }
 
@@ -158,33 +163,45 @@ export function createTerrain(): TerrainConfig {
     boundaries: boundaries,
     walls: null,
     backgroundType: "floral",
+    renderBackground(): React.JSX.Element {
+      return renderTerrainBackground(boundaries, "floral");
+    },
   };
 }
 
 // Create background pattern based on type
-function createBackgroundForType(
-  backgroundType: string,
-  boundaries: TerrainBoundaries
-): JSX.Element {
-  switch (backgroundType) {
-    case "floral":
-    case "grass":
-      return FloralPattern({ boundaries });
+function renderTerrainBackground(
+  boundaries: TerrainBoundaries,
+  backgroundType: string
+): React.JSX.Element {
+  const renderPattern = () => {
+    switch (backgroundType) {
+      case "floral":
+      case "grass":
+        return <FloralPattern boundaries={boundaries} />;
 
-    case "forest":
-      return ForestPattern({ boundaries });
+      case "forest":
+        return <ForestPattern boundaries={boundaries} />;
 
-    case "animals":
-    case "sand":
-      return AnimalPattern({ boundaries });
+      case "animals":
+      case "sand":
+        return <AnimalPattern boundaries={boundaries} />;
 
-    case "cosmic":
-    case "rock":
-      return CosmicPattern({ boundaries });
+      case "cosmic":
+      case "rock":
+        return <CosmicPattern boundaries={boundaries} />;
 
-    default:
-      return FloralPattern({ boundaries });
-  }
+      default:
+        return <FloralPattern boundaries={boundaries} />;
+    }
+  };
+
+  return (
+    <>
+      <CloudBackground />
+      {renderPattern()}
+    </>
+  );
 }
 
 export interface TerrainPlaneConfig {
