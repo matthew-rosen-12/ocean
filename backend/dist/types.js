@@ -1,12 +1,19 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DefaultMap = exports.NPCPhase = void 0;
+exports.DefaultMap = exports.PathPhase = exports.NPCPhase = void 0;
 var NPCPhase;
 (function (NPCPhase) {
     NPCPhase["IDLE"] = "IDLE";
     NPCPhase["CAPTURED"] = "CAPTURED";
     NPCPhase["path"] = "path";
 })(NPCPhase || (exports.NPCPhase = NPCPhase = {}));
+// Path phases for different types of movement
+var PathPhase;
+(function (PathPhase) {
+    PathPhase["THROWN"] = "THROWN";
+    PathPhase["FLEEING"] = "FLEEING";
+    PathPhase["BOUNCING"] = "BOUNCING";
+})(PathPhase || (exports.PathPhase = PathPhase = {}));
 class DefaultMap extends Map {
     constructor(defaultFactory) {
         super();

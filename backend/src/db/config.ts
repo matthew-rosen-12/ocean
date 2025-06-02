@@ -301,11 +301,20 @@ export async function addNPCToGroupInMemory(
 
     let group = roomGroups.get(captorId);
     if (!group) {
-      group = { npcIds: new Set(), captorId };
+      group = {
+        npcIds: new Set(),
+        captorId,
+        faceNpcId: npcId, // Set the first NPC as the face NPC
+      };
       roomGroups.set(captorId, group);
     }
 
     group.npcIds.add(npcId);
+
+    // If no face NPC is set or the face NPC is no longer in the group, set this one as face
+    if (!group.faceNpcId || !group.npcIds.has(group.faceNpcId)) {
+      group.faceNpcId = npcId;
+    }
   } catch (error) {
     console.error(
       `Error adding NPC ${npcId} to group ${captorId} in room ${roomName}:`,
@@ -321,15 +330,33 @@ export async function removeNPCFromGroupInRoomInMemory(
   npcId: npcId
 ): Promise<void> {
   try {
-    const roomGroups = npcGroupStore.get(roomName);
-    if (!roomGroups) return;
+    let roomGroups = npcGroupStore.get(roomName);
+    if (!roomGroups) {
+      return; // No groups in this room
+    }
 
     const group = roomGroups.get(captorId);
-    if (group) {
-      group.npcIds.delete(npcId);
+    if (!group) {
+      return; // No group for this captor
+    }
+
+    group.npcIds.delete(npcId);
+
+    // If the removed NPC was the face NPC, select a new one
+    if (group.faceNpcId === npcId) {
+      const remainingNpcs = Array.from(group.npcIds);
+      group.faceNpcId = remainingNpcs.length > 0 ? remainingNpcs[0] : undefined;
+    }
+
+    // If group is now empty, remove it entirely
+    if (group.npcIds.size === 0) {
+      roomGroups.delete(captorId);
     }
   } catch (error) {
-    console.error(`Error removing NPC from group in room ${roomName}:`, error);
+    console.error(
+      `Error removing NPC ${npcId} from group ${captorId} in room ${roomName}:`,
+      error
+    );
     throw error;
   }
 }

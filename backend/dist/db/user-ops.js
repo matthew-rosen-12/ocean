@@ -9,11 +9,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getUserInRedis = exports.removeUserInRedis = exports.addUserInRedis = void 0;
+exports.getUserInMemory = exports.removeUserInMemory = exports.addUserInMemory = void 0;
 // Simple in-memory user storage
 const userStore = new Map();
 // User management functions
-const addUserInRedis = (userId, userInfo) => __awaiter(void 0, void 0, void 0, function* () {
+const addUserInMemory = (userId, userInfo) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         userStore.set(userId, userInfo);
     }
@@ -22,8 +22,8 @@ const addUserInRedis = (userId, userInfo) => __awaiter(void 0, void 0, void 0, f
         throw error;
     }
 });
-exports.addUserInRedis = addUserInRedis;
-const removeUserInRedis = (userId) => __awaiter(void 0, void 0, void 0, function* () {
+exports.addUserInMemory = addUserInMemory;
+const removeUserInMemory = (userId) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         userStore.delete(userId);
     }
@@ -32,8 +32,8 @@ const removeUserInRedis = (userId) => __awaiter(void 0, void 0, void 0, function
         throw error;
     }
 });
-exports.removeUserInRedis = removeUserInRedis;
-const getUserInRedis = (userId) => __awaiter(void 0, void 0, void 0, function* () {
+exports.removeUserInMemory = removeUserInMemory;
+const getUserInMemory = (userId) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         return userStore.get(userId) || null;
     }
@@ -42,4 +42,4 @@ const getUserInRedis = (userId) => __awaiter(void 0, void 0, void 0, function* (
         throw error;
     }
 });
-exports.getUserInRedis = getUserInRedis;
+exports.getUserInMemory = getUserInMemory;

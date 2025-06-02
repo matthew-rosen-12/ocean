@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getGameTicker = getGameTicker;
 const npcService_1 = require("./services/npcService");
 const config_1 = require("./db/config");
+const types_1 = require("./types");
 let gameTickerInstance = null;
 function getGameTicker() {
     if (!gameTickerInstance) {
@@ -32,11 +33,11 @@ class GameTicker {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 // Get all room names
-                const roomNames = yield (0, config_1.getAllRoomsFromRedis)();
+                const roomNames = yield (0, config_1.getAllRoomsfromMemory)();
                 // Process each room
                 for (const roomName of roomNames) {
                     // Get paths for this room
-                    const paths = yield (0, config_1.getActivepathsFromRedis)(roomName);
+                    const paths = yield (0, config_1.getActivepathsfromMemory)(roomName);
                     if (!paths || paths.length === 0)
                         continue;
                     const completedpaths = [];
@@ -51,7 +52,13 @@ class GameTicker {
                     });
                     // Process completed paths
                     for (const completedpath of completedpaths) {
-                        yield (0, npcService_1.setPathCompleteInRoom)(roomName, completedpath.npc);
+                        // Get current NPC state to check if it's still in PATH phase
+                        const npcs = yield (0, config_1.getNPCsfromMemory)(roomName);
+                        const currentNpc = npcs.get(completedpath.npc.id);
+                        // Only complete path if NPC is still in PATH phase
+                        if (currentNpc && currentNpc.phase === types_1.NPCPhase.path) {
+                            yield (0, npcService_1.setPathCompleteInRoom)(roomName, completedpath.npc);
+                        }
                     }
                 }
             }

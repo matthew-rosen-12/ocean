@@ -12,6 +12,11 @@ import {
 import { createEdgeGeometry } from "../../utils/load-animal-svg";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
 import { TerrainBoundaries } from "../../utils/terrain";
+import {
+  calculateNPCGroupScale,
+  calculateNPCGroupPosition,
+  getFaceNpcId,
+} from "../../utils/npc-group-utils";
 // Constants for positioning
 const FOLLOW_DISTANCE = 2; // Distance behind the user
 
@@ -44,35 +49,27 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
 
   // Calculate logarithmic scale factor based on number of NPCs
   const scaleFactor = useMemo(() => {
-    const numNpcs = group.npcIds.size;
-    if (numNpcs === 0) return 0;
-
-    // Logarithmic scaling function - log base 2 gives a nice curve
-    // Scale starts at 1 for 1 NPC and roughly doubles for each doubling of NPCs
-    const baseScale = 3;
-    const logScale = Math.log(numNpcs) / Math.log(4);
-
-    return baseScale * (1 + logScale);
+    return calculateNPCGroupScale(group.npcIds.size);
   }, [group.npcIds.size]);
 
-  // Get first NPC id from the group and find the actual NPC
-  const firstNpcId =
-    group.npcIds.size === 0 ? null : group.npcIds.values().next().value;
+  // Get face NPC id from the group
+  const faceNpcId = getFaceNpcId(group);
 
-  // If there's no NPC in the group, don't render anything
-  if (!firstNpcId) return null;
+  // If there's no face NPC in the group, don't render anything
+  if (!faceNpcId) return null;
 
-  // Get the real NPC from the npcs map
-  const npc = npcs.get(firstNpcId)!;
+  // Get the real face NPC from the npcs map
+  const faceNpc = npcs.get(faceNpcId);
+  if (!faceNpc) return null;
 
-  // Use the NPCBase hook with the real NPC
+  // Use the NPCBase hook with the face NPC
   const {
     group: threeGroup,
     positionRef,
     textureLoaded,
     updatePositionWithTracking,
     mesh,
-  } = useNPCBase(npc);
+  } = useNPCBase(faceNpc);
 
   // Add a badge showing the number of NPCs in the group
   const npcsCount = group.npcIds.size;
@@ -83,6 +80,39 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
   const edgeGeometryRef = useRef<THREE.Object3D | null>(null);
   // Reference for smooth movement interpolation (non-local users)
   const previousPosition = useMemo(() => new THREE.Vector3(), []);
+
+  // Memoize target position calculation to avoid unnecessary recalculations
+  // Only memoize for non-local users since local users need real-time updates
+  const memoizedTargetPosition = useMemo(() => {
+    if (isLocalUser) return null; // Don't memoize for local users
+    return calculateNPCGroupPosition(user, animalWidth, scaleFactor);
+  }, [
+    isLocalUser,
+    user.position.x,
+    user.position.y,
+    user.direction.x,
+    user.direction.y,
+    animalWidth,
+    scaleFactor,
+  ]);
+
+  // Export position and scale calculation functions for collision detection
+  const calculateTargetPosition = (): THREE.Vector3 => {
+    // For local users, always calculate fresh to ensure real-time updates
+    // For non-local users, use memoized value for performance
+    if (isLocalUser) {
+      return calculateNPCGroupPosition(user, animalWidth, scaleFactor);
+    }
+    return memoizedTargetPosition!;
+  };
+
+  const getCurrentScale = (): number => {
+    return scaleFactor;
+  };
+
+  // Add these functions to the component so they can be accessed from outside
+  (NPCGroupGraphic as any).calculateGroupPosition = calculateTargetPosition;
+  (NPCGroupGraphic as any).getGroupScale = getCurrentScale;
 
   // Add effect to track component lifecycle
   useEffect(() => {
@@ -150,50 +180,10 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
     }
   }, [group.npcIds.size, scaleFactor]);
 
-  // Calculate target position behind the user based on their direction
-  const calculateTargetPosition = (
-    userPosition: THREE.Vector3
-  ): THREE.Vector3 => {
-    // Default direction if not specified (backward is -x)
-    let directionX = -1;
-    let directionY = 0;
-
-    // If user has a direction, use the inverse of it to position behind
-    if (user.direction) {
-      // Normalize direction
-      const length = Math.sqrt(
-        user.direction.x * user.direction.x +
-          user.direction.y * user.direction.y
-      );
-      if (length > 0.001) {
-        directionX = -user.direction.x / length; // Opposite X direction
-        directionY = -user.direction.y / length; // Opposite Y direction
-      }
-    }
-
-    // Calculate position that is animalWidth + scaled NPC width + FOLLOW_DISTANCE units behind the user
-    let npcWidth = 0;
-    if (mesh.current) {
-      npcWidth = mesh.current.scale.x; // width of the NPC mesh
-    }
-
-    let targetPosition = new THREE.Vector3(
-      userPosition.x +
-        directionX * (animalWidth / 2 + npcWidth / 2 + FOLLOW_DISTANCE),
-      userPosition.y +
-        directionY * (animalWidth / 2 + npcWidth / 2 + FOLLOW_DISTANCE),
-      0.05 // Place in front of wave grid
-    );
-
-    return targetPosition;
-  };
-
   // Set initial position
   useMount(() => {
     // Start with initial position behind user
-    const initialPosition = calculateTargetPosition(
-      new THREE.Vector3(user.position.x, user.position.y, user.position.z)
-    );
+    const initialPosition = calculateTargetPosition();
 
     updatePositionWithTracking(initialPosition, "NPCGroup-initial");
     threeGroup.position.copy(positionRef.current);
@@ -235,9 +225,7 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
     if (!threeGroup || !textureLoaded.current) return;
 
     // Calculate target position with offset from user
-    const targetPosition = calculateTargetPosition(
-      new THREE.Vector3(user.position.x, user.position.y, user.position.z)
-    );
+    const targetPosition = calculateTargetPosition();
 
     // Both local and non-local users use smoothMove for nice interpolated following:
     // - Local: interpolates towards target calculated from immediate user position

@@ -9,18 +9,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateNPCInRoomInRedis = updateNPCInRoomInRedis;
-exports.updateNPCGroupInRoomInRedis = updateNPCGroupInRoomInRedis;
+exports.updateNPCInRoomInMemory = updateNPCInRoomInMemory;
+exports.updateNPCGroupInRoomInMemory = updateNPCGroupInRoomInMemory;
 const config_1 = require("./config");
-function updateNPCInRoomInRedis(roomName, npc) {
+function updateNPCInRoomInMemory(roomName, npc) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            // Get current NPCs using the direct Map access
-            const npcs = yield (0, config_1.getNPCsFromRedis)(roomName);
-            // Update NPC in the map
-            npcs.set(npc.id, npc);
-            // Save back using direct Map access
-            yield (0, config_1.setNPCsInRedis)(roomName, npcs);
+            // Direct set operation - no read-modify-set needed
+            yield (0, config_1.setNPCInMemory)(roomName, npc.id, npc);
         }
         catch (error) {
             console.error(`Error updating NPC in room ${roomName}:`, error);
@@ -28,19 +24,11 @@ function updateNPCInRoomInRedis(roomName, npc) {
         }
     });
 }
-function updateNPCGroupInRoomInRedis(roomName, captorId, npcId) {
+function updateNPCGroupInRoomInMemory(roomName, captorId, npcId) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            // Get current groups using direct Map access
-            const groups = yield (0, config_1.getNPCGroupsFromRedis)(roomName);
-            // Update the group
-            const group = groups.get(captorId) || { npcIds: new Set(), captorId };
-            if (!group.npcIds.has(npcId)) {
-                group.npcIds.add(npcId);
-            }
-            groups.set(captorId, group);
-            // Save back using direct Map access
-            yield (0, config_1.setNPCGroupsInRedis)(roomName, groups);
+            // Direct add operation - no read-modify-set needed
+            yield (0, config_1.addNPCToGroupInMemory)(roomName, captorId, npcId);
         }
         catch (error) {
             console.error(`Error updating NPC group in room ${roomName}:`, error);

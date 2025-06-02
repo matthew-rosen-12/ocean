@@ -9,19 +9,24 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.decrementRoomUsersInRedis = exports.getAllRoomKeys = exports.deleteRoomData = exports.setRoomData = exports.getRoomData = exports.connect = void 0;
-exports.getNPCsFromRedis = getNPCsFromRedis;
-exports.setNPCsInRedis = setNPCsInRedis;
-exports.getpathsFromRedis = getpathsFromRedis;
-exports.getActivepathsFromRedis = getActivepathsFromRedis;
-exports.setPathsInRedis = setPathsInRedis;
-exports.getPathsMapFromRedis = getPathsMapFromRedis;
-exports.setPathsMapInRedis = setPathsMapInRedis;
-exports.getNPCGroupsFromRedis = getNPCGroupsFromRedis;
-exports.setNPCGroupsInRedis = setNPCGroupsInRedis;
-exports.removeNPCFromGroupInRoomInRedis = removeNPCFromGroupInRoomInRedis;
-exports.removeNPCGroupInRoomInRedis = removeNPCGroupInRoomInRedis;
-exports.getAllRoomsFromRedis = getAllRoomsFromRedis;
+exports.decrementRoomUsersInMemory = exports.getAllRoomKeys = exports.deleteRoomData = exports.setRoomData = exports.getRoomData = exports.connect = void 0;
+exports.getNPCsfromMemory = getNPCsfromMemory;
+exports.setNPCsInMemory = setNPCsInMemory;
+exports.setNPCInMemory = setNPCInMemory;
+exports.deleteNPCInMemory = deleteNPCInMemory;
+exports.getpathsfromMemory = getpathsfromMemory;
+exports.getActivepathsfromMemory = getActivepathsfromMemory;
+exports.setPathsInMemory = setPathsInMemory;
+exports.getPathsMapfromMemory = getPathsMapfromMemory;
+exports.setPathsMapInMemory = setPathsMapInMemory;
+exports.setPathInMemory = setPathInMemory;
+exports.deletePathInMemory = deletePathInMemory;
+exports.getNPCGroupsfromMemory = getNPCGroupsfromMemory;
+exports.setNPCGroupsInMemory = setNPCGroupsInMemory;
+exports.addNPCToGroupInMemory = addNPCToGroupInMemory;
+exports.removeNPCFromGroupInRoomInMemory = removeNPCFromGroupInRoomInMemory;
+exports.removeNPCGroupInRoomInMemory = removeNPCGroupInRoomInMemory;
+exports.getAllRoomsfromMemory = getAllRoomsfromMemory;
 exports.debugRoomStore = debugRoomStore;
 exports.debugNPCStore = debugNPCStore;
 exports.debugNPCGroupStore = debugNPCGroupStore;
@@ -57,7 +62,7 @@ const getAllRoomKeys = () => __awaiter(void 0, void 0, void 0, function* () {
     return Array.from(roomStore.keys());
 });
 exports.getAllRoomKeys = getAllRoomKeys;
-const decrementRoomUsersInRedis = (roomName, userId) => __awaiter(void 0, void 0, void 0, function* () {
+const decrementRoomUsersInMemory = (roomName, userId) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const room = yield (0, exports.getRoomData)(roomName);
         if (!room) {
@@ -83,9 +88,9 @@ const decrementRoomUsersInRedis = (roomName, userId) => __awaiter(void 0, void 0
         throw error;
     }
 });
-exports.decrementRoomUsersInRedis = decrementRoomUsersInRedis;
+exports.decrementRoomUsersInMemory = decrementRoomUsersInMemory;
 // NPC functions - direct Map access, no serialization
-function getNPCsFromRedis(roomName) {
+function getNPCsfromMemory(roomName) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             // Get the room's NPC map directly, or create a new one if it doesn't exist
@@ -102,7 +107,7 @@ function getNPCsFromRedis(roomName) {
         }
     });
 }
-function setNPCsInRedis(room, npcs) {
+function setNPCsInMemory(room, npcs) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             // Store NPCs directly in the Map - create a copy to prevent external mutations
@@ -114,8 +119,39 @@ function setNPCsInRedis(room, npcs) {
         }
     });
 }
+// Direct NPC operations - no read-modify-set needed
+function setNPCInMemory(roomName, npcId, npc) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            let roomNPCs = npcStore.get(roomName);
+            if (!roomNPCs) {
+                roomNPCs = new Map();
+                npcStore.set(roomName, roomNPCs);
+            }
+            roomNPCs.set(npcId, npc);
+        }
+        catch (error) {
+            console.error(`Error setting NPC ${npcId} in room ${roomName}:`, error);
+            throw error;
+        }
+    });
+}
+function deleteNPCInMemory(roomName, npcId) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const roomNPCs = npcStore.get(roomName);
+            if (roomNPCs) {
+                roomNPCs.delete(npcId);
+            }
+        }
+        catch (error) {
+            console.error(`Error deleting NPC ${npcId} from room ${roomName}:`, error);
+            throw error;
+        }
+    });
+}
 // Path functions - direct Map access, no serialization
-function getpathsFromRedis(room) {
+function getpathsfromMemory(room) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             // Get the room's path map directly, or create a new one if it doesn't exist
@@ -132,12 +168,12 @@ function getpathsFromRedis(room) {
         }
     });
 }
-function getActivepathsFromRedis(roomName) {
+function getActivepathsfromMemory(roomName) {
     return __awaiter(this, void 0, void 0, function* () {
-        return getpathsFromRedis(roomName);
+        return getpathsfromMemory(roomName);
     });
 }
-function setPathsInRedis(roomName, paths) {
+function setPathsInMemory(roomName, paths) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             // Convert array to Map keyed by npcId
@@ -154,7 +190,7 @@ function setPathsInRedis(roomName, paths) {
         }
     });
 }
-function getPathsMapFromRedis(room) {
+function getPathsMapfromMemory(room) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             // Get the room's path map directly, or create a new one if it doesn't exist
@@ -171,7 +207,7 @@ function getPathsMapFromRedis(room) {
         }
     });
 }
-function setPathsMapInRedis(room, paths) {
+function setPathsMapInMemory(room, paths) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             // Store paths directly in the Map - create a copy to prevent external mutations
@@ -183,8 +219,39 @@ function setPathsMapInRedis(room, paths) {
         }
     });
 }
+// Direct Path operations - no read-modify-set needed
+function setPathInMemory(roomName, npcId, pathData) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            let roomPaths = pathStore.get(roomName);
+            if (!roomPaths) {
+                roomPaths = new Map();
+                pathStore.set(roomName, roomPaths);
+            }
+            roomPaths.set(npcId, pathData);
+        }
+        catch (error) {
+            console.error(`Error setting path for NPC ${npcId} in room ${roomName}:`, error);
+            throw error;
+        }
+    });
+}
+function deletePathInMemory(roomName, npcId) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const roomPaths = pathStore.get(roomName);
+            if (roomPaths) {
+                roomPaths.delete(npcId);
+            }
+        }
+        catch (error) {
+            console.error(`Error deleting path for NPC ${npcId} from room ${roomName}:`, error);
+            throw error;
+        }
+    });
+}
 // NPC Group functions - direct Map access, no serialization
-function getNPCGroupsFromRedis(roomName) {
+function getNPCGroupsfromMemory(roomName) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             // Get the room's NPC group map directly, or create a new one if it doesn't exist
@@ -201,7 +268,7 @@ function getNPCGroupsFromRedis(roomName) {
         }
     });
 }
-function setNPCGroupsInRedis(room, groups) {
+function setNPCGroupsInMemory(room, groups) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             // Store groups directly in the Map - create a copy to prevent external mutations
@@ -213,39 +280,71 @@ function setNPCGroupsInRedis(room, groups) {
         }
     });
 }
-function removeNPCFromGroupInRoomInRedis(roomName, captorId, npcId) {
+// Direct Group operations - no read-modify-set needed
+function addNPCToGroupInMemory(roomName, captorId, npcId) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            // Get the room's groups map
             let roomGroups = npcGroupStore.get(roomName);
             if (!roomGroups) {
-                return; // No groups for this room
-            }
-            const group = roomGroups.get(captorId);
-            if (group) {
-                group.npcIds.delete(npcId);
-                roomGroups.set(captorId, group);
-                // Update the store (though the reference is already updated)
+                roomGroups = new Map();
                 npcGroupStore.set(roomName, roomGroups);
+            }
+            let group = roomGroups.get(captorId);
+            if (!group) {
+                group = {
+                    npcIds: new Set(),
+                    captorId,
+                    faceNpcId: npcId, // Set the first NPC as the face NPC
+                };
+                roomGroups.set(captorId, group);
+            }
+            group.npcIds.add(npcId);
+            // If no face NPC is set or the face NPC is no longer in the group, set this one as face
+            if (!group.faceNpcId || !group.npcIds.has(group.faceNpcId)) {
+                group.faceNpcId = npcId;
             }
         }
         catch (error) {
-            console.error(`Error removing NPC from group in room ${roomName}:`, error);
+            console.error(`Error adding NPC ${npcId} to group ${captorId} in room ${roomName}:`, error);
             throw error;
         }
     });
 }
-function removeNPCGroupInRoomInRedis(roomName, captorId) {
+function removeNPCFromGroupInRoomInMemory(roomName, captorId, npcId) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            // Get the room's groups map
             let roomGroups = npcGroupStore.get(roomName);
             if (!roomGroups) {
-                return; // No groups for this room
+                return; // No groups in this room
             }
+            const group = roomGroups.get(captorId);
+            if (!group) {
+                return; // No group for this captor
+            }
+            group.npcIds.delete(npcId);
+            // If the removed NPC was the face NPC, select a new one
+            if (group.faceNpcId === npcId) {
+                const remainingNpcs = Array.from(group.npcIds);
+                group.faceNpcId = remainingNpcs.length > 0 ? remainingNpcs[0] : undefined;
+            }
+            // If group is now empty, remove it entirely
+            if (group.npcIds.size === 0) {
+                roomGroups.delete(captorId);
+            }
+        }
+        catch (error) {
+            console.error(`Error removing NPC ${npcId} from group ${captorId} in room ${roomName}:`, error);
+            throw error;
+        }
+    });
+}
+function removeNPCGroupInRoomInMemory(roomName, captorId) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const roomGroups = npcGroupStore.get(roomName);
+            if (!roomGroups)
+                return;
             roomGroups.delete(captorId);
-            // Update the store
-            npcGroupStore.set(roomName, roomGroups);
         }
         catch (error) {
             console.error(`Error removing NPC group in room ${roomName}:`, error);
@@ -254,7 +353,7 @@ function removeNPCGroupInRoomInRedis(roomName, captorId) {
     });
 }
 // Room discovery
-function getAllRoomsFromRedis() {
+function getAllRoomsfromMemory() {
     return __awaiter(this, void 0, void 0, function* () {
         // Get room names from all stores, merge and deduplicate
         const roomDataKeys = Array.from(roomStore.keys());

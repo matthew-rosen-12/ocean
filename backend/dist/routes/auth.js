@@ -19,7 +19,7 @@ const router = express_1.default.Router();
 router.post("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const guestId = (0, user_info_1.generateGuestId)();
-        const room = yield (0, room_ops_1.findRoomInRedis)();
+        const room = yield (0, room_ops_1.findRoomInMemory)();
         // Create guest user
         const guestUser = {
             id: guestId,

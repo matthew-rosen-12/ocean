@@ -117,12 +117,14 @@ export interface ServerTerrainConfig {
   gridSize: number;
   walls: null;
   backgroundType: string;
+  seed: number;
 }
 
 export interface TerrainConfig {
   boundaries: TerrainBoundaries;
   walls: THREE.Mesh[] | null;
   backgroundType: string;
+  seed: number;
   renderBackground(): React.JSX.Element;
 }
 
@@ -141,8 +143,13 @@ export function createTerrainFromServer(
     boundaries: boundaries,
     walls: null,
     backgroundType: serverConfig.backgroundType,
+    seed: serverConfig.seed,
     renderBackground(): React.JSX.Element {
-      return renderTerrainBackground(boundaries, serverConfig.backgroundType);
+      return renderTerrainBackground(
+        boundaries,
+        serverConfig.backgroundType,
+        serverConfig.seed
+      );
     },
   };
 }
@@ -159,12 +166,16 @@ export function createTerrain(): TerrainConfig {
     halfSize
   );
 
+  // Generate a fallback seed
+  const fallbackSeed = Date.now() % 1000000;
+
   return {
     boundaries: boundaries,
     walls: null,
     backgroundType: "floral",
+    seed: fallbackSeed,
     renderBackground(): React.JSX.Element {
-      return renderTerrainBackground(boundaries, "floral");
+      return renderTerrainBackground(boundaries, "floral", fallbackSeed);
     },
   };
 }
@@ -172,27 +183,28 @@ export function createTerrain(): TerrainConfig {
 // Create background pattern based on type
 function renderTerrainBackground(
   boundaries: TerrainBoundaries,
-  backgroundType: string
+  backgroundType: string,
+  seed: number
 ): React.JSX.Element {
   const renderPattern = () => {
     switch (backgroundType) {
       case "floral":
       case "grass":
-        return <FloralPattern boundaries={boundaries} />;
+        return <FloralPattern boundaries={boundaries} seed={seed} />;
 
       case "forest":
-        return <ForestPattern boundaries={boundaries} />;
+        return <ForestPattern boundaries={boundaries} seed={seed} />;
 
       case "animals":
       case "sand":
-        return <AnimalPattern boundaries={boundaries} />;
+        return <AnimalPattern boundaries={boundaries} seed={seed} />;
 
       case "cosmic":
       case "rock":
-        return <CosmicPattern boundaries={boundaries} />;
+        return <CosmicPattern boundaries={boundaries} seed={seed} />;
 
       default:
-        return <FloralPattern boundaries={boundaries} />;
+        return <FloralPattern boundaries={boundaries} seed={seed} />;
     }
   };
 
@@ -220,4 +232,21 @@ export const CLOUD_PLANE_CONFIG: TerrainPlaneConfig = {
   position: [0, 0, -0.2], // Same XY plane as animals, further behind
   opacity: 1.0,
   zIndex: -0.2,
+};
+
+// Utility function to generate multiple random numbers from one seed
+export const multiRandom = (seed: number) => {
+  const rand1 = (Math.sin(seed * 12.9898) * 43758.5453123) % 1;
+  const rand2 = (Math.sin(seed * 78.233) * 43758.5453123) % 1;
+  const rand3 = (Math.sin(seed * 37.719) * 43758.5453123) % 1;
+  const rand4 = (Math.sin(seed * 93.989) * 43758.5453123) % 1;
+  const rand5 = (Math.sin(seed * 17.951) * 43758.5453123) % 1;
+
+  return {
+    x: Math.abs(rand1),
+    y: Math.abs(rand2),
+    size: Math.abs(rand3),
+    color: Math.abs(rand4),
+    extra: Math.abs(rand5),
+  };
 };

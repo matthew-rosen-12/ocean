@@ -20,7 +20,10 @@ import { updateNPCGroupInRoomInMemory } from "./db/npc-ops";
 import { updateNPCInRoomInMemory } from "./db/npc-ops";
 import { deserialize, serialize } from "./utils/serializers";
 import { getRoomNumUsersInMemory } from "./db/room-ops";
-import { setPathCompleteInRoom } from "./services/npcService";
+import {
+  setPathCompleteInRoom,
+  checkAndHandleNPCCollisions,
+} from "./services/npcService";
 import { generateRoomTerrain } from "./utils/terrain";
 
 // Initialize game ticker
@@ -224,6 +227,18 @@ io.on("connection", async (socket) => {
         }
         activepaths.push(pathData);
         await setPathsInMemory(pathData.room, activepaths);
+
+        // Check for server-side collisions and handle bouncing/reflection
+        const currentPosition = {
+          x: pathData.startPosition.x,
+          y: pathData.startPosition.y,
+          z: 0,
+        };
+        await checkAndHandleNPCCollisions(
+          pathData.room,
+          pathData,
+          currentPosition
+        );
 
         // Only remove from group if there's a captorId (fleeing NPCs don't have groups)
         if (pathData.captorId) {

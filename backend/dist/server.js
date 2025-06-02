@@ -26,6 +26,7 @@ const npc_ops_2 = require("./db/npc-ops");
 const serializers_1 = require("./utils/serializers");
 const room_ops_1 = require("./db/room-ops");
 const npcService_1 = require("./services/npcService");
+const terrain_1 = require("./utils/terrain");
 // Initialize game ticker
 (0, game_ticker_1.getGameTicker)();
 const app = (0, express_1.default)();
@@ -88,7 +89,7 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
             }
             users.set(user.id, user);
             const roomName = socket.data.room;
-            const expectedUserCount = yield (0, room_ops_1.getRoomNumUsersInRedis)(roomName);
+            const expectedUserCount = yield (0, room_ops_1.getRoomNumUsersInMemory)(roomName);
             // If we've received responses from all users in the room
             if (users.size === expectedUserCount) {
                 exports.io.to(requestingSocketId).emit("users-update", (0, serializers_1.serialize)({ users: users }));
@@ -118,18 +119,21 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
             }, 1000);
             // Send other room state to the joining socket
             try {
+                // Send terrain configuration for this room
+                const terrainConfig = (0, terrain_1.generateRoomTerrain)(name);
+                socket.emit("terrain-config", (0, serializers_1.serialize)({ terrainConfig }));
                 // Get existing NPCs
-                const npcsData = yield (0, config_1.getNPCsFromRedis)(name);
+                const npcsData = yield (0, config_1.getNPCsfromMemory)(name);
                 if (npcsData) {
                     socket.emit("npcs-update", (0, serializers_1.serialize)({ npcs: npcsData }));
                 }
                 // Get existing paths
-                const pathsData = yield (0, config_1.getpathsFromRedis)(name);
+                const pathsData = yield (0, config_1.getpathsfromMemory)(name);
                 if (pathsData) {
                     socket.emit("paths-update", (0, serializers_1.serialize)({ paths: pathsData }));
                 }
                 // Get existing NPC groups
-                const groupsData = yield (0, config_1.getNPCGroupsFromRedis)(name);
+                const groupsData = yield (0, config_1.getNPCGroupsfromMemory)(name);
                 if (groupsData) {
                     socket.emit("npc-groups-update", (0, serializers_1.serialize)({ groups: groupsData }));
                 }
@@ -144,15 +148,15 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
         socket.on("capture-npc", (serializedData) => __awaiter(void 0, void 0, void 0, function* () {
             const { npcId, room, captorId } = (0, serializers_1.deserialize)(serializedData);
             try {
-                const npcs = yield (0, config_1.getNPCsFromRedis)(room);
+                const npcs = yield (0, config_1.getNPCsfromMemory)(room);
                 const npc = npcs.get(npcId);
                 const updatedNPC = Object.assign(Object.assign({}, npc), { phase: types_1.NPCPhase.CAPTURED });
                 // Only call setPathCompleteInRoom if the NPC is actually in PATH phase
                 if (npc.phase === types_1.NPCPhase.path) {
                     yield (0, npcService_1.setPathCompleteInRoom)(room, npc);
                 }
-                yield (0, npc_ops_2.updateNPCInRoomInRedis)(room, updatedNPC);
-                yield (0, npc_ops_1.updateNPCGroupInRoomInRedis)(room, captorId, npcId);
+                yield (0, npc_ops_2.updateNPCInRoomInMemory)(room, updatedNPC);
+                yield (0, npc_ops_1.updateNPCGroupInRoomInMemory)(room, captorId, npcId);
                 socket.broadcast.to(room).emit("npc-captured", (0, serializers_1.serialize)({
                     id: captorId,
                     npc: updatedNPC,
@@ -167,18 +171,25 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
             const { pathData } = (0, serializers_1.deserialize)(serializedData);
             try {
                 const updatedNPC = Object.assign(Object.assign({}, pathData.npc), { phase: types_1.NPCPhase.path });
-                yield (0, npc_ops_2.updateNPCInRoomInRedis)(pathData.room, updatedNPC);
-                const activepaths = yield (0, config_1.getpathsFromRedis)(pathData.room);
+                yield (0, npc_ops_2.updateNPCInRoomInMemory)(pathData.room, updatedNPC);
+                const activepaths = yield (0, config_1.getpathsfromMemory)(pathData.room);
                 // if pathData already exists, update it
                 const existingPath = activepaths.find((p) => p.npc.id === pathData.npc.id);
                 if (existingPath) {
                     activepaths.splice(activepaths.indexOf(existingPath), 1);
                 }
                 activepaths.push(pathData);
-                yield (0, config_1.setPathsInRedis)(pathData.room, activepaths);
+                yield (0, config_1.setPathsInMemory)(pathData.room, activepaths);
+                // Check for server-side collisions and handle bouncing/reflection
+                const currentPosition = {
+                    x: pathData.startPosition.x,
+                    y: pathData.startPosition.y,
+                    z: 0,
+                };
+                yield (0, npcService_1.checkAndHandleNPCCollisions)(pathData.room, pathData, currentPosition);
                 // Only remove from group if there's a captorId (fleeing NPCs don't have groups)
                 if (pathData.captorId) {
-                    yield (0, config_1.removeNPCFromGroupInRoomInRedis)(pathData.room, pathData.captorId, pathData.npc.id);
+                    yield (0, config_1.removeNPCFromGroupInRoomInMemory)(pathData.room, pathData.captorId, pathData.npc.id);
                 }
                 socket.broadcast.to(pathData.room).emit("npc-path", (0, serializers_1.serialize)({
                     pathData,
@@ -193,7 +204,6 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
             try {
                 const { user } = (0, serializers_1.deserialize)(serializedData);
                 socket.data.lastPosition = user.position;
-                // Just broadcast to room, don't update Redis
                 const room = socket.data.room;
                 if (room) {
                     socket.broadcast.to(room).emit("user-updated", (0, serializers_1.serialize)({
@@ -209,27 +219,26 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
         socket.on("disconnect", () => __awaiter(void 0, void 0, void 0, function* () {
             try {
                 const lastPosition = socket.data.lastPosition;
-                // Get the socket's room from Redis
                 const room = socket.data.room;
                 if (room) {
                     console.log("disconnecting");
                     const userId = socket.data.user.id;
                     // set npcs of this user's npc groups to IDLE
-                    const npcGroups = yield (0, config_1.getNPCGroupsFromRedis)(room);
+                    const npcGroups = yield (0, config_1.getNPCGroupsfromMemory)(room);
                     const npcGroup = npcGroups.get(user.id);
                     if (npcGroup) {
-                        const npcs = yield (0, config_1.getNPCsFromRedis)(room);
+                        const npcs = yield (0, config_1.getNPCsfromMemory)(room);
                         npcGroup.npcIds.forEach((npcId) => __awaiter(void 0, void 0, void 0, function* () {
                             const npc = npcs.get(npcId);
                             const updatedNPC = Object.assign(Object.assign({}, npc), { position: lastPosition, phase: types_1.NPCPhase.IDLE });
                             npcs.set(npcId, updatedNPC);
                         }));
-                        yield (0, config_1.setNPCsInRedis)(room, npcs);
+                        yield (0, config_1.setNPCsInMemory)(room, npcs);
                     }
                     // remove the user's npc groups from redis
-                    yield (0, config_1.removeNPCGroupInRoomInRedis)(room, user.id);
+                    yield (0, config_1.removeNPCGroupInRoomInMemory)(room, user.id);
                     // Handle room users decrement
-                    yield (0, config_1.decrementRoomUsersInRedis)(room, socket.id);
+                    yield (0, config_1.decrementRoomUsersInMemory)(room, socket.id);
                     if (userId) {
                         socket.broadcast
                             .to(room)

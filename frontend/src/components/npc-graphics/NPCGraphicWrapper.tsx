@@ -11,6 +11,18 @@ interface NPCGraphicWrapperProps {
   pathData: pathData | undefined;
   users: Map<string, UserInfo>;
   terrainBoundaries?: TerrainBoundaries;
+  allNPCs: Map<string, NPC>; // All NPCs for collision checking
+  allPaths?: Map<string, pathData>; // All active paths for NPC-to-NPC collision
+  npcGroups?: Map<string, any>; // NPC groups for collision with groups
+  myUserId?: string; // Current user ID
+  setPaths?: (
+    paths:
+      | Map<string, pathData>
+      | ((prev: Map<string, pathData>) => Map<string, pathData>)
+  ) => void;
+  setNpcs?: (
+    npcs: Map<string, NPC> | ((prev: Map<string, NPC>) => Map<string, NPC>)
+  ) => void;
 }
 
 const NPCGraphicWrapper = ({
@@ -19,6 +31,12 @@ const NPCGraphicWrapper = ({
   pathData,
   users,
   terrainBoundaries,
+  allNPCs,
+  allPaths,
+  npcGroups,
+  myUserId,
+  setPaths,
+  setNpcs,
 }: NPCGraphicWrapperProps) => {
   if (npc.phase === NPCPhase.IDLE) {
     return (
@@ -45,6 +63,13 @@ const NPCGraphicWrapper = ({
         user={captorUser}
         checkForCollision={checkForCollision}
         terrainBoundaries={terrainBoundaries}
+        allNPCs={allNPCs}
+        allPaths={allPaths}
+        npcGroups={npcGroups}
+        users={users}
+        myUserId={myUserId}
+        setPaths={setPaths}
+        setNpcs={setNpcs}
       />
     );
   }

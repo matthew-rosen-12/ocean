@@ -4,9 +4,13 @@ import { TerrainBoundaries, TERRAIN_PLANE_CONFIG } from "../../utils/terrain";
 
 interface AnimalPatternProps {
   boundaries: TerrainBoundaries;
+  seed: number;
 }
 
-export default function AnimalPattern({ boundaries }: AnimalPatternProps) {
+export default function AnimalPattern({
+  boundaries,
+  seed,
+}: AnimalPatternProps) {
   const createAnimalTexture = () => {
     const canvas = document.createElement("canvas");
     canvas.width = 256;
@@ -17,25 +21,48 @@ export default function AnimalPattern({ boundaries }: AnimalPatternProps) {
     ctx.fillStyle = "#F4E4BC";
     ctx.fillRect(0, 0, 256, 256);
 
-    // Add subtle grass texture
+    // Function to generate multiple random numbers from one seed
+    const multiRandom = (seed: number) => {
+      const rand1 = (Math.sin(seed * 12.9898) * 43758.5453123) % 1;
+      const rand2 = (Math.sin(seed * 78.233) * 43758.5453123) % 1;
+      const rand3 = (Math.sin(seed * 37.719) * 43758.5453123) % 1;
+      const rand4 = (Math.sin(seed * 93.989) * 43758.5453123) % 1;
+      const rand5 = (Math.sin(seed * 17.951) * 43758.5453123) % 1;
+
+      return {
+        x: Math.abs(rand1),
+        y: Math.abs(rand2),
+        size: Math.abs(rand3),
+        color: Math.abs(rand4),
+        extra: Math.abs(rand5),
+      };
+    };
+
+    // Add subtle grass texture with seeded randomness
     ctx.fillStyle = "#E6D7A3";
     for (let i = 0; i < 200; i++) {
-      const x = Math.random() * 256;
-      const y = Math.random() * 256;
-      ctx.fillRect(x, y, 1, Math.random() * 3);
+      const grassSeed = seed + i * 100;
+      const random = multiRandom(grassSeed);
+
+      const x = random.x * 256;
+      const y = random.y * 256;
+      ctx.fillRect(x, y, 1, random.extra * 3);
     }
 
-    // Draw animal silhouettes
+    // Draw animal silhouettes with deterministic placement
     const animalColors = ["#8B4513", "#654321", "#A0522D", "#D2691E"];
 
     for (let i = 0; i < 12; i++) {
-      const x = Math.random() * 200 + 28;
-      const y = Math.random() * 200 + 28;
-      const size = 20 + Math.random() * 25;
-      const animalType = Math.floor(Math.random() * 4);
+      const animalSeed = seed + i * 1000;
+      const random = multiRandom(animalSeed);
+
+      const x = 40 + random.x * 176; // Keep away from edges
+      const y = 40 + random.y * 176;
+      const size = 20 + random.size * 25;
+      const animalType = Math.floor(random.extra * 4);
 
       ctx.fillStyle =
-        animalColors[Math.floor(Math.random() * animalColors.length)];
+        animalColors[Math.floor(random.color * animalColors.length)];
 
       switch (animalType) {
         case 0: // Elephant
@@ -127,12 +154,12 @@ export default function AnimalPattern({ boundaries }: AnimalPatternProps) {
       }
     }
 
-    // Add acacia trees
+    // Add acacia trees with deterministic placement
     ctx.fillStyle = "#228B22";
     for (let i = 0; i < 6; i++) {
-      const x = Math.random() * 256;
-      const y = Math.random() * 256;
-      const size = 15 + Math.random() * 20;
+      const x = multiRandom(i * 20 + 200).x * 256;
+      const y = multiRandom(i * 20 + 201).y * 256;
+      const size = 15 + multiRandom(i * 20 + 202).size * 20;
 
       // Acacia tree crown (flat top)
       ctx.beginPath();
@@ -148,6 +175,11 @@ export default function AnimalPattern({ boundaries }: AnimalPatternProps) {
     return canvas;
   };
 
+  // Calculate repeat based on desired tile size and boundary dimensions
+  const desiredTileSize = 22; // World units per tile
+  const repeatX = Math.max(1, Math.ceil(boundaries.width / desiredTileSize));
+  const repeatY = Math.max(1, Math.ceil(boundaries.height / desiredTileSize));
+
   return (
     <mesh position={TERRAIN_PLANE_CONFIG.position}>
       <planeGeometry args={[boundaries.width, boundaries.height]} />
@@ -157,7 +189,7 @@ export default function AnimalPattern({ boundaries }: AnimalPatternProps) {
           image={createAnimalTexture()}
           wrapS={THREE.RepeatWrapping}
           wrapT={THREE.RepeatWrapping}
-          repeat={new THREE.Vector2(2, 2)}
+          repeat={new THREE.Vector2(repeatX, repeatY)}
         />
       </meshBasicMaterial>
     </mesh>

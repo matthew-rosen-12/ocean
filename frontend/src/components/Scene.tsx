@@ -6,6 +6,7 @@ import {
   NPCGroup,
   npcId,
   NPCPhase,
+  PathPhase,
   pathData,
   userId,
   UserInfo,
@@ -100,6 +101,7 @@ async function pathNPC(
         y: Math.round(myUser.direction.y),
       },
       velocity: 20,
+      pathPhase: PathPhase.THROWN, // This is a thrown NPC
     };
 
     // Create new paths map
@@ -523,8 +525,8 @@ export default function Scene({
     (npc: NPC, npcPosition: THREE.Vector3) => {
       // Calculate flee direction (away from player)
       const fleeDirection = normalizeDirection({
-        x: npcPosition.x - myUser.position.x,
-        y: npcPosition.y - myUser.position.y,
+        x: npcPosition.x - myUser.position.x + (Math.random() - 0.5) * 50,
+        y: npcPosition.y - myUser.position.y + (Math.random() - 0.5) * 50,
       });
 
       // Create new objects instead of mutating
@@ -532,8 +534,6 @@ export default function Scene({
         ...npc,
         phase: NPCPhase.path,
       };
-
-      // Normalize the direction
 
       // get current path data, update timestamp and add flee direction to current direction
       const currentPathData = paths.get(npc.id);
@@ -549,6 +549,7 @@ export default function Scene({
               y: currentPathData.direction.y + fleeDirection.y,
             },
             timestamp: Date.now(), // Reset timestamp for smooth transition
+            pathPhase: PathPhase.FLEEING, // Update to fleeing phase
           }
         : {
             // create new path data
@@ -564,6 +565,7 @@ export default function Scene({
             // No captorId - this is a flee path
             direction: fleeDirection,
             velocity: 0.25, // Moderate flee speed
+            pathPhase: PathPhase.FLEEING, // This is a fleeing NPC
           };
 
       // Socket call to create the flee path
@@ -630,19 +632,6 @@ export default function Scene({
     [handleNPCCollision, makeNPCFlee, animalDimensions, myUser.animal]
   );
 
-  const setAnimalWidth = useCallback(
-    (animal: string, width: number) => {
-      if (!animalWidths[animal]) {
-        // Create a new object to ensure React detects the change
-        setAnimalWidths((prev) => ({
-          ...prev,
-          [animal]: width,
-        }));
-      }
-    },
-    [animalWidths]
-  );
-
   const setAnimalDimensionsCallback = useCallback(
     (animal: string, dimensions: { width: number; height: number }) => {
       if (!animalDimensions[animal]) {
@@ -697,6 +686,12 @@ export default function Scene({
             checkForCollision={checkForNPCCollision}
             pathData={paths.get(npc.id)}
             users={users}
+            allNPCs={npcs}
+            allPaths={paths}
+            npcGroups={npcGroups}
+            myUserId={myUser.id}
+            setPaths={setPaths}
+            setNpcs={setNpcs}
           />
         ))}
       {Array.from(npcGroups.values()).map((group) => {

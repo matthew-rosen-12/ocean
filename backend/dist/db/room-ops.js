@@ -9,12 +9,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getRoomNumUsersInRedis = exports.incrementRoomUsersInRedis = exports.findRoomInRedis = void 0;
+exports.getRoomNumUsersInMemory = exports.incrementRoomUsersInMemory = exports.findRoomInMemory = void 0;
 exports.populateRoom = populateRoom;
 const config_1 = require("./config");
 const npcService_1 = require("../services/npcService");
 const uuid_1 = require("uuid");
-const findRoomInRedis = () => __awaiter(void 0, void 0, void 0, function* () {
+const findRoomInMemory = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const roomKeys = yield (0, config_1.getAllRoomKeys)();
         const rooms = yield Promise.all(roomKeys.map((roomName) => __awaiter(void 0, void 0, void 0, function* () {
@@ -26,12 +26,12 @@ const findRoomInRedis = () => __awaiter(void 0, void 0, void 0, function* () {
             .sort((a, b) => a.numUsers - b.numUsers);
         if (activeRooms.length > 0) {
             const room = activeRooms[0];
-            yield (0, exports.incrementRoomUsersInRedis)(room.name);
+            yield (0, exports.incrementRoomUsersInMemory)(room.name);
             return room.name;
         }
         // If no suitable room exists, create a new one
         const roomName = `room-${(0, uuid_1.v4)()}`;
-        yield createRoomInRedis(roomName);
+        yield createRoomInMemory(roomName);
         yield populateRoom(roomName);
         return roomName;
     }
@@ -40,8 +40,8 @@ const findRoomInRedis = () => __awaiter(void 0, void 0, void 0, function* () {
         throw error;
     }
 });
-exports.findRoomInRedis = findRoomInRedis;
-const incrementRoomUsersInRedis = (roomName) => __awaiter(void 0, void 0, void 0, function* () {
+exports.findRoomInMemory = findRoomInMemory;
+const incrementRoomUsersInMemory = (roomName) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const room = yield (0, config_1.getRoomData)(roomName);
         if (!room)
@@ -55,8 +55,8 @@ const incrementRoomUsersInRedis = (roomName) => __awaiter(void 0, void 0, void 0
         throw error;
     }
 });
-exports.incrementRoomUsersInRedis = incrementRoomUsersInRedis;
-const createRoomInRedis = (roomName) => __awaiter(void 0, void 0, void 0, function* () {
+exports.incrementRoomUsersInMemory = incrementRoomUsersInMemory;
+const createRoomInMemory = (roomName) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const newRoom = {
             name: roomName,
@@ -73,7 +73,7 @@ const createRoomInRedis = (roomName) => __awaiter(void 0, void 0, void 0, functi
         throw error;
     }
 });
-const getRoomNumUsersInRedis = (roomName) => __awaiter(void 0, void 0, void 0, function* () {
+const getRoomNumUsersInMemory = (roomName) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const room = yield (0, config_1.getRoomData)(roomName);
         if (!room)
@@ -85,7 +85,7 @@ const getRoomNumUsersInRedis = (roomName) => __awaiter(void 0, void 0, void 0, f
         throw error;
     }
 });
-exports.getRoomNumUsersInRedis = getRoomNumUsersInRedis;
+exports.getRoomNumUsersInMemory = getRoomNumUsersInMemory;
 function populateRoom(roomName) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -94,7 +94,7 @@ function populateRoom(roomName) {
             npcs.forEach((npc) => {
                 npcMap.set(npc.id, npc);
             });
-            (0, config_1.setNPCsInRedis)(roomName, npcMap);
+            (0, config_1.setNPCsInMemory)(roomName, npcMap);
         }
         catch (error) {
             console.error(`Error populating room ${roomName}:`, error);

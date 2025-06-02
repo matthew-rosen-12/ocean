@@ -11,6 +11,7 @@ export interface TerrainConfig {
   gridSize: number;
   walls: null; // Future: room-specific walls
   backgroundType: string; // 'floral' | 'forest' | 'animals' | 'cosmic' etc.
+  seed: number; // Seed for consistent pattern generation
 }
 
 export function generateRoomTerrain(roomId: string): TerrainConfig {
@@ -23,9 +24,12 @@ export function generateRoomTerrain(roomId: string): TerrainConfig {
   const halfSize = gridSize / 2;
 
   // Different background types that match our frontend patterns
-  const backgroundTypes = ["floral", "forest", "animals", "cosmic"];
+  const backgroundTypes = ["floral"];
   const backgroundType =
     backgroundTypes[Math.floor(roomHash / 4) % backgroundTypes.length];
+
+  // Generate a seed for pattern randomness (different from roomHash to avoid correlation)
+  const patternSeed = simpleHash(roomId + "_pattern");
 
   return {
     boundaries: {
@@ -39,6 +43,7 @@ export function generateRoomTerrain(roomId: string): TerrainConfig {
     gridSize,
     walls: null,
     backgroundType,
+    seed: patternSeed,
   };
 }
 
