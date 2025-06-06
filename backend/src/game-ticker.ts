@@ -1,5 +1,5 @@
 import { pathData } from "./types";
-import { setPathCompleteInRoom } from "./services/npcService";
+import { checkAndHandleNPCCollisions, setPathCompleteInRoom } from "./services/npcService";
 
 import {
   getActivepathsfromMemory,
@@ -64,6 +64,7 @@ class GameTicker {
             await setPathCompleteInRoom(roomName, completedpath.npc);
           }
         }
+        checkAndHandleNPCCollisions(roomName)
       }
     } catch (error) {
       console.error("Error in game ticker:", error);

@@ -180,13 +180,6 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
                 }
                 activepaths.push(pathData);
                 yield (0, config_1.setPathsInMemory)(pathData.room, activepaths);
-                // Check for server-side collisions and handle bouncing/reflection
-                const currentPosition = {
-                    x: pathData.startPosition.x,
-                    y: pathData.startPosition.y,
-                    z: 0,
-                };
-                yield (0, npcService_1.checkAndHandleNPCCollisions)(pathData.room, pathData, currentPosition);
                 // Only remove from group if there's a captorId (fleeing NPCs don't have groups)
                 if (pathData.captorId) {
                     yield (0, config_1.removeNPCFromGroupInRoomInMemory)(pathData.room, pathData.captorId, pathData.npc.id);

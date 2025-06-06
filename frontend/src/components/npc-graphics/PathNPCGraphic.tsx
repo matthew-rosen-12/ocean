@@ -77,7 +77,7 @@ interface pathPCGraphicProps {
   npc: NPC;
   pathData: pathData;
   user?: UserInfo; // User who threw the NPC for border color (optional for fleeing NPCs)
-  checkForCollision?: (npc: NPC, npcPosition?: THREE.Vector3) => void; // Collision checking for fleeing NPCs
+  checkForCollision: (npc: NPC, npcPosition?: THREE.Vector3) => void; // Collision checking for fleeing NPCs
   terrainBoundaries?: TerrainBoundaries; // Add terrain boundaries for wrapping
   allNPCs?: Map<string, NPC>; // All NPCs in the scene for collision checking
   allPaths?: Map<string, pathData>; // All active paths for NPC-to-NPC collision
@@ -234,40 +234,8 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
     )
       return;
 
-    const COLLISION_RADIUS = 3.0;
-
-    // Check collision with other path NPCs with captors
-    if (allPaths) {
-      Array.from(allPaths.values()).forEach((otherPathData) => {
-        if (
-          otherPathData.npc.id !== npc.id &&
-          otherPathData.pathPhase === PathPhase.THROWN &&
-          otherPathData.captorId &&
-          otherPathData.captorId !== currentPathData.captorId // Ignore same captor
-        ) {
-          const otherPosition = calculatePathPosition(
-            otherPathData,
-            Date.now()
-          );
-          const distance = currentPosition.distanceTo(otherPosition);
-
-          if (distance < COLLISION_RADIUS) {
-            console.log(
-              `NPC-to-NPC collision detected: ${npc.id} vs ${otherPathData.npc.id}`
-            );
-            setHasCollided(true);
-            handleNPCBounce(currentPosition, otherPosition);
-            return;
-          }
-        }
-      });
-    }
-
     // Check collision with NPC groups - only against face NPC with proper position/scale
     if (npcGroups && users && allNPCs) {
-      console.log(
-        `Checking group collisions for NPC ${npc.id}, found ${npcGroups.size} groups`
-      );
 
       // Use the memoized group positions for efficient collision detection
       Array.from(calculateGroupPositions.entries()).forEach(
@@ -275,10 +243,6 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
           if (captorId !== currentPathData.captorId) {
             // Ignore same captor
             const distance = currentPosition.distanceTo(groupData.position);
-
-            console.log(
-              `Checking group ${captorId}: distance=${distance}, threshold=${groupData.radius}, scale=${groupData.scale}`
-            );
 
             if (distance < groupData.radius) {
               const group = npcGroups.get(captorId);
@@ -303,66 +267,6 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
         `Group collision check skipped - npcGroups: ${!!npcGroups}, users: ${!!users}, allNPCs: ${!!allNPCs}`
       );
     }
-  };
-
-  // Handle bouncing between two path NPCs
-  const handleNPCBounce = (
-    myPosition: THREE.Vector3,
-    otherPosition: THREE.Vector3
-  ) => {
-    if (!setPaths || !setNpcs) return;
-
-    // Calculate bounce direction (away from other NPC with some randomness)
-    const bounceDirection = {
-      x: myPosition.x - otherPosition.x + (Math.random() - 0.5) * 2,
-      y: myPosition.y - otherPosition.y + (Math.random() - 0.5) * 2,
-    };
-
-    // Normalize bounce direction
-    const length = Math.sqrt(
-      bounceDirection.x * bounceDirection.x +
-        bounceDirection.y * bounceDirection.y
-    );
-    const normalizedDirection = {
-      x: bounceDirection.x / length,
-      y: bounceDirection.y / length,
-    };
-
-    // Create bounce path
-    const bouncePathData: pathData = {
-      id: uuidv4(),
-      room: pathData.room,
-      npc: npc,
-      startPosition: {
-        x: myPosition.x,
-        y: myPosition.y,
-      },
-      direction: normalizedDirection,
-      pathDuration: 1000, // Short bounce duration
-      velocity: 15, // Medium bounce speed
-      timestamp: Date.now(),
-      captorId: pathData.captorId,
-      pathPhase: PathPhase.BOUNCING,
-    };
-
-    // Send to server
-    const currentSocket = socket();
-    if (currentSocket) {
-      currentSocket.emit(
-        "path-npc",
-        serialize({ pathData: bouncePathData }),
-        (response: { success: boolean }) => {
-          if (!response.success) console.error("NPC bounce failed");
-        }
-      );
-    }
-
-    // Update local state
-    setPaths((prev: Map<string, pathData>) => {
-      const newPaths = new Map(prev);
-      newPaths.set(npc.id, bouncePathData);
-      return newPaths;
-    });
   };
 
   // Handle reflection off NPC group and emit NPC from group

@@ -96,11 +96,14 @@ function calculateLandingPositionWithCollisionAvoidance(pathData, terrainConfig,
             // Check for collisions with IDLE NPCs
             let hasCollision = false;
             for (const idleNPC of idleNPCs) {
-                const distance = Math.sqrt(Math.pow(landingPosition.x - idleNPC.position.x, 2) +
-                    Math.pow(landingPosition.y - idleNPC.position.y, 2));
-                if (distance < COLLISION_RADIUS) {
+                const collided = detectCollision(landingPosition, Object.assign(Object.assign({}, idleNPC.position), { z: 0 }), 4.0, // width1 - moving NPC
+                4.0, // height1 - moving NPC
+                4.0, // width2 - idle NPC
+                4.0 // height2 - idle NPC
+                );
+                if (collided) {
                     hasCollision = true;
-                    console.log(`Collision detected between NPC ${movingNpcId} and IDLE NPC ${idleNPC.id} at distance ${distance}`);
+                    console.log(`Bounding box collision detected between NPC ${movingNpcId} and IDLE NPC ${idleNPC.id}`);
                     break;
                 }
             }
@@ -231,64 +234,54 @@ function getFaceNpcId(group) {
     const firstNpcId = group.npcIds.size > 0 ? group.npcIds.values().next().value : null;
     return firstNpcId !== null && firstNpcId !== void 0 ? firstNpcId : null;
 }
+const detectCollision = (position1, position2, width1 = 4.0, height1 = 4.0, width2 = 4.0, height2 = 4.0) => {
+    // Bounding box collision detection
+    const halfWidth1 = width1 / 2;
+    const halfHeight1 = height1 / 2;
+    const halfWidth2 = width2 / 2;
+    const halfHeight2 = height2 / 2;
+    const left1 = position1.x - halfWidth1;
+    const right1 = position1.x + halfWidth1;
+    const top1 = position1.y - halfHeight1;
+    const bottom1 = position1.y + halfHeight1;
+    const left2 = position2.x - halfWidth2;
+    const right2 = position2.x + halfWidth2;
+    const top2 = position2.y - halfHeight2;
+    const bottom2 = position2.y + halfHeight2;
+    // Check if bounding boxes overlap
+    return !(right1 < left2 || left1 > right2 || bottom1 < top2 || top1 > bottom2);
+};
 // Check for NPC collisions and handle bouncing/reflection (mirrored from client)
-function checkAndHandleNPCCollisions(room, currentPathData, currentPosition) {
+function checkAndHandleNPCCollisions(room) {
     return __awaiter(this, void 0, void 0, function* () {
-        // Only check for thrown NPCs (those with captors)
-        if (currentPathData.pathPhase !== types_1.PathPhase.THROWN ||
-            !currentPathData.captorId) {
-            return;
-        }
         try {
             // Get all necessary data for collision detection
             const allPaths = yield (0, config_1.getActivepathsfromMemory)(room);
-            const allNPCs = yield (0, config_1.getNPCsfromMemory)(room);
-            const npcGroups = yield (0, config_1.getNPCGroupsfromMemory)(room);
             const COLLISION_RADIUS = 3.0;
             // Check collision with other path NPCs with captors (mirrored from client)
-            for (const otherPathData of allPaths) {
-                if (otherPathData.npc.id !== currentPathData.npc.id &&
-                    otherPathData.pathPhase === types_1.PathPhase.THROWN &&
-                    otherPathData.captorId &&
-                    otherPathData.captorId !== currentPathData.captorId // Ignore same captor
-                ) {
-                    const otherPosition = calculatePathPosition(otherPathData, Date.now());
-                    const distance = Math.sqrt(Math.pow(currentPosition.x - otherPosition.x, 2) +
-                        Math.pow(currentPosition.y - otherPosition.y, 2));
-                    if (distance < COLLISION_RADIUS) {
-                        console.log(`Server: NPC-to-NPC collision detected: ${currentPathData.npc.id} vs ${otherPathData.npc.id}`);
-                        yield handleNPCBounce(room, currentPathData, currentPosition, otherPosition);
-                        return;
-                    }
+            for (let i = 0; i < allPaths.length; i++) {
+                const currentPathData = allPaths[i];
+                if (currentPathData.pathPhase === types_1.PathPhase.FLEEING) {
+                    continue;
                 }
-            }
-            // Check collision with NPC groups - only against face NPC with proper position/scale
-            // (mirrored from client but simplified due to server constraints)
-            console.log(`Server: Checking group collisions for NPC ${currentPathData.npc.id}, found ${npcGroups.size} groups`);
-            for (const [captorId, group] of npcGroups.entries()) {
-                if (group.captorId !== currentPathData.captorId && // Ignore same captor
-                    group.npcIds.size > 0) {
-                    // Get the face NPC for this group
-                    const faceNpcId = getFaceNpcId(group);
-                    if (!faceNpcId)
-                        continue;
-                    const faceNpc = allNPCs.get(faceNpcId);
-                    if (!faceNpc || faceNpc.phase !== types_1.NPCPhase.CAPTURED)
-                        continue;
-                    // Note: On server we don't have real-time user positions, so we use the face NPC position
-                    // This is a limitation compared to the client implementation
-                    const groupPosition = faceNpc.position;
-                    // Calculate the current group scale using utility functions
-                    const groupScale = calculateNPCGroupScale(group.npcIds.size);
-                    const distance = Math.sqrt(Math.pow(currentPosition.x - groupPosition.x, 2) +
-                        Math.pow(currentPosition.y - groupPosition.y, 2));
-                    // Use group scale for collision radius - larger groups have larger collision areas
-                    const GROUP_COLLISION_RADIUS = groupScale * 0.8; // Scale factor for collision
-                    console.log(`Server: Checking group ${group.captorId} face NPC ${faceNpcId}: distance=${distance}, threshold=${GROUP_COLLISION_RADIUS}, scale=${groupScale}`);
-                    if (distance < GROUP_COLLISION_RADIUS) {
-                        console.log(`Server: NPC-to-Group collision detected: ${currentPathData.npc.id} vs group ${group.captorId} (face: ${faceNpcId}) at distance ${distance}`);
-                        yield handleNPCGroupReflection(room, currentPathData, currentPosition, groupPosition, group);
-                        return;
+                const currentPosition = calculatePathPosition(currentPathData, Date.now());
+                for (let j = i + 1; j < allPaths.length; j++) {
+                    const otherPathData = allPaths[j];
+                    if (otherPathData.pathPhase === types_1.PathPhase.THROWN &&
+                        otherPathData.captorId &&
+                        otherPathData.captorId !== currentPathData.captorId // Ignore same captor
+                    ) {
+                        const otherPosition = calculatePathPosition(otherPathData, Date.now());
+                        const collided = detectCollision(currentPosition, otherPosition, 4.0, // width1
+                        4.0, // height1
+                        4.0, // width2
+                        4.0 // height2
+                        );
+                        if (collided) {
+                            yield handleNPCBounce(room, currentPathData, currentPosition, otherPosition);
+                            yield handleNPCBounce(room, otherPathData, otherPosition, currentPosition);
+                            return;
+                        }
                     }
                 }
             }
@@ -334,6 +327,7 @@ function handleNPCBounce(room, pathData, myPosition, otherPosition) {
         const updatedPaths = activePaths.filter((p) => p.npc.id !== pathData.npc.id);
         updatedPaths.push(bouncePathData);
         yield (0, config_1.setPathsInMemory)(room, updatedPaths);
+        console.log("handle npc bounce");
         // Broadcast to all clients
         server_1.io.to(room).emit("npc-path", (0, serializers_1.serialize)({ pathData: bouncePathData }));
     });

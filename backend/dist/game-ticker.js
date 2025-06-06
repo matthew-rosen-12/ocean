@@ -60,6 +60,7 @@ class GameTicker {
                             yield (0, npcService_1.setPathCompleteInRoom)(roomName, completedpath.npc);
                         }
                     }
+                    (0, npcService_1.checkAndHandleNPCCollisions)(roomName);
                 }
             }
             catch (error) {
