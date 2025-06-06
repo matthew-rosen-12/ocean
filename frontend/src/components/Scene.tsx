@@ -523,20 +523,96 @@ export default function Scene({
   // Function to make an NPC flee from the player
   const makeNPCFlee = useCallback(
     (npc: NPC, npcPosition: THREE.Vector3) => {
-      // Calculate flee direction (away from player)
-      const fleeDirection = normalizeDirection({
-        x: npcPosition.x - myUser.position.x + (Math.random() - 0.5) * 50,
-        y: npcPosition.y - myUser.position.y + (Math.random() - 0.5) * 50,
-      });
-
       // Create new objects instead of mutating
       const updatedNpc: NPC = {
         ...npc,
         phase: NPCPhase.path,
       };
 
-      // get current path data, update timestamp and add flee direction to current direction
+      // Get current path data
       const currentPathData = paths.get(npc.id);
+
+      // Calculate flee direction from all nearby users using weighted averaging
+      let totalFleeForce = { x: 0, y: 0 };
+      let totalWeight = 0;
+
+      // Check all users for flee influence
+      Array.from(users.values()).forEach((user) => {
+        const distance = Math.sqrt(
+          (npcPosition.x - user.position.x) ** 2 +
+            (npcPosition.y - user.position.y) ** 2
+        );
+
+        // Only consider users within flee range
+        // Calculate flee direction away from this user
+        const fleeDirection = {
+          x: npcPosition.x - user.position.x,
+          y: npcPosition.y - user.position.y,
+        };
+
+        // Normalize the flee direction
+        const length = Math.sqrt(fleeDirection.x ** 2 + fleeDirection.y ** 2);
+        if (length > 0) {
+          fleeDirection.x /= length;
+          fleeDirection.y /= length;
+
+          // Weight inversely by distance (closer users have more influence)
+          const weight = 1.0 / (distance * distance);
+
+          totalFleeForce.x += fleeDirection.x * weight;
+          totalFleeForce.y += fleeDirection.y * weight;
+          totalWeight += weight;
+        }
+      });
+
+      // If no flee forces, don't create a flee path
+      if (totalWeight === 0) {
+        return;
+      }
+
+      // Average the flee forces
+      const averageFleeDirection = {
+        x: totalFleeForce.x / totalWeight,
+        y: totalFleeForce.y / totalWeight,
+      };
+
+      // Normalize the final direction
+      const finalLength = Math.sqrt(
+        averageFleeDirection.x ** 2 + averageFleeDirection.y ** 2
+      );
+
+      let finalFleeDirection: { x: number; y: number };
+      if (finalLength > 0) {
+        finalFleeDirection = {
+          x: averageFleeDirection.x / finalLength,
+          y: averageFleeDirection.y / finalLength,
+        };
+      } else {
+        // Fallback to flee from primary user
+        finalFleeDirection = normalizeDirection({
+          x: npcPosition.x - myUser.position.x,
+          y: npcPosition.y - myUser.position.y,
+        });
+      }
+
+      // Add stability: if already fleeing, blend with current direction
+      if (currentPathData && currentPathData.pathPhase === PathPhase.FLEEING) {
+        const timeSinceLastUpdate = Date.now() - currentPathData.timestamp;
+        const MIN_UPDATE_INTERVAL = 300; // Update more frequently but still stable
+
+        // Only update if enough time has passed
+        if (timeSinceLastUpdate < MIN_UPDATE_INTERVAL) {
+          return;
+        }
+
+        // Blend current direction with new flee direction for stability
+        const currentDir = currentPathData.direction;
+        finalFleeDirection = normalizeDirection({
+          x: currentDir.x * 0.4 + finalFleeDirection.x * 0.6,
+          y: currentDir.y * 0.4 + finalFleeDirection.y * 0.6,
+        });
+      }
+
       const newPathData: pathData = currentPathData
         ? {
             ...currentPathData,
@@ -544,12 +620,10 @@ export default function Scene({
               x: npcPosition.x,
               y: npcPosition.y,
             },
-            direction: {
-              x: currentPathData.direction.x + fleeDirection.x,
-              y: currentPathData.direction.y + fleeDirection.y,
-            },
-            timestamp: Date.now(), // Reset timestamp for smooth transition
-            pathPhase: PathPhase.FLEEING, // Update to fleeing phase
+            direction: finalFleeDirection,
+            timestamp: Date.now(),
+            pathPhase: PathPhase.FLEEING,
+            velocity: 3.0, // Consistent flee speed
           }
         : {
             // create new path data
@@ -560,12 +634,11 @@ export default function Scene({
               x: npcPosition.x,
               y: npcPosition.y,
             },
-            pathDuration: 1500, // Shorter flee duration
+            pathDuration: 1500,
             timestamp: Date.now(),
-            // No captorId - this is a flee path
-            direction: fleeDirection,
-            velocity: 0.25, // Moderate flee speed
-            pathPhase: PathPhase.FLEEING, // This is a fleeing NPC
+            direction: finalFleeDirection,
+            velocity: 3.0, // Consistent flee speed
+            pathPhase: PathPhase.FLEEING,
           };
 
       // Socket call to create the flee path
@@ -592,7 +665,7 @@ export default function Scene({
         return newNpcs;
       });
     },
-    [myUser, npcs, paths, setPaths, setNpcs]
+    [myUser, npcs, paths, setPaths, setNpcs, normalizeDirection, users]
   );
 
   // Function to check for collisions with NPCs
