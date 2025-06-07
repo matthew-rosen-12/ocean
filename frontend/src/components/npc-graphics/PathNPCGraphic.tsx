@@ -3,12 +3,10 @@ import React, {
   useRef,
   useState,
   useMemo,
-  useCallback,
 } from "react";
 import {
   NPC,
   NPCPhase,
-  PathPhase,
   pathData,
   UserInfo,
 } from "../../utils/types";
@@ -19,9 +17,6 @@ import { createEdgeGeometry } from "../../utils/load-animal-svg";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
 import { getAnimalBorderColor } from "../../utils/animal-colors";
 import { TerrainBoundaries } from "../../utils/terrain";
-import { v4 as uuidv4 } from "uuid";
-import { socket } from "../../socket";
-import { serialize } from "../../utils/serializers";
 import {
   getFaceNpcId,
   calculateNPCGroupPosition,
@@ -99,14 +94,9 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
   pathData,
   user,
   checkForCollision,
-  terrainBoundaries,
   allNPCs,
-  allPaths,
   npcGroups,
   users,
-  myUserId,
-  setPaths,
-  setNpcs,
 }) => {
   const { group, positionRef, textureLoaded, updatePositionWithTracking } =
     useNPCBase(npc);
@@ -220,147 +210,7 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
     return position;
   };
 
-  // Check for collisions with other NPCs with captors and handle bouncing/reflection
-  const checkNPCToNPCCollision = (
-    currentPathData: pathData,
-    currentPosition: THREE.Vector3
-  ) => {
-    if (!allNPCs || !allPaths || !npcGroups || hasCollided) return;
-
-    // Only check for thrown NPCs (those with captors)
-    if (
-      currentPathData.pathPhase !== PathPhase.THROWN ||
-      !currentPathData.captorId
-    )
-      return;
-
-    // Check collision with NPC groups - only against face NPC with proper position/scale
-    if (npcGroups && users && allNPCs) {
-
-      // Use the memoized group positions for efficient collision detection
-      Array.from(calculateGroupPositions.entries()).forEach(
-        ([captorId, groupData]) => {
-          if (captorId !== currentPathData.captorId) {
-            // Ignore same captor
-            const distance = currentPosition.distanceTo(groupData.position);
-
-            if (distance < groupData.radius) {
-              const group = npcGroups.get(captorId);
-              if (group) {
-                console.log(
-                  `NPC-to-Group collision detected: ${npc.id} vs group ${captorId} at distance ${distance}`
-                );
-                setHasCollided(true);
-                handleNPCGroupReflection(
-                  currentPosition,
-                  groupData.position,
-                  group
-                );
-                return;
-              }
-            }
-          }
-        }
-      );
-    } else {
-      console.log(
-        `Group collision check skipped - npcGroups: ${!!npcGroups}, users: ${!!users}, allNPCs: ${!!allNPCs}`
-      );
-    }
-  };
-
-  // Handle reflection off NPC group and emit NPC from group
-  const handleNPCGroupReflection = (
-    npcPosition: THREE.Vector3,
-    groupPosition: THREE.Vector3,
-    group: any
-  ) => {
-    if (!setPaths || !setNpcs || !allNPCs) return;
-
-    // Calculate reflection direction
-    const reflectionDirection = {
-      x: npcPosition.x - groupPosition.x,
-      y: npcPosition.y - groupPosition.y,
-    };
-
-    // Normalize reflection direction
-    const length = Math.sqrt(
-      reflectionDirection.x * reflectionDirection.x +
-        reflectionDirection.y * reflectionDirection.y
-    );
-    const normalizedDirection = {
-      x: reflectionDirection.x / length,
-      y: reflectionDirection.y / length,
-    };
-
-    // Create reflection path for the thrown NPC
-    const reflectionPathData: pathData = {
-      id: uuidv4(),
-      room: pathData.room,
-      npc: npc,
-      startPosition: {
-        x: npcPosition.x,
-        y: npcPosition.y,
-      },
-      direction: normalizedDirection,
-      pathDuration: 1200, // Reflection duration
-      velocity: 18, // Fast reflection speed
-      timestamp: Date.now(),
-      captorId: pathData.captorId,
-      pathPhase: PathPhase.BOUNCING,
-    };
-
-    // Send reflection to server
-    const currentSocket = socket();
-    if (currentSocket) {
-      currentSocket.emit(
-        "path-npc",
-        serialize({ pathData: reflectionPathData }),
-        (response: { success: boolean }) => {
-          if (!response.success) console.error("NPC reflection failed");
-        }
-      );
-
-      // Emit an NPC from the group in the same direction (faster)
-      if (group.npcIds.size > 0) {
-        const emittedNPCId = group.npcIds.values().next().value;
-        const emittedNPC = allNPCs.get(emittedNPCId);
-
-        if (emittedNPC) {
-          const emissionPathData: pathData = {
-            id: uuidv4(),
-            room: pathData.room,
-            npc: emittedNPC,
-            startPosition: {
-              x: groupPosition.x,
-              y: groupPosition.y,
-            },
-            direction: normalizedDirection,
-            pathDuration: 1500, // Longer emission duration
-            velocity: 25, // Very fast emission speed
-            timestamp: Date.now(),
-            captorId: group.captorId,
-            pathPhase: PathPhase.THROWN,
-          };
-
-          currentSocket.emit(
-            "path-npc",
-            serialize({ pathData: emissionPathData }),
-            (response: { success: boolean }) => {
-              if (!response.success) console.error("NPC emission failed");
-            }
-          );
-        }
-      }
-    }
-
-    // Update local state
-    setPaths((prev: Map<string, pathData>) => {
-      const newPaths = new Map(prev);
-      newPaths.set(npc.id, reflectionPathData);
-      return newPaths;
-    });
-  };
+  
 
   // Check for collisions with IDLE NPCs and extend path if needed
   const checkAndExtendPath = (
@@ -446,9 +296,6 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
     updatePositionWithTracking(pathPosition, "pathPC-update");
 
     group.position.copy(positionRef.current);
-
-    // Check for NPC-to-NPC collisions (bouncing/reflection)
-    checkNPCToNPCCollision(currentPathData, pathPosition);
 
     // For fleeing NPCs (no captorId), check for collision
     if (!pathData.captorId && checkForCollision) {

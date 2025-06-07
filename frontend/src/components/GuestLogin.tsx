@@ -168,7 +168,6 @@ export default function GuestLogin({
 
       socket.on("npc-path", (serializedData: string) => {
         const { pathData } = deserialize(serializedData);
-        console.log("npc-path", pathData);
         setPaths((prev) => new Map(prev).set(pathData.npc.id, pathData));
         setNPCs((prev) => new Map(prev).set(pathData.npc.id, pathData.npc));
         setNPCGroups((prev) => {

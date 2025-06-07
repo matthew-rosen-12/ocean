@@ -777,6 +777,13 @@ export default function Scene({
             group={group}
             user={user}
             npcs={npcs}
+            allPaths={paths}
+            allNPCs={npcs}
+            npcGroups={npcGroups}
+            users={users}
+            setPaths={setPaths}
+            setNpcs={setNpcs}
+            setNpcGroups={setNpcGroups}
             animalWidth={
               animalDimensions[user.animal]?.width || animalWidths[user.animal]
             }
