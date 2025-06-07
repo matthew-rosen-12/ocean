@@ -360,7 +360,7 @@ export async function checkAndHandleNPCCollisions(room: string): Promise<void> {
     // Check collision with other path NPCs with captors (mirrored from client)
     for (let i = 0; i < allPaths.length; i++) {
       const currentPathData = allPaths[i];
-      if (currentPathData.pathPhase === PathPhase.FLEEING) {
+      if (currentPathData.pathPhase !== PathPhase.THROWN) {
         continue;
       }
       const currentPosition = calculatePathPosition(

@@ -29,6 +29,25 @@ import { v4 as uuidv4 } from "uuid";
 // Constants for positioning
 const FOLLOW_DISTANCE = 2; // Distance behind the user
 
+// Deterministic random function that produces consistent results across all clients
+function getRandom(input: Record<string, any>): number {
+  // Create deterministic hash from server-synchronized data only
+  const hashInput = Object.entries(input)
+    .sort(([a], [b]) => a.localeCompare(b)) // Sort keys for consistency
+    .map(([key, value]) => `${key}:${value}`)
+    .join('|');
+    
+  let hash = 0;
+  for (let i = 0; i < hashInput.length; i++) {
+    const char = hashInput.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  
+  // Convert hash to a value between -0.5 and 0.5
+  return ((hash % 1000) / 1000) - 0.5;
+}
+
 interface NPCGroupGraphicProps {
   group: NPCGroup;
   user: UserInfo;
@@ -45,7 +64,7 @@ interface NPCGroupGraphicProps {
       | ((prev: DefaultMap<string, NPCGroup>) => DefaultMap<string, NPCGroup>)
   ) => void;
   animalWidth: number | undefined;
-  isLocalUser?: boolean; // Add flag to distinguish local vs non-local users
+  isLocalUser: boolean; // Add flag to distinguish local vs non-local users
   terrainBoundaries?: TerrainBoundaries; // Add terrain boundaries for wrapping
   allNPCs: Map<string, NPC>; // All NPCs in the scene for collision checking
   npcGroups: Map<string, NPCGroup>; // NPC groups for collision with groups
@@ -110,7 +129,6 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
   const edgeGeometryRef = useRef<THREE.Object3D | null>(null);
   // Reference for smooth movement interpolation (non-local users)
   const previousPosition = useMemo(() => new THREE.Vector3(), []);
-
   // Memoize target position calculation to avoid unnecessary recalculations
   // Only memoize for non-local users since local users need real-time updates
   const memoizedTargetPosition = useMemo(() => {
@@ -151,14 +169,22 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
     pathData: pathData,
     currentPathPosition: THREE.Vector3
   ) => {
-    if (!setPaths || !setNpcs || !setNpcGroups || !allNPCs) return;
+    if (!setPaths || !setNpcs || !setNpcGroups || !allNPCs || pathData.pathPhase !== PathPhase.THROWN) return;
+    const emittedNPCId = getFaceNpcId(group);
+    if (!emittedNPCId) return;
+    const emittedNPC = allNPCs.get(emittedNPCId);
+    if (!emittedNPC || emittedNPC.phase !== NPCPhase.CAPTURED) return;
+
 
     // Calculate reflection direction (away from the group)
     const npcGroupPosition = calculateNPCGroupPosition(user, animalWidth, scaleFactor);
+    if (!npcGroupPosition) return;
     const reflectionDirection = {
       x: currentPathPosition.x - npcGroupPosition.x,
       y: currentPathPosition.y - npcGroupPosition.y,
     };
+
+    console.log("reflectionDirection for npc", npc.filename, reflectionDirection);
 
     // Normalize reflection direction
     const length = Math.sqrt(
@@ -166,13 +192,33 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
         reflectionDirection.y * reflectionDirection.y
     );
     
+    // Get deterministic random value based on server-synchronized data only
+    const normalizedHash = getRandom({
+      pathId: pathData.id,
+      npcId: npc.id,
+      captorId: group.captorId,
+      timestamp: pathData.timestamp
+    });
+    
     // Handle edge case where collision is exactly at center
-    const normalizedDirection = length > 0 ? {
+    let normalizedDirection = length > 0 ? {
       x: reflectionDirection.x / length,
       y: reflectionDirection.y / length,
     } : {
-      x: Math.random() - 0.5, // Random direction if collision at exact center
-      y: Math.random() - 0.5,
+      x: normalizedHash, // Deterministic direction if collision at exact center
+      y: normalizedHash * 0.7, // Use different multiplier for y to avoid purely diagonal movement
+    };
+
+    // Add deterministic offset to reflection for more interesting bounces (consistent across clients)
+    const randomOffset = 0.3; // Adjust this value to control randomness (0 = no randomness, 1 = very random)
+    const randomAngle = normalizedHash * Math.PI * randomOffset; // Deterministic angle between -π*offset/2 and π*offset/2
+    
+    // Apply rotation to the normalized direction
+    const cos = Math.cos(randomAngle);
+    const sin = Math.sin(randomAngle);
+    normalizedDirection = {
+      x: normalizedDirection.x * cos - normalizedDirection.y * sin,
+      y: normalizedDirection.x * sin + normalizedDirection.y * cos,
     };
 
     // Create reflection path for the thrown NPC
@@ -186,7 +232,7 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
       },
       direction: normalizedDirection,
       pathDuration: 1200, // Reflection duration
-      velocity: 3, // Fast reflection speed
+      velocity:pathData.velocity, // Fast reflection speed
       timestamp: Date.now(),
       captorId: pathData.captorId,
       pathPhase: PathPhase.BOUNCING,
@@ -197,11 +243,6 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
       newPaths.set(npc.id, reflectionPathData);
       console.log("newPaths", newPaths);
       return newPaths;
-    });
-    setNpcs((prev: Map<string, NPC>) => {
-      const newNpcs = new Map(prev);
-      newNpcs.set(npc.id, npc);
-      return newNpcs;
     });
 
     // Send reflection to server
@@ -215,54 +256,51 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
         }
       );
     }
-    // Emit an NPC from the group in the same direction (faster)
-    // if (group.npcIds.size > 0) {
-    //   const emittedNPCId = group.npcIds.values().next().value;
-    //   if (!emittedNPCId) return;
-    //   const emittedNPC = allNPCs.get(emittedNPCId);
-    //   // update the emittedNpc position to the group position and change phase path
-    //   const groupPosition = calculateTargetPosition();
-    //   if (emittedNPC) {
-    //     emittedNPC.position = groupPosition;
-    //     emittedNPC.phase = NPCPhase.path;
-    //     // Update local state
-    //     const emissionPathData: pathData = {
-    //       id: uuidv4(),
-    //       room: pathData.room,
-    //       npc: emittedNPC,
-    //       startPosition: {
-    //         x: groupPosition.x,
-    //         y: groupPosition.y,
-    //       },
-    //       direction: normalizedDirection,
-    //       pathDuration: 1500, // Longer emission duration
-    //       velocity: 25, // Very fast emission speed
-    //       timestamp: Date.now(),
-    //       pathPhase: PathPhase.BOUNCING,
-    //     };
-    //     setPaths((prev: Map<string, pathData>) => {
-    //       const newPaths = new Map(prev);
-    //       newPaths.set(emittedNPC.id, emissionPathData);
-    //       return newPaths;
-    //     });
-    //     setNpcs((prev: Map<string, NPC>) => {
-    //       const newNpcs = new Map(prev);
-    //       newNpcs.set(emittedNPC.id, emittedNPC);
-    //       return newNpcs;
-    //     });
-    //     setNpcGroups((prev: DefaultMap<string, NPCGroup>) => {
-    //       return removeNPCFromGroup(prev, group.captorId, emittedNPC.id);
-    //     });
+         // Emit an NPC from the group in the same direction but faster
+       // Check if this NPC is actually captured (not already emitted in a previous collision)
+      // update the emittedNpc position to the group position and change phase path
+      const groupPosition = calculateTargetPosition();
+      if (emittedNPC) {
+        emittedNPC.position = groupPosition;
+        emittedNPC.phase = NPCPhase.path;
+        // Update local state
+        const emissionPathData: pathData = {
+          id: uuidv4(),
+          room: pathData.room,
+          npc: emittedNPC,
+          startPosition: {
+            x: groupPosition.x,
+            y: groupPosition.y,
+          },
+          captorId: group.captorId,
+          direction: normalizedDirection,
+          pathDuration: 1500, // Longer emission duration
+          velocity: 5, // Very fast emission speed
+          timestamp: Date.now(),
+          pathPhase: PathPhase.BOUNCING,
+        };
+        setPaths((prev: Map<string, pathData>) => {
+          const newPaths = new Map(prev);
+          newPaths.set(emittedNPC.id, emissionPathData);
+          return newPaths;
+        });
+        setNpcs((prev: Map<string, NPC>) => {
+          const newNpcs = new Map(prev);
+          newNpcs.set(emittedNPC.id, emittedNPC);
+          return newNpcs;
+        });
+        setNpcGroups((prev: DefaultMap<string, NPCGroup>) => {
+          return removeNPCFromGroup(prev, group.captorId, emittedNPC.id);
+        });
 
-    //     currentSocket.emit(
-    //       "path-npc",
-    //       serialize({ pathData: emissionPathData }),
-    //       (response: { success: boolean }) => {
-    //         if (!response.success) console.error("NPC emission failed");
-    //       }
-    //     );
-    //   }
-    // }
+        currentSocket.emit(
+          "path-npc",
+          serialize({ pathData: emissionPathData }),
+          (response: { success: boolean }) => {
+            if (!response.success) console.error("NPC emission failed");
+          }
+        );
+    }
   };
 
   const checkForPathNPCCollision = (npc: NPC, pathData: pathData) => {
@@ -306,9 +344,9 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
     );
 
     const npcGroupScale = scaleFactor;
-    const npcGroupRadius = npcGroupScale * 0.5;
-    const distance = npcGroupPosition.distanceTo(currentPathPostion);
-    if (distance < npcGroupRadius) {
+    const npcGroupRadius = npcGroupScale;
+    const distance = npcGroupPosition ? npcGroupPosition.distanceTo(currentPathPostion) : Infinity;
+    if (distance < npcGroupRadius && group.npcIds.size > 0) {
       handleNPCGroupReflection(npc, pathData, currentPathPostion);
       return true;
     }
@@ -503,16 +541,19 @@ const NPCGroupGraphic: React.FC<NPCGroupGraphicProps> = ({
         edgeGeometry.scale.set(scaleFactor, scaleFactor, 1);
       }
     }
-    Array.from(allPaths.entries()).forEach(([npcId, pathData]) => {
-      if (
-        pathData.pathPhase !== PathPhase.FLEEING &&
-        pathData.captorId !== group.captorId
-      ) {
-        const pathNPC = allNPCs.get(npcId)!;
+    // only check for collision for local npc group
+    if (isLocalUser) {
+             Array.from(allPaths.entries()).forEach(([npcId, pathData]) => {
+         if (
+           pathData.pathPhase === PathPhase.THROWN &&
+           pathData.captorId !== group.captorId
+         ) {
+           const pathNPC = allNPCs.get(npcId)!;
 
-        checkForPathNPCCollision(pathNPC, pathData);
-      }
-    });
+           checkForPathNPCCollision(pathNPC, pathData);
+         }
+       });
+    }
   });
 
   return (

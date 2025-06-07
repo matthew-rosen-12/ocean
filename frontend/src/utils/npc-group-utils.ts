@@ -188,6 +188,7 @@ export function calculateNPCGroupPosition(
   npcScale: number
 ): THREE.Vector3 {
   // Default direction if not specified (backward is -x)
+
   let directionX = -1;
   let directionY = 0;
 

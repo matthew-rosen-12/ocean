@@ -107,69 +107,6 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
   // State for extended path data (client-side collision avoidance)
   const [extendedPathData, setExtendedPathData] = useState<pathData>(pathData);
   const [isPathExtended, setIsPathExtended] = useState(false);
-  const [hasCollided, setHasCollided] = useState(false); // Prevent multiple collisions
-
-  // Memoized function to calculate group positions for collision detection
-  const calculateGroupPositions = useMemo(() => {
-    if (!npcGroups || !users || !allNPCs) return new Map();
-
-    const groupPositions = new Map<
-      string,
-      { position: THREE.Vector3; scale: number; radius: number }
-    >();
-
-    Array.from(npcGroups.values()).forEach((group) => {
-      if (group.npcIds.size > 0) {
-        // Get the face NPC for this group
-        const faceNpcId = getFaceNpcId(group);
-        if (!faceNpcId) return;
-
-        const faceNpc = allNPCs.get(faceNpcId);
-        if (!faceNpc || faceNpc.phase !== NPCPhase.CAPTURED) return;
-
-        // Get the user who owns this group to calculate position
-        const groupUser = users.get(group.captorId);
-        if (!groupUser) return;
-
-        // Calculate the current group position and scale using utility functions
-        const groupScale = calculateNPCGroupScale(group.npcIds.size);
-
-        // We need animal width for proper position calculation
-        // For now, use a reasonable default - this should be passed in as a prop
-        const animalWidth = 4.0; // TODO: Pass this as prop or get from context
-
-        const groupPosition = calculateNPCGroupPosition(
-          groupUser,
-          animalWidth,
-          groupScale
-        );
-
-        // Use group scale for collision radius - larger groups have larger collision areas
-        const GROUP_COLLISION_RADIUS = groupScale * 0.8; // Scale factor for collision
-
-        groupPositions.set(group.captorId, {
-          position: groupPosition,
-          scale: groupScale,
-          radius: GROUP_COLLISION_RADIUS,
-        });
-      }
-    });
-
-    return groupPositions;
-  }, [
-    npcGroups,
-    users,
-    allNPCs,
-    // Add relevant dependencies for position changes
-    ...(users
-      ? Array.from(users.values()).flatMap((user) => [
-          user.position.x,
-          user.position.y,
-          user.direction.x,
-          user.direction.y,
-        ])
-      : []),
-  ]);
 
   // Set initial position
   useMount(() => {
@@ -340,7 +277,6 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
   useEffect(() => {
     setExtendedPathData(pathData);
     setIsPathExtended(false);
-    setHasCollided(false); // Reset collision flag for new paths
   }, [pathData.id, pathData.timestamp]);
 
   // Add effect to track useFrame lifecycle and cleanup
