@@ -11,6 +11,7 @@ export enum PathPhase {
   THROWN = "THROWN", // NPCs thrown by players
   FLEEING = "FLEEING", // NPCs fleeing from players
   BOUNCING = "BOUNCING", // NPCs bouncing off each other
+  RETURNING = "RETURNING", // NPCs returning to their thrower
 }
 
 export interface NPC {

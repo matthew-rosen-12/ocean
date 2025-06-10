@@ -9,6 +9,7 @@ import {
   NPCPhase,
   pathData,
   UserInfo,
+  PathPhase,
 } from "../../utils/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
@@ -97,6 +98,8 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
   allNPCs,
   npcGroups,
   users,
+  setPaths,
+  setNpcs,
 }) => {
   const { group, positionRef, textureLoaded, updatePositionWithTracking } =
     useNPCBase(npc);
@@ -107,6 +110,9 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
   // State for extended path data (client-side collision avoidance)
   const [extendedPathData, setExtendedPathData] = useState<pathData>(pathData);
   const [isPathExtended, setIsPathExtended] = useState(false);
+
+  // State for returning behavior
+  const [lastDirectionUpdate, setLastDirectionUpdate] = useState(0);
 
   // Set initial position
   useMount(() => {
@@ -144,7 +150,7 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
       );
     }
 
-    return position;
+    return { position, progress };
   };
 
   
@@ -218,6 +224,66 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
     return currentPathData;
   };
 
+  // Function to handle returning to player
+  const handleReturning = (currentPosition: THREE.Vector3, currentTime: number) => {
+    if (!pathData.captorId || !users || !setPaths) return;
+
+    const captorUser = users.get(pathData.captorId);
+    if (!captorUser) return;
+
+    const UPDATE_INTERVAL = 300; // Update direction every 300ms
+    
+    // Check if we should update direction
+    if (currentTime - lastDirectionUpdate < UPDATE_INTERVAL) {
+      return;
+    }
+
+    // Calculate direction to player
+    const directionToPlayer = {
+      x: captorUser.position.x - currentPosition.x,
+      y: captorUser.position.y - currentPosition.y,
+    };
+
+    // Normalize direction
+    const length = Math.sqrt(
+      directionToPlayer.x * directionToPlayer.x +
+      directionToPlayer.y * directionToPlayer.y
+    );
+
+    if (length > 0) {
+      const normalizedDirection = {
+        x: directionToPlayer.x / length,
+        y: directionToPlayer.y / length,
+      };
+
+      // Create new returning path data
+      const returningPathData: pathData = {
+        ...pathData,
+        startPosition: {
+          x: currentPosition.x,
+          y: currentPosition.y,
+        },
+        direction: normalizedDirection,
+        timestamp: currentTime,
+        pathPhase: PathPhase.RETURNING,
+        velocity: 8, // Faster return speed
+        pathDuration: 3000, // Longer duration for returning
+      };
+
+      setExtendedPathData(returningPathData);
+      setLastDirectionUpdate(currentTime);
+
+      // Update the paths state
+      setPaths((prev: Map<string, pathData>) => {
+        const newPaths = new Map(prev);
+        newPaths.set(npc.id, returningPathData);
+        return newPaths;
+      });
+
+      console.log(`NPC ${npc.id} returning to player at direction:`, normalizedDirection);
+    }
+  };
+
   // Handle position updates
   useFrame(() => {
     if (!group || !textureLoaded.current) return;
@@ -225,14 +291,57 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
     // Safety check: don't calculate path position if NPC phase changed
     if (npc.phase !== NPCPhase.path) return;
 
-    // Check for collisions and potentially extend path
-    const currentPathData = checkAndExtendPath(extendedPathData, Date.now());
+    const currentTime = Date.now();
+
+    // Check for collisions and potentially extend path (only for non-returning NPCs)
+    let currentPathData = extendedPathData;
+    if (extendedPathData.pathPhase !== PathPhase.RETURNING) {
+      currentPathData = checkAndExtendPath(extendedPathData, currentTime);
+    }
 
     // Calculate current position based on time for path objects
-    const pathPosition = calculatePathPosition(currentPathData, Date.now());
+    const { position: pathPosition, progress } = calculatePathPosition(currentPathData, currentTime);
     updatePositionWithTracking(pathPosition, "pathPC-update");
 
     group.position.copy(positionRef.current);
+
+    // Check if we should start returning (only for thrown NPCs with captorId)
+    if (
+      pathData.captorId && 
+      pathData.pathPhase === PathPhase.THROWN && 
+      extendedPathData.pathPhase !== PathPhase.RETURNING &&
+      progress >= 1
+    ) {
+      console.log(`NPC ${npc.id} starting to return to player`);
+      handleReturning(pathPosition, currentTime);
+    }
+
+    // Handle returning behavior
+    if (extendedPathData.pathPhase === PathPhase.RETURNING && pathData.captorId) {
+      handleReturning(pathPosition, currentTime);
+      
+      // Check if we've reached the player
+      const captorUser = users?.get(pathData.captorId);
+      if (captorUser) {
+        const distanceToPlayer = pathPosition.distanceTo(
+          new THREE.Vector3(captorUser.position.x, captorUser.position.y, captorUser.position.z)
+        );
+        
+        // If close enough to player, capture the NPC
+        if (distanceToPlayer < 2.0) {
+          console.log(`NPC ${npc.id} returned to player and captured`);
+          
+          // Trigger capture collision
+          if (checkForCollision) {
+            checkForCollision(npc, pathPosition);
+          }
+          
+          // Reset returning state
+          setLastDirectionUpdate(0);
+          return; // Exit early to prevent further processing
+        }
+      }
+    }
 
     // For fleeing NPCs (no captorId), check for collision
     if (!pathData.captorId && checkForCollision) {
@@ -277,6 +386,7 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
   useEffect(() => {
     setExtendedPathData(pathData);
     setIsPathExtended(false);
+    setLastDirectionUpdate(0);
   }, [pathData.id, pathData.timestamp]);
 
   // Add effect to track useFrame lifecycle and cleanup

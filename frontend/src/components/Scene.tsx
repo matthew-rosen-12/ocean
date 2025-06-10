@@ -109,15 +109,15 @@ async function pathNPC(
     updatedpaths.set(npc.id, newpathData);
 
     // Socket call to path the NPC
-    if (socket) {
-      socket.emit(
-        "path-npc",
-        serialize({ pathData: newpathData }),
-        (response: { success: boolean }) => {
-          if (!response.success) console.error("NPC path failed");
-        }
-      );
-    }
+    // if (socket) {
+    //   socket.emit(
+    //     "path-npc",
+    //     serialize({ pathData: newpathData }),
+    //     (response: { success: boolean }) => {
+    //       if (!response.success) console.error("NPC path failed");
+    //     }
+    //   );
+    // }
 
     setPaths(updatedpaths);
     setNpcGroups(updatedNpcGroups);
