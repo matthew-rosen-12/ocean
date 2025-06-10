@@ -164,6 +164,11 @@ export default function GuestLogin({
         setNPCGroups((prev) => {
           return addNPCToGroup(prev, id, npc.id);
         });
+        setPaths((prev) => {
+          const newPaths = new Map(prev);
+          newPaths.delete(npc.id);
+          return newPaths;
+        });
       });
 
       socket.on("npc-path", (serializedData: string) => {

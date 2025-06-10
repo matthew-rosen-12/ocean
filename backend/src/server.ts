@@ -189,8 +189,11 @@ io.on("connection", async (socket) => {
 
         // Only call setPathCompleteInRoom if the NPC is actually in PATH phase
         if (npc.phase === NPCPhase.path) {
-          await setPathCompleteInRoom(room, npc);
+          const paths = await getpathsfromMemory(room);
+          const updatedPaths = paths.filter((p: pathData) => p.npc.id !== npc.id);
+          await setPathsInMemory(room, updatedPaths);
         }
+
 
         await updateNPCInRoomInMemory(room, updatedNPC);
         await updateNPCGroupInRoomInMemory(room, captorId, npcId);

@@ -79,7 +79,7 @@ interface pathPCGraphicProps {
   allPaths?: Map<string, pathData>; // All active paths for NPC-to-NPC collision
   npcGroups?: Map<string, any>; // NPC groups for collision with groups
   users?: Map<string, UserInfo>; // All users for getting group positions
-  myUserId?: string; // Current user ID
+  myUserId: string; // Current user ID
   setPaths?: (
     paths:
       | Map<string, pathData>
@@ -98,6 +98,7 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
   allNPCs,
   npcGroups,
   users,
+  myUserId,
   setPaths,
   setNpcs,
 }) => {
@@ -322,7 +323,7 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
       
       // Check if we've reached the player
       const captorUser = users?.get(pathData.captorId);
-      if (captorUser) {
+      if (captorUser && captorUser.id === myUserId) {
         const distanceToPlayer = pathPosition.distanceTo(
           new THREE.Vector3(captorUser.position.x, captorUser.position.y, captorUser.position.z)
         );

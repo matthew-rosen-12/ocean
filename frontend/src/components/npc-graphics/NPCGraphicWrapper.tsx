@@ -14,7 +14,7 @@ interface NPCGraphicWrapperProps {
   allNPCs: Map<string, NPC>; // All NPCs for collision checking
   allPaths?: Map<string, pathData>; // All active paths for NPC-to-NPC collision
   npcGroups?: Map<string, any>; // NPC groups for collision with groups
-  myUserId?: string; // Current user ID
+  myUserId: string; // Current user ID
   setPaths?: (
     paths:
       | Map<string, pathData>

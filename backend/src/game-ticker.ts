@@ -1,4 +1,4 @@
-import { pathData } from "./types";
+import { pathData, PathPhase } from "./types";
 import { checkAndHandleNPCCollisions, setPathCompleteInRoom } from "./services/npcService";
 
 import {
@@ -37,7 +37,9 @@ class GameTicker {
       // Process each room
       for (const roomName of roomNames) {
         // Get paths for this room
-        const paths = await getActivepathsfromMemory(roomName);
+        const allPaths = await getActivepathsfromMemory(roomName);
+        // filter paths that are not thrown
+        const paths = allPaths.filter((path: pathData) => path.pathPhase !== PathPhase.THROWN && path.pathPhase !== PathPhase.RETURNING);
         if (!paths || paths.length === 0) continue;
 
         const completedpaths: pathData[] = [];
