@@ -1,12 +1,11 @@
 import { pathData, PathPhase } from "./types";
 import { checkAndHandleNPCCollisions, setPathCompleteInRoom } from "./services/npcService";
 
-import {
-  getActivepathsfromMemory,
-  getAllRoomsfromMemory,
-  getNPCsfromMemory,
-} from "./db/config";
+
 import { NPCPhase } from "./types";
+import { getAllRoomsfromMemory } from "./state/rooms";
+import { getActivepathsfromMemory } from "./state/paths";
+import { getNPCsfromMemory } from "./state/npcs";
 
 let gameTickerInstance: GameTicker | null = null;
 
@@ -32,12 +31,12 @@ class GameTicker {
   private async tick() {
     try {
       // Get all room names
-      const roomNames = await getAllRoomsfromMemory();
+      const roomNames =  getAllRoomsfromMemory();
 
       // Process each room
       for (const roomName of roomNames) {
         // Get paths for this room
-        const allPaths = await getActivepathsfromMemory(roomName);
+        const allPaths =  getActivepathsfromMemory(roomName);
         // filter paths that are not thrown
         const paths = allPaths.filter((path: pathData) => path.pathPhase !== PathPhase.THROWN && path.pathPhase !== PathPhase.RETURNING);
         if (!paths || paths.length === 0) continue;
@@ -58,12 +57,12 @@ class GameTicker {
         // Process completed paths
         for (const completedpath of completedpaths) {
           // Get current NPC state to check if it's still in PATH phase
-          const npcs = await getNPCsfromMemory(roomName);
+          const npcs =  getNPCsfromMemory(roomName);
           const currentNpc = npcs.get(completedpath.npc.id);
 
           // Only complete path if NPC is still in PATH phase
           if (currentNpc && currentNpc.phase === NPCPhase.path) {
-            await setPathCompleteInRoom(roomName, completedpath.npc);
+             setPathCompleteInRoom(roomName, completedpath.npc);
           }
         }
         checkAndHandleNPCCollisions(roomName)

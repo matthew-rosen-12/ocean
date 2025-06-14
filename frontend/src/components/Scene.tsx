@@ -471,10 +471,11 @@ export default function Scene({
   }, [position, direction]);
 
   const handleNPCCollision = useCallback(
-    (npc: NPC) => {
+    (npc: NPC, localUser: boolean) => {
       // Only handle collision if NPC is still in IDLE phase
 
       const currentSocket = socket();
+      if (localUser) {
       currentSocket.emit(
         "capture-npc",
         serialize({
@@ -483,9 +484,10 @@ export default function Scene({
           captorId: myUser.id,
         }),
         (response: { success: boolean }) => {
-          if (!response.success) console.error("Capture failed");
-        }
-      );
+            if (!response.success) console.error("Capture failed");
+          }
+        );
+      }
 
       // create new npc
       const updatedNpc: NPC = {
@@ -670,7 +672,7 @@ export default function Scene({
 
   // Function to check for collisions with NPCs
   const checkForNPCCollision = useCallback(
-    (npc: NPC, npcPosition?: THREE.Vector3) => {
+    (npc: NPC, npcPosition?: THREE.Vector3, isLocalUser: boolean = true) => {
       // Get the animal dimensions for dynamic thresholds
       const dimensions = animalDimensions[myUser.animal];
       const animalWidth = dimensions?.width || 2.0; // Fallback to 2.0 if dimensions not yet measured
@@ -695,12 +697,15 @@ export default function Scene({
       if (npc.phase === NPCPhase.IDLE || npc.phase === NPCPhase.path) {
         if (distance < CAPTURE_THRESHOLD) {
           // Close enough to capture
-          handleNPCCollision(npc);
+          console.log("Capturing NPC");
+          handleNPCCollision(npc, isLocalUser);
+          return true;
         } else if (distance < FLEE_THRESHOLD) {
           // Far enough to not capture, but close enough to flee
           makeNPCFlee(npc, npcPos);
         }
       }
+      return false
     },
     [handleNPCCollision, makeNPCFlee, animalDimensions, myUser.animal]
   );

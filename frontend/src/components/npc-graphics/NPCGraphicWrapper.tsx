@@ -7,7 +7,7 @@ import { TerrainBoundaries } from "../../utils/terrain";
 
 interface NPCGraphicWrapperProps {
   npc: NPC;
-  checkForCollision: (npc: NPC, npcPosition?: THREE.Vector3) => void;
+  checkForCollision: (npc: NPC, npcPosition?: THREE.Vector3, isLocalUser?: boolean) => boolean;
   pathData: pathData | undefined;
   users: Map<string, UserInfo>;
   terrainBoundaries?: TerrainBoundaries;

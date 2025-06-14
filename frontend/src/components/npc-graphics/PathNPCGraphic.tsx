@@ -73,7 +73,7 @@ interface pathPCGraphicProps {
   npc: NPC;
   pathData: pathData;
   user?: UserInfo; // User who threw the NPC for border color (optional for fleeing NPCs)
-  checkForCollision: (npc: NPC, npcPosition?: THREE.Vector3) => void; // Collision checking for fleeing NPCs
+  checkForCollision: (npc: NPC, npcPosition?: THREE.Vector3, isLocalUser?: boolean) => boolean; // Collision checking for fleeing NPCs
   terrainBoundaries?: TerrainBoundaries; // Add terrain boundaries for wrapping
   allNPCs?: Map<string, NPC>; // All NPCs in the scene for collision checking
   allPaths?: Map<string, pathData>; // All active paths for NPC-to-NPC collision
@@ -313,35 +313,35 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
       extendedPathData.pathPhase !== PathPhase.RETURNING &&
       progress >= 1
     ) {
-      console.log(`NPC ${npc.id} starting to return to player`);
+      console.log(`NPC ${npc.id} starting to return to player (progress: ${progress})`);
       handleReturning(pathPosition, currentTime);
     }
 
     // Handle returning behavior
     if (extendedPathData.pathPhase === PathPhase.RETURNING && pathData.captorId) {
-      handleReturning(pathPosition, currentTime);
+      console.log(`NPC ${npc.id} in returning phase, last update: ${currentTime - lastDirectionUpdate}ms ago`);
       
       // Check if we've reached the player
       const captorUser = users?.get(pathData.captorId);
-      if (captorUser && captorUser.id === myUserId) {
+      if (captorUser) {
         const distanceToPlayer = pathPosition.distanceTo(
           new THREE.Vector3(captorUser.position.x, captorUser.position.y, captorUser.position.z)
         );
         
-        // If close enough to player, capture the NPC
-        if (distanceToPlayer < 2.0) {
-          console.log(`NPC ${npc.id} returned to player and captured`);
-          
-          // Trigger capture collision
-          if (checkForCollision) {
-            checkForCollision(npc, pathPosition);
+        console.log(`NPC ${npc.id} distance to player: ${distanceToPlayer.toFixed(2)}`);
+        
+        // Trigger capture collision
+        if (checkForCollision) {
+          console.log("Checking for collision");
+          const collided = checkForCollision(npc, pathPosition, user?.id === myUserId);
+          if (collided) {
+            console.log(distanceToPlayer, "Collision detected");
           }
-          
-          // Reset returning state
-          setLastDirectionUpdate(0);
-          return; // Exit early to prevent further processing
         }
       }
+
+      handleReturning(pathPosition, currentTime);
+
     }
 
     // For fleeing NPCs (no captorId), check for collision

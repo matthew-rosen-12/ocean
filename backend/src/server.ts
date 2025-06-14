@@ -2,29 +2,18 @@ import express from "express";
 import { createServer, get } from "http";
 import { Server } from "socket.io";
 import cors from "cors";
-import {
-  connect,
-  decrementRoomUsersInMemory,
-  getNPCGroupsfromMemory,
-  getNPCsfromMemory,
-  getpathsfromMemory,
-  removeNPCFromGroupInRoomInMemory,
-  removeNPCGroupInRoomInMemory,
-  setNPCsInMemory,
-  setPathsInMemory,
-} from "./db/config";
+
 import { NPC, NPCPhase, pathData, userId, UserInfo, socketId } from "./types";
 import authRouter from "./routes/auth";
 import { getGameTicker } from "./game-ticker";
-import { updateNPCGroupInRoomInMemory } from "./db/npc-ops";
-import { updateNPCInRoomInMemory } from "./db/npc-ops";
+import { getNPCsfromMemory, setNPCsInMemory, updateNPCGroupInRoomInMemory } from "./state/npcs";
+import { updateNPCInRoomInMemory } from "./state/npcs";
 import { deserialize, serialize } from "./utils/serializers";
-import { getRoomNumUsersInMemory } from "./db/room-ops";
-import {
-  setPathCompleteInRoom,
-  checkAndHandleNPCCollisions,
-} from "./services/npcService";
+import { decrementRoomUsersInMemory, getRoomNumUsersInMemory } from "./state/rooms";
 import { generateRoomTerrain } from "./utils/terrain";
+import { getpathsfromMemory } from "./state/paths";
+import { getNPCGroupsfromMemory, removeNPCFromGroupInRoomInMemory, removeNPCGroupInRoomInMemory } from "./state/npcGroups";
+import { setPathsInMemory } from "./state/paths";
 
 // Initialize game ticker
 getGameTicker();
@@ -52,13 +41,8 @@ export const io = new Server(httpServer, {
   transports: ["websocket", "polling"],
 });
 
-// Connect to Redis before starting server
 const startServer = async () => {
   try {
-    // Connect to Redis
-    await connect();
-    console.log("Redis connection established successfully");
-
     const PORT = process.env.PORT || 3001;
     httpServer.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
@@ -151,19 +135,19 @@ io.on("connection", async (socket) => {
         socket.emit("terrain-config", serialize({ terrainConfig }));
 
         // Get existing NPCs
-        const npcsData = await getNPCsfromMemory(name);
+        const npcsData =  getNPCsfromMemory(name);
         if (npcsData) {
           socket.emit("npcs-update", serialize({ npcs: npcsData }));
         }
 
         // Get existing paths
-        const pathsData = await getpathsfromMemory(name);
+        const pathsData =  getpathsfromMemory(name);
         if (pathsData) {
           socket.emit("paths-update", serialize({ paths: pathsData }));
         }
 
         // Get existing NPC groups
-        const groupsData = await getNPCGroupsfromMemory(name);
+        const groupsData =  getNPCGroupsfromMemory(name);
         if (groupsData) {
           socket.emit("npc-groups-update", serialize({ groups: groupsData }));
         }
@@ -179,7 +163,7 @@ io.on("connection", async (socket) => {
     socket.on("capture-npc", async (serializedData: string) => {
       const { npcId, room, captorId } = deserialize(serializedData);
       try {
-        const npcs = await getNPCsfromMemory(room);
+        const npcs =  getNPCsfromMemory(room);
         const npc = npcs.get(npcId)!;
 
         const updatedNPC: NPC = {
@@ -189,9 +173,9 @@ io.on("connection", async (socket) => {
 
         // Only call setPathCompleteInRoom if the NPC is actually in PATH phase
         if (npc.phase === NPCPhase.path) {
-          const paths = await getpathsfromMemory(room);
+          const paths =  getpathsfromMemory(room);
           const updatedPaths = paths.filter((p: pathData) => p.npc.id !== npc.id);
-          await setPathsInMemory(room, updatedPaths);
+           setPathsInMemory(room, updatedPaths);
         }
 
 
@@ -220,7 +204,7 @@ io.on("connection", async (socket) => {
         };
 
         await updateNPCInRoomInMemory(pathData.room, updatedNPC);
-        const activepaths = await getpathsfromMemory(pathData.room);
+        const activepaths =  getpathsfromMemory(pathData.room);
         // if pathData already exists, update it
         const existingPath = activepaths.find(
           (p) => p.npc.id === pathData.npc.id
@@ -229,11 +213,11 @@ io.on("connection", async (socket) => {
           activepaths.splice(activepaths.indexOf(existingPath), 1);
         }
         activepaths.push(pathData);
-        await setPathsInMemory(pathData.room, activepaths);
+         setPathsInMemory(pathData.room, activepaths);
 
         // Only remove from group if there's a captorId (fleeing NPCs don't have groups)
         if (pathData.captorId) {
-          await removeNPCFromGroupInRoomInMemory(
+           removeNPCFromGroupInRoomInMemory(
             pathData.room,
             pathData.captorId,
             pathData.npc.id
@@ -281,12 +265,12 @@ io.on("connection", async (socket) => {
 
           const userId = socket.data.user.id;
           // set npcs of this user's npc groups to IDLE
-          const npcGroups = await getNPCGroupsfromMemory(room);
+          const npcGroups = getNPCGroupsfromMemory(room);
           const npcGroup = npcGroups.get(user.id);
           if (npcGroup) {
-            const npcs = await getNPCsfromMemory(room);
+            const npcs = getNPCsfromMemory(room);
 
-            npcGroup.npcIds.forEach(async (npcId) => {
+            npcGroup.npcIds.forEach((npcId) => {
               const npc = npcs.get(npcId)!;
               const updatedNPC: NPC = {
                 ...npc,
@@ -295,13 +279,13 @@ io.on("connection", async (socket) => {
               };
               npcs.set(npcId, updatedNPC);
             });
-            await setNPCsInMemory(room, npcs);
+            setNPCsInMemory(room, npcs);
           }
           // remove the user's npc groups from redis
-          await removeNPCGroupInRoomInMemory(room, user.id);
+          removeNPCGroupInRoomInMemory(room, user.id);
 
           // Handle room users decrement
-          await decrementRoomUsersInMemory(room, socket.id);
+          decrementRoomUsersInMemory(room, socket.id);
 
           if (userId) {
             socket.broadcast

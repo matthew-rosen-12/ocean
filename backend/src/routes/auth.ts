@@ -7,7 +7,7 @@ import {
   getDirection,
 } from "../user-info";
 
-import { findRoomInMemory } from "../db/room-ops";
+import { findRoomInMemory } from "../state/rooms";
 
 const router = express.Router();
 
