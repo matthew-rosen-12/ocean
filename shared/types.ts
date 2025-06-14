@@ -70,6 +70,15 @@ export class NPCGroupsBiMap {
   private map1 = new Map<userId, NPCGroup>();
   private map2 = new Map<npcGroupId, NPCGroup>();
 
+  constructor(existing?: NPCGroupsBiMap) {
+    if (existing) {
+      // Copy all entries from existing maps using the public methods
+      existing.values().forEach(npcGroup => {
+        this.setByNpcGroupId(npcGroup.id, npcGroup);
+      });
+    }
+  }
+
   setByUserId(userId: userId, npcGroup: NPCGroup) {
     this.map1.set(userId, npcGroup);
     this.map2.set(npcGroup.id, npcGroup);

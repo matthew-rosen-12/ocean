@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Animal, UserInfo } from "./types";
+import { Animal, UserInfo } from "shared/types";
 import * as THREE from "three";
 
 // Define HSL type

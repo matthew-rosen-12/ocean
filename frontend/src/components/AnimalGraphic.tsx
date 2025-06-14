@@ -1,11 +1,10 @@
 import React, { useMemo, useEffect, useRef } from "react";
-import { UserInfo } from "../utils/types";
+import { UserInfo, Animal } from "shared/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
-import { Animal } from "../utils/types";
 import { ANIMAL_SCALES } from "../utils/user-info";
 import { smoothMove } from "../utils/movement";
-import { useMount } from "../hooks/useNPCBase";
+import { useMount } from "../hooks/useNPCGroupBase";
 import {
   loadAnimalSVG,
   animalGraphicsCache,

@@ -2,24 +2,24 @@ import React, {
   useEffect,
   useRef,
   useState,
-  useMemo,
 } from "react";
 import {
-  NPC,
   NPCPhase,
   pathData,
   UserInfo,
   PathPhase,
-} from "../../utils/types";
+  NPCGroup,
+  NPCGroupsBiMap,
+} from "shared/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
-import { useMount, useNPCBase } from "../../hooks/useNPCBase";
+import { useMount, useNPCGroupBase } from "../../hooks/useNPCGroupBase";
 import { createEdgeGeometry } from "../../utils/load-animal-svg";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
 import { getAnimalBorderColor } from "../../utils/animal-colors";
 import { TerrainBoundaries } from "../../utils/terrain";
 import {
-  getFaceNpcId,
+  getFaceFileName,
   calculateNPCGroupPosition,
   calculateNPCGroupScale,
 } from "../../utils/npc-group-utils";
@@ -69,15 +69,14 @@ function createSquareOutlineGeometry(
   return lineGeometry;
 }
 
-interface pathPCGraphicProps {
-  npc: NPC;
+interface PathNPCGroupGraphicProps {
+  npcGroup: NPCGroup,
   pathData: pathData;
   user?: UserInfo; // User who threw the NPC for border color (optional for fleeing NPCs)
-  checkForCollision: (npc: NPC, npcPosition?: THREE.Vector3, isLocalUser?: boolean) => boolean; // Collision checking for fleeing NPCs
+  checkForCollision: (npcGroup: NPCGroup, npcPosition?: THREE.Vector3, isLocalUser?: boolean) => boolean; // Collision checking for fleeing NPCs
   terrainBoundaries?: TerrainBoundaries; // Add terrain boundaries for wrapping
-  allNPCs?: Map<string, NPC>; // All NPCs in the scene for collision checking
   allPaths?: Map<string, pathData>; // All active paths for NPC-to-NPC collision
-  npcGroups?: Map<string, any>; // NPC groups for collision with groups
+  npcGroups: NPCGroupsBiMap; // NPC groups for collision with groups
   users?: Map<string, UserInfo>; // All users for getting group positions
   myUserId: string; // Current user ID
   setPaths?: (
@@ -85,25 +84,24 @@ interface pathPCGraphicProps {
       | Map<string, pathData>
       | ((prev: Map<string, pathData>) => Map<string, pathData>)
   ) => void; // Function to update paths
-  setNpcs?: (
-    npcs: Map<string, NPC> | ((prev: Map<string, NPC>) => Map<string, NPC>)
+  setNpcGroups?: (
+    npcGroups: NPCGroupsBiMap | ((prev: NPCGroupsBiMap) => NPCGroupsBiMap)
   ) => void; // Function to update NPCs
 }
 
-const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
-  npc,
+const PathNPCGroupGraphic: React.FC<PathNPCGroupGraphicProps> = ({
+  npcGroup,
   pathData,
   user,
   checkForCollision,
-  allNPCs,
   npcGroups,
   users,
   myUserId,
   setPaths,
-  setNpcs,
+  setNpcGroups,
 }) => {
   const { group, positionRef, textureLoaded, updatePositionWithTracking } =
-    useNPCBase(npc);
+    useNPCGroupBase(npcGroup);
 
   // Reference for the edge geometry outline
   const edgeGeometryRef = useRef<THREE.Object3D | null>(null);
@@ -118,7 +116,7 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
   // Set initial position
   useMount(() => {
     updatePositionWithTracking(
-      new THREE.Vector3(npc.position.x, npc.position.y, npc.position.z),
+      new THREE.Vector3(npcGroup.position.x, npcGroup.position.y, 0),
       "pathPC-initial"
     );
     group.position.copy(positionRef.current);
@@ -161,7 +159,7 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
     currentPathData: pathData,
     currentTime: number
   ) => {
-    if (!allNPCs || isPathExtended) return currentPathData;
+    if (!npcGroups || isPathExtended) return currentPathData;
 
     const COLLISION_RADIUS = 2.0;
     const EXTENSION_DISTANCE = 2.5;
@@ -185,8 +183,8 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
     );
 
     // Check for collisions with IDLE NPCs
-    const idleNPCs = Array.from(allNPCs.values()).filter(
-      (otherNpc) => otherNpc.phase === NPCPhase.IDLE && otherNpc.id !== npc.id
+    const idleNPCs = Array.from(npcGroups.values()).filter(
+      (otherNpcGroup) => otherNpcGroup.phase === NPCPhase.IDLE && otherNpcGroup.id !== npcGroup.id
     );
 
     let hasCollision = false;
@@ -195,14 +193,14 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
         new THREE.Vector3(
           idleNPC.position.x,
           idleNPC.position.y,
-          idleNPC.position.z
+          0
         )
       );
 
       if (distance < COLLISION_RADIUS) {
         hasCollision = true;
         console.log(
-          `Client: Collision detected between NPC ${npc.id} and IDLE NPC ${idleNPC.id} at distance ${distance}`
+          `Client: Collision detected between NPC ${npcGroup.id} and IDLE NPC ${idleNPC.id} at distance ${distance}`
         );
         break;
       }
@@ -216,7 +214,7 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
         pathDuration: (newDistance / currentPathData.velocity) * 1000,
       };
 
-      console.log(`Client: Extending path for NPC ${npc.id}`);
+      console.log(`Client: Extending path for NPC ${npcGroup.id}`);
       setExtendedPathData(extendedPathData);
       setIsPathExtended(true);
       return extendedPathData;
@@ -227,9 +225,9 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
 
   // Function to handle returning to player
   const handleReturning = (currentPosition: THREE.Vector3, currentTime: number) => {
-    if (!pathData.captorId || !users || !setPaths) return;
+    if (!npcGroup.captorId || !users || !setPaths) return;
 
-    const captorUser = users.get(pathData.captorId);
+    const captorUser = users.get(npcGroup.captorId);
     if (!captorUser) return;
 
     const UPDATE_INTERVAL = 300; // Update direction every 300ms
@@ -277,11 +275,11 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
       // Update the paths state
       setPaths((prev: Map<string, pathData>) => {
         const newPaths = new Map(prev);
-        newPaths.set(npc.id, returningPathData);
+        newPaths.set(npcGroup.id, returningPathData);
         return newPaths;
       });
 
-      console.log(`NPC ${npc.id} returning to player at direction:`, normalizedDirection);
+      console.log(`NPC ${npcGroup.id} returning to player at direction:`, normalizedDirection);
     }
   };
 
@@ -290,7 +288,7 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
     if (!group || !textureLoaded.current) return;
 
     // Safety check: don't calculate path position if NPC phase changed
-    if (npc.phase !== NPCPhase.path) return;
+    if (npcGroup.phase !== NPCPhase.PATH) return;
 
     const currentTime = Date.now();
 
@@ -308,32 +306,32 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
 
     // Check if we should start returning (only for thrown NPCs with captorId)
     if (
-      pathData.captorId && 
+      npcGroup.captorId && 
       pathData.pathPhase === PathPhase.THROWN && 
       extendedPathData.pathPhase !== PathPhase.RETURNING &&
       progress >= 1
     ) {
-      console.log(`NPC ${npc.id} starting to return to player (progress: ${progress})`);
+      console.log(`NPC ${npcGroup.id} starting to return to player (progress: ${progress})`);
       handleReturning(pathPosition, currentTime);
     }
 
     // Handle returning behavior
-    if (extendedPathData.pathPhase === PathPhase.RETURNING && pathData.captorId) {
-      console.log(`NPC ${npc.id} in returning phase, last update: ${currentTime - lastDirectionUpdate}ms ago`);
+    if (extendedPathData.pathPhase === PathPhase.RETURNING && npcGroup.captorId) {
+      console.log(`NPC ${npcGroup.id} in returning phase, last update: ${currentTime - lastDirectionUpdate}ms ago`);
       
       // Check if we've reached the player
-      const captorUser = users?.get(pathData.captorId);
+      const captorUser = users?.get(npcGroup.captorId);
       if (captorUser) {
         const distanceToPlayer = pathPosition.distanceTo(
-          new THREE.Vector3(captorUser.position.x, captorUser.position.y, captorUser.position.z)
+          new THREE.Vector3(captorUser.position.x, captorUser.position.y, 0)
         );
         
-        console.log(`NPC ${npc.id} distance to player: ${distanceToPlayer.toFixed(2)}`);
+        console.log(`NPC ${npcGroup.id} distance to player: ${distanceToPlayer.toFixed(2)}`);
         
         // Trigger capture collision
         if (checkForCollision) {
           console.log("Checking for collision");
-          const collided = checkForCollision(npc, pathPosition, user?.id === myUserId);
+          const collided = checkForCollision(npcGroup, pathPosition, user?.id === myUserId);
           if (collided) {
             console.log(distanceToPlayer, "Collision detected");
           }
@@ -345,8 +343,8 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
     }
 
     // For fleeing NPCs (no captorId), check for collision
-    if (!pathData.captorId && checkForCollision) {
-      checkForCollision(npc, pathPosition);
+    if (!npcGroup.captorId && checkForCollision) {
+      checkForCollision(npcGroup, pathPosition);
     }
 
     // Create edge geometry if needed and mesh is available
@@ -422,9 +420,9 @@ const pathPCGraphic: React.FC<pathPCGraphicProps> = ({
         edgeGeometryRef.current = null;
       }
     };
-  }, [npc.id]);
+  }, [npcGroup.id]);
 
   return <primitive object={group} />;
 };
 
-export default React.memo(pathPCGraphic);
+export default React.memo(PathNPCGroupGraphic);

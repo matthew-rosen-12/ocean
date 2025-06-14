@@ -1,7 +1,7 @@
 import React from "react";
 import * as THREE from "three";
 import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader";
-import { Animal } from "../utils/types";
+import { Animal } from "shared/types";
 import concaveman from "concaveman";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";

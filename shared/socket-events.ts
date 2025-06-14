@@ -12,7 +12,6 @@ export interface ServerToClientEvents {
     "all-paths": (data: { paths: Map<npcGroupId, pathData> }) => void;
     "terrain-config": (data: { terrainConfig: TerrainConfig }) => void;
 
-    // npc group events
     "npc-group-update": (data: { npcGroup: NPCGroup }) => void;
     "npc-group-captured": (data: { id: userId; npcGroup: NPCGroup }) => void;
     "npc-group-pop": (data: { npcGroupId: npcGroupId }) => void;

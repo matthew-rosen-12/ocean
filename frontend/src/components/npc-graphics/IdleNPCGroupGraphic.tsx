@@ -1,26 +1,26 @@
-import React, { useEffect } from "react";
-import { NPC } from "../../utils/types";
+import React from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { smoothMove } from "../../utils/movement";
-import { useMount, useNPCBase } from "../../hooks/useNPCBase";
+import { useMount, useNPCGroupBase } from "../../hooks/useNPCGroupBase";
+import { NPCGroup } from "shared/types";
 
-interface IdleNPCGraphicProps {
-  npc: NPC;
-  checkForCollision: (npc: NPC) => void;
+interface IdleNPCGroupGraphicProps {
+  npcGroup: NPCGroup;
+  checkForCollision: (npcGroup: NPCGroup) => void;
 }
 
-const IdleNPCGraphic: React.FC<IdleNPCGraphicProps> = ({
-  npc,
+const IdleNPCGroupGraphic: React.FC<IdleNPCGroupGraphicProps> = ({
+  npcGroup,
   checkForCollision,
 }) => {
   const { group, positionRef, textureLoaded, updatePositionWithTracking } =
-    useNPCBase(npc);
+    useNPCGroupBase(npcGroup);
 
   // Set initial position
   useMount(() => {
     updatePositionWithTracking(
-      new THREE.Vector3(npc.position.x, npc.position.y, npc.position.z),
+      new THREE.Vector3(npcGroup.position.x, npcGroup.position.y, 0),
       "IdleNPC-initial"
     );
     group.position.copy(positionRef.current);
@@ -30,7 +30,7 @@ const IdleNPCGraphic: React.FC<IdleNPCGraphicProps> = ({
   useFrame(() => {
     if (!group || !textureLoaded.current) return;
 
-    const targetPosition = new THREE.Vector3(npc.position.x, npc.position.y, 0);
+    const targetPosition = new THREE.Vector3(npcGroup.position.x, npcGroup.position.y, 0);
     if (!positionRef.current.equals(targetPosition)) {
       updatePositionWithTracking(
         smoothMove(positionRef.current.clone(), targetPosition),
@@ -42,11 +42,11 @@ const IdleNPCGraphic: React.FC<IdleNPCGraphicProps> = ({
     group.rotation.z = 0; // Fixed upright rotation
 
     // Check for collision
-    checkForCollision(npc);
+    checkForCollision(npcGroup);
   });
 
   // Add effect to track useFrame lifecycles
   return <primitive object={group} />;
 };
 
-export default IdleNPCGraphic;
+export default IdleNPCGroupGraphic;

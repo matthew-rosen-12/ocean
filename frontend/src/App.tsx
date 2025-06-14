@@ -1,13 +1,12 @@
 import { useState } from "react";
 import {
-  NPC,
   pathData,
   UserInfo,
   NPCGroup,
   DefaultMap,
-  npcId,
+  npcGroupId,
   userId,
-} from "./utils/types";
+} from "shared/types";
 import Scene from "./components/Scene";
 import GuestLogin from "./components/GuestLogin";
 import { ANIMAL_FACTS } from "../public/facts";

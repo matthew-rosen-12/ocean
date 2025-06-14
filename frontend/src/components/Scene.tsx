@@ -4,28 +4,29 @@ import { Canvas, useThree } from "@react-three/fiber";
 import {
   Direction,
   NPCGroup,
-  npcId,
+  npcGroupId,
   NPCPhase,
   PathPhase,
   pathData,
   userId,
   UserInfo,
-} from "../utils/types";
+  DefaultMap,
+  fileName,
+} from "shared/types";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { socket } from "../socket";
 import { Socket } from "socket.io-client";
 import { ANIMAL_SCALES, DIRECTION_OFFSET } from "../utils/user-info";
-import { NPC } from "../utils/types";
 import AnimalGraphic from "./AnimalGraphic";
-import { DefaultMap } from "../utils/types";
 import { throttle } from "lodash";
 import { v4 as uuidv4 } from "uuid";
 import { serialize } from "../utils/serializers";
-import NPCGraphicWrapper from "./npc-graphics/NPCGraphicWrapper";
-import NPCGroupGraphic from "./npc-graphics/NPCGroupGraphic";
-import { useMount } from "../hooks/useNPCBase";
+import NPCGraphicWrapper from "./npc-graphics/NPCGroupGraphicWrapper";
+import NPCGroupGraphic from "./npc-graphics/CapturedNPCGroupGraphic";
+import { useMount } from "../hooks/useNPCGroupBase";
 import * as THREE from "three";
-import { removeNPCFromGroup, addNPCToGroup } from "../utils/npc-group-utils";
+// Note: These functions may no longer be needed since NPCs are now NPCGroups
+// import { removeFileNameFromGroup, addFileNameToGroup } from "../utils/npc-group-utils";
 import { TerrainConfig } from "../utils/terrain";
 ("@react-three/fiber");
 // Extend Performance interface for Chrome's memory API
@@ -81,8 +82,8 @@ async function pathNPC(
       phase: NPCPhase.path,
     };
 
-    // Use the utility function to preserve group object identity
-    const updatedNpcGroups = removeNPCFromGroup(npcGroups, myUser.id, npc.id);
+    // TODO: This function may no longer be needed with NPCGroup structure
+    // const updatedNpcGroups = removeNPCFromGroup(npcGroups, myUser.id, npc.id);
 
     // Create new path data
     const newpathData: pathData = {
@@ -503,7 +504,9 @@ export default function Scene({
 
       setNpcGroups((prevNpcGroups: DefaultMap<userId, NPCGroup>) => {
         // Use the utility function to preserve group object identity
-        return addNPCToGroup(prevNpcGroups, myUser.id, updatedNpc.id);
+        // TODO: This function may no longer be needed with NPCGroup structure
+        // return addNPCToGroup(prevNpcGroups, myUser.id, updatedNpc.id);
+        return prevNpcGroups;
       });
 
       setNpcs((prev) => {

@@ -1,7 +1,7 @@
 import { useRef, useEffect, useMemo } from "react";
 import * as THREE from "three";
-import { NPC } from "../utils/types";
 import { DEBUG } from "../utils/config";
+import { NPCGroup } from "shared/types";
 
 // Create a global texture cache
 const textureCache = new Map<string, THREE.Texture>();
@@ -17,11 +17,11 @@ console.log(
 // Use the specific debug flag
 const debug = DEBUG.NPC_MOVEMENT;
 
-export function useNPCBase(npc: NPC) {
+export function useNPCGroupBase(npcGroup: NPCGroup) {
   const group = useMemo(() => {
     const newGroup = new THREE.Group();
     return newGroup;
-  }, [npc.id]);
+  }, [npcGroup.id]);
   const texture = useRef<THREE.Texture | null>(null);
   const material = useRef<THREE.MeshBasicMaterial | null>(null);
   const mesh = useRef<THREE.Mesh | null>(null);
@@ -38,10 +38,10 @@ export function useNPCBase(npc: NPC) {
     if (!positionRef.current.equals(newPos)) {
       if (debug) {
         console.log(`Position updated from ${source}:`, {
-          npcId: npc.id,
+          npcGroupId: npcGroup.id,
           from: positionRef.current.clone(),
           to: newPos.clone(),
-          phase: npc.phase,
+          phase: npcGroup.phase,
           isFollowing: false, // Each component will determine this
         });
       }
@@ -68,7 +68,7 @@ export function useNPCBase(npc: NPC) {
     }
 
     // If we get here, we need to set up the mesh
-    const texturePath = `/npcs/${npc.filename}`;
+    const texturePath = `/npcs/${npcGroup.faceFileName}`;
     // Clean up any existing mesh first to avoid adding duplicates
     if (mesh.current && mesh.current.parent === group) {
       group.remove(mesh.current);
@@ -145,12 +145,12 @@ export function useNPCBase(npc: NPC) {
 
     return () => {
       // Only dispose texture if it's not in the cache (i.e., if it failed to load)
-      if (texture.current && !textureCache.has(`/npcs/${npc.filename}`)) {
+      if (texture.current && !textureCache.has(`/npcs/${npcGroup.faceFileName}`)) {
         texture.current.dispose();
       }
 
       // Only dispose material if it's not in the cache
-      if (material.current && !materialCache.has(`/npcs/${npc.filename}`)) {
+      if (material.current && !materialCache.has(`/npcs/${npcGroup.faceFileName}`)) {
         material.current.dispose();
       }
 
@@ -166,7 +166,7 @@ export function useNPCBase(npc: NPC) {
       });
       group.clear();
     };
-  }, [npc.filename]);
+  }, [npcGroup.faceFileName]);
 
   return {
     group,

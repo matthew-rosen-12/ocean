@@ -1,75 +1,74 @@
 import React from "react";
-import { NPC, NPCPhase, pathData, UserInfo, npcId } from "../../utils/types";
-import IdleNPCGraphic from "./IdleNPCGraphic";
-import PathNPCGraphic from "./PathNPCGraphic";
+import { NPCPhase, pathData, UserInfo, NPCGroup, NPCGroupsBiMap } from "shared/types";
+import IdleNPCGraphic from "./IdleNPCGroupGraphic";
+import PathNPCGraphic from "./PathNPCGroupGraphic";
 import * as THREE from "three";
 import { TerrainBoundaries } from "../../utils/terrain";
+import IdleNPCGroupGraphic from "./IdleNPCGroupGraphic";
+import PathNPCGroupGraphic from "./PathNPCGroupGraphic";
 
 interface NPCGraphicWrapperProps {
-  npc: NPC;
-  checkForCollision: (npc: NPC, npcPosition?: THREE.Vector3, isLocalUser?: boolean) => boolean;
+  npcGroup: NPCGroup;
+  checkForCollision: (npcGroup: NPCGroup, npcPosition?: THREE.Vector3, isLocalUser?: boolean) => boolean;
   pathData: pathData | undefined;
   users: Map<string, UserInfo>;
   terrainBoundaries?: TerrainBoundaries;
-  allNPCs: Map<string, NPC>; // All NPCs for collision checking
   allPaths?: Map<string, pathData>; // All active paths for NPC-to-NPC collision
-  npcGroups?: Map<string, any>; // NPC groups for collision with groups
+  npcGroups: NPCGroupsBiMap; // NPC groups for collision with groups
   myUserId: string; // Current user ID
   setPaths?: (
     paths:
       | Map<string, pathData>
       | ((prev: Map<string, pathData>) => Map<string, pathData>)
   ) => void;
-  setNpcs?: (
-    npcs: Map<string, NPC> | ((prev: Map<string, NPC>) => Map<string, NPC>)
+  setNpcGroups: (
+    npcGroups: NPCGroupsBiMap | ((prev: NPCGroupsBiMap) => NPCGroupsBiMap)
   ) => void;
 }
 
 const NPCGraphicWrapper = ({
-  npc,
+  npcGroup,
   checkForCollision,
   pathData,
   users,
   terrainBoundaries,
-  allNPCs,
   allPaths,
   npcGroups,
   myUserId,
   setPaths,
-  setNpcs,
+  setNpcGroups,
 }: NPCGraphicWrapperProps) => {
-  if (npc.phase === NPCPhase.IDLE) {
+  if (npcGroup.phase === NPCPhase.IDLE) {
     return (
-      <IdleNPCGraphic
-        key={npc.id}
-        npc={npc}
+      <IdleNPCGroupGraphic
+        key={npcGroup.id}
+        npcGroup={npcGroup}
         checkForCollision={checkForCollision}
       />
     );
-  } else if (npc.phase === NPCPhase.path) {
+  } else if (npcGroup.phase === NPCPhase.PATH) {
     if (!pathData) {
       return null;
     }
 
-    const captorUser = pathData.captorId
-      ? users.get(pathData.captorId)
+    const captorUser = npcGroup.captorId
+      ? users.get(npcGroup.captorId)
       : undefined;
 
     return (
-      <PathNPCGraphic
-        key={npc.id}
-        npc={npc}
+      <PathNPCGroupGraphic
+        key={npcGroup.id}
+        npcGroup={npcGroup}
         pathData={pathData}
         user={captorUser}
         checkForCollision={checkForCollision}
         terrainBoundaries={terrainBoundaries}
-        allNPCs={allNPCs}
         allPaths={allPaths}
         npcGroups={npcGroups}
         users={users}
         myUserId={myUserId}
         setPaths={setPaths}
-        setNpcs={setNpcs}
+        setNpcGroups={setNpcGroups}
       />
     );
   }

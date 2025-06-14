@@ -4,28 +4,28 @@ import {
   NPCGroup,
   pathData,
   UserInfo,
-  NPC,
-  npcId,
+  npcGroupId,
   userId,
   NPCPhase,
-} from "../utils/types";
-import { DefaultMap } from "../utils/types";
+
+  NPCGroupsBiMap,
+  Position,
+  TerrainConfig,
+} from "shared/types";
 import { getSocket } from "../socket";
 import { deserialize, serialize } from "../utils/serializers";
 import {
-  addNPCToGroup,
-  removeNPCFromGroup,
   updateNPCGroupsPreservingIdentity,
 } from "../utils/npc-group-utils";
 import { ServerTerrainConfig } from "../utils/terrain";
+import { TypedSocket } from "../utils/typed-socket";
 
 interface Props {
   setMyUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
   setUsers: React.Dispatch<React.SetStateAction<Map<userId, UserInfo>>>;
-  setNPCs: React.Dispatch<React.SetStateAction<Map<npcId, NPC>>>;
-  setPaths: React.Dispatch<React.SetStateAction<Map<npcId, pathData>>>;
+  setPaths: React.Dispatch<React.SetStateAction<Map<npcGroupId, pathData>>>;
   setNPCGroups: React.Dispatch<
-    React.SetStateAction<DefaultMap<userId, NPCGroup>>
+    React.SetStateAction<NPCGroupsBiMap>
   >;
   setTerrainConfig: React.Dispatch<
     React.SetStateAction<ServerTerrainConfig | null>
@@ -35,7 +35,6 @@ interface Props {
 export default function GuestLogin({
   setMyUser,
   setUsers,
-  setNPCs,
   setPaths,
   setNPCGroups,
   setTerrainConfig,
@@ -51,145 +50,116 @@ export default function GuestLogin({
       });
       const { user, token } = await authResponse.json();
       const socket = getSocket(token);
+      socket.connect();
+
+
+      const typedSocket = new TypedSocket(socket);
 
       // Join room after connection is established
       socket.on("connect", () => {
-        socket.emit("join-room", serialize({ name: user.room }));
+        typedSocket.emit("join-room", { name: user.room });
       });
 
-      socket.connect();
 
       // Set up socket event handlers
-      socket.on("user-joined", (serializedData: string) => {
-        const { user } = deserialize(serializedData);
+      typedSocket.on("user-joined", ({ user }: { user: UserInfo }) => {
         setUsers((prev) => new Map(prev).set(user.id, user));
       });
 
-      socket.on("request-current-user", (serializedData: string) => {
-        const { requestingSocketId } = deserialize(serializedData);
-        socket.emit(
-          "current-user-response",
-          serialize({
+      typedSocket.on("request-current-user", ({ requestingSocketId }: { requestingSocketId: string }) => {
+        typedSocket.emit("current-user-response", {
             user,
             requestingSocketId,
           })
-        );
       });
 
-      socket.on("user-updated", (serializedData: string) => {
-        const { user } = deserialize(serializedData);
+      typedSocket.on("user-updated", ({ user }: { user: UserInfo }) => {
         setUsers((prev) => new Map(prev).set(user.id, user));
       });
 
-      socket.on("users-update", (serializedData: string) => {
-        const { users } = deserialize(serializedData);
+      typedSocket.on("all-users", ({ users }: { users: Map<userId, UserInfo> }) => {
         setUsers(users);
       });
 
-      socket.on("terrain-config", (serializedData: string) => {
-        const { terrainConfig } = deserialize(serializedData);
+      typedSocket.on("terrain-config", ({ terrainConfig }: { terrainConfig: TerrainConfig }) => {
         setTerrainConfig(terrainConfig);
       });
 
-      socket.on("npcs-update", (serializedData: string) => {
-        const { npcs } = deserialize(serializedData);
-        setNPCs(npcs);
+      typedSocket.on("all-npc-groups", ({ npcGroups }: { npcGroups: NPCGroupsBiMap }) => {
+        setNPCGroups(npcGroups);
       });
 
-      socket.on("user-left", (serializedData: string) => {
-        const { lastPosition, userId } = deserialize(serializedData);
+      typedSocket.on("user-left", ({ lastPosition, userId }: { lastPosition: Position; userId: string }) => {
         setUsers((prev) => {
           const newUsers = new Map(prev);
           newUsers.delete(userId);
           return newUsers;
         });
 
-        let npcsWithoutCaptor: npcId[] = [];
 
         setNPCGroups((prev) => {
-          npcsWithoutCaptor = Array.from(prev.get(userId).npcIds);
-
-          // Create a updates map to remove the user's group
-          const updates = new Map();
-          Array.from(prev.entries()).forEach(([id, group]) => {
-            if (id !== userId) {
-              updates.set(id, {
-                captorId: group.captorId,
-                npcIds: group.npcIds,
-              });
-            }
-          });
-
-          return updateNPCGroupsPreservingIdentity(prev, updates);
-        });
-
-        setNPCs((prev) => {
-          const newNPCs = new Map(prev);
-          npcsWithoutCaptor.forEach((npcId) => {
-            newNPCs.get(npcId)!.phase = NPCPhase.IDLE;
-            newNPCs.get(npcId)!.position = lastPosition;
-          });
-          return newNPCs;
-        });
-      });
-
-      socket.on("paths-update", (serializedData: string) => {
-        const { paths } = deserialize(serializedData);
-        setPaths(new Map(paths.map((t: pathData) => [t.npc.id, t])));
-      });
-
-      socket.on("npc-groups-update", (serializedData: string) => {
-        const { groups } = deserialize(serializedData);
-
-        setNPCGroups((prev) => {
-          // Create updates map from the incoming groups
-          const updates = new Map();
-          for (const [id, group] of groups.entries()) {
-            updates.set(id, { captorId: group.captorId, npcIds: group.npcIds });
+          const captorGroup = prev.getByUserId(userId);
+          if (captorGroup) {
+            const newCaptorGroup = {
+              ...captorGroup,
+              captorId: undefined,
+              position: lastPosition,
+              phase: NPCPhase.IDLE,
+            };
+            prev.setByNpcGroupId(captorGroup.id, newCaptorGroup);
           }
 
-          // Use utility to preserve object identity where possible
-          return updateNPCGroupsPreservingIdentity(prev, updates);
+
+          return prev
+        });
+
+      });
+
+      typedSocket.on("all-paths", ({ paths }) => {
+        setPaths(paths);
+      });
+
+      typedSocket.on("npc-group-update", ({ npcGroup }: { npcGroup: NPCGroup }) => {
+        setNPCGroups((prev) => {
+          prev.setByNpcGroupId(npcGroup.id, npcGroup);
+          return prev
         });
       });
 
-      socket.on("npc-update", (serializedData: string) => {
-        const { npc } = deserialize(serializedData);
-        setNPCs((prev) => new Map(prev).set(npc.id, npc));
-      });
 
-      socket.on("npc-captured", (serializedData: string) => {
-        const { id, npc } = deserialize(serializedData);
-        setNPCs((prev) => new Map(prev).set(npc.id, npc));
+      typedSocket.on("npc-group-captured", ({ id, npcGroup }) => {
         setNPCGroups((prev) => {
-          return addNPCToGroup(prev, id, npc.id);
+          prev.setByNpcGroupId(npcGroup.id, npcGroup);
+          return prev;
         });
         setPaths((prev) => {
           const newPaths = new Map(prev);
-          newPaths.delete(npc.id);
+          newPaths.delete(npcGroup.id);
           return newPaths;
         });
       });
 
-      socket.on("npc-path", (serializedData: string) => {
-        const { pathData } = deserialize(serializedData);
-        setPaths((prev) => new Map(prev).set(pathData.npc.id, pathData));
-        setNPCs((prev) => new Map(prev).set(pathData.npc.id, pathData.npc));
+      typedSocket.on("path-update", ({ pathData }: { pathData: pathData }) => {
+        setPaths((prev) => {
+          prev.set(pathData.npcGroup.id, pathData);
+          return prev;
+        });
         setNPCGroups((prev) => {
-          return removeNPCFromGroup(prev, pathData.captorId, pathData.npc.id);
+          prev.setByNpcGroupId(pathData.npcGroup.id, {
+            ...pathData.npcGroup,
+          });
+         return prev;
         });
       });
 
-      socket.on("path-complete", (serializedData: string) => {
-        const { npc } = deserialize(serializedData);
-        setNPCs((prev) => {
-          const newNPCs = new Map(prev);
-          newNPCs.set(npc.id, npc);
-          return newNPCs;
+      typedSocket.on("path-complete", ({ npcGroup }) => {
+        setNPCGroups((prev) => {
+          prev.setByNpcGroupId(npcGroup.id, npcGroup);
+          return prev;
         });
         setPaths((prev) => {
           const newpaths = new Map(prev);
-          newpaths.delete(npc.id);
+          newpaths.delete(npcGroup.id);
           return newpaths;
         });
       });
