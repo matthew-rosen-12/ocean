@@ -1,8 +1,7 @@
-import { createNPCs } from "../services/npcService";
+import { createNPCGroups } from "../services/npcService";
 import { v4 as uuidv4 } from "uuid";
-import { NPC, roomId } from "../types";
-import { deleteNPCsInMemory, setNPCsInMemory } from "./npcs";
-import { deleteNPCGroupsInMemory } from "./npcGroups";
+import { NPCGroupsBiMap, roomId } from "shared/types";
+import { deleteNPCGroupsInMemory, setNPCGroupsInMemory } from "./npcGroups";
 import { deletePathsInMemory } from "./paths";
 export interface Room {
   name: string;
@@ -54,7 +53,6 @@ export const decrementRoomUsersInMemory = (
 
       // Delete room and all associated data from dedicated stores
       deleteRoomDataInMemory(roomName);
-      deleteNPCsInMemory(roomName);
       deleteNPCGroupsInMemory(roomName);
       deletePathsInMemory(roomName);
     } else {
@@ -151,14 +149,14 @@ export const getRoomNumUsersInMemory = (
 
 export function populateRoomInMemory(roomName: string): void {
   try {
-    const npcs = createNPCs();
-    const npcMap: Map<string, NPC> = new Map();
+    const npcGroups = createNPCGroups();
+    const npcGroupsMap: NPCGroupsBiMap = new NPCGroupsBiMap();
 
-    npcs.forEach((npc) => {
-      npcMap.set(npc.id, npc);
+    npcGroups.forEach((npcGroup) => {
+      npcGroupsMap.setByNpcGroupId(npcGroup.id, npcGroup);
     });
 
-    setNPCsInMemory(roomName, npcMap);
+    setNPCGroupsInMemory(roomName, npcGroupsMap);
   } catch (error) {
     console.error(`Error populating room ${roomName}:`, error);
   }

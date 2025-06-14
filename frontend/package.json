@@ -23,6 +23,7 @@
     "lodash": "^4.17.21",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "shared": "file:../shared",
     "socket.io-client": "^4.8.1",
     "superjson": "^2.2.2",
     "three": "0.168.0",

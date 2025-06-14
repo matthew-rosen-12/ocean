@@ -1,128 +1,99 @@
-import { NPCGroup, roomId, userId, npcId } from "../types";
+import { NPCGroup, roomId, userId, NPCGroupsBiMap } from "shared/types";
 
-const npcGroups: Map<roomId, Map<userId, NPCGroup>> = new Map();
+const npcGroups: Map<roomId, NPCGroupsBiMap> = new Map();
 
 export function getNPCGroupsfromMemory(
     roomName: string
-  ): Map<userId, NPCGroup> {
-    try {
-      // Get the room's NPC group map directly, or create a new one if it doesn't exist
+  ): NPCGroupsBiMap {
+
       const roomGroups = npcGroups.get(roomName);
       if (!roomGroups) {
-        return new Map();
+        return new NPCGroupsBiMap();
       }
       // Return a copy to prevent external mutations
-      return new Map(roomGroups);
-    } catch (error) {
-      console.error(`Error getting NPC groups for room ${roomName}:`, error);
-      return new Map();
-    }
+      return roomGroups
   }
   
   export function setNPCGroupsInMemory(
     room: string,
-    groups: Map<userId, NPCGroup>
+    groups: NPCGroupsBiMap
   ): void {
-    try {
-      // Store groups directly in the Map - create a copy to prevent external mutations
-      npcGroups.set(room, new Map(groups));
-    } catch (error) {
-      console.error(`Error setting NPC groups for room ${room}:`, error);
-      throw error;
-    }
+    npcGroups.set(room, groups);
+  }
+
+  function mergedNPCGroups(group1: NPCGroup, group2: NPCGroup): NPCGroup {
+    return {
+      ...group1,
+      fileNames: [...group1.fileNames, ...group2.fileNames],
+    };
   }
   
   // Direct Group operations - no read-modify-set needed
-  export function addNPCToGroupInMemory(
+  export function addNPCGroupToCaptorNPCGroupInMemory(
     roomName: string,
     captorId: userId,
-    npcId: npcId
+    npcGroup: NPCGroup
   ): void {
-    try {
-      let roomGroups = npcGroups.get(roomName);
-      if (!roomGroups) {
-        roomGroups = new Map();
+    let roomGroups = npcGroups.get(roomName);
+    if (!roomGroups) {
+        roomGroups = new NPCGroupsBiMap();
         npcGroups.set(roomName, roomGroups);
-      }
-  
-      let group = roomGroups.get(captorId);
-      if (!group) {
-        group = {
-          npcIds: new Set(),
-          captorId,
-          faceNpcId: npcId, // Set the first NPC as the face NPC
-        };
-        roomGroups.set(captorId, group);
-      }
-  
-      group.npcIds.add(npcId);
-  
-      // If no face NPC is set or the face NPC is no longer in the group, set this one as face
-      if (!group.faceNpcId || !group.npcIds.has(group.faceNpcId)) {
-        group.faceNpcId = npcId;
-      }
-    } catch (error) {
-      console.error(
-        `Error adding NPC ${npcId} to group ${captorId} in room ${roomName}:`,
-        error
-      );
-      throw error;
     }
+  
+    let captorNPCGroup = roomGroups.getByUserId(captorId)
+    if (!captorNPCGroup) {
+        captorNPCGroup = {
+            ...npcGroup,
+            captorId,
+        };
+    }
+    
+    roomGroups.setByUserId(captorId, mergedNPCGroups(captorNPCGroup, npcGroup));
   }
   
-  export function removeNPCFromGroupInRoomInMemory(
+  export function removeTopNPCFromGroupInRoomInMemory(
     roomName: string,
     captorId: userId,
-    npcId: npcId
   ): void {
-    try {
       let roomGroups = npcGroups.get(roomName);
       if (!roomGroups) {
         return; // No groups in this room
       }
   
-      const group = roomGroups.get(captorId);
+      const group = roomGroups.getByUserId(captorId);
       if (!group) {
         return; // No group for this captor
       }
   
-      group.npcIds.delete(npcId);
+      group.fileNames.pop();
+
+      if (group.fileNames.length === 0) {
+        roomGroups.deleteByUserId(captorId);
+        return
+      }
   
       // If the removed NPC was the face NPC, select a new one
-      if (group.faceNpcId === npcId) {
-        const remainingNpcs = Array.from(group.npcIds);
-        group.faceNpcId = remainingNpcs.length > 0 ? remainingNpcs[0] : undefined;
-      }
+      group.faceFileName = group.fileNames[group.fileNames.length - 1];
   
-      // If group is now empty, remove it entirely
-      if (group.npcIds.size === 0) {
-        roomGroups.delete(captorId);
-      }
-    } catch (error) {
-      console.error(
-        `Error removing NPC ${npcId} from group ${captorId} in room ${roomName}:`,
-        error
-      );
-      throw error;
-    }
   }
   
   export function removeNPCGroupInRoomInMemory(
     roomName: string,
     captorId: userId
   ): void {
-    try {
-      const roomGroups = npcGroups.get(roomName);
-      if (!roomGroups) return;
-  
-      roomGroups.delete(captorId);
-    } catch (error) {
-      console.error(`Error removing NPC group in room ${roomName}:`, error);
-      throw error;
-    }
+    const roomGroups = npcGroups.get(roomName);
+    if (!roomGroups) return;
+
+    roomGroups.deleteByUserId(captorId);
   }
 
 
   export function deleteNPCGroupsInMemory(roomName: string): void {
     npcGroups.delete(roomName);
+  }
+
+  export function updateNPCGroupInRoomInMemory(roomName: roomId, npcGroup: NPCGroup): void {
+    const roomGroups = npcGroups.get(roomName) || new NPCGroupsBiMap();
+    roomGroups.setByNpcGroupId(npcGroup.id, npcGroup);
+    npcGroups.set(roomName, roomGroups);
   }

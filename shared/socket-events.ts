@@ -1,0 +1,30 @@
+import { UserInfo, TerrainConfig, NPCGroup, pathData, Position, npcGroupId, NPCGroupsBiMap, userId } from "./types";
+
+export interface ServerToClientEvents {
+    "user-joined": (data: { user: UserInfo }) => void;
+    "user-updated": (data: { user: UserInfo }) => void;
+    "user-left": (data: { lastPosition: Position; userId: string }) => void;
+
+    "request-current-user": (data: { requestingSocketId: string }) => void;
+
+    "all-users": (data: { users: Map<userId, UserInfo> }) => void;
+    "all-npc-groups": (data: { npcGroups: NPCGroupsBiMap }) => void;
+    "all-paths": (data: { paths: Map<npcGroupId, pathData> }) => void;
+    "terrain-config": (data: { terrainConfig: TerrainConfig }) => void;
+
+    // npc group events
+    "npc-group-update": (data: { npcGroup: NPCGroup }) => void;
+    "npc-group-captured": (data: { id: userId; npcGroup: NPCGroup }) => void;
+    "npc-group-pop": (data: { npcGroupId: npcGroupId }) => void;
+
+    "path-update": (data: { pathData: pathData }) => void;
+    "path-complete": (data: { npcGroup: NPCGroup }) => void;
+  }
+  
+  export interface ClientToServerEvents {
+    "join-room": (data: { name: string }) => void;
+    "capture-npc": (data: { npcId: string; room: string; captorId: string }) => void;
+    "path-npc": (data: { pathData: pathData }) => void;
+    "update-user": (data: { user: UserInfo }) => void;
+    "current-user-response": (data: { user: UserInfo; requestingSocketId: string }) => void;
+  }

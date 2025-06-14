@@ -1,71 +1,52 @@
-import { NPC, pathData, NPCGroup, NPCPhase, PathPhase, roomId } from "../types";
+import { pathData, NPCGroup, NPCPhase, PathPhase, roomId, userId, npcGroupId } from "shared/types";
+
 import { getPosition, getDirection } from "../npc-info";
-import { npcId, userId } from "../types";
 import { v4 as uuidv4 } from "uuid";
 
 // Redis Key prefixes for different data types
 const NUM_NPCS = 4;
 
-import { io } from "../server";
 import {
-  getActivepathsfromMemory,
+  deletePathInMemory,
+  getpathsfromMemory,
   setPathsInMemory,
 } from "../state/paths";
-import {
-  updateNPCGroupInRoomInMemory,
-  updateNPCInRoomInMemory,
-} from "../state/npcs";
-import { getNPCsfromMemory } from "../state/npcs";
-import { removeNPCFromGroupInRoomInMemory } from "../state/npcGroups";
 
-import { serialize } from "../utils/serializers";
+import { getNPCGroupsfromMemory, removeTopNPCFromGroupInRoomInMemory, updateNPCGroupInRoomInMemory } from "../state/npcGroups";
+
 import { generateRoomTerrain } from "../utils/terrain";
-
-export function updateNPCInRoom(
-  roomName: roomId,
-  npc: NPC
-): void{
-  updateNPCInRoomInMemory(roomName, npc);
-  io.to(roomName).emit("npc-update", serialize({ npc }));
-}
+import { emitToRoom } from "src/utils/typed-socket";
 
 export function updateNPCGroupInRoom(
   roomName: roomId,
-  captorId: userId,
-  npcId: npcId
+  npcGroup: NPCGroup
 ): void{
-   updateNPCGroupInRoomInMemory(roomName, captorId, npcId);
-  io.to(roomName).emit("group-update", serialize({ groupId: captorId, npcId }));
+   updateNPCGroupInRoomInMemory(roomName, npcGroup);
+   emitToRoom(roomName, "npc-group-update", { npcGroup });
 }
 
-export function removeNPCFromGroupInRoom(
+export function removeTopNPCFromGroupInRoom(
   roomName: string,
   captorId: userId,
-  npcId: npcId
+  npcGroupId: npcGroupId
 ): void{
-   removeNPCFromGroupInRoomInMemory(roomName, captorId, npcId);
-
-  io.to(roomName).emit(
-    "group-update",
-    serialize({
-      groupId: captorId,
-      npcId,
-      removed: true,
-    })
-  );
+   removeTopNPCFromGroupInRoomInMemory(roomName, captorId);
+   emitToRoom(roomName, "npc-group-pop", {
+    npcGroupId,
+   });
 }
 
-export function setPathCompleteInRoom(room: string, npc: NPC) {
+export function setPathCompleteInRoom(room: string, npcGroup: NPCGroup) {
   try {
     // Get room-specific terrain configuration
     const terrainConfig = generateRoomTerrain(room);
 
     // Get the path data for this NPC
-    const paths =  getActivepathsfromMemory(room);
-    const pathDataForNPC = paths.find((p: pathData) => p.npc.id === npc.id);
+    const paths =  getpathsfromMemory(room);
+    const pathDataForNPC = paths.get(npcGroup.id);
 
     if (!pathDataForNPC) {
-      console.log(`No path data found for NPC ${npc.id} in room ${room}`);
+      console.log(`No path data found for NPC ${npcGroup.id} in room ${room}`);
       return;
     }
 
@@ -73,36 +54,29 @@ export function setPathCompleteInRoom(room: string, npc: NPC) {
     const landingPosition =
        calculateLandingPositionWithCollisionAvoidance(
         pathDataForNPC,
-        terrainConfig,
         room,
-        npc.id
+        npcGroup.id
       );
 
-    const updatedNPC: NPC = {
-      ...npc,
+    const updatedNPCGroup: NPCGroup = {
+      ...npcGroup,
       position: landingPosition,
       phase: NPCPhase.IDLE,
     };
 
-     updateNPCInRoomInMemory(room, updatedNPC);
+     updateNPCGroupInRoom(room, updatedNPCGroup);
 
     // Remove this path from active paths
-    const updatedPaths = paths.filter((p: pathData) => p.npc.id !== npc.id);
-     setPathsInMemory(room, updatedPaths);
+    deletePathInMemory(room, npcGroup.id);
 
     // Only broadcast for thrown NPCs (ones with captorId)
-    if (pathDataForNPC.captorId) {
-      io.to(room).emit(
-        "path-complete",
-        serialize({
-          npc: updatedNPC,
-        })
-      );
+    if (npcGroup.captorId) {
+      emitToRoom(room, "path-complete", { npcGroup: updatedNPCGroup });
     }
 
   } catch (error) {
     console.error(
-      `Error setting path complete for NPC ${npc.id} in room ${room}:`,
+      `Error setting path complete for NPC ${npcGroup.id} in room ${room}:`,
       error
     );
   }
@@ -110,9 +84,8 @@ export function setPathCompleteInRoom(room: string, npc: NPC) {
 
 function calculateLandingPositionWithCollisionAvoidance(
   pathData: pathData,
-  terrainConfig: any,
   room: string,
-  movingNpcId: npcId
+  movingNpcGroupId: npcGroupId
 ) {
   const COLLISION_RADIUS = 2.0; // Distance to check for collisions
   const EXTENSION_DISTANCE = 2.5; // How much to extend the path if collision detected
@@ -126,17 +99,17 @@ function calculateLandingPositionWithCollisionAvoidance(
     const landingPosition = calculateLandingPosition(currentPathData);
 
     // Get all NPCs in the room to check for collisions
-    const allNPCs =  getNPCsfromMemory(room);
-    const idleNPCs = Array.from(allNPCs.values()).filter(
-      (npc) => npc.phase === NPCPhase.IDLE && npc.id !== movingNpcId
+    const allNPCGroups =  getNPCGroupsfromMemory(room);
+    const idleNPCGroups = Array.from(allNPCGroups.values()).filter(
+      (npcGroup) => npcGroup.phase === NPCPhase.IDLE && npcGroup.id !== movingNpcGroupId
     );
 
     // Check for collisions with IDLE NPCs
     let hasCollision = false;
-    for (const idleNPC of idleNPCs) {
+    for (const idleNPCGroup of idleNPCGroups) {
       const collided = detectCollision(
         landingPosition,
-        { ...idleNPC.position, z: 0 },
+        { ...idleNPCGroup.position, z: 0 },
         4.0, // width1 - moving NPC
         4.0, // height1 - moving NPC
         4.0, // width2 - idle NPC
@@ -146,7 +119,7 @@ function calculateLandingPositionWithCollisionAvoidance(
       if (collided) {
         hasCollision = true;
         console.log(
-          `Bounding box collision detected between NPC ${movingNpcId} and IDLE NPC ${idleNPC.id}`
+          `Bounding box collision detected between NPC ${movingNpcGroupId} and IDLE NPC ${idleNPCGroup.id}`
         );
         break;
       }
@@ -170,13 +143,13 @@ function calculateLandingPositionWithCollisionAvoidance(
 
     extensionCount++;
     console.log(
-      `Extending path for NPC ${movingNpcId}, extension ${extensionCount}/${MAX_EXTENSIONS}`
+      `Extending path for NPC ${movingNpcGroupId}, extension ${extensionCount}/${MAX_EXTENSIONS}`
     );
   }
 
   // If we've reached max extensions, just return the last calculated position
   console.log(
-    `Max extensions reached for NPC ${movingNpcId}, settling at final position`
+    `Max extensions reached for NPC ${movingNpcGroupId}, settling at final position`
   );
   return calculateLandingPosition(currentPathData);
 }
@@ -254,8 +227,8 @@ function calculateLandingPositionWithWrap(
   return landingPosition;
 }
 
-export function createNPCs(): NPC[] {
-  const npcs: NPC[] = [];
+export function createNPCGroups(): NPCGroup[] {
+  const npcGroups: NPCGroup[] = [];
   const npcFilenames = getNPCFilenames();
   const shuffledFilenames = [...npcFilenames].sort(() => Math.random() - 0.5);
 
@@ -263,19 +236,19 @@ export function createNPCs(): NPC[] {
     const filenameIndex = i % shuffledFilenames.length;
     const filename = shuffledFilenames[filenameIndex];
 
-    const npc: NPC = {
+    const npcGroup: NPCGroup = {
       id: uuidv4(),
-      type: "npc",
-      filename: filename,
+      fileNames: [filename],
+      faceFileName: filename,
       position: getPosition(),
       direction: getDirection(),
       phase: NPCPhase.IDLE,
     };
 
-    npcs.push(npc);
+    npcGroups.push(npcGroup);
   }
 
-  return npcs;
+  return npcGroups;
 }
 
 function getNPCFilenames(): string[] {
@@ -293,26 +266,6 @@ function getNPCFilenames(): string[] {
   ];
 }
 
-// Utility functions for NPC groups (mirrored from frontend)
-function calculateNPCGroupScale(numNpcs: number): number {
-  if (numNpcs === 0) return 0;
-
-  const baseScale = 3;
-  const logScale = Math.log(numNpcs) / Math.log(4);
-
-  return baseScale * (1 + logScale);
-}
-
-function getFaceNpcId(group: NPCGroup): npcId | null {
-  if (group.faceNpcId && group.npcIds.has(group.faceNpcId)) {
-    return group.faceNpcId;
-  }
-
-  // If no face NPC set or it's no longer in the group, use the first NPC
-  const firstNpcId =
-    group.npcIds.size > 0 ? group.npcIds.values().next().value : null;
-  return firstNpcId ?? null;
-}
 
 const detectCollision = (
   position1: { x: number; y: number; z: number },
@@ -346,7 +299,7 @@ const detectCollision = (
 export function checkAndHandleNPCCollisions(room: string): void{
   try {
     // Get all necessary data for collision detection
-    const allPaths =  getActivepathsfromMemory(room);
+    const allPaths =  Array.from(getpathsfromMemory(room).values());
 
     const COLLISION_RADIUS = 3.0;
 
@@ -365,8 +318,8 @@ export function checkAndHandleNPCCollisions(room: string): void{
         const otherPathData = allPaths[j];
         if (
           otherPathData.pathPhase === PathPhase.THROWN &&
-          otherPathData.captorId &&
-          otherPathData.captorId !== currentPathData.captorId // Ignore same captor
+          otherPathData.npcGroup.captorId &&
+          otherPathData.npcGroup.captorId !== currentPathData.npcGroup.captorId // Ignore same captor
         ) {
           const otherPosition = calculatePathPosition(
             otherPathData,
@@ -432,7 +385,7 @@ function handleNPCBounce(
   const bouncePathData: pathData = {
     id: uuidv4(),
     room: pathData.room,
-    npc: pathData.npc,
+    npcGroup: pathData.npcGroup,
     startPosition: {
       x: myPosition.x,
       y: myPosition.y,
@@ -441,108 +394,16 @@ function handleNPCBounce(
     pathDuration: 1000, // Short bounce duration
     velocity: 15, // Medium bounce speed
     timestamp: Date.now(),
-    captorId: pathData.captorId,
     pathPhase: PathPhase.BOUNCING,
   };
 
   // Update the path in memory
-  const activePaths =  getActivepathsfromMemory(room);
-  const updatedPaths = activePaths.filter((p) => p.npc.id !== pathData.npc.id);
-  updatedPaths.push(bouncePathData);
-   setPathsInMemory(room, updatedPaths);
+  const paths =  getpathsfromMemory(room);
+  paths.set(bouncePathData.npcGroup.id, bouncePathData);
+   setPathsInMemory(room, paths);
 
   console.log("handle npc bounce");
 
   // Broadcast to all clients
-  io.to(room).emit("npc-path", serialize({ pathData: bouncePathData }));
-}
-
-// Handle reflection off NPC group and emit NPC from group (mirrored from client)
-function handleNPCGroupReflection(
-  room: string,
-  pathData: pathData,
-  npcPosition: { x: number; y: number; z: number },
-  groupPosition: { x: number; y: number; z?: number },
-  group: NPCGroup
-): void{
-  // Calculate reflection direction
-  const reflectionDirection = {
-    x: npcPosition.x - groupPosition.x,
-    y: npcPosition.y - groupPosition.y,
-  };
-
-  // Normalize reflection direction
-  const length = Math.sqrt(
-    reflectionDirection.x * reflectionDirection.x +
-      reflectionDirection.y * reflectionDirection.y
-  );
-  const normalizedDirection = {
-    x: reflectionDirection.x / length,
-    y: reflectionDirection.y / length,
-  };
-
-  // Create reflection path for the thrown NPC
-  const reflectionPathData: pathData = {
-    id: uuidv4(),
-    room: pathData.room,
-    npc: pathData.npc,
-    startPosition: {
-      x: npcPosition.x,
-      y: npcPosition.y,
-    },
-    direction: normalizedDirection,
-    pathDuration: 1200, // Reflection duration
-    velocity: 18, // Fast reflection speed
-    timestamp: Date.now(),
-    captorId: pathData.captorId,
-    pathPhase: PathPhase.BOUNCING,
-  };
-
-  // Update the path in memory
-  const activePaths =  getActivepathsfromMemory(room);
-  const updatedPaths = activePaths.filter((p) => p.npc.id !== pathData.npc.id);
-  updatedPaths.push(reflectionPathData);
-   setPathsInMemory(room, updatedPaths);
-
-  // Broadcast reflection to all clients
-  io.to(room).emit("npc-path", serialize({ pathData: reflectionPathData }));
-
-  // Emit an NPC from the group in the same direction (faster)
-  if (group.npcIds.size > 0) {
-    const allNPCs =  getNPCsfromMemory(room);
-    const emittedNPCId = group.npcIds.values().next().value;
-
-    if (emittedNPCId) {
-      const emittedNPC = allNPCs.get(emittedNPCId);
-
-      if (emittedNPC) {
-        const emissionPathData: pathData = {
-          id: uuidv4(),
-          room: pathData.room,
-          npc: emittedNPC,
-          startPosition: {
-            x: groupPosition.x,
-            y: groupPosition.y,
-          },
-          direction: normalizedDirection,
-          pathDuration: 1500, // Longer emission duration
-          velocity: 25, // Very fast emission speed
-          timestamp: Date.now(),
-          captorId: group.captorId,
-          pathPhase: PathPhase.THROWN,
-        };
-
-        // Update paths for the emitted NPC
-        const currentPaths =  getActivepathsfromMemory(room);
-        const filteredPaths = currentPaths.filter(
-          (p) => p.npc.id !== emittedNPC.id
-        );
-        filteredPaths.push(emissionPathData);
-         setPathsInMemory(room, filteredPaths);
-
-        // Broadcast emission to all clients
-        io.to(room).emit("npc-path", serialize({ pathData: emissionPathData }));
-      }
-    }
-  }
+  emitToRoom(room, "path-update", { pathData: bouncePathData });
 }

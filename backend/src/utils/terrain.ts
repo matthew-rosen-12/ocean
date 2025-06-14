@@ -1,18 +1,7 @@
 // Server-side terrain configuration generation
-export interface TerrainConfig {
-  boundaries: {
-    minX: number;
-    maxX: number;
-    minY: number;
-    maxY: number;
-    width: number;
-    height: number;
-  };
-  gridSize: number;
-  walls: null; // Future: room-specific walls
-  backgroundType: string; // 'floral' | 'forest' | 'animals' | 'cosmic' etc.
-  seed: number; // Seed for consistent pattern generation
-}
+
+import { TerrainConfig } from "shared/types";
+
 
 export function generateRoomTerrain(roomId: string): TerrainConfig {
   // Use room ID to seed consistent terrain per room
@@ -44,6 +33,9 @@ export function generateRoomTerrain(roomId: string): TerrainConfig {
     walls: null,
     backgroundType,
     seed: patternSeed,
+    width: gridSize,
+    height: gridSize,
+    cellSize: 1,
   };
 }
 

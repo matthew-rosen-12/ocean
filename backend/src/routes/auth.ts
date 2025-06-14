@@ -1,5 +1,6 @@
 import express from "express";
 import { UserInfo } from "../types";
+import { NPCPhase } from "shared/types";
 import {
   generateGuestId,
   getRandomAnimal,
@@ -23,7 +24,15 @@ router.post("/", async (req, res) => {
       room: room,
       position: getPosition(),
       direction: getDirection(),
-      npcGroup: { npcIds: new Set(), captorId: guestId },
+      npcGroup: { 
+        id: guestId,
+        fileNames: [],
+        faceFileName: "",
+        position: getPosition(),
+        direction: getDirection(),
+        phase: NPCPhase.IDLE,
+        captorId: guestId 
+      },
     };
 
     // Generate token (base64 encoded user info)

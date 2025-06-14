@@ -1,4 +1,5 @@
-import { NPCGroup, DefaultMap, userId, npcId } from "./types";
+import { NPCGroup, DefaultMap, userId } from "shared/types";
+import { npcId } from "./types";
 import * as THREE from "three";
 import { UserInfo } from "./types";
 
