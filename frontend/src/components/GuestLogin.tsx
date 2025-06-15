@@ -143,21 +143,27 @@ export default function GuestLogin({
       typedSocket.on("npc-group-update", ({ npcGroup }: { npcGroup: NPCGroup }) => {
         setNPCGroups((prev) => {
           const newNpcGroups = new NPCGroupsBiMap(prev);
-          newNpcGroups.setByNpcGroupId(npcGroup.id, npcGroup);
+          if (npcGroup.fileNames.length == 0) {
+            newNpcGroups.deleteByNpcGroupId(npcGroup.id);
+          }
+          else {
+            newNpcGroups.setByNpcGroupId(npcGroup.id, npcGroup);
+          }
           return newNpcGroups;
         });
       });
 
 
-      typedSocket.on("npc-group-captured", ({ npcGroup }) => {
+      typedSocket.on("npc-group-captured", ({ capturedNPCGroupId, updatedNpcGroup }) => {
         setNPCGroups((prev) => {
           const newNpcGroups = new NPCGroupsBiMap(prev);
-          newNpcGroups.setByNpcGroupId(npcGroup.id, npcGroup);
+          newNpcGroups.deleteByNpcGroupId(capturedNPCGroupId);
+          newNpcGroups.setByNpcGroupId(updatedNpcGroup.id, updatedNpcGroup);
           return newNpcGroups;
         });
         setPaths((prev) => {
           const newPaths = new Map(prev);
-          newPaths.delete(npcGroup.id);
+          newPaths.delete(capturedNPCGroupId);
           return newPaths;
         });
       });

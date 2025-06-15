@@ -21,7 +21,8 @@ function setNPCGroupsInMemory(room, groups) {
     npcGroups.set(room, groups);
 }
 function mergedNPCGroups(group1, group2) {
-    return new types_1.NPCGroup(Object.assign(Object.assign({}, group1), { fileNames: [...group1.fileNames, ...group2.fileNames], captorId: group1.captorId || group2.captorId }));
+    const mergedFileNames = [...group1.fileNames, ...group2.fileNames];
+    return new types_1.NPCGroup(Object.assign(Object.assign({}, group1), { fileNames: mergedFileNames, captorId: group1.captorId || group2.captorId }));
 }
 // Direct Group operations - no read-modify-set needed
 function addNPCGroupToCaptorNPCGroupInMemory(roomName, captorId, npcGroup) {
@@ -66,6 +67,11 @@ function deleteNPCGroupsInMemory(roomName) {
 }
 function updateNPCGroupInRoomInMemory(roomName, npcGroup) {
     const roomGroups = npcGroups.get(roomName) || new types_1.NPCGroupsBiMap();
-    roomGroups.setByNpcGroupId(npcGroup.id, npcGroup);
+    if (npcGroup.fileNames.length == 0) {
+        roomGroups.deleteByNpcGroupId(npcGroup.id);
+    }
+    else {
+        roomGroups.setByNpcGroupId(npcGroup.id, npcGroup);
+    }
     npcGroups.set(roomName, roomGroups);
 }

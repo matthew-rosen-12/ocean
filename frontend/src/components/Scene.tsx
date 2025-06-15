@@ -13,13 +13,12 @@ import {
   NPCGroupsBiMap,
 } from "shared/types";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { socket } from "../socket";
+import { socket, typedSocket } from "../socket";
 import { Socket } from "socket.io-client";
 import { ANIMAL_SCALES, DIRECTION_OFFSET } from "../utils/user-info";
 import AnimalGraphic from "./AnimalGraphic";
 import { throttle } from "lodash";
 import { v4 as uuidv4 } from "uuid";
-import { serialize } from "../utils/typed-socket";
 import NPCGraphicWrapper from "./npc-graphics/NPCGroupGraphicWrapper";
 import { useMount } from "../hooks/useNPCGroupBase";
 import * as THREE from "three";
@@ -65,7 +64,6 @@ async function pathNPCGroup(
   myUser: UserInfo,
   npcGroup: NPCGroup,
   paths: Map<npcGroupId, pathData>,
-  socket: Socket | null,
   setPaths: (paths: Map<npcGroupId, pathData>) => void,
   setNpcGroups: (
     value:
@@ -75,9 +73,15 @@ async function pathNPCGroup(
 ) {
   try {
     // Create new objects instead of mutating
-    const updatedNPCGroup = new NPCGroup({
+    const captorNPCGroup = new NPCGroup({
       ...npcGroup,
-      position: myUser.position,
+      fileNames: npcGroup.fileNames.slice(0, -1),
+
+    });
+    const pathNPCGroup = new NPCGroup({
+      ...npcGroup,
+      id: uuidv4(),
+      fileNames: npcGroup.fileNames.slice(-1),
       phase: NPCPhase.PATH,
     });
 
@@ -85,7 +89,7 @@ async function pathNPCGroup(
     const newpathData: pathData = {
       id: uuidv4(),
       room: myUser.room,
-      npcGroup: updatedNPCGroup,
+      npcGroup: pathNPCGroup,
       startPosition: {
         x: myUser.position.x,
         y: myUser.position.y,
@@ -102,23 +106,25 @@ async function pathNPCGroup(
 
     // Create new paths map
     const updatedpaths = new Map(paths);
-    updatedpaths.set(npcGroup.id, newpathData);
+    updatedpaths.set(pathNPCGroup.id, newpathData);
 
-    // Socket call to path the NPC
-    if (socket) {
-      socket.emit(
-        "path-npc",
-        serialize({ pathData: newpathData }),
-        (response: { success: boolean }) => {
-          if (!response.success) console.error("NPC path failed");
-        }
-      );
+        // Socket call to path the NPC
+    const currentTypedSocket = typedSocket();
+    currentTypedSocket.emit("path-npc-group", { pathData: newpathData });
+    if (captorNPCGroup.fileNames.length > 0) {
+      currentTypedSocket.emit("update-npc-group", { npcGroup: captorNPCGroup });
     }
 
     setPaths(updatedpaths);
     setNpcGroups((prev) => {
       const newNpcGroups = new NPCGroupsBiMap(prev);
-      newNpcGroups.setByNpcGroupId(npcGroup.id, updatedNPCGroup);
+      if (captorNPCGroup.fileNames.length == 0) {
+        newNpcGroups.deleteByNpcGroupId(captorNPCGroup.id);
+      }
+      else {
+        newNpcGroups.setByNpcGroupId(captorNPCGroup.id, captorNPCGroup);
+      }
+      newNpcGroups.setByNpcGroupId(pathNPCGroup.id, pathNPCGroup);
       return newNpcGroups;
     });
   } catch (error) {
@@ -165,7 +171,6 @@ function useKeyboardMovement(
         myUser,
         npcGroups.getByUserId(myUser.id)!,
         paths,
-        socket(),
         setPaths,
         setNpcGroups,
       );
@@ -354,6 +359,9 @@ export default function Scene({
     [animal: string]: { width: number; height: number };
   }>({});
 
+  // Track NPCs currently being processed to prevent duplicate captures
+  const processingNPCs = useRef<Set<npcGroupId>>(new Set());
+
   // Helper function to check simple center-based collision with terrain boundaries
   const checkBoundaryCollision = (
     position: THREE.Vector3,
@@ -416,20 +424,14 @@ export default function Scene({
 
     if (positionChanged || directionChanged) {
       // Emit socket event
-      const currentSocket = socket();
-      currentSocket.emit(
-        "user-updated",
-        serialize({
-          user: {
-            ...myUser,
-            position: position.clone(),
-            direction: { ...direction },
-          },
-        }),
-        (response: { success: boolean }) => {
-          if (!response.success) console.error("Broadcast failed");
-        }
-      );
+      const currentTypedSocket = typedSocket();
+      currentTypedSocket.emit("update-user", {
+        user: {
+          ...myUser,
+          position: position.clone(),
+          direction: { ...direction },
+        },
+      });
       lastBroadcastPosition.current.copy(position);
       lastBroadcastDirection.current = { ...direction };
     }
@@ -452,61 +454,59 @@ export default function Scene({
   }, [position, direction]);
 
   const handleNPCGroupCollision = useCallback(
-    (npcGroup: NPCGroup, localUser: boolean) => {
-      // Only handle collision if NPC is still in IDLE phase
-
-      const currentSocket = socket();
-      if (localUser) {
-      currentSocket.emit(
-        "capture-npc",
-        serialize({
-          npcGroupId: npcGroup.id,
-          room: myUser.room,
-          captorId: myUser.id,
-        }),
-        (response: { success: boolean }) => {
-            if (!response.success) console.error("Capture failed");
-          }
-        );
-      }
-
-      // 1. get user's npc group
-      let userNpcGroup = npcGroups.getByUserId(myUser.id);
-      if (!userNpcGroup) {
-        userNpcGroup = new NPCGroup({
-          id: uuidv4(),
-          fileNames: [],
-          position: myUser.position,
-          phase: NPCPhase.IDLE,
-          direction: { x: 0, y: 0 },
-        });
-      }
-
-      // 2. create new npc group
-      const updatedNpcGroup = new NPCGroup({
-        id: userNpcGroup.id,
-        fileNames: [...userNpcGroup.fileNames, ...npcGroup.fileNames],
-        position: myUser.position,
-        phase: NPCPhase.CAPTURED,
-        captorId: myUser.id, // Set the captorId
-        direction: userNpcGroup.direction,
-      });
+    (capturedNPCGroup: NPCGroup, localUser: boolean) => {
+      // Prevent duplicate processing of the same NPC
+      capturedNPCGroup.phase = NPCPhase.IDLE;
       setPaths((prev: Map<npcGroupId, pathData>) => {
         const newPaths = new Map(prev);
-        newPaths.delete(npcGroup.id); // remove the path data for the captured NPC
+        newPaths.delete(capturedNPCGroup.id); // remove the path data for the captured NPC
         return newPaths as Map<npcGroupId, pathData>;
       });
 
       setNpcGroups((prev) => {
         const newNpcGroups = new NPCGroupsBiMap(prev);
+        
+        // 1. get user's npc group from the CURRENT state (not stale closure)
+        let userNpcGroup = newNpcGroups.getByUserId(myUser.id);
+        if (!userNpcGroup) {
+          userNpcGroup = new NPCGroup({
+            id: uuidv4(),
+            fileNames: [],
+            position: myUser.position,
+            phase: NPCPhase.IDLE,
+            direction: { x: 0, y: 0 },
+          });
+        }
+
+        // 2. create new npc group with current user's NPCs + captured NPC
+        const updatedNpcGroup = new NPCGroup({
+          id: userNpcGroup.id,
+          fileNames: [...userNpcGroup.fileNames, ...capturedNPCGroup.fileNames],
+          position: myUser.position,
+          phase: NPCPhase.CAPTURED,
+          captorId: myUser.id, // Set the captorId
+          direction: userNpcGroup.direction,
+        });
+
         // Remove the original NPC group
-        newNpcGroups.deleteByNpcGroupId(npcGroup.id);
+        newNpcGroups.deleteByNpcGroupId(capturedNPCGroup.id);
         // Add the updated group with the correct ID
         newNpcGroups.setByNpcGroupId(updatedNpcGroup.id, updatedNpcGroup);
+
+        // Emit socket event inside the state update to use the correct updatedNpcGroup
+        if (localUser) {
+          const currentTypedSocket = typedSocket();
+          currentTypedSocket.emit("capture-npc-group", {
+            capturedNPCGroupId: capturedNPCGroup.id,
+            room: myUser.room,
+            updatedNpcGroup: updatedNpcGroup,
+          });
+        }
+
         return newNpcGroups;
       });
     },
-    [npcGroups, myUser.id, myUser.room]
+    [myUser.id, myUser.room, myUser.position]
   );
 
   const normalizeDirection = useCallback((direction: Direction) => {
@@ -642,16 +642,8 @@ export default function Scene({
           };
 
       // Socket call to create the flee path
-      const currentSocket = socket();
-      if (currentSocket) {
-        currentSocket.emit(
-          "path-npc",
-          serialize({ pathData: newPathData }),
-          (response: { success: boolean }) => {
-            if (!response.success) console.error("NPC flee path failed");
-          }
-        );
-      }
+      const currentTypedSocket = typedSocket();
+      currentTypedSocket.emit("path-npc-group", { pathData: newPathData });
 
       setPaths((prev: Map<npcGroupId, pathData>) => {
         const newPaths = new Map(prev);

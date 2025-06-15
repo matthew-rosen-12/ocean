@@ -198,9 +198,6 @@ const PathNPCGroupGraphic: React.FC<PathNPCGroupGraphicProps> = ({
 
       if (distance < COLLISION_RADIUS) {
         hasCollision = true;
-        console.log(
-          `Client: Collision detected between NPC ${npcGroup.id} and IDLE NPC ${idleNPC.id} at distance ${distance}`
-        );
         break;
       }
     }
@@ -277,8 +274,6 @@ const PathNPCGroupGraphic: React.FC<PathNPCGroupGraphicProps> = ({
         newPaths.set(npcGroup.id, returningPathData);
         return newPaths;
       });
-
-      console.log(`NPC ${npcGroup.id} returning to player at direction:`, normalizedDirection);
     }
   };
 
@@ -316,24 +311,14 @@ const PathNPCGroupGraphic: React.FC<PathNPCGroupGraphicProps> = ({
 
     // Handle returning behavior
     if (extendedPathData.pathPhase === PathPhase.RETURNING && npcGroup.captorId) {
-      console.log(`NPC ${npcGroup.id} in returning phase, last update: ${currentTime - lastDirectionUpdate}ms ago`);
       
       // Check if we've reached the player
       const captorUser = users?.get(npcGroup.captorId);
       if (captorUser) {
-        const distanceToPlayer = pathPosition.distanceTo(
-          new THREE.Vector3(captorUser.position.x, captorUser.position.y, 0)
-        );
-        
-        console.log(`NPC ${npcGroup.id} distance to player: ${distanceToPlayer.toFixed(2)}`);
         
         // Trigger capture collision
         if (checkForCollision) {
-          console.log("Checking for collision");
-          const collided = checkForCollision(npcGroup, pathPosition, user?.id === myUserId);
-          if (collided) {
-            console.log(distanceToPlayer, "Collision detected");
-          }
+          checkForCollision(npcGroup, pathPosition, user?.id === myUserId);
         }
       }
 

@@ -128,13 +128,17 @@ export class NPCGroupsBiMap {
   }
 
   setByUserId(userId: userId, npcGroup: NPCGroup) {
-    this.map1.set(userId, npcGroup);
+    // Only set in map1 if it's a CAPTURED group
+    if (npcGroup.phase === NPCPhase.CAPTURED) {
+      this.map1.set(userId, npcGroup);
+    }
     this.map2.set(npcGroup.id, npcGroup);
   }
 
   setByNpcGroupId(npcGroupId: npcGroupId, npcGroup: NPCGroup) {
     this.map2.set(npcGroupId, npcGroup);
-    if (npcGroup.captorId) {
+    if (npcGroup.captorId && npcGroup.phase === NPCPhase.CAPTURED) {
+
       this.map1.set(npcGroup.captorId, npcGroup);
     }
   }
@@ -149,8 +153,12 @@ export class NPCGroupsBiMap {
 
   deleteByNpcGroupId(npcGroupId: npcGroupId) {
     const npcGroup = this.map2.get(npcGroupId);
-    if (npcGroup && npcGroup.captorId) {
-      this.map1.delete(npcGroup.captorId);
+    if (npcGroup && npcGroup.captorId && npcGroup.phase === NPCPhase.CAPTURED) {
+      // Only remove from map1 if this was the user's CAPTURED group
+      const userGroup = this.map1.get(npcGroup.captorId);
+      if (userGroup && userGroup.id === npcGroupId) {
+        this.map1.delete(npcGroup.captorId);
+      }
     }
     this.map2.delete(npcGroupId);
   }

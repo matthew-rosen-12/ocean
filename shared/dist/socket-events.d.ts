@@ -26,8 +26,8 @@ export interface ServerToClientEvents {
         npcGroup: NPCGroup;
     }) => void;
     "npc-group-captured": (data: {
-        id: userId;
-        npcGroup: NPCGroup;
+        capturedNPCGroupId: npcGroupId;
+        updatedNpcGroup: NPCGroup;
     }) => void;
     "npc-group-pop": (data: {
         npcGroupId: npcGroupId;
@@ -43,15 +43,18 @@ export interface ClientToServerEvents {
     "join-room": (data: {
         name: string;
     }) => void;
-    "capture-npc": (data: {
-        npcGroupId: string;
+    "capture-npc-group": (data: {
+        capturedNPCGroupId: string;
         room: string;
-        captorId: string;
+        updatedNpcGroup: NPCGroup;
     }) => void;
-    "path-npc": (data: {
+    "path-npc-group": (data: {
         pathData: pathData;
     }) => void;
     "update-user": (data: {
         user: UserInfo;
+    }) => void;
+    "update-npc-group": (data: {
+        npcGroup: NPCGroup;
     }) => void;
 }

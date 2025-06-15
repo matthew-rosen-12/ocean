@@ -99,6 +99,11 @@ export function getNPCGroupsfromMemory(
 
   export function updateNPCGroupInRoomInMemory(roomName: roomId, npcGroup: NPCGroup): void {
     const roomGroups = npcGroups.get(roomName) || new NPCGroupsBiMap();
-    roomGroups.setByNpcGroupId(npcGroup.id, npcGroup);
+    if (npcGroup.fileNames.length == 0) {
+      roomGroups.deleteByNpcGroupId(npcGroup.id);
+    }
+    else {
+      roomGroups.setByNpcGroupId(npcGroup.id, npcGroup);
+    }
     npcGroups.set(roomName, roomGroups);
   }

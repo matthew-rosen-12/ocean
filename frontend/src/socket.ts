@@ -1,7 +1,9 @@
 import { io, Socket } from "socket.io-client";
+import { TypedSocket } from "./utils/typed-socket";
 
 export const BACKEND_URL = "http://localhost:3001";
 let socketInstance: Socket | null = null;
+let typedSocketInstance: TypedSocket | null = null;
 
 export const getSocket = (token?: string) => {
   if (token) {
@@ -13,13 +15,31 @@ export const getSocket = (token?: string) => {
       auth: { token },
       transports: ["websocket", "polling"],
     });
+    // Create new typed socket instance
+    typedSocketInstance = new TypedSocket(socketInstance);
   } else if (!socketInstance) {
     // If no token and no instance, create one without auth
     socketInstance = io(BACKEND_URL, {
       transports: ["websocket", "polling"],
     });
+    // Create new typed socket instance
+    typedSocketInstance = new TypedSocket(socketInstance);
   }
   return socketInstance;
 };
 
+export const getTypedSocket = (): TypedSocket => {
+  if (!typedSocketInstance) {
+    // Ensure we have a socket instance first
+    getSocket();
+    if (socketInstance) {
+      typedSocketInstance = new TypedSocket(socketInstance);
+    } else {
+      throw new Error("Failed to create socket instance");
+    }
+  }
+  return typedSocketInstance;
+};
+
 export const socket = () => getSocket();
+export const typedSocket = () => getTypedSocket();

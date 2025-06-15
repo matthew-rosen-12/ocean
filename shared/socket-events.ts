@@ -12,7 +12,7 @@ export interface ServerToClientEvents {
     "terrain-config": (data: { terrainConfig: TerrainConfig }) => void;
 
     "npc-group-update": (data: { npcGroup: NPCGroup }) => void;
-    "npc-group-captured": (data: { id: userId; npcGroup: NPCGroup }) => void;
+    "npc-group-captured": (data: { capturedNPCGroupId: npcGroupId; updatedNpcGroup: NPCGroup }) => void;
     "npc-group-pop": (data: { npcGroupId: npcGroupId }) => void;
 
     "path-update": (data: { pathData: pathData }) => void;
@@ -21,7 +21,8 @@ export interface ServerToClientEvents {
   
   export interface ClientToServerEvents {
     "join-room": (data: { name: string }) => void;
-    "capture-npc": (data: { npcGroupId: string; room: string; captorId: string }) => void;
-    "path-npc": (data: { pathData: pathData }) => void;
+    "capture-npc-group": (data: { capturedNPCGroupId: string; room: string; updatedNpcGroup: NPCGroup }) => void;
+    "path-npc-group": (data: { pathData: pathData }) => void;
     "update-user": (data: { user: UserInfo }) => void;
+    "update-npc-group": (data: { npcGroup: NPCGroup }) => void;
   }

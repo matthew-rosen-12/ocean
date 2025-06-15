@@ -112,44 +112,38 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
             typedSocket.broadcast(name, "user-joined", { user });
         }));
         // Handle capture-npc request
-        typedSocket.on("capture-npc", (_a) => __awaiter(void 0, [_a], void 0, function* ({ npcGroupId, room, captorId }) {
+        typedSocket.on("capture-npc-group", (_a) => __awaiter(void 0, [_a], void 0, function* ({ capturedNPCGroupId, room, updatedNpcGroup }) {
             try {
                 const npcGroups = (0, npcGroups_1.getNPCGroupsfromMemory)(room);
-                const npcGroup = npcGroups.getByNpcGroupId(npcGroupId);
-                if (!npcGroup) {
-                    console.warn(`NPC group ${npcGroupId} not found in room ${room}`);
+                const capturedNPCGroup = npcGroups.getByNpcGroupId(capturedNPCGroupId);
+                if (!capturedNPCGroup) {
+                    console.warn(`NPC group ${capturedNPCGroupId} not found in room ${room}`);
                     return;
                 }
                 // Clean up path if NPC was in PATH phase
-                if (npcGroup.phase === types_1.NPCPhase.PATH) {
+                if (capturedNPCGroup.phase === types_1.NPCPhase.PATH) {
                     const paths = (0, paths_1.getpathsfromMemory)(room);
-                    paths.delete(npcGroup.id);
+                    paths.delete(capturedNPCGroupId);
                     (0, paths_2.setPathsInMemory)(room, paths);
                 }
                 // Remove the original NPC from the idle/path groups
-                npcGroups.deleteByNpcGroupId(npcGroupId);
+                npcGroups.deleteByNpcGroupId(capturedNPCGroupId);
+                npcGroups.setByNpcGroupId(updatedNpcGroup.id, updatedNpcGroup);
                 (0, npcGroups_1.setNPCGroupsInMemory)(room, npcGroups);
-                // Add the captured NPC to the captor's group (this merges if they already have NPCs)
-                (0, npcGroups_1.addNPCGroupToCaptorNPCGroupInMemory)(room, captorId, npcGroup);
-                // Get the updated captor's group to broadcast
-                const updatedNpcGroups = (0, npcGroups_1.getNPCGroupsfromMemory)(room);
-                const captorGroup = updatedNpcGroups.getByUserId(captorId);
-                if (captorGroup) {
-                    typedSocket.broadcast(room, "npc-group-captured", {
-                        id: captorId,
-                        npcGroup: captorGroup,
-                    });
-                }
+                typedSocket.broadcast(room, "npc-group-captured", {
+                    capturedNPCGroupId,
+                    updatedNpcGroup,
+                });
             }
             catch (error) {
                 console.error("Error capturing NPC:", error);
             }
         }));
         // Handle path-npc request
-        typedSocket.on("path-npc", (_a) => __awaiter(void 0, [_a], void 0, function* ({ pathData }) {
+        typedSocket.on("path-npc-group", (_a) => __awaiter(void 0, [_a], void 0, function* ({ pathData }) {
             try {
-                const updatedNPCGroup = new types_1.NPCGroup(Object.assign(Object.assign({}, pathData.npcGroup), { phase: types_1.NPCPhase.PATH }));
-                (0, npcService_1.updateNPCGroupInRoom)(pathData.room, updatedNPCGroup);
+                const pathNPCGroup = pathData.npcGroup;
+                (0, npcService_1.updateNPCGroupInRoom)(pathData.room, pathNPCGroup);
                 const activepaths = (0, paths_1.getpathsfromMemory)(pathData.room);
                 // if pathData already exists, update it
                 const existingPath = activepaths.get(pathData.npcGroup.id);
@@ -158,16 +152,23 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
                 }
                 activepaths.set(pathData.npcGroup.id, pathData);
                 (0, paths_2.setPathsInMemory)(pathData.room, activepaths);
-                // Only remove from group if there's a captorId (fleeing NPCs don't have groups)
-                if (pathData.npcGroup.captorId) {
-                    (0, npcGroups_1.removeTopNPCFromGroupInRoomInMemory)(pathData.room, pathData.npcGroup.captorId);
-                }
                 typedSocket.broadcast(pathData.room, "path-update", {
                     pathData,
                 });
             }
             catch (error) {
                 console.error("Error pathing NPC:", error);
+            }
+        }));
+        typedSocket.on("update-npc-group", (_a) => __awaiter(void 0, [_a], void 0, function* ({ npcGroup }) {
+            try {
+                const room = typedSocket.data.room;
+                if (room) {
+                    (0, npcService_1.updateNPCGroupInRoom)(room, npcGroup);
+                }
+            }
+            catch (error) {
+                console.error("Error updating NPC group:", error);
             }
         }));
         // Handle user position updates

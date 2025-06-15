@@ -11,8 +11,9 @@ exports.emitToSocket = emitToSocket;
 const server_1 = require("../server");
 const superjson_1 = __importDefault(require("superjson"));
 const types_1 = require("shared/types");
-// Register NPCGroupsBiMap with superjson for proper serialization/deserialization
+// Register classes with superjson for proper serialization/deserialization
 superjson_1.default.registerClass(types_1.NPCGroupsBiMap);
+superjson_1.default.registerClass(types_1.NPCGroup);
 // For Redis storage
 function serialize(data) {
     return superjson_1.default.stringify(data);
