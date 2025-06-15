@@ -1,7 +1,11 @@
 import { io } from "../server";
 
 import superjson from "superjson";
+import { NPCGroupsBiMap, NPCGroup } from "shared/types";
 
+// Register classes with superjson for proper serialization/deserialization
+superjson.registerClass(NPCGroupsBiMap);
+superjson.registerClass(NPCGroup);
 
 import { Socket } from "socket.io";
 import { ServerToClientEvents, ClientToServerEvents } from "shared/socket-events";

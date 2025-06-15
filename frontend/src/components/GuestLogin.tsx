@@ -7,7 +7,6 @@ import {
   npcGroupId,
   userId,
   NPCPhase,
-
   NPCGroupsBiMap,
   Position,
   TerrainConfig,
@@ -75,7 +74,40 @@ export default function GuestLogin({
       });
 
       typedSocket.on("all-npc-groups", ({ npcGroups }: { npcGroups: NPCGroupsBiMap }) => {
-        setNPCGroups(npcGroups);
+        console.log("Received all-npc-groups:", npcGroups);
+        console.log("npcGroups type:", typeof npcGroups);
+        console.log("npcGroups constructor:", npcGroups.constructor.name);
+        
+        // Create a new NPCGroupsBiMap instance from the received data
+        const newNpcGroups = new NPCGroupsBiMap();
+        
+        // If npcGroups has the expected structure, copy the data
+        if (npcGroups && typeof npcGroups === 'object') {
+          // Check if it's already a proper NPCGroupsBiMap
+          if (npcGroups instanceof NPCGroupsBiMap) {
+            setNPCGroups(new NPCGroupsBiMap(npcGroups));
+          } else {
+            // Handle case where it's deserialized as a plain object
+            // Access the internal maps directly if they exist
+            const map1Data = (npcGroups as any).map1;
+            const map2Data = (npcGroups as any).map2;
+            
+            if (map2Data && Array.isArray(map2Data)) {
+              // map2Data is likely serialized as an array of [key, value] pairs
+              map2Data.forEach(([key, value]: [string, any]) => {
+                newNpcGroups.setByNpcGroupId(key, value);
+              });
+            } else if (map2Data && typeof map2Data === 'object') {
+              // Or as an object
+              Object.entries(map2Data).forEach(([key, value]) => {
+                newNpcGroups.setByNpcGroupId(key, value as any);
+              });
+            }
+            setNPCGroups(newNpcGroups);
+          }
+        } else {
+          setNPCGroups(newNpcGroups);
+        }
       });
 
       typedSocket.on("user-left", ({ lastPosition, userId }: { lastPosition: Position; userId: string }) => {
@@ -87,19 +119,19 @@ export default function GuestLogin({
 
 
         setNPCGroups((prev) => {
-          const captorGroup = prev.getByUserId(userId);
+          const newNpcGroups = new NPCGroupsBiMap(prev);
+          const captorGroup = newNpcGroups.getByUserId(userId);
           if (captorGroup) {
-            const newCaptorGroup = {
+            const newCaptorGroup = new NPCGroup({
               ...captorGroup,
               captorId: undefined,
               position: lastPosition,
               phase: NPCPhase.IDLE,
-            };
-            prev.setByNpcGroupId(captorGroup.id, newCaptorGroup);
+            });
+            newNpcGroups.setByNpcGroupId(captorGroup.id, newCaptorGroup);
           }
 
-
-          return prev
+          return newNpcGroups;
         });
 
       });
@@ -110,16 +142,18 @@ export default function GuestLogin({
 
       typedSocket.on("npc-group-update", ({ npcGroup }: { npcGroup: NPCGroup }) => {
         setNPCGroups((prev) => {
-          prev.setByNpcGroupId(npcGroup.id, npcGroup);
-          return prev
+          const newNpcGroups = new NPCGroupsBiMap(prev);
+          newNpcGroups.setByNpcGroupId(npcGroup.id, npcGroup);
+          return newNpcGroups;
         });
       });
 
 
       typedSocket.on("npc-group-captured", ({ npcGroup }) => {
         setNPCGroups((prev) => {
-          prev.setByNpcGroupId(npcGroup.id, npcGroup);
-          return prev;
+          const newNpcGroups = new NPCGroupsBiMap(prev);
+          newNpcGroups.setByNpcGroupId(npcGroup.id, npcGroup);
+          return newNpcGroups;
         });
         setPaths((prev) => {
           const newPaths = new Map(prev);
@@ -130,39 +164,43 @@ export default function GuestLogin({
 
       typedSocket.on("npc-group-pop", ({ npcGroupId }: { npcGroupId: npcGroupId }) => {
         setNPCGroups((prev) => {
-          const npcGroup = prev.getByNpcGroupId(npcGroupId);
+          const newNpcGroups = new NPCGroupsBiMap(prev);
+          const npcGroup = newNpcGroups.getByNpcGroupId(npcGroupId);
           if (npcGroup && npcGroup.fileNames.length > 1) {
             const updatedGroup = {
               ...npcGroup,
               fileNames: npcGroup.fileNames.slice(0, -1),  // Remove last element (pop)
               faceFileName: npcGroup.fileNames[npcGroup.fileNames.length - 2] // New face is second-to-last
             };
-            prev.setByNpcGroupId(npcGroupId, updatedGroup);
+            newNpcGroups.setByNpcGroupId(npcGroupId, updatedGroup);
           } else if (npcGroup?.captorId) {
             // Remove the group entirely if it would be empty
-            prev.deleteByUserId(npcGroup.captorId);
+            newNpcGroups.deleteByUserId(npcGroup.captorId);
           }
-          return prev;
+          return newNpcGroups;
         });
       });
 
       typedSocket.on("path-update", ({ pathData }: { pathData: pathData }) => {
         setPaths((prev) => {
-          prev.set(pathData.npcGroup.id, pathData);
-          return prev;
+          const newPaths = new Map(prev);
+          newPaths.set(pathData.npcGroup.id, pathData);
+          return newPaths;
         });
         setNPCGroups((prev) => {
-          prev.setByNpcGroupId(pathData.npcGroup.id, {
+          const newNpcGroups = new NPCGroupsBiMap(prev);
+          newNpcGroups.setByNpcGroupId(pathData.npcGroup.id, new NPCGroup({
             ...pathData.npcGroup,
-          });
-         return prev;
+          }));
+          return newNpcGroups;
         });
       });
 
       typedSocket.on("path-complete", ({ npcGroup }) => {
         setNPCGroups((prev) => {
-          prev.setByNpcGroupId(npcGroup.id, npcGroup);
-          return prev;
+          const newNpcGroups = new NPCGroupsBiMap(prev);
+          newNpcGroups.setByNpcGroupId(npcGroup.id, npcGroup);
+          return newNpcGroups;
         });
         setPaths((prev) => {
           const newpaths = new Map(prev);

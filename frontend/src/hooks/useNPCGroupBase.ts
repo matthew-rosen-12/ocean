@@ -138,7 +138,7 @@ export function useNPCGroupBase(npcGroup: NPCGroup) {
         },
         undefined,
         (error) => {
-          console.error("Error loading NPC texture:", error);
+          console.error(`Error loading NPC texture: ${texturePath}`, error);
         }
       );
     }

@@ -31,14 +31,22 @@ export declare enum NPCPhase {
 }
 export type fileName = string;
 export type npcGroupId = string;
-export interface NPCGroup {
+export declare class NPCGroup {
     id: npcGroupId;
     fileNames: fileName[];
     captorId?: userId;
-    faceFileName: fileName;
     position: Position;
     direction: Direction;
     phase: NPCPhase;
+    constructor(data: {
+        id: npcGroupId;
+        fileNames: fileName[];
+        captorId?: userId;
+        position: Position;
+        direction: Direction;
+        phase: NPCPhase;
+    });
+    get faceFileName(): fileName | undefined;
 }
 export type userId = string;
 export type socketId = string;
@@ -55,6 +63,7 @@ export declare class NPCGroupsBiMap {
     setByUserId(userId: userId, npcGroup: NPCGroup): void;
     setByNpcGroupId(npcGroupId: npcGroupId, npcGroup: NPCGroup): void;
     deleteByUserId(userId: userId): void;
+    deleteByNpcGroupId(npcGroupId: npcGroupId): void;
     values(): NPCGroup[];
     getByUserId(userId: userId): NPCGroup | undefined;
     getByNpcGroupId(npcGroupId: npcGroupId): NPCGroup | undefined;

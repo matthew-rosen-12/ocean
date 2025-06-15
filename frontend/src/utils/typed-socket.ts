@@ -1,9 +1,14 @@
 
 import superjson from "superjson";
+import { NPCGroupsBiMap, NPCGroup } from "shared/types";
 
-import { io, Socket } from "socket.io-client";
+import { Socket } from "socket.io-client";
 
 import { ServerToClientEvents, ClientToServerEvents } from "shared/socket-events";
+
+// Register classes with superjson for proper serialization/deserialization
+superjson.registerClass(NPCGroupsBiMap);
+superjson.registerClass(NPCGroup);
 
 // For Redis storage
 export function serialize(data: any): string {

@@ -112,22 +112,34 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
             typedSocket.broadcast(name, "user-joined", { user });
         }));
         // Handle capture-npc request
-        typedSocket.on("capture-npc", (_a) => __awaiter(void 0, [_a], void 0, function* ({ npcId, room, captorId }) {
+        typedSocket.on("capture-npc", (_a) => __awaiter(void 0, [_a], void 0, function* ({ npcGroupId, room, captorId }) {
             try {
                 const npcGroups = (0, npcGroups_1.getNPCGroupsfromMemory)(room);
-                const npcGroup = npcGroups.getByNpcGroupId(npcId);
-                const updatedNPCGroup = Object.assign(Object.assign({}, npcGroup), { phase: types_1.NPCPhase.CAPTURED });
-                // Only call setPathCompleteInRoom if the NPC is actually in PATH phase
+                const npcGroup = npcGroups.getByNpcGroupId(npcGroupId);
+                if (!npcGroup) {
+                    console.warn(`NPC group ${npcGroupId} not found in room ${room}`);
+                    return;
+                }
+                // Clean up path if NPC was in PATH phase
                 if (npcGroup.phase === types_1.NPCPhase.PATH) {
                     const paths = (0, paths_1.getpathsfromMemory)(room);
                     paths.delete(npcGroup.id);
                     (0, paths_2.setPathsInMemory)(room, paths);
                 }
-                (0, npcService_1.updateNPCGroupInRoom)(room, updatedNPCGroup);
-                typedSocket.broadcast(room, "npc-group-captured", {
-                    id: captorId,
-                    npcGroup: updatedNPCGroup,
-                });
+                // Remove the original NPC from the idle/path groups
+                npcGroups.deleteByNpcGroupId(npcGroupId);
+                (0, npcGroups_1.setNPCGroupsInMemory)(room, npcGroups);
+                // Add the captured NPC to the captor's group (this merges if they already have NPCs)
+                (0, npcGroups_1.addNPCGroupToCaptorNPCGroupInMemory)(room, captorId, npcGroup);
+                // Get the updated captor's group to broadcast
+                const updatedNpcGroups = (0, npcGroups_1.getNPCGroupsfromMemory)(room);
+                const captorGroup = updatedNpcGroups.getByUserId(captorId);
+                if (captorGroup) {
+                    typedSocket.broadcast(room, "npc-group-captured", {
+                        id: captorId,
+                        npcGroup: captorGroup,
+                    });
+                }
             }
             catch (error) {
                 console.error("Error capturing NPC:", error);
@@ -136,7 +148,7 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
         // Handle path-npc request
         typedSocket.on("path-npc", (_a) => __awaiter(void 0, [_a], void 0, function* ({ pathData }) {
             try {
-                const updatedNPCGroup = Object.assign(Object.assign({}, pathData.npcGroup), { phase: types_1.NPCPhase.PATH });
+                const updatedNPCGroup = new types_1.NPCGroup(Object.assign(Object.assign({}, pathData.npcGroup), { phase: types_1.NPCPhase.PATH }));
                 (0, npcService_1.updateNPCGroupInRoom)(pathData.room, updatedNPCGroup);
                 const activepaths = (0, paths_1.getpathsfromMemory)(pathData.room);
                 // if pathData already exists, update it
@@ -186,7 +198,7 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
                     const npcGroups = (0, npcGroups_1.getNPCGroupsfromMemory)(room);
                     const npcGroup = npcGroups.getByUserId(user.id);
                     if (npcGroup) {
-                        const updatedNPCGroup = Object.assign(Object.assign({}, npcGroup), { position: lastPosition, phase: types_1.NPCPhase.IDLE });
+                        const updatedNPCGroup = new types_1.NPCGroup(Object.assign(Object.assign({}, npcGroup), { position: lastPosition, phase: types_1.NPCPhase.IDLE }));
                         npcGroups.setByNpcGroupId(npcGroup.id, updatedNPCGroup);
                         (0, npcGroups_1.setNPCGroupsInMemory)(room, npcGroups);
                     }

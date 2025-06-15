@@ -44,7 +44,7 @@ export interface ClientToServerEvents {
         name: string;
     }) => void;
     "capture-npc": (data: {
-        npcId: string;
+        npcGroupId: string;
         room: string;
         captorId: string;
     }) => void;

@@ -21,7 +21,7 @@ import {
   calculateNPCGroupPosition,
 } from "../../utils/npc-group-utils";
 import { socket } from "../../socket";
-import { serialize } from "../../utils/serializers";
+import { serialize } from "../../utils/typed-socket";
 import { v4 as uuidv4 } from "uuid";
 // Constants for positioning
 const FOLLOW_DISTANCE = 2; // Distance behind the user
@@ -230,23 +230,24 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
 
       const groupPosition = calculateTargetPosition();
              // split npc group into 2 groups - one with no captor Id and just the face npc, and the other with the captor id and the rest of the filenames
-       const emittedNPCGroup: NPCGroup = {
+       const faceFileName = group.faceFileName;
+       if (!faceFileName) return;
+       
+       const emittedNPCGroup = new NPCGroup({
         ...group,
          id: uuidv4(),
-         fileNames: [group.faceFileName],
-         faceFileName: group.faceFileName,
+         fileNames: [faceFileName],
          captorId: undefined,
          phase: NPCPhase.PATH,
          direction: normalizedDirection,
          position: groupPosition,
-       };
+       });
 
-       const restOfNPCs = group.fileNames.filter((fileName) => fileName !== group.faceFileName);
-       const restOfNPCsGroup: NPCGroup = {
+       const restOfNPCs = group.fileNames.filter((fileName) => fileName !== faceFileName);
+       const restOfNPCsGroup = new NPCGroup({
          ...group,
          fileNames: restOfNPCs,
-         faceFileName: restOfNPCs[0],
-       };
+       });
 
 
       if (emittedNPCGroup) {

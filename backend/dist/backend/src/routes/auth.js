@@ -28,15 +28,14 @@ router.post("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             room: room,
             position: (0, user_info_1.getPosition)(),
             direction: (0, user_info_1.getDirection)(),
-            npcGroup: {
+            npcGroup: new types_1.NPCGroup({
                 id: guestId,
                 fileNames: [],
-                faceFileName: "",
                 position: (0, user_info_1.getPosition)(),
                 direction: (0, user_info_1.getDirection)(),
                 phase: types_1.NPCPhase.IDLE,
                 captorId: guestId
-            },
+            }),
         };
         // Generate token (base64 encoded user info)
         const token = Buffer.from(JSON.stringify(guestUser)).toString("base64");

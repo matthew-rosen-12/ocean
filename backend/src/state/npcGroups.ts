@@ -1,4 +1,4 @@
-import { NPCGroup, roomId, userId, NPCGroupsBiMap } from "shared/types";
+import { NPCGroup, roomId, userId, NPCGroupsBiMap, NPCPhase } from "shared/types";
 
 const npcGroups: Map<roomId, NPCGroupsBiMap> = new Map();
 
@@ -22,10 +22,12 @@ export function getNPCGroupsfromMemory(
   }
 
   function mergedNPCGroups(group1: NPCGroup, group2: NPCGroup): NPCGroup {
-    return {
+    const mergedFileNames = [...group1.fileNames, ...group2.fileNames];
+    return new NPCGroup({
       ...group1,
-      fileNames: [...group1.fileNames, ...group2.fileNames],
-    };
+      fileNames: mergedFileNames,
+      captorId: group1.captorId || group2.captorId, // Ensure captorId is preserved
+    });
   }
   
   // Direct Group operations - no read-modify-set needed
@@ -42,13 +44,17 @@ export function getNPCGroupsfromMemory(
   
     let captorNPCGroup = roomGroups.getByUserId(captorId)
     if (!captorNPCGroup) {
-        captorNPCGroup = {
+        captorNPCGroup = new NPCGroup({
             ...npcGroup,
             captorId,
-        };
+            phase: NPCPhase.CAPTURED,
+        });
     }
     
-    roomGroups.setByUserId(captorId, mergedNPCGroups(captorNPCGroup, npcGroup));
+    const mergedGroup = mergedNPCGroups(captorNPCGroup, npcGroup);
+    mergedGroup.captorId = captorId; // Ensure captorId is set
+    mergedGroup.phase = NPCPhase.CAPTURED; // Ensure phase is CAPTURED
+    roomGroups.setByUserId(captorId, mergedGroup);
   }
   
   export function removeTopNPCFromGroupInRoomInMemory(
@@ -72,8 +78,7 @@ export function getNPCGroupsfromMemory(
         return
       }
   
-      // If the removed NPC was the face NPC, select a new one
-      group.faceFileName = group.fileNames[group.fileNames.length - 1];
+      // faceFileName is now computed from fileNames array
   
   }
   

@@ -13,41 +13,28 @@ export function createOrReuseNPCGroup(
   id: npcGroupId,
   fileNames: fileName[],
   captorId?: userId,
-  faceFileName?: fileName,
   position?: Position,
   direction?: Direction,
   phase?: NPCPhase
 ): NPCGroup {
   // If no original group, create a new one
   if (!original) {
-    const firstFileName = fileNames.length > 0 ? fileNames[0] : "";
-    return {
+    return new NPCGroup({
       id,
       fileNames: [...fileNames],
       captorId,
-      faceFileName: faceFileName !== undefined ? faceFileName : firstFileName,
       position: position || { x: 0, y: 0 },
       direction: direction || { x: 0, y: 0 },
       phase: phase || NPCPhase.IDLE,
-    };
+    });
   }
 
   // Check if content is identical
-  const expectedFaceFileName =
-    faceFileName !== undefined
-      ? faceFileName
-      : original.faceFileName && fileNames.includes(original.faceFileName)
-      ? original.faceFileName
-      : fileNames.length > 0
-      ? fileNames[0]
-      : "";
-
   const contentSame =
     original.id === id &&
     original.captorId === captorId &&
     original.fileNames.length === fileNames.length &&
     original.fileNames.every((fileName, index) => fileNames[index] === fileName) &&
-    original.faceFileName === expectedFaceFileName &&
     original.position.x === (position?.x || original.position.x) &&
     original.position.y === (position?.y || original.position.y) &&
     original.direction.x === (direction?.x || original.direction.x) &&
@@ -60,15 +47,14 @@ export function createOrReuseNPCGroup(
   }
 
   // Content is different, create a new group
-  return {
+  return new NPCGroup({
     id,
     fileNames: [...fileNames],
     captorId,
-    faceFileName: expectedFaceFileName,
     position: position || original.position,
     direction: direction || original.direction,
     phase: phase || original.phase,
-  };
+  });
 }
 
 /**
@@ -83,22 +69,22 @@ export function updateNPCGroupsPreservingIdentity(
       id: npcGroupId;
       fileNames: fileName[];
       captorId?: userId;
-      faceFileName?: fileName;
       position?: Position;
       direction?: Direction;
       phase?: NPCPhase;
     }
   >
 ): DefaultMap<userId, NPCGroup> {
-  const newGroups = new DefaultMap<userId, NPCGroup>((userId: userId) => ({
-    id: `${userId}-group`,
-    fileNames: [],
-    captorId: userId,
-    faceFileName: "",
-    position: { x: 0, y: 0 },
-    direction: { x: 0, y: 0 },
-    phase: NPCPhase.IDLE,
-  }));
+  const newGroups = new DefaultMap<userId, NPCGroup>((userId: userId) => 
+    new NPCGroup({
+      id: `${userId}-group`,
+      fileNames: [],
+      captorId: userId,
+      position: { x: 0, y: 0 },
+      direction: { x: 0, y: 0 },
+      phase: NPCPhase.IDLE,
+    })
+  );
 
   // Copy all original groups, preserving identity where possible
   Array.from(original.entries()).forEach(([userId, group]) => {
@@ -112,7 +98,6 @@ export function updateNPCGroupsPreservingIdentity(
           update.id,
           update.fileNames,
           update.captorId,
-          update.faceFileName,
           update.position,
           update.direction,
           update.phase
@@ -134,7 +119,6 @@ export function updateNPCGroupsPreservingIdentity(
           update.id,
           update.fileNames,
           update.captorId,
-          update.faceFileName,
           update.position,
           update.direction,
           update.phase
@@ -157,16 +141,11 @@ export function addFileNameToGroup(
   const currentGroup = groups.get(captorId);
   const newFileNames = [...currentGroup.fileNames, fileName];
 
-  // If this is the first fileName in the group, make it the face fileName
-  const newFaceFileName =
-    currentGroup.fileNames.length === 0 ? fileName : currentGroup.faceFileName;
-
   const updates = new Map();
   updates.set(captorId, {
     id: currentGroup.id,
     fileNames: newFileNames,
     captorId,
-    faceFileName: newFaceFileName,
     position: currentGroup.position,
     direction: currentGroup.direction,
     phase: currentGroup.phase,
@@ -186,19 +165,11 @@ export function removeFileNameFromGroup(
   const currentGroup = groups.get(captorId);
   const newFileNames = currentGroup.fileNames.filter(f => f !== fileName);
 
-  // Handle face fileName update if needed
-  let newFaceFileName = currentGroup.faceFileName;
-  if (currentGroup.faceFileName === fileName) {
-    // If the removed fileName was the face fileName, select a new one
-    newFaceFileName = newFileNames.length > 0 ? newFileNames[0] : "";
-  }
-
   const updates = new Map();
   updates.set(captorId, {
     id: currentGroup.id,
     fileNames: newFileNames,
     captorId,
-    faceFileName: newFaceFileName,
     position: currentGroup.position,
     direction: currentGroup.direction,
     phase: currentGroup.phase,
@@ -259,30 +230,3 @@ export function calculateNPCGroupPosition(
   return targetPosition;
 }
 
-/**
- * Get the face fileName for a group (the first fileName serves as the face if none set)
- */
-export function getFaceFileName(group: NPCGroup): fileName | null {
-  if (group.faceFileName && group.fileNames.includes(group.faceFileName)) {
-    return group.faceFileName;
-  }
-
-  // If no face fileName set or it's no longer in the group, use the first fileName
-  const firstFileName = group.fileNames.length > 0 ? group.fileNames[0] : null;
-  return firstFileName;
-}
-
-/**
- * Updates the face fileName for a group, ensuring it exists in the group
- */
-export function setFaceFileName(group: NPCGroup, faceFileName: fileName): NPCGroup {
-  if (!group.fileNames.includes(faceFileName)) {
-    console.warn(`Attempted to set face fileName ${faceFileName} that is not in group`);
-    return group;
-  }
-
-  return {
-    ...group,
-    faceFileName,
-  };
-}

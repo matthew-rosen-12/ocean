@@ -19,7 +19,6 @@ import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
 import { getAnimalBorderColor } from "../../utils/animal-colors";
 import { TerrainBoundaries } from "../../utils/terrain";
 import {
-  getFaceFileName,
   calculateNPCGroupPosition,
   calculateNPCGroupScale,
 } from "../../utils/npc-group-utils";
@@ -183,9 +182,9 @@ const PathNPCGroupGraphic: React.FC<PathNPCGroupGraphicProps> = ({
     );
 
     // Check for collisions with IDLE NPCs
-    const idleNPCs = Array.from(npcGroups.values()).filter(
+    const idleNPCs = npcGroups?.values()?.filter(
       (otherNpcGroup) => otherNpcGroup.phase === NPCPhase.IDLE && otherNpcGroup.id !== npcGroup.id
-    );
+    ) || [];
 
     let hasCollision = false;
     for (const idleNPC of idleNPCs) {

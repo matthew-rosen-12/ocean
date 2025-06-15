@@ -13,7 +13,7 @@ const NUM_NPCS = 4;
 const paths_1 = require("../state/paths");
 const npcGroups_1 = require("../state/npcGroups");
 const terrain_1 = require("../utils/terrain");
-const typed_socket_1 = require("src/utils/typed-socket");
+const typed_socket_1 = require("../utils/typed-socket");
 function updateNPCGroupInRoom(roomName, npcGroup) {
     (0, npcGroups_1.updateNPCGroupInRoomInMemory)(roomName, npcGroup);
     (0, typed_socket_1.emitToRoom)(roomName, "npc-group-update", { npcGroup });
@@ -37,7 +37,7 @@ function setPathCompleteInRoom(room, npcGroup) {
         }
         // Calculate landing position with wrap-around and collision avoidance
         const landingPosition = calculateLandingPositionWithCollisionAvoidance(pathDataForNPC, room, npcGroup.id);
-        const updatedNPCGroup = Object.assign(Object.assign({}, npcGroup), { position: landingPosition, phase: types_1.NPCPhase.IDLE });
+        const updatedNPCGroup = new types_1.NPCGroup(Object.assign(Object.assign({}, npcGroup), { position: landingPosition, phase: types_1.NPCPhase.IDLE }));
         updateNPCGroupInRoom(room, updatedNPCGroup);
         // Remove this path from active paths
         (0, paths_1.deletePathInMemory)(room, npcGroup.id);
@@ -156,14 +156,13 @@ function createNPCGroups() {
     for (let i = 0; i < NUM_NPCS; i++) {
         const filenameIndex = i % shuffledFilenames.length;
         const filename = shuffledFilenames[filenameIndex];
-        const npcGroup = {
+        const npcGroup = new types_1.NPCGroup({
             id: (0, uuid_1.v4)(),
             fileNames: [filename],
-            faceFileName: filename,
             position: (0, npc_info_1.getPosition)(),
             direction: (0, npc_info_1.getDirection)(),
             phase: types_1.NPCPhase.IDLE,
-        };
+        });
         npcGroups.push(npcGroup);
     }
     return npcGroups;

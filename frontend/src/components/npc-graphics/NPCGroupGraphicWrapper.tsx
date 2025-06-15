@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { TerrainBoundaries } from "../../utils/terrain";
 import IdleNPCGroupGraphic from "./IdleNPCGroupGraphic";
 import PathNPCGroupGraphic from "./PathNPCGroupGraphic";
+import CapturedNPCGroupGraphic from "./CapturedNPCGroupGraphic";
 
 interface NPCGraphicWrapperProps {
   npcGroup: NPCGroup;
@@ -14,6 +15,7 @@ interface NPCGraphicWrapperProps {
   allPaths?: Map<string, pathData>; // All active paths for NPC-to-NPC collision
   npcGroups: NPCGroupsBiMap; // NPC groups for collision with groups
   myUserId: string; // Current user ID
+  animalDimensions: { [animal: string]: { width: number; height: number } }; // Animal dimensions for scaling
   setPaths?: (
     paths:
       | Map<string, pathData>
@@ -33,6 +35,7 @@ const NPCGraphicWrapper = ({
   allPaths,
   npcGroups,
   myUserId,
+  animalDimensions,
   setPaths,
   setNpcGroups,
 }: NPCGraphicWrapperProps) => {
@@ -67,6 +70,32 @@ const NPCGraphicWrapper = ({
         myUserId={myUserId}
         setPaths={setPaths}
         setNpcGroups={setNpcGroups}
+      />
+    );
+  }
+
+  else if (npcGroup.phase === NPCPhase.CAPTURED) {
+    console.log("npcGroup", npcGroup);
+    const captorUser = users.get(npcGroup.captorId!);
+    if (!captorUser || !setPaths || !allPaths) {
+      return null;
+    }
+
+    const animalWidth = animalDimensions[captorUser.animal]?.width;
+    console.log("animalWidth", animalWidth);
+    return (
+      <CapturedNPCGroupGraphic
+        key={npcGroup.id}
+        group={npcGroup}
+        user={captorUser}
+        npcGroups={npcGroups}
+        allPaths={allPaths}
+        setPaths={setPaths}
+        setNpcGroups={setNpcGroups}
+        animalWidth={animalWidth}
+        isLocalUser={captorUser.id === myUserId}
+        terrainBoundaries={terrainBoundaries}
+        users={users}
       />
     );
   }

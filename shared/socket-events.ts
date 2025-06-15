@@ -21,7 +21,7 @@ export interface ServerToClientEvents {
   
   export interface ClientToServerEvents {
     "join-room": (data: { name: string }) => void;
-    "capture-npc": (data: { npcId: string; room: string; captorId: string }) => void;
+    "capture-npc": (data: { npcGroupId: string; room: string; captorId: string }) => void;
     "path-npc": (data: { pathData: pathData }) => void;
     "update-user": (data: { user: UserInfo }) => void;
   }

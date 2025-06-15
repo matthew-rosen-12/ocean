@@ -10,8 +10,6 @@ import {
   pathData,
   userId,
   UserInfo,
-  DefaultMap,
-  fileName,
   NPCGroupsBiMap,
 } from "shared/types";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
@@ -21,9 +19,8 @@ import { ANIMAL_SCALES, DIRECTION_OFFSET } from "../utils/user-info";
 import AnimalGraphic from "./AnimalGraphic";
 import { throttle } from "lodash";
 import { v4 as uuidv4 } from "uuid";
-import { serialize } from "../utils/serializers";
+import { serialize } from "../utils/typed-socket";
 import NPCGraphicWrapper from "./npc-graphics/NPCGroupGraphicWrapper";
-import NPCGroupGraphic from "./npc-graphics/CapturedNPCGroupGraphic";
 import { useMount } from "../hooks/useNPCGroupBase";
 import * as THREE from "three";
 // Note: These functions may no longer be needed since NPCs are now NPCGroups
@@ -78,11 +75,11 @@ async function pathNPCGroup(
 ) {
   try {
     // Create new objects instead of mutating
-    const updatedNPCGroup: NPCGroup = {
+    const updatedNPCGroup = new NPCGroup({
       ...npcGroup,
       position: myUser.position,
       phase: NPCPhase.PATH,
-    };
+    });
 
     // Create new path data
     const newpathData: pathData = {
@@ -476,23 +473,24 @@ export default function Scene({
       // 1. get user's npc group
       let userNpcGroup = npcGroups.getByUserId(myUser.id);
       if (!userNpcGroup) {
-        userNpcGroup = {
+        userNpcGroup = new NPCGroup({
           id: uuidv4(),
           fileNames: [],
-          faceFileName: myUser.animal,
           position: myUser.position,
           phase: NPCPhase.IDLE,
           direction: { x: 0, y: 0 },
-        };
+        });
       }
 
       // 2. create new npc group
-      const updatedNpcGroup: NPCGroup = {
-        ...userNpcGroup,
+      const updatedNpcGroup = new NPCGroup({
+        id: userNpcGroup.id,
         fileNames: [...userNpcGroup.fileNames, ...npcGroup.fileNames],
         position: myUser.position,
         phase: NPCPhase.CAPTURED,
-      };
+        captorId: myUser.id, // Set the captorId
+        direction: userNpcGroup.direction,
+      });
       setPaths((prev: Map<npcGroupId, pathData>) => {
         const newPaths = new Map(prev);
         newPaths.delete(npcGroup.id); // remove the path data for the captured NPC
@@ -519,10 +517,14 @@ export default function Scene({
   const makeNPCGroupFlee = useCallback(
     (npcGroup: NPCGroup, npcPosition: THREE.Vector3) => {
       // Create new objects instead of mutating
-      const updatedNpcGroup: NPCGroup = {
-        ...npcGroup,
+      const updatedNpcGroup = new NPCGroup({
+        id: npcGroup.id,
+        fileNames: npcGroup.fileNames,
+        captorId: npcGroup.captorId,
+        position: npcGroup.position,
+        direction: npcGroup.direction,
         phase: NPCPhase.PATH,
-      };
+      });
 
       // Get current path data
       const currentPathData = paths.get(npcGroup.id);
@@ -748,7 +750,7 @@ export default function Scene({
         />
       ))}
 
-      {Array.from(npcGroups.values())
+      {npcGroups.values()
         .map((npcGroup) => (
           <NPCGraphicWrapper
             key={npcGroup.id}
@@ -759,6 +761,7 @@ export default function Scene({
             allPaths={paths}
             npcGroups={npcGroups}
             myUserId={myUser.id}
+            animalDimensions={animalDimensions}
             setPaths={setPaths}
             setNpcGroups={setNpcGroups}
           />

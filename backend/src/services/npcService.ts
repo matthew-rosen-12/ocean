@@ -58,11 +58,11 @@ export function setPathCompleteInRoom(room: string, npcGroup: NPCGroup) {
         npcGroup.id
       );
 
-    const updatedNPCGroup: NPCGroup = {
+    const updatedNPCGroup = new NPCGroup({
       ...npcGroup,
       position: landingPosition,
       phase: NPCPhase.IDLE,
-    };
+    });
 
      updateNPCGroupInRoom(room, updatedNPCGroup);
 
@@ -236,14 +236,13 @@ export function createNPCGroups(): NPCGroup[] {
     const filenameIndex = i % shuffledFilenames.length;
     const filename = shuffledFilenames[filenameIndex];
 
-    const npcGroup: NPCGroup = {
+    const npcGroup = new NPCGroup({
       id: uuidv4(),
       fileNames: [filename],
-      faceFileName: filename,
       position: getPosition(),
       direction: getDirection(),
       phase: NPCPhase.IDLE,
-    };
+    });
 
     npcGroups.push(npcGroup);
   }

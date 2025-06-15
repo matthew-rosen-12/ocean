@@ -12,6 +12,19 @@ export var NPCPhase;
     NPCPhase["CAPTURED"] = "CAPTURED";
     NPCPhase["PATH"] = "PATH";
 })(NPCPhase || (NPCPhase = {}));
+export class NPCGroup {
+    constructor(data) {
+        this.id = data.id;
+        this.fileNames = data.fileNames;
+        this.captorId = data.captorId;
+        this.position = data.position;
+        this.direction = data.direction;
+        this.phase = data.phase;
+    }
+    get faceFileName() {
+        return this.fileNames.length > 0 ? this.fileNames[this.fileNames.length - 1] : undefined;
+    }
+}
 export class DefaultMap extends Map {
     constructor(defaultFactory) {
         super();
@@ -29,10 +42,40 @@ export class NPCGroupsBiMap {
         this.map1 = new Map();
         this.map2 = new Map();
         if (existing) {
-            // Copy all entries from existing maps using the public methods
-            existing.values().forEach(npcGroup => {
-                this.setByNpcGroupId(npcGroup.id, npcGroup);
-            });
+            // Check if existing is a proper NPCGroupsBiMap instance
+            if (existing instanceof NPCGroupsBiMap && typeof existing.values === 'function') {
+                // Copy all entries from existing maps using the public methods
+                existing.values().forEach(npcGroup => {
+                    this.setByNpcGroupId(npcGroup.id, npcGroup);
+                });
+            }
+            else if (existing && typeof existing === 'object') {
+                // Handle case where existing is a plain object (from deserialization)
+                const existingAny = existing;
+                // Try to access the internal map2 data
+                if (existingAny.map2) {
+                    const map2Data = existingAny.map2;
+                    // Handle different serialization formats
+                    if (Array.isArray(map2Data)) {
+                        // Map serialized as array of [key, value] pairs
+                        map2Data.forEach(([key, value]) => {
+                            this.setByNpcGroupId(key, value);
+                        });
+                    }
+                    else if (map2Data instanceof Map) {
+                        // Map is still a Map
+                        map2Data.forEach((value, key) => {
+                            this.setByNpcGroupId(key, value);
+                        });
+                    }
+                    else if (typeof map2Data === 'object') {
+                        // Map serialized as plain object
+                        Object.entries(map2Data).forEach(([key, value]) => {
+                            this.setByNpcGroupId(key, value);
+                        });
+                    }
+                }
+            }
         }
     }
     setByUserId(userId, npcGroup) {
@@ -51,6 +94,13 @@ export class NPCGroupsBiMap {
             this.map2.delete(npcGroup.id);
         }
         this.map1.delete(userId);
+    }
+    deleteByNpcGroupId(npcGroupId) {
+        const npcGroup = this.map2.get(npcGroupId);
+        if (npcGroup && npcGroup.captorId) {
+            this.map1.delete(npcGroup.captorId);
+        }
+        this.map2.delete(npcGroupId);
     }
     values() { return Array.from(this.map2.values()); }
     getByUserId(userId) { return this.map1.get(userId); }
