@@ -10,9 +10,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getGameTicker = getGameTicker;
-const types_1 = require("./types");
+const types_1 = require("shared/types");
 const npcService_1 = require("./services/npcService");
-const types_2 = require("./types");
 const rooms_1 = require("./state/rooms");
 const paths_1 = require("./state/paths");
 let gameTickerInstance = null;
@@ -59,7 +58,7 @@ class GameTicker {
                         // Get current NPC state to check if it's still in PATH phase
                         const npcGroup = completedpath.npcGroup;
                         // Only complete path if NPC is still in PATH phase
-                        if (npcGroup && npcGroup.phase === types_2.NPCPhase.PATH) {
+                        if (npcGroup && npcGroup.phase === types_1.NPCPhase.PATH) {
                             (0, npcService_1.setPathCompleteInRoom)(roomName, npcGroup);
                         }
                     }

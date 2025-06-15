@@ -1,7 +1,5 @@
 import React from "react";
 import { NPCPhase, pathData, UserInfo, NPCGroup, NPCGroupsBiMap } from "shared/types";
-import IdleNPCGraphic from "./IdleNPCGroupGraphic";
-import PathNPCGraphic from "./PathNPCGroupGraphic";
 import * as THREE from "three";
 import { TerrainBoundaries } from "../../utils/terrain";
 import IdleNPCGroupGraphic from "./IdleNPCGroupGraphic";

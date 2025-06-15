@@ -384,7 +384,7 @@ export default function AnimalGraphic({
   // Create position ref as Vector3
   const isLocalPlayer = myUserId === user.id;
   const positionRef = useRef(
-    new THREE.Vector3(user.position.x, user.position.y, user.position.z)
+    new THREE.Vector3(user.position.x, user.position.y, user.position.z ?? 0)
   );
 
   // Create direction ref as Vector3
@@ -394,7 +394,7 @@ export default function AnimalGraphic({
 
   // Update refs when user data changes
   useEffect(() => {
-    positionRef.current.set(user.position.x, user.position.y, user.position.z);
+    positionRef.current.set(user.position.x, user.position.y, user.position.z ?? 0);
 
     // Update direction ref if direction exists, preserving z=0
     if (user.direction) {

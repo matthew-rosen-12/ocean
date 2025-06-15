@@ -15,7 +15,7 @@ import {
 import { getNPCGroupsfromMemory, removeTopNPCFromGroupInRoomInMemory, updateNPCGroupInRoomInMemory } from "../state/npcGroups";
 
 import { generateRoomTerrain } from "../utils/terrain";
-import { emitToRoom } from "src/utils/typed-socket";
+import { emitToRoom } from "../utils/typed-socket";
 
 export function updateNPCGroupInRoom(
   roomName: roomId,

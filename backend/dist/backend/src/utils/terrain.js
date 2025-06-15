@@ -1,4 +1,5 @@
 "use strict";
+// Server-side terrain configuration generation
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateRoomTerrain = generateRoomTerrain;
 function generateRoomTerrain(roomId) {
@@ -26,6 +27,9 @@ function generateRoomTerrain(roomId) {
         walls: null,
         backgroundType,
         seed: patternSeed,
+        width: gridSize,
+        height: gridSize,
+        cellSize: 1,
     };
 }
 // Simple hash function for consistent room-based generation

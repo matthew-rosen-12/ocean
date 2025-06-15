@@ -7,12 +7,13 @@ import { NPCPhase, userId, UserInfo, socketId, NPCGroup } from "shared/types";
 import authRouter from "./routes/auth";
 import { getGameTicker } from "./game-ticker";
 import { decrementRoomUsersInMemory, getRoomNumUsersInMemory } from "./state/rooms";
+import { addUserToRoom, removeUserFromRoom, updateUserInRoom, getAllUsersInRoom } from "./state/users";
 import { generateRoomTerrain } from "./utils/terrain";
 import { getpathsfromMemory } from "./state/paths";
 import { getNPCGroupsfromMemory, removeTopNPCFromGroupInRoomInMemory, removeNPCGroupInRoomInMemory, setNPCGroupsInMemory } from "./state/npcGroups";
 import { setPathsInMemory } from "./state/paths";
 import { updateNPCGroupInRoom } from "./services/npcService";
-import { emitToRoom, emitToSocket, TypedSocket, serialize, deserialize } from "./utils/typed-socket";
+import { emitToRoom, TypedSocket } from "./utils/typed-socket";
 
 // Initialize game ticker
 getGameTicker();
@@ -55,7 +56,6 @@ const startServer = async () => {
 // Start the server
 startServer();
 
-const usersForSocket = new Map<socketId, Map<userId, UserInfo>>();
 
 io.on("connection", async (socket) => {
   const typedSocket = new TypedSocket(socket);
@@ -76,47 +76,22 @@ io.on("connection", async (socket) => {
     // Map this socket to the user
     typedSocket.data.user = user;
 
-    typedSocket.on("current-user-response", async ({ user, requestingSocketId }) => {
-
-      let users = usersForSocket.get(requestingSocketId);
-      if (!users) {
-        return;
-      }
-      users.set(user.id, user);
-
-      const roomName = socket.data.room;
-
-      const expectedUserCount = await getRoomNumUsersInMemory(roomName);
-
-      // If we've received responses from all users in the room
-      if (users.size === expectedUserCount) {
-        emitToRoom(requestingSocketId, "all-users", { users: users });
-        usersForSocket.delete(requestingSocketId);
-      }
-    });
 
     // Join room and broadcast user joined
     typedSocket.on("join-room", async ({ name }) => {
       console.log("joining room");
-      // Check if room exists in Redis
 
       typedSocket.join(name);
       typedSocket.data.room = name;
 
-      // add user to map for socket
-      usersForSocket.set(socket.id, new Map([[user.id, user]]));
+      // Add user to server memory for this room
+      addUserToRoom(name, user);
 
-      // Broadcast request to the entire room
-      typedSocket.broadcast(name, "request-current-user", { requestingSocketId: socket.id });
-
-      // if after 5 seconds, no response, send to all users
-      setTimeout(() => {
-        const users = usersForSocket.get(socket.id);
-        if (users && users.size > 1) {
-          emitToSocket(typedSocket.id, "all-users", { users });
-          usersForSocket.delete(socket.id);
-        }
-      }, 1000);
+      // Send all existing users in the room to the joining user
+      const existingUsers = getAllUsersInRoom(name);
+      if (existingUsers.size > 0) {
+        typedSocket.emit("all-users", { users: existingUsers });
+      }
 
       // Send other room state to the joining socket
       try {
@@ -213,6 +188,9 @@ io.on("connection", async (socket) => {
         typedSocket.data.lastPosition = user.position;
         const room = typedSocket.data.room;
         if (room) {
+          // Update user in server memory
+          updateUserInRoom(room, user);
+          // Broadcast update to other users
           typedSocket.broadcast(room, "user-updated", { user });
         }
       } catch (error) {
@@ -244,6 +222,9 @@ io.on("connection", async (socket) => {
           }
           // remove the user's npc groups from redis
           removeNPCGroupInRoomInMemory(room, user.id);
+
+          // Remove user from room memory
+          removeUserFromRoom(room, user.id);
 
           // Handle room users decrement
           decrementRoomUsersInMemory(room, socket.id);

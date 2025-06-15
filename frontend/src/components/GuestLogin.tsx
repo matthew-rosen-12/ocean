@@ -13,10 +13,6 @@ import {
   TerrainConfig,
 } from "shared/types";
 import { getSocket } from "../socket";
-import { deserialize, serialize } from "../utils/serializers";
-import {
-  updateNPCGroupsPreservingIdentity,
-} from "../utils/npc-group-utils";
 import { ServerTerrainConfig } from "../utils/terrain";
 import { TypedSocket } from "../utils/typed-socket";
 
@@ -64,13 +60,6 @@ export default function GuestLogin({
       // Set up socket event handlers
       typedSocket.on("user-joined", ({ user }: { user: UserInfo }) => {
         setUsers((prev) => new Map(prev).set(user.id, user));
-      });
-
-      typedSocket.on("request-current-user", ({ requestingSocketId }: { requestingSocketId: string }) => {
-        typedSocket.emit("current-user-response", {
-            user,
-            requestingSocketId,
-          })
       });
 
       typedSocket.on("user-updated", ({ user }: { user: UserInfo }) => {
@@ -127,7 +116,7 @@ export default function GuestLogin({
       });
 
 
-      typedSocket.on("npc-group-captured", ({ id, npcGroup }) => {
+      typedSocket.on("npc-group-captured", ({ npcGroup }) => {
         setNPCGroups((prev) => {
           prev.setByNpcGroupId(npcGroup.id, npcGroup);
           return prev;
@@ -136,6 +125,24 @@ export default function GuestLogin({
           const newPaths = new Map(prev);
           newPaths.delete(npcGroup.id);
           return newPaths;
+        });
+      });
+
+      typedSocket.on("npc-group-pop", ({ npcGroupId }: { npcGroupId: npcGroupId }) => {
+        setNPCGroups((prev) => {
+          const npcGroup = prev.getByNpcGroupId(npcGroupId);
+          if (npcGroup && npcGroup.fileNames.length > 1) {
+            const updatedGroup = {
+              ...npcGroup,
+              fileNames: npcGroup.fileNames.slice(0, -1),  // Remove last element (pop)
+              faceFileName: npcGroup.fileNames[npcGroup.fileNames.length - 2] // New face is second-to-last
+            };
+            prev.setByNpcGroupId(npcGroupId, updatedGroup);
+          } else if (npcGroup?.captorId) {
+            // Remove the group entirely if it would be empty
+            prev.deleteByUserId(npcGroup.captorId);
+          }
+          return prev;
         });
       });
 

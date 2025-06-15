@@ -12,6 +12,7 @@ import {
   UserInfo,
   DefaultMap,
   fileName,
+  NPCGroupsBiMap,
 } from "shared/types";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { socket } from "../socket";
@@ -63,40 +64,37 @@ function CameraController({ targetPosition }: CameraControllerProps) {
   return null;
 }
 
-async function pathNPC(
+async function pathNPCGroup(
   myUser: UserInfo,
-  npc: NPC,
-  npcs: Map<npcId, NPC>,
-  npcGroups: DefaultMap<userId, NPCGroup>,
-  paths: Map<npcId, pathData>,
+  npcGroup: NPCGroup,
+  paths: Map<npcGroupId, pathData>,
   socket: Socket | null,
-  setPaths: (paths: Map<npcId, pathData>) => void,
-  setNpcGroups: (npcGroups: DefaultMap<userId, NPCGroup>) => void,
-  setNpcs: (npcs: Map<npcId, NPC>) => void
+  setPaths: (paths: Map<npcGroupId, pathData>) => void,
+  setNpcGroups: (
+    value:
+      | NPCGroupsBiMap
+      | ((prev: NPCGroupsBiMap) => NPCGroupsBiMap)
+  ) => void,
 ) {
   try {
     // Create new objects instead of mutating
-    const updatedNpc: NPC = {
-      ...npc,
+    const updatedNPCGroup: NPCGroup = {
+      ...npcGroup,
       position: myUser.position,
-      phase: NPCPhase.path,
+      phase: NPCPhase.PATH,
     };
-
-    // TODO: This function may no longer be needed with NPCGroup structure
-    // const updatedNpcGroups = removeNPCFromGroup(npcGroups, myUser.id, npc.id);
 
     // Create new path data
     const newpathData: pathData = {
       id: uuidv4(),
       room: myUser.room,
-      npc: updatedNpc,
+      npcGroup: updatedNPCGroup,
       startPosition: {
         x: myUser.position.x,
         y: myUser.position.y,
       },
       pathDuration: 2000,
       timestamp: Date.now(),
-      captorId: myUser.id,
       direction: {
         x: Math.round(myUser.direction.x),
         y: Math.round(myUser.direction.y),
@@ -107,7 +105,7 @@ async function pathNPC(
 
     // Create new paths map
     const updatedpaths = new Map(paths);
-    updatedpaths.set(npc.id, newpathData);
+    updatedpaths.set(npcGroup.id, newpathData);
 
     // Socket call to path the NPC
     if (socket) {
@@ -121,10 +119,11 @@ async function pathNPC(
     }
 
     setPaths(updatedpaths);
-    setNpcGroups(updatedNpcGroups);
-    const updatedNpcs = new Map(npcs);
-    updatedNpcs.set(npc.id, updatedNpc);
-    setNpcs(updatedNpcs);
+    setNpcGroups((prev) => {
+      const newNpcGroups = new NPCGroupsBiMap(prev);
+      newNpcGroups.setByNpcGroupId(npcGroup.id, updatedNPCGroup);
+      return newNpcGroups;
+    });
   } catch (error) {
     console.error("Error pathing NPC:", error);
   }
@@ -134,12 +133,14 @@ function useKeyboardMovement(
   initialPosition: THREE.Vector3,
   initialDirection: Direction,
   myUser: UserInfo,
-  npcGroups: DefaultMap<userId, NPCGroup>,
-  npcs: Map<npcId, NPC>,
-  paths: Map<npcId, pathData>,
-  setPaths: (paths: Map<npcId, pathData>) => void,
-  setNpcGroups: (npcGroups: DefaultMap<userId, NPCGroup>) => void,
-  setNpcs: (npcs: Map<npcId, NPC>) => void,
+  npcGroups: NPCGroupsBiMap,
+  paths: Map<npcGroupId, pathData>,
+  setPaths: (paths: Map<npcGroupId, pathData>) => void,
+  setNpcGroups: (
+    value:
+      | NPCGroupsBiMap
+      | ((prev: NPCGroupsBiMap) => NPCGroupsBiMap)
+  ) => void,
   terrain: TerrainConfig,
   animalDimensions: { [animal: string]: { width: number; height: number } },
   checkBoundaryCollision: (
@@ -160,27 +161,17 @@ function useKeyboardMovement(
     // Handle space bar press for pathing NPCs
     if (
       (event.key === " " || event.key === "Spacebar") &&
-      npcGroups.get(myUser.id).npcIds.size > 0
+      npcGroups.getByUserId(myUser.id)?.fileNames.length !== 0
     ) {
       // Get the first NPC ID from the set
-      const npcIdTopath = npcGroups.get(myUser.id).npcIds.values().next().value;
-
-      if (npcIdTopath) {
-        const npc = npcs.get(npcIdTopath);
-        if (npc) {
-          pathNPC(
-            myUser,
-            npc,
-            npcs,
-            npcGroups,
-            paths,
-            socket(),
-            setPaths,
-            setNpcGroups,
-            setNpcs
-          );
-        }
-      }
+      pathNPCGroup(
+        myUser,
+        npcGroups.getByUserId(myUser.id)!,
+        paths,
+        socket(),
+        setPaths,
+        setNpcGroups,
+      );
     }
   };
 
@@ -321,23 +312,19 @@ function useKeyboardMovement(
 }
 
 interface Props {
-  users: Map<string, UserInfo>;
+  users: Map<userId, UserInfo>;
   myUser: UserInfo;
-  npcs: Map<string, NPC>;
-  paths: Map<string, pathData>;
-  npcGroups: DefaultMap<string, NPCGroup>;
+  paths: Map<npcGroupId, pathData>;
+  npcGroups: NPCGroupsBiMap;
   setPaths: (
     value:
-      | Map<npcId, pathData>
-      | ((prev: Map<npcId, pathData>) => Map<npcId, pathData>)
+      | Map<npcGroupId, pathData>
+      | ((prev: Map<npcGroupId, pathData>) => Map<npcGroupId, pathData>)
   ) => void;
   setNpcGroups: (
     value:
-      | DefaultMap<userId, NPCGroup>
-      | ((prev: DefaultMap<userId, NPCGroup>) => DefaultMap<userId, NPCGroup>)
-  ) => void;
-  setNpcs: (
-    npcs: Map<npcId, NPC> | ((prev: Map<npcId, NPC>) => Map<npcId, NPC>)
+      | NPCGroupsBiMap
+      | ((prev: NPCGroupsBiMap) => NPCGroupsBiMap)
   ) => void;
   terrain: TerrainConfig;
 }
@@ -345,12 +332,10 @@ interface Props {
 export default function Scene({
   users,
   myUser,
-  npcs,
   paths,
   npcGroups,
   setPaths,
   setNpcGroups,
-  setNpcs,
   terrain,
 }: Props) {
   const initialPosition = new THREE.Vector3(
@@ -409,11 +394,9 @@ export default function Scene({
     initialDirection,
     myUser,
     npcGroups,
-    npcs,
     paths,
     setPaths,
     setNpcGroups,
-    setNpcs,
     terrain,
     animalDimensions,
     checkBoundaryCollision
@@ -471,8 +454,8 @@ export default function Scene({
     throttledBroadcast();
   }, [position, direction]);
 
-  const handleNPCCollision = useCallback(
-    (npc: NPC, localUser: boolean) => {
+  const handleNPCGroupCollision = useCallback(
+    (npcGroup: NPCGroup, localUser: boolean) => {
       // Only handle collision if NPC is still in IDLE phase
 
       const currentSocket = socket();
@@ -480,7 +463,7 @@ export default function Scene({
       currentSocket.emit(
         "capture-npc",
         serialize({
-          npcId: npc.id,
+          npcGroupId: npcGroup.id,
           room: myUser.room,
           captorId: myUser.id,
         }),
@@ -490,29 +473,36 @@ export default function Scene({
         );
       }
 
-      // create new npc
-      const updatedNpc: NPC = {
-        ...npc,
+      // 1. get user's npc group
+      let userNpcGroup = npcGroups.getByUserId(myUser.id);
+      if (!userNpcGroup) {
+        userNpcGroup = {
+          id: uuidv4(),
+          fileNames: [],
+          faceFileName: myUser.animal,
+          position: myUser.position,
+          phase: NPCPhase.IDLE,
+          direction: { x: 0, y: 0 },
+        };
+      }
+
+      // 2. create new npc group
+      const updatedNpcGroup: NPCGroup = {
+        ...userNpcGroup,
+        fileNames: [...userNpcGroup.fileNames, ...npcGroup.fileNames],
         position: myUser.position,
         phase: NPCPhase.CAPTURED,
       };
-      setPaths((prev: Map<npcId, pathData>) => {
+      setPaths((prev: Map<npcGroupId, pathData>) => {
         const newPaths = new Map(prev);
-        newPaths.delete(npc.id); // remove the path data for the captured NPC
-        return newPaths as Map<npcId, pathData>;
+        newPaths.delete(npcGroup.id); // remove the path data for the captured NPC
+        return newPaths as Map<npcGroupId, pathData>;
       });
 
-      setNpcGroups((prevNpcGroups: DefaultMap<userId, NPCGroup>) => {
-        // Use the utility function to preserve group object identity
-        // TODO: This function may no longer be needed with NPCGroup structure
-        // return addNPCToGroup(prevNpcGroups, myUser.id, updatedNpc.id);
-        return prevNpcGroups;
-      });
-
-      setNpcs((prev) => {
-        const newNpcs = new Map(prev);
-        newNpcs.set(npc.id, updatedNpc);
-        return newNpcs;
+      setNpcGroups((prev) => {
+        const newNpcGroups = new NPCGroupsBiMap(prev);
+        newNpcGroups.setByNpcGroupId(npcGroup.id, updatedNpcGroup);
+        return newNpcGroups;
       });
     },
     [npcGroups, myUser.id, myUser.room]
@@ -526,16 +516,16 @@ export default function Scene({
   }, []);
 
   // Function to make an NPC flee from the player
-  const makeNPCFlee = useCallback(
-    (npc: NPC, npcPosition: THREE.Vector3) => {
+  const makeNPCGroupFlee = useCallback(
+    (npcGroup: NPCGroup, npcPosition: THREE.Vector3) => {
       // Create new objects instead of mutating
-      const updatedNpc: NPC = {
-        ...npc,
-        phase: NPCPhase.path,
+      const updatedNpcGroup: NPCGroup = {
+        ...npcGroup,
+        phase: NPCPhase.PATH,
       };
 
       // Get current path data
-      const currentPathData = paths.get(npc.id);
+      const currentPathData = paths.get(npcGroup.id);
 
       // Calculate flee direction from all nearby users using weighted averaging
       let totalFleeForce = { x: 0, y: 0 };
@@ -634,7 +624,7 @@ export default function Scene({
             // create new path data
             id: uuidv4(),
             room: myUser.room,
-            npc: updatedNpc,
+            npcGroup: updatedNpcGroup,
             startPosition: {
               x: npcPosition.x,
               y: npcPosition.y,
@@ -658,24 +648,24 @@ export default function Scene({
         );
       }
 
-      setPaths((prev: Map<npcId, pathData>) => {
+      setPaths((prev: Map<npcGroupId, pathData>) => {
         const newPaths = new Map(prev);
-        newPaths.set(npc.id, newPathData);
-        return newPaths as Map<npcId, pathData>;
+        newPaths.set(npcGroup.id, newPathData);
+        return newPaths as Map<npcGroupId, pathData>;
       });
 
-      setNpcs((prev: Map<npcId, NPC>) => {
-        const newNpcs = new Map(prev);
-        newNpcs.set(npc.id, updatedNpc);
-        return newNpcs;
+      setNpcGroups((prev: NPCGroupsBiMap) => {
+        const newNpcGroups = new NPCGroupsBiMap(prev);
+        newNpcGroups.setByNpcGroupId(npcGroup.id, updatedNpcGroup);
+        return newNpcGroups;
       });
     },
-    [myUser, npcs, paths, setPaths, setNpcs, normalizeDirection, users]
+    [myUser, npcGroups, paths, setPaths, setNpcGroups, normalizeDirection, users]
   );
 
   // Function to check for collisions with NPCs
-  const checkForNPCCollision = useCallback(
-    (npc: NPC, npcPosition?: THREE.Vector3, isLocalUser: boolean = true) => {
+  const checkForNPCGroupCollision = useCallback(
+    (npcGroup: NPCGroup, npcGroupPosition?: THREE.Vector3, isLocalUser: boolean = true) => {
       // Get the animal dimensions for dynamic thresholds
       const dimensions = animalDimensions[myUser.animal];
       const animalWidth = dimensions?.width || 2.0; // Fallback to 2.0 if dimensions not yet measured
@@ -687,30 +677,30 @@ export default function Scene({
       const userPos = new THREE.Vector3(
         myUser.position.x,
         myUser.position.y,
-        myUser.position.z
+        0
       );
 
-      const npcPos = npcPosition
-        ? npcPosition
-        : new THREE.Vector3(npc.position.x, npc.position.y, npc.position.z);
+      const npcPos = npcGroupPosition
+        ? npcGroupPosition
+        : new THREE.Vector3(npcGroup.position.x, npcGroup.position.y, 0);
 
       const distance = npcPos.distanceTo(userPos);
 
       // Only trigger actions for IDLE NPCs
-      if (npc.phase === NPCPhase.IDLE || npc.phase === NPCPhase.path) {
+      if (npcGroup.phase === NPCPhase.IDLE || npcGroup.phase === NPCPhase.PATH) {
         if (distance < CAPTURE_THRESHOLD) {
           // Close enough to capture
           console.log("Capturing NPC");
-          handleNPCCollision(npc, isLocalUser);
+          handleNPCGroupCollision(npcGroup, isLocalUser);
           return true;
         } else if (distance < FLEE_THRESHOLD) {
           // Far enough to not capture, but close enough to flee
-          makeNPCFlee(npc, npcPos);
+          makeNPCGroupFlee(npcGroup, npcPos);
         }
       }
       return false
     },
-    [handleNPCCollision, makeNPCFlee, animalDimensions, myUser.animal]
+    [handleNPCGroupCollision, makeNPCGroupFlee, animalDimensions, myUser.animal]
   );
 
   const setAnimalDimensionsCallback = useCallback(
@@ -758,47 +748,21 @@ export default function Scene({
         />
       ))}
 
-      {Array.from(npcs.values())
-        .filter((npc: NPC) => npc.phase !== NPCPhase.CAPTURED)
-        .map((npc) => (
+      {Array.from(npcGroups.values())
+        .map((npcGroup) => (
           <NPCGraphicWrapper
-            key={npc.id}
-            npc={npc}
-            checkForCollision={checkForNPCCollision}
-            pathData={paths.get(npc.id)}
+            key={npcGroup.id}
+            npcGroup={npcGroup}
+            checkForCollision={checkForNPCGroupCollision}
+            pathData={paths.get(npcGroup.id)}
             users={users}
-            allNPCs={npcs}
             allPaths={paths}
             npcGroups={npcGroups}
             myUserId={myUser.id}
             setPaths={setPaths}
-            setNpcs={setNpcs}
+            setNpcGroups={setNpcGroups}
           />
         ))}
-      {Array.from(npcGroups.values()).map((group) => {
-        const user = users.get(group.captorId);
-        if (!user) return null;
-
-        return (
-          <NPCGroupGraphic
-            key={`${group.captorId}-group`}
-            group={group}
-            user={user}
-            npcs={npcs}
-            allPaths={paths}
-            allNPCs={npcs}
-            npcGroups={npcGroups}
-            users={users}
-            setPaths={setPaths}
-            setNpcs={setNpcs}
-            setNpcGroups={setNpcGroups}
-            animalWidth={
-              animalDimensions[user.animal]?.width || animalWidths[user.animal]
-            }
-            isLocalUser={user.id === myUser.id}
-          />
-        );
-      })}
     </Canvas>
   );
 }

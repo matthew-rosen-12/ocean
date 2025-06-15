@@ -1,33 +1,39 @@
-// Simple in-memory user storage
-const users: Map<string, any> = new Map();
+import { UserInfo, userId, roomId } from "shared/types";
 
-// User management functions
-export const addUserInMemory = async (
-  userId: string,
-  userInfo: any
-): Promise<void> => {
-  try {
-    users.set(userId, userInfo);
-  } catch (error) {
-    console.error("Error adding user:", error);
-    throw error;
+// Room-based user storage
+const roomUsers: Map<roomId, Map<userId, UserInfo>> = new Map();
+
+export const addUserToRoom = (roomName: roomId, user: UserInfo): void => {
+  let users = roomUsers.get(roomName);
+  if (!users) {
+    users = new Map();
+    roomUsers.set(roomName, users);
   }
+  users.set(user.id, user);
 };
 
-export const removeUserInMemory = async (userId: string): Promise<void> => {
-  try {
+export const removeUserFromRoom = (roomName: roomId, userId: userId): void => {
+  const users = roomUsers.get(roomName);
+  if (users) {
     users.delete(userId);
-  } catch (error) {
-    console.error("Error removing user:", error);
-    throw error;
+    if (users.size === 0) {
+      roomUsers.delete(roomName);
+    }
   }
 };
 
-export const getUserInMemory = async (userId: string): Promise<any | null> => {
-  try {
-    return users.get(userId) || null;
-  } catch (error) {
-    console.error("Error getting user:", error);
-    throw error;
+export const updateUserInRoom = (roomName: roomId, user: UserInfo): void => {
+  const users = roomUsers.get(roomName);
+  if (users) {
+    users.set(user.id, user);
   }
+};
+
+export const getAllUsersInRoom = (roomName: roomId): Map<userId, UserInfo> => {
+  return roomUsers.get(roomName) || new Map();
+};
+
+export const getUserInRoom = (roomName: roomId, userId: userId): UserInfo | undefined => {
+  const users = roomUsers.get(roomName);
+  return users?.get(userId);
 };

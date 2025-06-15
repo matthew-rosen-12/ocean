@@ -10,9 +10,6 @@ export interface ServerToClientEvents {
         lastPosition: Position;
         userId: string;
     }) => void;
-    "request-current-user": (data: {
-        requestingSocketId: string;
-    }) => void;
     "all-users": (data: {
         users: Map<userId, UserInfo>;
     }) => void;
@@ -56,9 +53,5 @@ export interface ClientToServerEvents {
     }) => void;
     "update-user": (data: {
         user: UserInfo;
-    }) => void;
-    "current-user-response": (data: {
-        user: UserInfo;
-        requestingSocketId: string;
     }) => void;
 }

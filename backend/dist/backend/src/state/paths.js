@@ -15,7 +15,7 @@ exports.setPathsMapInMemory = setPathsMapInMemory;
 exports.setPathInMemory = setPathInMemory;
 exports.deletePathInMemory = deletePathInMemory;
 exports.deletePathsInMemory = deletePathsInMemory;
-const types_1 = require("../types");
+const types_1 = require("shared/types");
 const paths = new types_1.DefaultMap(() => new Map());
 // Path functions - direct Map access, no serialization
 function getpathsfromMemory(room) {

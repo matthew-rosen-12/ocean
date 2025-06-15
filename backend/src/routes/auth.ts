@@ -1,5 +1,5 @@
 import express from "express";
-import { UserInfo } from "../types";
+import { UserInfo } from "shared/types";
 import { NPCPhase } from "shared/types";
 import {
   generateGuestId,

@@ -17,16 +17,17 @@ const express_1 = __importDefault(require("express"));
 const http_1 = require("http");
 const socket_io_1 = require("socket.io");
 const cors_1 = __importDefault(require("cors"));
-const types_1 = require("./types");
+const types_1 = require("shared/types");
 const auth_1 = __importDefault(require("./routes/auth"));
 const game_ticker_1 = require("./game-ticker");
-const serializers_1 = require("./utils/serializers");
 const rooms_1 = require("./state/rooms");
+const users_1 = require("./state/users");
 const terrain_1 = require("./utils/terrain");
 const paths_1 = require("./state/paths");
 const npcGroups_1 = require("./state/npcGroups");
 const paths_2 = require("./state/paths");
 const npcService_1 = require("./services/npcService");
+const typed_socket_1 = require("./utils/typed-socket");
 // Initialize game ticker
 (0, game_ticker_1.getGameTicker)();
 const app = (0, express_1.default)();
@@ -61,83 +62,57 @@ const startServer = () => __awaiter(void 0, void 0, void 0, function* () {
 });
 // Start the server
 startServer();
-const usersForSocket = new Map();
 exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, function* () {
-    console.log("A client connected");
+    const typedSocket = new typed_socket_1.TypedSocket(socket);
     try {
         // Authenticate socket using token
         const token = socket.handshake.auth.token;
         if (!token) {
             console.log("No token provided, disconnecting");
-            socket.disconnect();
+            typedSocket.disconnect();
             return;
         }
         // Decode user info from token
         const user = JSON.parse(Buffer.from(token, "base64").toString());
-        socket.data.lastPosition = user.position;
+        typedSocket.data.lastPosition = user.position;
         // Map this socket to the user
-        socket.data.user = user;
-        socket.on("current-user-response", (serializedData) => __awaiter(void 0, void 0, void 0, function* () {
-            const { user, requestingSocketId } = (0, serializers_1.deserialize)(serializedData);
-            let users = usersForSocket.get(requestingSocketId);
-            if (!users) {
-                return;
-            }
-            users.set(user.id, user);
-            const roomName = socket.data.room;
-            const expectedUserCount = yield (0, rooms_1.getRoomNumUsersInMemory)(roomName);
-            // If we've received responses from all users in the room
-            if (users.size === expectedUserCount) {
-                exports.io.to(requestingSocketId).emit("users-update", (0, serializers_1.serialize)({ users: users }));
-                usersForSocket.delete(requestingSocketId);
-            }
-        }));
+        typedSocket.data.user = user;
         // Join room and broadcast user joined
-        socket.on("join-room", (serializedData) => __awaiter(void 0, void 0, void 0, function* () {
+        typedSocket.on("join-room", (_a) => __awaiter(void 0, [_a], void 0, function* ({ name }) {
             console.log("joining room");
-            const { name } = (0, serializers_1.deserialize)(serializedData);
-            // Check if room exists in Redis
-            socket.join(name);
-            socket.data.room = name;
-            // add user to map for socket
-            usersForSocket.set(socket.id, new Map([[user.id, user]]));
-            // Broadcast request to the entire room
-            socket.broadcast
-                .to(name)
-                .emit("request-current-user", (0, serializers_1.serialize)({ requestingSocketId: socket.id }));
-            // if after 5 seconds, no response, send to all users
-            setTimeout(() => {
-                const users = usersForSocket.get(socket.id);
-                if (users && users.size > 1) {
-                    exports.io.to(socket.id).emit("users-update", (0, serializers_1.serialize)({ users }));
-                    usersForSocket.delete(socket.id);
-                }
-            }, 1000);
+            typedSocket.join(name);
+            typedSocket.data.room = name;
+            // Add user to server memory for this room
+            (0, users_1.addUserToRoom)(name, user);
+            // Send all existing users in the room to the joining user
+            const existingUsers = (0, users_1.getAllUsersInRoom)(name);
+            if (existingUsers.size > 0) {
+                typedSocket.emit("all-users", { users: existingUsers });
+            }
             // Send other room state to the joining socket
             try {
                 // Send terrain configuration for this room
                 const terrainConfig = (0, terrain_1.generateRoomTerrain)(name);
-                socket.emit("terrain-config", (0, serializers_1.serialize)({ terrainConfig }));
+                typedSocket.emit("terrain-config", { terrainConfig });
                 // Get existing paths
                 const pathsData = (0, paths_1.getpathsfromMemory)(name);
                 if (pathsData) {
-                    socket.emit("paths-update", (0, serializers_1.serialize)({ paths: pathsData }));
+                    typedSocket.emit("all-paths", { paths: pathsData });
                 }
                 // Get existing NPC groups
                 const groupsData = (0, npcGroups_1.getNPCGroupsfromMemory)(name);
                 if (groupsData) {
-                    socket.emit("npc-groups-update", (0, serializers_1.serialize)({ groups: groupsData }));
+                    typedSocket.emit("all-npc-groups", { npcGroups: groupsData });
                 }
             }
             catch (error) {
                 console.error("Error sending room state to new user:", error);
             }
             // Broadcast to room that user joined
-            socket.broadcast.to(name).emit("user-joined", (0, serializers_1.serialize)({ user }));
+            typedSocket.broadcast(name, "user-joined", { user });
         }));
         // Handle capture-npc request
-        socket.on("capture-npc", (serializedData) => __awaiter(void 0, void 0, void 0, function* () {
-            const { npcId, room, captorId } = (0, serializers_1.deserialize)(serializedData);
+        typedSocket.on("capture-npc", (_a) => __awaiter(void 0, [_a], void 0, function* ({ npcId, room, captorId }) {
             try {
                 const npcGroups = (0, npcGroups_1.getNPCGroupsfromMemory)(room);
                 const npcGroup = npcGroups.getByNpcGroupId(npcId);
@@ -149,18 +124,17 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
                     (0, paths_2.setPathsInMemory)(room, paths);
                 }
                 (0, npcService_1.updateNPCGroupInRoom)(room, updatedNPCGroup);
-                socket.broadcast.to(room).emit("npc-captured", (0, serializers_1.serialize)({
+                typedSocket.broadcast(room, "npc-group-captured", {
                     id: captorId,
                     npcGroup: updatedNPCGroup,
-                }));
+                });
             }
             catch (error) {
                 console.error("Error capturing NPC:", error);
             }
         }));
         // Handle path-npc request
-        socket.on("path-npc", (serializedData) => __awaiter(void 0, void 0, void 0, function* () {
-            const { pathData } = (0, serializers_1.deserialize)(serializedData);
+        typedSocket.on("path-npc", (_a) => __awaiter(void 0, [_a], void 0, function* ({ pathData }) {
             try {
                 const updatedNPCGroup = Object.assign(Object.assign({}, pathData.npcGroup), { phase: types_1.NPCPhase.PATH });
                 (0, npcService_1.updateNPCGroupInRoom)(pathData.room, updatedNPCGroup);
@@ -173,27 +147,27 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
                 activepaths.set(pathData.npcGroup.id, pathData);
                 (0, paths_2.setPathsInMemory)(pathData.room, activepaths);
                 // Only remove from group if there's a captorId (fleeing NPCs don't have groups)
-                if (pathData.captorId) {
-                    (0, npcGroups_1.removeTopNPCFromGroupInRoomInMemory)(pathData.room, pathData.captorId);
+                if (pathData.npcGroup.captorId) {
+                    (0, npcGroups_1.removeTopNPCFromGroupInRoomInMemory)(pathData.room, pathData.npcGroup.captorId);
                 }
-                socket.broadcast.to(pathData.room).emit("npc-path", (0, serializers_1.serialize)({
+                typedSocket.broadcast(pathData.room, "path-update", {
                     pathData,
-                }));
+                });
             }
             catch (error) {
                 console.error("Error pathing NPC:", error);
             }
         }));
         // Handle user position updates
-        socket.on("user-updated", (serializedData) => __awaiter(void 0, void 0, void 0, function* () {
+        typedSocket.on("update-user", (_a) => __awaiter(void 0, [_a], void 0, function* ({ user }) {
             try {
-                const { user } = (0, serializers_1.deserialize)(serializedData);
-                socket.data.lastPosition = user.position;
-                const room = socket.data.room;
+                typedSocket.data.lastPosition = user.position;
+                const room = typedSocket.data.room;
                 if (room) {
-                    socket.broadcast.to(room).emit("user-updated", (0, serializers_1.serialize)({
-                        user,
-                    }));
+                    // Update user in server memory
+                    (0, users_1.updateUserInRoom)(room, user);
+                    // Broadcast update to other users
+                    typedSocket.broadcast(room, "user-updated", { user });
                 }
             }
             catch (error) {
@@ -218,12 +192,12 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
                     }
                     // remove the user's npc groups from redis
                     (0, npcGroups_1.removeNPCGroupInRoomInMemory)(room, user.id);
+                    // Remove user from room memory
+                    (0, users_1.removeUserFromRoom)(room, user.id);
                     // Handle room users decrement
                     (0, rooms_1.decrementRoomUsersInMemory)(room, socket.id);
                     if (userId) {
-                        socket.broadcast
-                            .to(room)
-                            .emit("user-left", (0, serializers_1.serialize)({ lastPosition: lastPosition, userId }));
+                        typedSocket.broadcast(room, "user-left", { lastPosition, userId });
                     }
                 }
             }

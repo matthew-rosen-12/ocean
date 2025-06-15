@@ -1,6 +1,15 @@
 {
     "name": "shared",
     "version": "1.0.0",
+    "type": "module",
     "main": "dist/types.js",
-    "types": "dist/types.d.ts"
+    "types": "dist/types.d.ts",
+    "exports": {
+      "./*": "./dist/*",
+      "./types": "./dist/types.js",
+      "./socket-events": "./dist/socket-events.js"
+    },
+    "scripts": {
+      "build": "tsc"
+    }
   }

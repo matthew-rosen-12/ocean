@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateNPCGroupInRoom = updateNPCGroupInRoom;
-exports.removeNPCFromGroupInRoom = removeNPCFromGroupInRoom;
+exports.removeTopNPCFromGroupInRoom = removeTopNPCFromGroupInRoom;
 exports.setPathCompleteInRoom = setPathCompleteInRoom;
 exports.createNPCGroups = createNPCGroups;
 exports.checkAndHandleNPCCollisions = checkAndHandleNPCCollisions;
@@ -10,22 +10,19 @@ const npc_info_1 = require("../npc-info");
 const uuid_1 = require("uuid");
 // Redis Key prefixes for different data types
 const NUM_NPCS = 4;
-const server_1 = require("../server");
 const paths_1 = require("../state/paths");
 const npcGroups_1 = require("../state/npcGroups");
-const serializers_1 = require("../utils/serializers");
 const terrain_1 = require("../utils/terrain");
+const typed_socket_1 = require("src/utils/typed-socket");
 function updateNPCGroupInRoom(roomName, npcGroup) {
     (0, npcGroups_1.updateNPCGroupInRoomInMemory)(roomName, npcGroup);
-    server_1.io.to(roomName).emit("group-update", (0, serializers_1.serialize)({ npcGroup }));
+    (0, typed_socket_1.emitToRoom)(roomName, "npc-group-update", { npcGroup });
 }
-function removeNPCFromGroupInRoom(roomName, captorId, npcGroupId) {
+function removeTopNPCFromGroupInRoom(roomName, captorId, npcGroupId) {
     (0, npcGroups_1.removeTopNPCFromGroupInRoomInMemory)(roomName, captorId);
-    server_1.io.to(roomName).emit("group-update", (0, serializers_1.serialize)({
-        groupId: captorId,
+    (0, typed_socket_1.emitToRoom)(roomName, "npc-group-pop", {
         npcGroupId,
-        removed: true,
-    }));
+    });
 }
 function setPathCompleteInRoom(room, npcGroup) {
     try {
@@ -46,9 +43,7 @@ function setPathCompleteInRoom(room, npcGroup) {
         (0, paths_1.deletePathInMemory)(room, npcGroup.id);
         // Only broadcast for thrown NPCs (ones with captorId)
         if (npcGroup.captorId) {
-            server_1.io.to(room).emit("path-complete", (0, serializers_1.serialize)({
-                npcGroup: updatedNPCGroup,
-            }));
+            (0, typed_socket_1.emitToRoom)(room, "path-complete", { npcGroup: updatedNPCGroup });
         }
     }
     catch (error) {
@@ -278,5 +273,5 @@ function handleNPCBounce(room, pathData, myPosition, otherPosition) {
     (0, paths_1.setPathsInMemory)(room, paths);
     console.log("handle npc bounce");
     // Broadcast to all clients
-    server_1.io.to(room).emit("npc-path", (0, serializers_1.serialize)({ pathData: bouncePathData }));
+    (0, typed_socket_1.emitToRoom)(room, "path-update", { pathData: bouncePathData });
 }

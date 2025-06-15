@@ -29,9 +29,15 @@ class DefaultMap extends Map {
 }
 exports.DefaultMap = DefaultMap;
 class NPCGroupsBiMap {
-    constructor() {
+    constructor(existing) {
         this.map1 = new Map();
         this.map2 = new Map();
+        if (existing) {
+            // Copy all entries from existing maps using the public methods
+            existing.values().forEach(npcGroup => {
+                this.setByNpcGroupId(npcGroup.id, npcGroup);
+            });
+        }
     }
     setByUserId(userId, npcGroup) {
         this.map1.set(userId, npcGroup);

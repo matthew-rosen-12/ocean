@@ -3,7 +3,7 @@ import {
   pathData,
   UserInfo,
   NPCGroup,
-  DefaultMap,
+  NPCGroupsBiMap,
   npcGroupId,
   userId,
 } from "shared/types";
@@ -19,10 +19,9 @@ import {
 function App() {
   const [myUser, setMyUser] = useState<UserInfo | null>(null);
   const [users, setUsers] = useState<Map<userId, UserInfo>>(new Map());
-  const [npcs, setNPCs] = useState<Map<npcId, NPC>>(new Map());
-  const [paths, setPaths] = useState<Map<npcId, pathData>>(new Map());
-  const [npcGroups, setNPCGroups] = useState<DefaultMap<userId, NPCGroup>>(
-    new DefaultMap((id) => ({ npcIds: new Set(), captorId: id }))
+  const [paths, setPaths] = useState<Map<npcGroupId, pathData>>(new Map());
+  const [npcGroups, setNPCGroups] = useState<NPCGroupsBiMap>(
+    new NPCGroupsBiMap()
   );
   const [serverTerrainConfig, setServerTerrainConfig] =
     useState<ServerTerrainConfig | null>(null);
@@ -37,7 +36,6 @@ function App() {
       <GuestLogin
         setMyUser={setMyUser}
         setUsers={setUsers}
-        setNPCs={setNPCs}
         setPaths={setPaths}
         setNPCGroups={setNPCGroups}
         setTerrainConfig={setServerTerrainConfig}
@@ -50,12 +48,10 @@ function App() {
       <Scene
         users={users}
         myUser={myUser}
-        npcs={npcs}
         paths={paths}
         npcGroups={npcGroups}
         setPaths={setPaths}
         setNpcGroups={setNPCGroups}
-        setNpcs={setNPCs}
         terrain={terrain}
       />
 

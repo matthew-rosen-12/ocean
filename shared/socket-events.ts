@@ -5,7 +5,6 @@ export interface ServerToClientEvents {
     "user-updated": (data: { user: UserInfo }) => void;
     "user-left": (data: { lastPosition: Position; userId: string }) => void;
 
-    "request-current-user": (data: { requestingSocketId: string }) => void;
 
     "all-users": (data: { users: Map<userId, UserInfo> }) => void;
     "all-npc-groups": (data: { npcGroups: NPCGroupsBiMap }) => void;
@@ -25,5 +24,4 @@ export interface ServerToClientEvents {
     "capture-npc": (data: { npcId: string; room: string; captorId: string }) => void;
     "path-npc": (data: { pathData: pathData }) => void;
     "update-user": (data: { user: UserInfo }) => void;
-    "current-user-response": (data: { user: UserInfo; requestingSocketId: string }) => void;
   }

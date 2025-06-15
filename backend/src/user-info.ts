@@ -18,7 +18,7 @@ export function generateGuestId(): string {
 export function getPosition(): Position {
   const x = Math.random() * 2 - 0.5;
   const y = Math.random() * 2 - 1.5;
-  return { x, y };
+  return {x, y};
 }
 
 export function getDirection(): Direction {

@@ -7,7 +7,7 @@ exports.removeTopNPCFromGroupInRoomInMemory = removeTopNPCFromGroupInRoomInMemor
 exports.removeNPCGroupInRoomInMemory = removeNPCGroupInRoomInMemory;
 exports.deleteNPCGroupsInMemory = deleteNPCGroupsInMemory;
 exports.updateNPCGroupInRoomInMemory = updateNPCGroupInRoomInMemory;
-const types_1 = require("../types");
+const types_1 = require("shared/types");
 const npcGroups = new Map();
 function getNPCGroupsfromMemory(roomName) {
     const roomGroups = npcGroups.get(roomName);

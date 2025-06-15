@@ -51,6 +51,7 @@ export type roomId = string;
 export declare class NPCGroupsBiMap {
     private map1;
     private map2;
+    constructor(existing?: NPCGroupsBiMap);
     setByUserId(userId: userId, npcGroup: NPCGroup): void;
     setByNpcGroupId(npcGroupId: npcGroupId, npcGroup: NPCGroup): void;
     deleteByUserId(userId: userId): void;
@@ -86,4 +87,5 @@ export interface TerrainConfig {
 export interface Position {
     x: number;
     y: number;
+    z?: number;
 }
