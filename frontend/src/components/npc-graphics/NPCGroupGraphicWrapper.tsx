@@ -75,14 +75,12 @@ const NPCGraphicWrapper = ({
   }
 
   else if (npcGroup.phase === NPCPhase.CAPTURED) {
-    console.log("npcGroup", npcGroup);
     const captorUser = users.get(npcGroup.captorId!);
     if (!captorUser || !setPaths || !allPaths) {
       return null;
     }
 
     const animalWidth = animalDimensions[captorUser.animal]?.width;
-    console.log("animalWidth", animalWidth);
     return (
       <CapturedNPCGroupGraphic
         key={npcGroup.id}

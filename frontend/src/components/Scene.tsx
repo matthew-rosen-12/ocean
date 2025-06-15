@@ -499,7 +499,10 @@ export default function Scene({
 
       setNpcGroups((prev) => {
         const newNpcGroups = new NPCGroupsBiMap(prev);
-        newNpcGroups.setByNpcGroupId(npcGroup.id, updatedNpcGroup);
+        // Remove the original NPC group
+        newNpcGroups.deleteByNpcGroupId(npcGroup.id);
+        // Add the updated group with the correct ID
+        newNpcGroups.setByNpcGroupId(updatedNpcGroup.id, updatedNpcGroup);
         return newNpcGroups;
       });
     },
