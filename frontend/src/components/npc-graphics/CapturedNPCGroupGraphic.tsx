@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useEffect } from "react";
+import React, { useMemo, useRef, useEffect, useState } from "react";
 import {
   NPCGroup,
   pathData,
@@ -10,6 +10,8 @@ import {
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { Text } from "@react-three/drei";
+// @ts-ignore - troika-three-text doesn't have TypeScript definitions
+import { preloadFont } from "troika-three-text";
 import { smoothMove } from "../../utils/movement";
 import { useNPCGroupBase, useMount } from "../../hooks/useNPCGroupBase";
 import { getAnimalBorderColor } from "../../utils/animal-colors";
@@ -25,6 +27,28 @@ import { serialize } from "../../utils/typed-socket";
 import { v4 as uuidv4 } from "uuid";
 // Constants for positioning
 const FOLLOW_DISTANCE = 2; // Distance behind the user
+const FONT_URL = "https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxM.woff";
+
+// Preload the font at module level with common characters
+let fontPreloaded = false;
+const preloadFontSafely = () => {
+  if (!fontPreloaded) {
+    try {
+      preloadFont({ 
+        font: FONT_URL, 
+        characters: "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      }, () => {
+        fontPreloaded = true;
+      });
+    } catch (error) {
+      console.warn("Font preloading failed:", error);
+      fontPreloaded = true; // Allow text to render anyway
+    }
+  }
+};
+
+// Call preload function
+preloadFontSafely();
 
 // Deterministic random function that produces consistent results across all clients
 function getRandom(input: Record<string, any>): number {
@@ -76,6 +100,9 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
   animalWidth,
   isLocalUser = false, // Default to false for non-local users
 }) => {
+  // State to track if text is ready to render
+  const [textReady, setTextReady] = useState(false);
+  
   // Skip rendering if no user or no NPCs
   if (!user || group.fileNames.length === 0) {
     return null;
@@ -402,6 +429,23 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     }
   }, [group.fileNames.length, scaleFactor]);
 
+  // Effect to handle text preloading
+  useEffect(() => {
+    // Check if font is preloaded and mark text as ready
+    const checkFontReady = () => {
+      if (fontPreloaded) {
+        setTextReady(true);
+      } else {
+        setTimeout(checkFontReady, 50);
+      }
+    };
+    
+    // Start checking after a small delay
+    const timer = setTimeout(checkFontReady, 100);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
   // Set initial position
   useMount(() => {
     // Start with initial position behind user
@@ -543,7 +587,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
       <primitive object={threeGroup} />
 
       {/* Counter indicator showing the number of NPCs */}
-      {npcsCount > 1 && (
+      {npcsCount > 1 && textReady && (
         <group ref={indicatorRef}>
           {/* Text showing count with outline */}
           <Text
@@ -552,7 +596,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
             color={getAnimalBorderColor(user)}
             anchorX="center"
             anchorY="middle"
-            font="https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxM.woff"
+            font={FONT_URL}
             outlineWidth={0.1}
             outlineColor="white"
           >
