@@ -69,7 +69,6 @@ const NPCGraphicWrapper = ({
         users={users}
         myUserId={myUserId}
         setPaths={setPaths}
-        setNpcGroups={setNpcGroups}
       />
     );
   }

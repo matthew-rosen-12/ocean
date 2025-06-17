@@ -38,6 +38,9 @@ export interface ServerToClientEvents {
     "path-complete": (data: {
         npcGroup: NPCGroup;
     }) => void;
+    "path-absorbed": (data: {
+        pathData: pathData;
+    }) => void;
 }
 export interface ClientToServerEvents {
     "join-room": (data: {

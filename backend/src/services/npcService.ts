@@ -192,41 +192,6 @@ function calculateLandingPosition(pathData: pathData) {
   );
 }
 
-// Keep the old function for reference but rename it (in case it's needed elsewhere)
-function calculateLandingPositionWithWrap(
-  pathData: pathData,
-  terrainConfig: any
-) {
-  const { startPosition, direction, velocity, pathDuration } = pathData;
-  const distance = velocity * (pathDuration / 1000);
-
-  // Calculate unwrapped landing position
-  let landingPosition = {
-    x: startPosition.x + direction.x * distance,
-    y: startPosition.y + direction.y * distance,
-    z: 0,
-  };
-
-  // Apply wrap-around using terrain boundaries
-  const { boundaries } = terrainConfig;
-
-  // Wrap X coordinate
-  landingPosition.x =
-    ((((landingPosition.x - boundaries.minX) % boundaries.width) +
-      boundaries.width) %
-      boundaries.width) +
-    boundaries.minX;
-
-  // Wrap Y coordinate
-  landingPosition.y =
-    ((((landingPosition.y - boundaries.minY) % boundaries.height) +
-      boundaries.height) %
-      boundaries.height) +
-    boundaries.minY;
-
-  return landingPosition;
-}
-
 export function createNPCGroups(): NPCGroup[] {
   const npcGroups: NPCGroup[] = [];
   const npcFilenames = getNPCFilenames();
@@ -294,59 +259,80 @@ const detectCollision = (
   return !(right1 < left2 || left1 > right2 || bottom1 < top2 || top1 > bottom2);
 };
 
-// Check for NPC collisions and handle bouncing/reflection (mirrored from client)
+// Check for NPC collisions and handle merging/bouncing based on group sizes
 export function checkAndHandleNPCCollisions(room: string): void{
   try {
     // Get all necessary data for collision detection
-    const allPaths =  Array.from(getpathsfromMemory(room).values());
+    const allPaths = Array.from(getpathsfromMemory(room).values());
 
-    const COLLISION_RADIUS = 3.0;
+    const allNPCGroups = getNPCGroupsfromMemory(room);
 
-    // Check collision with other path NPCs with captors (mirrored from client)
+    // Check collision between path NPCs and idle NPCs
+    for (let i = 0; i < allPaths.length; i++) {
+      const pathData = allPaths[i];
+
+      if (pathData.pathPhase !== PathPhase.THROWN) {
+        continue;
+      }
+      const pathPosition = calculatePathPosition(pathData, Date.now());
+
+      // Check collision with idle NPCs
+      const idleNPCGroups = Array.from(allNPCGroups.values()).filter(
+        (npcGroup) => npcGroup.phase === NPCPhase.IDLE && npcGroup.id !== pathData.npcGroup.id
+      );
+
+      for (const idleNPCGroup of idleNPCGroups) {
+        const collided = detectCollision(
+          pathPosition,
+          { ...idleNPCGroup.position, z: 0 },
+          4.0, 4.0, 4.0, 4.0
+        );
+
+        if (collided) {
+          console.log(`Path NPC ${pathData.npcGroup.id} collided with idle NPC ${idleNPCGroup.id}`);
+          handlePathNPCMerge(room, pathData, idleNPCGroup, pathPosition);
+          return;
+        }
+      }
+    }
+
+    // Check collision between path NPCs
     for (let i = 0; i < allPaths.length; i++) {
       const currentPathData = allPaths[i];
       if (currentPathData.pathPhase !== PathPhase.THROWN) {
         continue;
       }
-      const currentPosition = calculatePathPosition(
-        currentPathData,
-        Date.now()
-      );
+      const currentPosition = calculatePathPosition(currentPathData, Date.now());
 
       for (let j = i + 1; j < allPaths.length; j++) {
         const otherPathData = allPaths[j];
         if (
-          otherPathData.pathPhase === PathPhase.THROWN &&
-          otherPathData.npcGroup.captorId &&
           otherPathData.npcGroup.captorId !== currentPathData.npcGroup.captorId // Ignore same captor
         ) {
-          const otherPosition = calculatePathPosition(
-            otherPathData,
-            Date.now()
-          );
+          const otherPosition = calculatePathPosition(otherPathData, Date.now());
           const collided = detectCollision(
             currentPosition,
             otherPosition,
-            4.0, // width1
-            4.0, // height1
-            4.0, // width2
-            4.0  // height2
+            4.0, 4.0, 4.0, 4.0
           );
 
           if (collided) {
-            console.log("NPC collision detected");
-             handleNPCBounce(
-              room,
-              currentPathData,
-              currentPosition,
-              otherPosition
-            );
-             handleNPCBounce(
-              room,
-              otherPathData,
-              otherPosition,
-              currentPosition
-            );
+            console.log("Path NPC collision detected");
+            const currentSize = currentPathData.npcGroup.fileNames.length;
+            const otherSize = otherPathData.npcGroup.fileNames.length;
+
+            if (currentSize === otherSize &&  otherPathData.pathPhase === PathPhase.THROWN) {
+              // Same size: bounce as before
+              handleNPCBounce(room, currentPathData, currentPosition, otherPosition);
+              handleNPCBounce(room, otherPathData, otherPosition, currentPosition);
+            } else {
+              // Different sizes: merge into bigger group
+              if (currentSize >= otherSize) {
+                handlePathNPCMerge(room, currentPathData, otherPathData, currentPosition);
+              } else {
+                handlePathNPCMerge(room, otherPathData, currentPathData, otherPosition);
+              }
+            }
             return;
           }
         }
@@ -355,6 +341,59 @@ export function checkAndHandleNPCCollisions(room: string): void{
   } catch (error) {
     console.error("Error checking NPC collisions:", error);
   }
+}
+
+// Handle merging between two path NPCs
+function handlePathNPCMerge(
+  room: string,
+  winnerPathData: pathData,
+  loser: pathData | NPCGroup,
+  collisionPosition: { x: number; y: number; z: number }
+): void {
+  // Create merged group with winner's captor ID
+  const mergedGroup = new NPCGroup({
+    ...winnerPathData.npcGroup,
+    fileNames: [...loser instanceof NPCGroup ? loser.fileNames : loser.npcGroup.fileNames, ...winnerPathData.npcGroup.fileNames],
+    position: collisionPosition,
+    phase: NPCPhase.PATH,
+  });
+
+  // update the groups in memory
+  updateNPCGroupInRoom(room, mergedGroup);
+  if (loser instanceof NPCGroup) {
+    loser.fileNames = [];
+    updateNPCGroupInRoom(room, loser);
+  }
+  else {
+    loser.npcGroup.fileNames = [];
+    updateNPCGroupInRoomInMemory(room, loser.npcGroup);
+  }
+
+  // Update the winner's path data with the merged group
+  const updatedPathData: pathData = {
+    ...winnerPathData,
+    npcGroup: mergedGroup,
+  };
+
+  // Update memory
+  const paths = getpathsfromMemory(room);
+  paths.set(mergedGroup.id, updatedPathData);
+  if (loser instanceof NPCGroup) {
+    paths.delete(loser.id); // Remove the loser's path
+  }
+  else {
+    console.log("loser is a path data", loser.npcGroup.id);
+    paths.delete(loser.npcGroup.id); // Remove the loser's path
+  }
+  setPathsInMemory(room, paths);
+
+  // Broadcast updates
+  emitToRoom(room, "path-update", { pathData: updatedPathData });
+  if (!(loser instanceof NPCGroup)) {
+    emitToRoom(room, "path-absorbed", { pathData: loser });
+  }
+
+  console.log(`Merged path NPCs: ${winnerPathData.npcGroup.id} absorbed ${loser instanceof NPCGroup ? loser.id : loser.npcGroup.id}`);
 }
 
 // Handle bouncing between two path NPCs

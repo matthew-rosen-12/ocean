@@ -37,9 +37,11 @@ class GameTicker {
                 const roomNames = (0, rooms_1.getAllRoomsfromMemory)();
                 // Process each room
                 for (const roomName of roomNames) {
+                    // Always check for collisions first (for thrown paths)
+                    (0, npcService_1.checkAndHandleNPCCollisions)(roomName);
                     // Get paths for this room
                     const allPaths = (0, paths_1.getpathsfromMemory)(roomName);
-                    // filter paths that are not thrown
+                    // filter paths that are not thrown (for completion checking)
                     const paths = Array.from(allPaths.values()).filter((path) => path.pathPhase !== types_1.PathPhase.THROWN && path.pathPhase !== types_1.PathPhase.RETURNING);
                     if (!paths || paths.length === 0)
                         continue;
@@ -62,7 +64,6 @@ class GameTicker {
                             (0, npcService_1.setPathCompleteInRoom)(roomName, npcGroup);
                         }
                     }
-                    (0, npcService_1.checkAndHandleNPCCollisions)(roomName);
                 }
             }
             catch (error) {

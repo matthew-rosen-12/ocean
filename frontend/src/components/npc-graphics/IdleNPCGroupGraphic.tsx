@@ -1,4 +1,5 @@
 import React from "react";
+import { Text } from "@react-three/drei";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { smoothMove } from "../../utils/movement";
@@ -14,7 +15,7 @@ const IdleNPCGroupGraphic: React.FC<IdleNPCGroupGraphicProps> = ({
   npcGroup,
   checkForCollision,
 }) => {
-  const { group, positionRef, textureLoaded, updatePositionWithTracking } =
+  const { group, positionRef, textureLoaded, updatePositionWithTracking, textInfo } =
     useNPCGroupBase(npcGroup);
 
   // Set initial position
@@ -46,7 +47,27 @@ const IdleNPCGroupGraphic: React.FC<IdleNPCGroupGraphicProps> = ({
   });
 
   // Add effect to track useFrame lifecycles
-  return <primitive object={group} />;
+  return (
+    <>
+      <primitive object={group}>
+        {/* Text component for NPC count */}
+        {textInfo && (
+          <Text
+            position={textInfo.position}
+            fontSize={textInfo.fontSize}
+            color={textInfo.color}
+            anchorX="center"
+            anchorY="middle"
+            font="https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxM.woff"
+            outlineWidth={0.1}
+            outlineColor="white"
+          >
+            {textInfo.count}
+          </Text>
+        )}
+      </primitive>
+    </>
+  );
 };
 
 export default IdleNPCGroupGraphic;

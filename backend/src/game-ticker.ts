@@ -33,9 +33,12 @@ class GameTicker {
 
       // Process each room
       for (const roomName of roomNames) {
+        // Always check for collisions first (for thrown paths)
+        checkAndHandleNPCCollisions(roomName);
+
         // Get paths for this room
         const allPaths =  getpathsfromMemory(roomName);
-        // filter paths that are not thrown
+        // filter paths that are not thrown (for completion checking)
         const paths = Array.from(allPaths.values()).filter((path: pathData) => path.pathPhase !== PathPhase.THROWN && path.pathPhase !== PathPhase.RETURNING);
         if (!paths || paths.length === 0) continue;
 
@@ -62,7 +65,6 @@ class GameTicker {
              setPathCompleteInRoom(roomName, npcGroup);
           }
         }
-        checkAndHandleNPCCollisions(roomName)
       }
     } catch (error) {
       console.error("Error in game ticker:", error);

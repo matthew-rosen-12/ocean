@@ -17,6 +17,7 @@ export interface ServerToClientEvents {
 
     "path-update": (data: { pathData: pathData }) => void;
     "path-complete": (data: { npcGroup: NPCGroup }) => void;
+    "path-absorbed": (data: { pathData: pathData }) => void;
   }
   
   export interface ClientToServerEvents {

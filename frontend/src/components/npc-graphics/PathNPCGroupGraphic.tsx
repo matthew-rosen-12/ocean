@@ -3,6 +3,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { Text } from "@react-three/drei";
 import {
   NPCPhase,
   pathData,
@@ -14,59 +15,8 @@ import {
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { useMount, useNPCGroupBase } from "../../hooks/useNPCGroupBase";
-import { createEdgeGeometry } from "../../utils/load-animal-svg";
-import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
-import { getAnimalBorderColor } from "../../utils/animal-colors";
 import { TerrainBoundaries } from "../../utils/terrain";
-import {
-  calculateNPCGroupPosition,
-  calculateNPCGroupScale,
-} from "../../utils/npc-group-utils";
 
-// Function to create a square outline geometry
-function createSquareOutlineGeometry(
-  width: number,
-  height: number
-): LineGeometry {
-  const halfWidth = width / 2;
-  const halfHeight = height / 2;
-
-  // Create square outline points (clockwise)
-  const linePositions = [
-    // Bottom edge
-    -halfWidth,
-    -halfHeight,
-    0,
-    halfWidth,
-    -halfHeight,
-    0,
-    // Right edge
-    halfWidth,
-    -halfHeight,
-    0,
-    halfWidth,
-    halfHeight,
-    0,
-    // Top edge
-    halfWidth,
-    halfHeight,
-    0,
-    -halfWidth,
-    halfHeight,
-    0,
-    // Left edge
-    -halfWidth,
-    halfHeight,
-    0,
-    -halfWidth,
-    -halfHeight,
-    0,
-  ];
-
-  const lineGeometry = new LineGeometry();
-  lineGeometry.setPositions(new Float32Array(linePositions));
-  return lineGeometry;
-}
 
 interface PathNPCGroupGraphicProps {
   npcGroup: NPCGroup,
@@ -83,9 +33,6 @@ interface PathNPCGroupGraphicProps {
       | Map<string, pathData>
       | ((prev: Map<string, pathData>) => Map<string, pathData>)
   ) => void; // Function to update paths
-  setNpcGroups?: (
-    npcGroups: NPCGroupsBiMap | ((prev: NPCGroupsBiMap) => NPCGroupsBiMap)
-  ) => void; // Function to update NPCs
 }
 
 const PathNPCGroupGraphic: React.FC<PathNPCGroupGraphicProps> = ({
@@ -97,13 +44,10 @@ const PathNPCGroupGraphic: React.FC<PathNPCGroupGraphicProps> = ({
   users,
   myUserId,
   setPaths,
-  setNpcGroups,
 }) => {
-  const { group, positionRef, textureLoaded, updatePositionWithTracking } =
-    useNPCGroupBase(npcGroup);
+  const { group, positionRef, textureLoaded, updatePositionWithTracking, textInfo } =
+    useNPCGroupBase(npcGroup, user);
 
-  // Reference for the edge geometry outline
-  const edgeGeometryRef = useRef<THREE.Object3D | null>(null);
 
   // State for extended path data (client-side collision avoidance)
   const [extendedPathData, setExtendedPathData] = useState<pathData>(pathData);
@@ -331,39 +275,8 @@ const PathNPCGroupGraphic: React.FC<PathNPCGroupGraphicProps> = ({
       checkForCollision(npcGroup, pathPosition);
     }
 
-    // Create edge geometry if needed and mesh is available
-    if (!edgeGeometryRef.current && textureLoaded.current) {
-      // Find the mesh in the group
-      const mesh = group.children.find(
-        (child) => child instanceof THREE.Mesh
-      ) as THREE.Mesh;
-      if (mesh && user) {
-        const borderColor = getAnimalBorderColor(user);
-
-        // Set the mesh z-position to be in front of animal graphics
-        mesh.position.z = 0.11;
-
-        // Create a square outline instead of using EdgesGeometry to avoid diagonal lines
-        const squareOutlineGeometry = createSquareOutlineGeometry(1, 1); // 1x1 square, will be scaled
-        const edgeGeometry = createEdgeGeometry(
-          borderColor,
-          false, // path NPCs are never local player
-          squareOutlineGeometry, // Use our custom square outline
-          undefined // No fallback needed
-        );
-
-        // Position the outline in front of animal outlines (absolute z-position)
-        edgeGeometry.position.z = 0.095;
-
-        // Scale the edge geometry to match the mesh
-        edgeGeometry.scale.copy(mesh.scale);
-
-        // Add the edge geometry to the group
-        group.add(edgeGeometry);
-        edgeGeometryRef.current = edgeGeometry;
-      }
-    }
   });
+
 
   // Reset extended path data when pathData changes (new path)
   useEffect(() => {
@@ -372,41 +285,28 @@ const PathNPCGroupGraphic: React.FC<PathNPCGroupGraphicProps> = ({
     setLastDirectionUpdate(0);
   }, [pathData.id, pathData.timestamp]);
 
-  // Add effect to track useFrame lifecycle and cleanup
-  useEffect(() => {
-    return () => {
-      // Cleanup edge geometry
-      if (edgeGeometryRef.current) {
-        // Dispose of edge geometry materials and geometry
-        edgeGeometryRef.current.traverse((child) => {
-          if (
-            child instanceof THREE.Mesh ||
-            child instanceof THREE.LineSegments
-          ) {
-            if (child.geometry) {
-              child.geometry.dispose();
-            }
-            if (child.material) {
-              if (Array.isArray(child.material)) {
-                child.material.forEach((mat) => mat.dispose());
-              } else {
-                child.material.dispose();
-              }
-            }
-          }
-        });
 
-        // Remove from parent if still attached
-        if (edgeGeometryRef.current.parent) {
-          edgeGeometryRef.current.parent.remove(edgeGeometryRef.current);
-        }
-
-        edgeGeometryRef.current = null;
-      }
-    };
-  }, [npcGroup.id]);
-
-  return <primitive object={group} />;
+  return (
+    <>
+      <primitive object={group}>
+        {/* Text component for NPC count */}
+        {textInfo && (
+          <Text
+            position={textInfo.position}
+            fontSize={textInfo.fontSize}
+            color={textInfo.color}
+            anchorX="center"
+            anchorY="middle"
+            font="https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxM.woff"
+            outlineWidth={0.1}
+            outlineColor="white"
+          >
+            {textInfo.count}
+          </Text>
+        )}
+      </primitive>
+    </>
+  );
 };
 
 export default React.memo(PathNPCGroupGraphic);

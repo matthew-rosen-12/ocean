@@ -1,4 +1,5 @@
-import React, { useMemo, useRef, useEffect, useState } from "react";
+import React, { useMemo, useRef, useEffect } from "react";
+import { Text } from "@react-three/drei";
 import {
   NPCGroup,
   pathData,
@@ -9,14 +10,9 @@ import {
 } from "shared/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
-import { Text } from "@react-three/drei";
-// @ts-ignore - troika-three-text doesn't have TypeScript definitions
-import { preloadFont } from "troika-three-text";
 import { smoothMove } from "../../utils/movement";
 import { useNPCGroupBase, useMount } from "../../hooks/useNPCGroupBase";
 import { getAnimalBorderColor } from "../../utils/animal-colors";
-import { createEdgeGeometry } from "../../utils/load-animal-svg";
-import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
 import { TerrainBoundaries } from "../../utils/terrain";
 import {
   calculateNPCGroupScale,
@@ -27,28 +23,6 @@ import { serialize } from "../../utils/typed-socket";
 import { v4 as uuidv4 } from "uuid";
 // Constants for positioning
 const FOLLOW_DISTANCE = 2; // Distance behind the user
-const FONT_URL = "https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxM.woff";
-
-// Preload the font at module level with common characters
-let fontPreloaded = false;
-const preloadFontSafely = () => {
-  if (!fontPreloaded) {
-    try {
-      preloadFont({ 
-        font: FONT_URL, 
-        characters: "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-      }, () => {
-        fontPreloaded = true;
-      });
-    } catch (error) {
-      console.warn("Font preloading failed:", error);
-      fontPreloaded = true; // Allow text to render anyway
-    }
-  }
-};
-
-// Call preload function
-preloadFontSafely();
 
 // Deterministic random function that produces consistent results across all clients
 function getRandom(input: Record<string, any>): number {
@@ -100,8 +74,6 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
   animalWidth,
   isLocalUser = false, // Default to false for non-local users
 }) => {
-  // State to track if text is ready to render
-  const [textReady, setTextReady] = useState(false);
   
   // Skip rendering if no user or no NPCs
   if (!user || group.fileNames.length === 0) {
@@ -120,22 +92,17 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
 
 
   // Get the real face NPC from the npcs map
-  // Use the NPCBase hook with the face NPC
+  // Use the NPCBase hook with the face NPC (now handles outline, returns text info)
   const {
     group: threeGroup,
     positionRef,
     textureLoaded,
     updatePositionWithTracking,
     mesh,
-  } = useNPCGroupBase(group);
+    textInfo,
+  } = useNPCGroupBase(group, user);
 
-  // Add a badge showing the number of NPCs in the group
-  const npcsCount = group.fileNames.length;
 
-  // Reference to store the indicator position
-  const indicatorRef = useRef<THREE.Group>(null);
-  // Reference for the edge geometry outline
-  const edgeGeometryRef = useRef<THREE.Object3D | null>(null);
   // Reference for smooth movement interpolation (non-local users)
   const previousPosition = useMemo(() => new THREE.Vector3(), []);
   // Memoize target position calculation to avoid unnecessary recalculations
@@ -163,9 +130,6 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     return memoizedTargetPosition!;
   };
 
-  const getCurrentScale = (): number => {
-    return scaleFactor;
-  };
 
   const handleNPCGroupReflection = (
     npcGroup: NPCGroup,
@@ -363,88 +327,8 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     return false;
   };
 
-  // Add effect to track component lifecycle
-  useEffect(() => {
-    return () => {
-      // Cleanup edge geometry
-      if (edgeGeometryRef.current) {
-        // Dispose of edge geometry materials and geometry
-        edgeGeometryRef.current.traverse((child) => {
-          if (
-            child instanceof THREE.Mesh ||
-            child instanceof THREE.LineSegments
-          ) {
-            if (child.geometry) {
-              child.geometry.dispose();
-            }
-            if (child.material) {
-              if (Array.isArray(child.material)) {
-                child.material.forEach((mat) => mat.dispose());
-              } else {
-                child.material.dispose();
-              }
-            }
-          }
-        });
 
-        // Remove from parent if still attached
-        if (edgeGeometryRef.current.parent) {
-          edgeGeometryRef.current.parent.remove(edgeGeometryRef.current);
-        }
 
-        edgeGeometryRef.current = null;
-      }
-    };
-  }, []);
-
-  // Add effect to recreate outline when group size changes
-  useEffect(() => {
-    // Remove existing edge geometry when group size changes
-    if (edgeGeometryRef.current) {
-      // Dispose of edge geometry materials and geometry
-      edgeGeometryRef.current.traverse((child) => {
-        if (
-          child instanceof THREE.Mesh ||
-          child instanceof THREE.LineSegments
-        ) {
-          if (child.geometry) {
-            child.geometry.dispose();
-          }
-          if (child.material) {
-            if (Array.isArray(child.material)) {
-              child.material.forEach((mat) => mat.dispose());
-            } else {
-              child.material.dispose();
-            }
-          }
-        }
-      });
-
-      // Remove from parent if still attached
-      if (edgeGeometryRef.current.parent) {
-        edgeGeometryRef.current.parent.remove(edgeGeometryRef.current);
-      }
-
-      edgeGeometryRef.current = null;
-    }
-  }, [group.fileNames.length, scaleFactor]);
-
-  // Effect to handle text preloading
-  useEffect(() => {
-    // Check if font is preloaded and mark text as ready
-    const checkFontReady = () => {
-      if (fontPreloaded) {
-        setTextReady(true);
-      } else {
-        setTimeout(checkFontReady, 50);
-      }
-    };
-    
-    // Start checking after a small delay
-    const timer = setTimeout(checkFontReady, 100);
-    
-    return () => clearTimeout(timer);
-  }, []);
 
   // Set initial position
   useMount(() => {
@@ -456,34 +340,6 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
 
     // Initialize previousPosition for smooth interpolation
     previousPosition.copy(positionRef.current);
-
-    // Apply the scale based on number of NPCs
-    if (mesh.current) {
-      // Apply our logarithmic scaling
-      mesh.current.scale.set(scaleFactor, scaleFactor, 1);
-
-      // Create edge geometry outline for the NPC
-      const borderColor = getAnimalBorderColor(user);
-
-      // Create a square outline instead of using EdgesGeometry to avoid diagonal lines
-      const squareOutlineGeometry = createSquareOutlineGeometry(1, 1); // 1x1 square, will be scaled
-      const edgeGeometry = createEdgeGeometry(
-        borderColor,
-        false, // NPCs are never local player
-        squareOutlineGeometry, // Use our custom square outline
-        undefined // No fallback needed
-      );
-
-      // Position the outline behind the NPC
-      edgeGeometry.position.z = -0.01;
-
-      // Add the edge geometry to the group
-      threeGroup.add(edgeGeometry);
-      edgeGeometryRef.current = edgeGeometry;
-
-      // Scale the edge geometry to match the mesh
-      edgeGeometry.scale.set(scaleFactor, scaleFactor, 1);
-    }
   });
 
   // Handle position updates to follow the user
@@ -527,11 +383,6 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
       threeGroup.position.copy(positionRef.current);
     }
 
-    // Always update indicator position to follow the group
-    if (indicatorRef.current && mesh.current) {
-      indicatorRef.current.position.copy(threeGroup.position);
-      indicatorRef.current.position.y += mesh.current.scale.y / 2 + 2.8;
-    }
 
     // Make a subtle oscillation to indicate this is a group
     const time = Date.now() / 1000;
@@ -542,30 +393,6 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     if (mesh.current) {
       // Ensure the mesh scale remains consistent with the scaleFactor
       mesh.current.scale.set(scaleFactor, scaleFactor, 1);
-
-      // Create or update edge geometry if needed
-      if (!edgeGeometryRef.current && textureLoaded.current) {
-        const borderColor = getAnimalBorderColor(user);
-
-        // Create a square outline instead of using EdgesGeometry to avoid diagonal lines
-        const squareOutlineGeometry = createSquareOutlineGeometry(1, 1); // 1x1 square, will be scaled
-        const edgeGeometry = createEdgeGeometry(
-          borderColor,
-          false, // NPCs are never local player
-          squareOutlineGeometry, // Use our custom square outline
-          undefined // No fallback needed
-        );
-
-        // Position the outline behind the NPC
-        edgeGeometry.position.z = -0.01;
-
-        // Add the edge geometry to the group
-        threeGroup.add(edgeGeometry);
-        edgeGeometryRef.current = edgeGeometry;
-
-        // Scale the edge geometry to match the mesh
-        edgeGeometry.scale.set(scaleFactor, scaleFactor, 1);
-      }
     }
     // only check for collision for local npc group
     if (isLocalUser) {
@@ -584,26 +411,23 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
 
   return (
     <>
-      <primitive object={threeGroup} />
-
-      {/* Counter indicator showing the number of NPCs */}
-      {npcsCount > 1 && textReady && (
-        <group ref={indicatorRef}>
-          {/* Text showing count with outline */}
+      <primitive object={threeGroup}>
+        {/* Text component like the original, positioned relative to the group */}
+        {textInfo && (
           <Text
-            position={[0, -0.5, 0]}
-            fontSize={2.8}
-            color={getAnimalBorderColor(user)}
+            position={textInfo.position}
+            fontSize={textInfo.fontSize}
+            color={textInfo.color}
             anchorX="center"
             anchorY="middle"
-            font={FONT_URL}
+            font="https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxM.woff"
             outlineWidth={0.1}
             outlineColor="white"
           >
-            {npcsCount}
+            {textInfo.count}
           </Text>
-        </group>
-      )}
+        )}
+      </primitive>
     </>
   );
 };
@@ -649,47 +473,3 @@ export default React.memo(CapturedNPCGroupGraphic, (prevProps, nextProps) => {
   return shouldNotRerender;
 });
 
-// Function to create a square outline geometry
-function createSquareOutlineGeometry(
-  width: number,
-  height: number
-): LineGeometry {
-  const halfWidth = width / 2;
-  const halfHeight = height / 2;
-
-  // Create square outline points (clockwise)
-  const linePositions = [
-    // Bottom edge
-    -halfWidth,
-    -halfHeight,
-    0,
-    halfWidth,
-    -halfHeight,
-    0,
-    // Right edge
-    halfWidth,
-    -halfHeight,
-    0,
-    halfWidth,
-    halfHeight,
-    0,
-    // Top edge
-    halfWidth,
-    halfHeight,
-    0,
-    -halfWidth,
-    halfHeight,
-    0,
-    // Left edge
-    -halfWidth,
-    halfHeight,
-    0,
-    -halfWidth,
-    -halfHeight,
-    0,
-  ];
-
-  const lineGeometry = new LineGeometry();
-  lineGeometry.setPositions(new Float32Array(linePositions));
-  return lineGeometry;
-}

@@ -215,6 +215,19 @@ export default function GuestLogin({
         });
       });
 
+      typedSocket.on("path-absorbed", ({ pathData }: { pathData: pathData }) => {
+        setPaths((prev) => {
+          const newPaths = new Map(prev);
+          newPaths.delete(pathData.npcGroup.id);
+          return newPaths;
+        });
+        setNPCGroups((prev) => {
+          const newNpcGroups = new NPCGroupsBiMap(prev);
+          newNpcGroups.deleteByNpcGroupId(pathData.npcGroup.id);
+          return newNpcGroups;
+        });
+      });
+
       // Set initial user state
       setMyUser(user);
       setUsers(new Map([[user.id, user]]));

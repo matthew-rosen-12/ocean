@@ -156,14 +156,14 @@ io.on("connection", async (socket) => {
         const pathNPCGroup = pathData.npcGroup;
 
         updateNPCGroupInRoom(pathData.room, pathNPCGroup);
-        const activepaths =  getpathsfromMemory(pathData.room);
+        const activepaths = getpathsfromMemory(pathData.room);
         // if pathData already exists, update it
         const existingPath = activepaths.get(pathData.npcGroup.id);
         if (existingPath) {
           activepaths.delete(pathData.npcGroup.id);
         }
         activepaths.set(pathData.npcGroup.id, pathData);
-         setPathsInMemory(pathData.room, activepaths);
+        setPathsInMemory(pathData.room, activepaths);
 
 
         typedSocket.broadcast(pathData.room, "path-update", {
