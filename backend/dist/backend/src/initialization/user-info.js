@@ -1,16 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ANIMAL_SCALES = exports.DIRECTION_OFFSET = void 0;
 exports.getRandomAnimal = getRandomAnimal;
 exports.generateGuestId = generateGuestId;
 exports.getInitialPosition = getInitialPosition;
 exports.getInitialDirection = getInitialDirection;
-exports.DIRECTION_OFFSET = 0.001;
+const DIRECTION_OFFSET = 0.001;
 const ANIMALS = ["DOLPHIN", "WOLF"];
-exports.ANIMAL_SCALES = {
-    DOLPHIN: 3.0,
-    WOLF: 1.0,
-};
 function getRandomAnimal() {
     return ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
 }
@@ -23,5 +18,5 @@ function getInitialPosition() {
     return { x, y };
 }
 function getInitialDirection() {
-    return { x: 1 + exports.DIRECTION_OFFSET, y: 0 };
+    return { x: 1 + DIRECTION_OFFSET, y: 0 };
 }

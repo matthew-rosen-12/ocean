@@ -28,13 +28,6 @@ export function emitToRoom<K extends keyof ServerToClientEvents>(
   io.to(room).emit(event, serialize(data));
 }
 
-export function emitToSocket<K extends keyof ServerToClientEvents>(
-  socketId: string,
-  event: K,
-  data: Parameters<ServerToClientEvents[K]>[0]
-) {
-  io.to(socketId).emit(event, serialize(data));
-}
 
 export class TypedSocket {
   constructor(private socket: Socket) {}

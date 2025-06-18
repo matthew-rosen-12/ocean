@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getUserInRoom = exports.getAllUsersInRoom = exports.updateUserInRoom = exports.removeUserFromRoom = exports.addUserToRoom = void 0;
+exports.getAllUsersInRoom = exports.updateUserInRoom = exports.removeUserFromRoom = exports.addUserToRoom = void 0;
 // Room-based user storage
 const roomUsers = new Map();
 const addUserToRoom = (roomName, user) => {
@@ -33,8 +33,3 @@ const getAllUsersInRoom = (roomName) => {
     return roomUsers.get(roomName) || new Map();
 };
 exports.getAllUsersInRoom = getAllUsersInRoom;
-const getUserInRoom = (roomName, userId) => {
-    const users = roomUsers.get(roomName);
-    return users === null || users === void 0 ? void 0 : users.get(userId);
-};
-exports.getUserInRoom = getUserInRoom;

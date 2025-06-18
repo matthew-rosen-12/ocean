@@ -7,7 +7,6 @@ exports.TypedSocket = void 0;
 exports.serialize = serialize;
 exports.deserialize = deserialize;
 exports.emitToRoom = emitToRoom;
-exports.emitToSocket = emitToSocket;
 const server_1 = require("./server");
 const superjson_1 = __importDefault(require("superjson"));
 const types_1 = require("shared/types");
@@ -25,9 +24,6 @@ function deserialize(serialized) {
 }
 function emitToRoom(room, event, data) {
     server_1.io.to(room).emit(event, serialize(data));
-}
-function emitToSocket(socketId, event, data) {
-    server_1.io.to(socketId).emit(event, serialize(data));
 }
 class TypedSocket {
     constructor(socket) {

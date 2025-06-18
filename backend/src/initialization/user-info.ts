@@ -1,11 +1,7 @@
 import { Animal, Direction, Position } from "shared/types";
 
-export const DIRECTION_OFFSET = 0.001;
+const DIRECTION_OFFSET = 0.001;
 const ANIMALS = ["DOLPHIN", "WOLF"];
-export const ANIMAL_SCALES: Record<Animal, number> = {
-  DOLPHIN: 3.0,
-  WOLF: 1.0,
-};
 
 export function getRandomAnimal(): Animal {
   return ANIMALS[Math.floor(Math.random() * ANIMALS.length)] as Animal;

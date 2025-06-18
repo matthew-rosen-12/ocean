@@ -14,15 +14,17 @@ import {
 } from "shared/types";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { typedSocket } from "../socket";
-import { ANIMAL_SCALES, DIRECTION_OFFSET } from "../utils/user-info";
+import { ANIMAL_SCALES, DIRECTION_OFFSET } from "../constants";
 import AnimalGraphic from "./AnimalGraphic";
 import { throttle } from "lodash";
 import { v4 as uuidv4 } from "uuid";
 import NPCGraphicWrapper from "./npc-graphics/NPCGroupGraphicWrapper";
 import { useMount } from "../hooks/use-npc-group-base";
 import * as THREE from "three";
-// Note: These functions may no longer be needed since NPCs are now NPCGroups
-// import { removeFileNameFromGroup, addFileNameToGroup } from "../utils/npc-group-utils";
+import { 
+  calculateNPCGroupVelocityFactor, 
+  calculateNPCGroupDistanceFactor 
+} from "../utils/npc-group-utils";
 import { TerrainConfig } from "../utils/terrain";
 // Extend Performance interface for Chrome's memory API
 declare global {
@@ -87,6 +89,17 @@ async function pathNPCGroup(
       phase: NPCPhase.PATH,
     });
 
+    // Calculate velocity and distance based on group size
+    const baseVelocity = 20;
+    const baseDuration = 2000;
+    
+    const velocityFactor = calculateNPCGroupVelocityFactor(actualThrowCount);
+    const distanceFactor = calculateNPCGroupDistanceFactor(actualThrowCount);
+    
+    // Higher velocity and longer duration for larger groups
+    const scaledVelocity = baseVelocity * velocityFactor;
+    const scaledDuration = baseDuration * distanceFactor;
+
     // Create new path data
     const newpathData: pathData = {
       id: uuidv4(),
@@ -96,13 +109,13 @@ async function pathNPCGroup(
         x: myUser.position.x,
         y: myUser.position.y,
       },
-      pathDuration: 2000,
+      pathDuration: scaledDuration,
       timestamp: Date.now(),
       direction: {
         x: Math.round(myUser.direction.x),
         y: Math.round(myUser.direction.y),
       },
-      velocity: 20,
+      velocity: scaledVelocity,
       pathPhase: PathPhase.THROWN, // This is a thrown NPC
     };
 
@@ -331,7 +344,7 @@ function useKeyboardMovement(
     };
   });
 
-  return { position, direction };
+  return { position, direction, spaceStartTime };
 }
 
 interface Props {
@@ -410,7 +423,7 @@ export default function Scene({
     return new THREE.Vector3(adjustedX, adjustedY, newPosition.z);
   };
 
-  const { position, direction } = useKeyboardMovement(
+  const { position, direction, spaceStartTime } = useKeyboardMovement(
     initialPosition,
     initialDirection,
     myUser,
@@ -716,6 +729,36 @@ export default function Scene({
     [handleNPCGroupCollision, makeNPCGroupFlee, animalDimensions, myUser.animal, myUser.position.x, myUser.position.y]
   );
 
+  // Calculate current throw charge count with real-time updates
+  const [currentThrowCount, setCurrentThrowCount] = useState(0);
+  
+  useEffect(() => {
+    if (spaceStartTime === null) {
+      setCurrentThrowCount(0);
+      return;
+    }
+    
+    const updateChargeCount = () => {
+      const chargeDuration = Date.now() - spaceStartTime;
+      const secondsHeld = Math.min(chargeDuration / 1000, 10); // Cap at 10 seconds
+      const rawThrowCount = Math.floor(Math.pow(2, secondsHeld));
+      
+      // Cap at available NPCs in the captured group
+      const availableNPCs = npcGroups.getByUserId(myUser.id)?.fileNames.length || 0;
+      const cappedThrowCount = Math.min(rawThrowCount, availableNPCs);
+      
+      setCurrentThrowCount(cappedThrowCount);
+    };
+    
+    // Update immediately
+    updateChargeCount();
+    
+    // Continue updating while charging
+    const interval = setInterval(updateChargeCount, 50); // Update every 50ms for smooth animation
+    
+    return () => clearInterval(interval);
+  }, [spaceStartTime, npcGroups, myUser.id]);
+
   const setAnimalDimensionsCallback = useCallback(
     (animal: string, dimensions: { width: number; height: number }) => {
       if (!animalDimensions[animal]) {
@@ -775,6 +818,7 @@ export default function Scene({
             animalDimensions={animalDimensions}
             setPaths={setPaths}
             setNpcGroups={setNpcGroups}
+            throwChargeCount={npcGroup.captorId === myUser.id ? currentThrowCount : undefined}
           />
         ))}
     </Canvas>

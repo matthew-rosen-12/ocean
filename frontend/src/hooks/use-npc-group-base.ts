@@ -1,5 +1,6 @@
 import { useRef, useEffect, useMemo } from "react";
 import * as THREE from "three";
+import { useFrame } from "@react-three/fiber";
 import { DEBUG } from "../utils/config";
 import { NPCGroup, UserInfo, pathData, PathPhase } from "shared/types";
 import { calculateNPCGroupScale } from "../utils/npc-group-utils";
@@ -22,7 +23,7 @@ console.log(
 // Use the specific debug flag
 const debug = DEBUG.NPC_MOVEMENT;
 
-export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: pathData) {
+export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: pathData, throwChargeCount?: number) {
   const group = useMemo(() => {
     const newGroup = new THREE.Group();
     return newGroup;
@@ -57,7 +58,80 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
     }
   };
 
-  // Helper function to create outline (mirroring CapturedNPCGroupGraphic approach)
+  // Helper function to create shimmering outline with segments
+  const createShimmeringOutline = (scale: number, userColor: THREE.Color) => {
+    const halfWidth = 0.5;
+    const halfHeight = 0.5;
+    
+    // Create a group to hold multiple line segments
+    const outlineGroup = new THREE.Group();
+    
+    // Define the square outline with 8 segments (2 per side)
+    const segments = [
+      // Bottom edge - left half
+      { start: [-halfWidth, -halfHeight, 0], end: [0, -halfHeight, 0] },
+      // Bottom edge - right half  
+      { start: [0, -halfHeight, 0], end: [halfWidth, -halfHeight, 0] },
+      // Right edge - bottom half
+      { start: [halfWidth, -halfHeight, 0], end: [halfWidth, 0, 0] },
+      // Right edge - top half
+      { start: [halfWidth, 0, 0], end: [halfWidth, halfHeight, 0] },
+      // Top edge - right half
+      { start: [halfWidth, halfHeight, 0], end: [0, halfHeight, 0] },
+      // Top edge - left half
+      { start: [0, halfHeight, 0], end: [-halfWidth, halfHeight, 0] },
+      // Left edge - top half
+      { start: [-halfWidth, halfHeight, 0], end: [-halfWidth, 0, 0] },
+      // Left edge - bottom half
+      { start: [-halfWidth, 0, 0], end: [-halfWidth, -halfHeight, 0] },
+    ];
+    
+    segments.forEach((segment, index) => {
+      const lineGeometry = new LineGeometry();
+      lineGeometry.setPositions(new Float32Array([
+        ...segment.start,
+        ...segment.end
+      ]));
+      
+      const lineMaterial = new LineMaterial({
+        color: userColor, // Start with user color
+        linewidth: 15.0,
+        transparent: true,
+        opacity: 1.0,
+        depthTest: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
+      });
+      
+      const lineSegment = new LineSegments2(lineGeometry, lineMaterial);
+      lineSegment.scale.set(scale, scale, 1);
+      
+      // Store animation data for this segment
+      (lineSegment as LineSegments2 & { userData: Record<string, unknown> }).userData = {
+        segmentIndex: index,
+        userColor: userColor.clone(),
+        goldColor: new THREE.Color('#FFD700'),
+        material: lineMaterial,
+        isShimmering: true
+      };
+      
+      outlineGroup.add(lineSegment);
+    });
+    
+    outlineGroup.renderOrder = 9;
+    outlineGroup.position.z = -0.01;
+    
+    // Mark the group for animation
+    (outlineGroup as THREE.Group & { userData: Record<string, unknown> }).userData = {
+      isShimmeringGroup: true,
+      animationSpeed: 1.5
+    };
+    
+    return outlineGroup;
+  };
+
+  // Helper function to create outline with swirling gold/user color effect
   const createOutline = (scale: number, borderColor: THREE.Color, isGold: boolean = false) => {
     
     // Create a square outline (1x1) like the original, then scale it
@@ -84,21 +158,60 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
     const lineGeometry = new LineGeometry();
     lineGeometry.setPositions(new Float32Array(linePositions));
     
-    const edgeMaterial = new LineMaterial({
-      color: borderColor,
-      linewidth: isGold ? 15.0 : 10.0,
-      transparent: true,
-      opacity: 1.0,
-      depthTest: true,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-      resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
-    });
+    let edgeMaterial: LineMaterial;
+    
+    if (isGold) {
+      // Create swirling gold/user color material with shader-like effect
+      const goldColor = new THREE.Color('#FFD700');
+      
+      edgeMaterial = new LineMaterial({
+        color: goldColor,
+        linewidth: 18.0, // Thicker for the swirl effect
+        transparent: true,
+        opacity: 0.9,
+        depthTest: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
+      });
+      
+      // Add animation properties to the material for swirling effect
+      (edgeMaterial as LineMaterial & { userData: Record<string, unknown> }).userData = {
+        baseColor: goldColor.clone(),
+        userColor: borderColor.clone(),
+        animationTime: 0,
+        swirling: true
+      };
+      
+    } else {
+      // Regular outline
+      edgeMaterial = new LineMaterial({
+        color: borderColor,
+        linewidth: 12.0,
+        transparent: true,
+        opacity: 1.0,
+        depthTest: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
+      });
+    }
     
     const outlineObj = new LineSegments2(lineGeometry, edgeMaterial);
-    outlineObj.renderOrder = isGold ? 7 : 9; // Gold outline renders behind regular outline
-    outlineObj.scale.set(scale * (isGold ? 1.1 : 1), scale * (isGold ? 1.1 : 1), 1); // Gold outline larger
-    outlineObj.position.z = isGold ? -0.02 : -0.01; // Gold outline behind regular outline
+    outlineObj.renderOrder = isGold ? 8 : 9; // Gold outline renders slightly behind
+    outlineObj.scale.set(scale * (isGold ? 1.15 : 1), scale * (isGold ? 1.15 : 1), 1); // Gold outline larger
+    outlineObj.position.z = isGold ? -0.015 : -0.01; // Gold outline slightly behind
+    
+    // Add swirling animation for gold outline
+    if (isGold) {
+      (outlineObj as LineSegments2 & { userData: Record<string, unknown> }).userData = {
+        isSwirling: true,
+        material: edgeMaterial,
+        baseColor: new THREE.Color('#FFD700'),
+        userColor: borderColor.clone(),
+        animationSpeed: 2.0
+      };
+    }
     
     return outlineObj;
   };
@@ -115,6 +228,19 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
       position: [0, scale / 2 + 2.3, 0] as [number, number, number],
       fontSize: 2.8,
       color: baseColor
+    };
+  };
+
+  const getThrowChargeCountTextInfo = (count: number | undefined, scale: number) => {
+    if (!count) return null;
+    if (count < 1) return null;
+
+    console.log("Throw charge count text info", count, scale);
+    return {
+      count,
+      position: [0, - scale / 2 - 2.3, 0] as [number, number, number],
+      fontSize: 2.8,
+      color: new THREE.Color('#FFD700')
     };
   };
 
@@ -154,7 +280,15 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
     }
     if (goldOutline.current && goldOutline.current.parent === group) {
       group.remove(goldOutline.current);
-      if (goldOutline.current instanceof LineSegments2) {
+      // If it's a group (shimmering outline), dispose all children
+      if (goldOutline.current instanceof THREE.Group) {
+        goldOutline.current.children.forEach(child => {
+          if (child instanceof LineSegments2) {
+            child.geometry?.dispose();
+            (child.material as LineMaterial).dispose();
+          }
+        });
+      } else if (goldOutline.current instanceof LineSegments2) {
         goldOutline.current.geometry?.dispose();
         (goldOutline.current.material as LineMaterial).dispose();
       }
@@ -190,17 +324,18 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
       // Get the color for outline
       const borderColor = user ? getAnimalColor(user) : new THREE.Color('#888888');
       
-      // Create and add outline
-      outline.current = createOutline(scale, borderColor);
-      if (outline.current) {
-        group.add(outline.current);
-      }
-      
-      // Add golden outline for thrown NPCs
+      // Create and add outline (or special shimmering outline for thrown NPCs)
       if (pathData?.pathPhase === PathPhase.THROWN) {
-        goldOutline.current = createOutline(scale, new THREE.Color('#FFD700'), true);
+        // Create special shimmering outline for thrown NPCs
+        goldOutline.current = createShimmeringOutline(scale, borderColor);
         if (goldOutline.current) {
           group.add(goldOutline.current);
+        }
+      } else {
+        // Regular outline for non-thrown NPCs
+        outline.current = createOutline(scale, borderColor);
+        if (outline.current) {
+          group.add(outline.current);
         }
       }
       
@@ -230,7 +365,15 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
           }
           if (goldOutline.current && goldOutline.current.parent === group) {
             group.remove(goldOutline.current);
-            if (goldOutline.current instanceof LineSegments2) {
+            // If it's a group (shimmering outline), dispose all children
+            if (goldOutline.current instanceof THREE.Group) {
+              goldOutline.current.children.forEach(child => {
+                if (child instanceof LineSegments2) {
+                  child.geometry?.dispose();
+                  (child.material as LineMaterial).dispose();
+                }
+              });
+            } else if (goldOutline.current instanceof LineSegments2) {
               goldOutline.current.geometry?.dispose();
               (goldOutline.current.material as LineMaterial).dispose();
             }
@@ -260,17 +403,18 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
           // Get the color for outline
           const borderColor = user ? getAnimalColor(user) : new THREE.Color('#888888');
           
-          // Create and add outline
-          outline.current = createOutline(scale, borderColor);
-          if (outline.current) {
-            group.add(outline.current);
-          }
-          
-          // Add golden outline for thrown NPCs
+          // Create and add outline (or special shimmering outline for thrown NPCs)
           if (pathData?.pathPhase === PathPhase.THROWN) {
-            goldOutline.current = createOutline(scale, new THREE.Color('#FFD700'), true);
+            // Create special shimmering outline for thrown NPCs
+            goldOutline.current = createShimmeringOutline(scale, borderColor);
             if (goldOutline.current) {
               group.add(goldOutline.current);
+            }
+          } else {
+            // Regular outline for non-thrown NPCs
+            outline.current = createOutline(scale, borderColor);
+            if (outline.current) {
+              group.add(outline.current);
             }
           }
           
@@ -316,7 +460,17 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
         }
       }
       if (goldOutline.current) {
-        if (goldOutline.current instanceof LineSegments2) {
+        // If it's a group (shimmering outline), dispose all children
+        if (goldOutline.current instanceof THREE.Group) {
+          goldOutline.current.children.forEach(child => {
+            if (child instanceof LineSegments2) {
+              child.geometry?.dispose();
+              if (child.material) {
+                (child.material as LineMaterial).dispose();
+              }
+            }
+          });
+        } else if (goldOutline.current instanceof LineSegments2) {
           goldOutline.current.geometry?.dispose();
           if (goldOutline.current.material) {
             (goldOutline.current.material as LineMaterial).dispose();
@@ -334,6 +488,40 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
     return calculateNPCGroupScale(npcGroup.fileNames.length);
   }, [npcGroup.fileNames.length]);
 
+  // Animate the shimmering gold outline
+  useFrame((state) => {
+    if (goldOutline.current && (goldOutline.current as THREE.Group & { userData: Record<string, unknown> }).userData?.isShimmeringGroup) {
+      const groupUserData = (goldOutline.current as THREE.Group & { userData: Record<string, unknown> }).userData;
+      const time = state.clock.getElapsedTime() * (groupUserData.animationSpeed as number);
+      
+      // Animate each segment in the group
+      goldOutline.current.children.forEach((child, index) => {
+        if (child instanceof LineSegments2) {
+          const segmentUserData = (child as LineSegments2 & { userData: Record<string, unknown> }).userData;
+          if (segmentUserData?.isShimmering) {
+            const material = segmentUserData.material as LineMaterial;
+            const userColor = segmentUserData.userColor as THREE.Color;
+            const goldColor = segmentUserData.goldColor as THREE.Color;
+            
+            // Create traveling wave effect - each segment has a phase offset
+            const segmentPhase = (index / 8) * Math.PI * 2; // 8 segments around the square
+            const wave = Math.sin(time + segmentPhase) * 0.5 + 0.5; // 0 to 1
+            
+            // Blend between user color and gold based on the wave
+            const blendedColor = new THREE.Color();
+            blendedColor.lerpColors(userColor, goldColor, wave);
+            
+            material.color.copy(blendedColor);
+            
+            // Add slight intensity variation for extra shimmer
+            const intensity = Math.sin(time * 2 + segmentPhase) * 0.1 + 0.9; // 0.8 to 1.0
+            material.opacity = intensity;
+          }
+        }
+      });
+    }
+  });
+
   return {
     group,
     mesh,
@@ -344,6 +532,7 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
     previousPosition,
     meshVersion,
     textInfo: getTextInfo(npcGroup.fileNames.length, currentScale),
+    throwChargeCountTextInfo: getThrowChargeCountTextInfo(throwChargeCount, currentScale),
   };
 }
 

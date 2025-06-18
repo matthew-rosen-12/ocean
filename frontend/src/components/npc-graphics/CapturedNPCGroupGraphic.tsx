@@ -17,6 +17,7 @@ import {
   calculateNPCGroupScale,
   calculateNPCGroupPosition,
 } from "../../utils/npc-group-utils";
+import { getAnimalColor } from "../../utils/animal-colors";
 import { socket } from "../../socket";
 import { serialize } from "../../utils/typed-socket";
 import { v4 as uuidv4 } from "uuid";
@@ -60,6 +61,7 @@ interface CapturedNPCGroupGraphicProps {
   isLocalUser: boolean; // Add flag to distinguish local vs non-local users
   terrainBoundaries?: TerrainBoundaries; // Add terrain boundaries for wrapping
   users: Map<string, UserInfo>; // All users for getting group positions
+  throwChargeCount: number | undefined;
 }
 
 const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
@@ -71,6 +73,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
   setNpcGroups,
   animalWidth,
   isLocalUser = false, // Default to false for non-local users
+  throwChargeCount,
 }) => {
   
   // Calculate logarithmic scale factor based on number of NPCs
@@ -87,7 +90,8 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     updatePositionWithTracking,
     mesh,
     textInfo,
-  } = useNPCGroupBase(group, user);
+    throwChargeCountTextInfo,
+  } = useNPCGroupBase(group, user, undefined, throwChargeCount);
 
 
   // Reference for smooth movement interpolation (non-local users)
@@ -422,6 +426,20 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
           >
             {textInfo.count}
           </Text>
+        )} 
+        {throwChargeCountTextInfo && (
+          <Text
+            position={throwChargeCountTextInfo.position}
+            fontSize={throwChargeCountTextInfo.fontSize}
+            color={throwChargeCountTextInfo.color}
+            anchorX="center"
+            anchorY="middle"
+            font="https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxM.woff"
+            outlineWidth={0.1}
+            outlineColor={getAnimalColor(user)}
+          >
+            {throwChargeCountTextInfo.count}
+          </Text>
         )}
       </primitive>
     </>
@@ -447,6 +465,7 @@ export default React.memo(CapturedNPCGroupGraphic, (prevProps, nextProps) => {
     prevProps.user.direction.x === nextProps.user.direction.x &&
     prevProps.user.direction.y === nextProps.user.direction.y;
   const animalWidthSame = prevProps.animalWidth === nextProps.animalWidth;
+  const throwChargeCountSame = prevProps.throwChargeCount === nextProps.throwChargeCount;
 
   // Compare allPaths - this is critical for collision detection
   const allPathsSame = prevProps.allPaths.size === nextProps.allPaths.size &&
@@ -464,7 +483,8 @@ export default React.memo(CapturedNPCGroupGraphic, (prevProps, nextProps) => {
     userPositionSame &&
     userDirectionSame &&
     animalWidthSame &&
-    allPathsSame;
+    allPathsSame &&
+    throwChargeCountSame;
 
   return shouldNotRerender;
 });

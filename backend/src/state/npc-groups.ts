@@ -21,66 +21,8 @@ export function getNPCGroupsfromMemory(
     npcGroups.set(room, groups);
   }
 
-  function mergedNPCGroups(group1: NPCGroup, group2: NPCGroup): NPCGroup {
-    const mergedFileNames = [...group1.fileNames, ...group2.fileNames];
-    return new NPCGroup({
-      ...group1,
-      fileNames: mergedFileNames,
-      captorId: group1.captorId || group2.captorId, // Ensure captorId is preserved
-    });
-  }
   
   // Direct Group operations - no read-modify-set needed
-  export function addNPCGroupToCaptorNPCGroupInMemory(
-    roomName: string,
-    captorId: userId,
-    npcGroup: NPCGroup
-  ): void {
-    let roomGroups = npcGroups.get(roomName);
-    if (!roomGroups) {
-        roomGroups = new NPCGroupsBiMap();
-        npcGroups.set(roomName, roomGroups);
-    }
-  
-    let captorNPCGroup = roomGroups.getByUserId(captorId)
-    if (!captorNPCGroup) {
-        captorNPCGroup = new NPCGroup({
-            ...npcGroup,
-            captorId,
-            phase: NPCPhase.CAPTURED,
-        });
-    }
-    
-    const mergedGroup = mergedNPCGroups(captorNPCGroup, npcGroup);
-    mergedGroup.captorId = captorId; // Ensure captorId is set
-    mergedGroup.phase = NPCPhase.CAPTURED; // Ensure phase is CAPTURED
-    roomGroups.setByUserId(captorId, mergedGroup);
-  }
-  
-  export function removeTopNPCFromGroupInRoomInMemory(
-    roomName: string,
-    captorId: userId,
-  ): void {
-      let roomGroups = npcGroups.get(roomName);
-      if (!roomGroups) {
-        return; // No groups in this room
-      }
-  
-      const group = roomGroups.getByUserId(captorId);
-      if (!group) {
-        return; // No group for this captor
-      }
-  
-      group.fileNames.pop();
-
-      if (group.fileNames.length === 0) {
-        roomGroups.deleteByUserId(captorId);
-        return
-      }
-  
-      // faceFileName is now computed from fileNames array
-  
-  }
   
   export function removeNPCGroupInRoomInMemory(
     roomName: string,
@@ -93,9 +35,6 @@ export function getNPCGroupsfromMemory(
   }
 
 
-  export function deleteNPCGroupsInMemory(roomName: string): void {
-    npcGroups.delete(roomName);
-  }
 
   export function updateNPCGroupInRoomInMemory(roomName: roomId, npcGroup: NPCGroup): void {
     const roomGroups = npcGroups.get(roomName) || new NPCGroupsBiMap();

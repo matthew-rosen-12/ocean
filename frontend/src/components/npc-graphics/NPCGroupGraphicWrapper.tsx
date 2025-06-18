@@ -24,6 +24,7 @@ interface NPCGraphicWrapperProps {
   setNpcGroups: (
     npcGroups: NPCGroupsBiMap | ((prev: NPCGroupsBiMap) => NPCGroupsBiMap)
   ) => void;
+  throwChargeCount?: number;
 }
 
 const NPCGraphicWrapper = ({
@@ -38,6 +39,7 @@ const NPCGraphicWrapper = ({
   animalDimensions,
   setPaths,
   setNpcGroups,
+  throwChargeCount,
 }: NPCGraphicWrapperProps) => {
   if (npcGroup.phase === NPCPhase.IDLE) {
     return (
@@ -93,6 +95,7 @@ const NPCGraphicWrapper = ({
         isLocalUser={captorUser.id === myUserId}
         terrainBoundaries={terrainBoundaries}
         users={users}
+        throwChargeCount={throwChargeCount}
       />
     );
   }

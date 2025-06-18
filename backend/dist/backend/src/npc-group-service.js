@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateNPCGroupInRoom = updateNPCGroupInRoom;
-exports.removeTopNPCFromGroupInRoom = removeTopNPCFromGroupInRoom;
 exports.setPathCompleteInRoom = setPathCompleteInRoom;
 exports.createNPCGroups = createNPCGroups;
 exports.checkAndHandleNPCCollisions = checkAndHandleNPCCollisions;
@@ -17,12 +16,6 @@ const typed_socket_1 = require("./typed-socket");
 function updateNPCGroupInRoom(roomName, npcGroup) {
     (0, npc_groups_1.updateNPCGroupInRoomInMemory)(roomName, npcGroup);
     (0, typed_socket_1.emitToRoom)(roomName, "npc-group-update", { npcGroup });
-}
-function removeTopNPCFromGroupInRoom(roomName, captorId, npcGroupId) {
-    (0, npc_groups_1.removeTopNPCFromGroupInRoomInMemory)(roomName, captorId);
-    (0, typed_socket_1.emitToRoom)(roomName, "npc-group-pop", {
-        npcGroupId,
-    });
 }
 function setPathCompleteInRoom(room, npcGroup) {
     try {

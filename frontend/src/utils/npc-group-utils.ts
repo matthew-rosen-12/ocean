@@ -179,17 +179,48 @@ export function removeFileNameFromGroup(
 }
 
 /**
- * Calculate logarithmic scale factor based on number of fileNames in group
+ * Calculate logarithmic proportion factor based on number of fileNames in group
+ * This is the core scaling function used for size, speed, and distance calculations
+ */
+export function calculateNPCGroupProportion(numFileNames: number): number {
+  if (numFileNames === 0) return 0;
+
+  // Logarithmic scaling function - log base 4 gives a nice curve
+  // Starts at 1 for 1 fileName and roughly doubles for each doubling of fileNames
+  const logProportion = Math.log(numFileNames) / Math.log(4);
+
+  return 1 + logProportion;
+}
+
+/**
+ * Calculate visual scale factor based on number of fileNames in group
  */
 export function calculateNPCGroupScale(numFileNames: number): number {
   if (numFileNames === 0) return 0;
 
-  // Logarithmic scaling function - log base 4 gives a nice curve
-  // Scale starts at 3 for 1 fileName and roughly doubles for each doubling of fileNames
+  // Use the proportion function with a base scale multiplier
   const baseScale = 3;
-  const logScale = Math.log(numFileNames) / Math.log(4);
+  return baseScale * calculateNPCGroupProportion(numFileNames);
+}
 
-  return baseScale * (1 + logScale);
+/**
+ * Calculate path velocity factor based on group size
+ */
+export function calculateNPCGroupVelocityFactor(numFileNames: number): number {
+  if (numFileNames === 0) return 1;
+  
+  // Larger groups throw faster (square root scaling for reasonable progression)
+  return Math.sqrt(calculateNPCGroupProportion(numFileNames));
+}
+
+/**
+ * Calculate path distance factor based on group size  
+ */
+export function calculateNPCGroupDistanceFactor(numFileNames: number): number {
+  if (numFileNames === 0) return 1;
+  
+  // Larger groups travel farther (linear scaling with the proportion)
+  return calculateNPCGroupProportion(numFileNames);
 }
 
 /**

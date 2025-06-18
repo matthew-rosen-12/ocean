@@ -1,4 +1,4 @@
-import { pathData, NPCGroup, NPCPhase, PathPhase, roomId, userId, npcGroupId } from "shared/types";
+import { pathData, NPCGroup, NPCPhase, PathPhase, roomId, npcGroupId } from "shared/types";
 
 import { getInitialPosition, getInitialDirection } from "./initialization/npc-info";
 import { v4 as uuidv4 } from "uuid";
@@ -13,7 +13,7 @@ import {
   setPathsInMemory,
 } from "./state/paths";
 
-import { getNPCGroupsfromMemory, removeTopNPCFromGroupInRoomInMemory, updateNPCGroupInRoomInMemory } from "./state/npc-groups";
+import { getNPCGroupsfromMemory, updateNPCGroupInRoomInMemory } from "./state/npc-groups";
 
 import { emitToRoom } from "./typed-socket";
 
@@ -25,16 +25,6 @@ export function updateNPCGroupInRoom(
    emitToRoom(roomName, "npc-group-update", { npcGroup });
 }
 
-export function removeTopNPCFromGroupInRoom(
-  roomName: string,
-  captorId: userId,
-  npcGroupId: npcGroupId
-): void{
-   removeTopNPCFromGroupInRoomInMemory(roomName, captorId);
-   emitToRoom(roomName, "npc-group-pop", {
-    npcGroupId,
-   });
-}
 
 export function setPathCompleteInRoom(room: string, npcGroup: NPCGroup) {
   try {

@@ -14,26 +14,8 @@ export  function setPathsInMemory(
     paths.set(roomName, newPaths);
 }
 
-export function setPathsMapInMemory(
-  room: string,
-  newPaths: Map<npcGroupId, pathData>
-): void {
-  paths.set(room, newPaths);
-}
 
 // Direct Path operations - no read-modify-set needed
-export async function setPathInMemory(
-  roomName: string,
-  npcGroupId: npcGroupId,
-  pathData: pathData
-): Promise<void> {
-    let roomPaths = paths.get(roomName);
-    if (!roomPaths) {
-      roomPaths = new Map();
-      paths.set(roomName, roomPaths);
-    }
-    roomPaths.set(npcGroupId, pathData);
-}
 
 export async function deletePathInMemory(
   roomName: string,
@@ -45,6 +27,3 @@ export async function deletePathInMemory(
     }
 }
 
-export async function deletePathsInMemory(roomName: string): Promise<void> {
-  paths.delete(roomName);
-}

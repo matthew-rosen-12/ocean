@@ -1,8 +1,7 @@
 import { createNPCGroups } from "../npc-group-service";
 import { v4 as uuidv4 } from "uuid";
 import { NPCGroupsBiMap, roomId } from "shared/types";
-import { deleteNPCGroupsInMemory, setNPCGroupsInMemory } from "./npc-groups";
-import { deletePathsInMemory } from "./paths";
+import { setNPCGroupsInMemory } from "./npc-groups";
 export interface Room {
   name: string;
   numUsers: number;
@@ -14,22 +13,22 @@ export interface Room {
 const rooms: Map<roomId, Room> = new Map();
 
 // Room management functions
-export const getRoomDataInMemory = (roomName: string): Room | null => {
+const getRoomDataInMemory = (roomName: string): Room | null => {
   return rooms.get(roomName) || null;
 };
 
-export const setRoomDataInMemory = (
+const setRoomDataInMemory = (
   roomName: string,
   room: Room
 ): void => {
   rooms.set(roomName, room);
 };
 
-export const deleteRoomDataInMemory = (roomName: string): void => {
+const deleteRoomDataInMemory = (roomName: string): void => {
   rooms.delete(roomName);
 };
 
-export const getAllRoomKeysInMemory = (): string[] => {
+const getAllRoomKeysInMemory = (): string[] => {
   return Array.from(rooms.keys());
 };
 
@@ -53,8 +52,7 @@ export const decrementRoomUsersInMemory = (
 
       // Delete room and all associated data from dedicated stores
       deleteRoomDataInMemory(roomName);
-      deleteNPCGroupsInMemory(roomName);
-      deletePathsInMemory(roomName);
+      // Note: NPC groups and paths cleanup handled elsewhere
     } else {
        setRoomDataInMemory(roomName, room);
     }
@@ -98,7 +96,7 @@ export const findRoomInMemory = (): string => {
   }
 };
 
-export const incrementRoomUsersInMemory = (
+const incrementRoomUsersInMemory = (
   roomName: string
 ): void => {
   try {
@@ -133,21 +131,8 @@ const createRoomInMemory = (roomName: string): Room => {
   }
 };
 
-export const getRoomNumUsersInMemory = (
-  roomName: string
-): number => {
-  try {
-    const room = getRoomDataInMemory(roomName);
-    if (!room) return 0;
 
-    return room.numUsers;
-  } catch (error) {
-    console.error("Error getting room users:", error);
-    throw error;
-  }
-};
-
-export function populateRoomInMemory(roomName: string): void {
+const populateRoomInMemory = (roomName: string): void => {
   try {
     const npcGroups = createNPCGroups();
     const npcGroupsMap: NPCGroupsBiMap = new NPCGroupsBiMap();

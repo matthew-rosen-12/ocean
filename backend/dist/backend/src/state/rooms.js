@@ -1,34 +1,28 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getRoomNumUsersInMemory = exports.incrementRoomUsersInMemory = exports.findRoomInMemory = exports.decrementRoomUsersInMemory = exports.getAllRoomKeysInMemory = exports.deleteRoomDataInMemory = exports.setRoomDataInMemory = exports.getRoomDataInMemory = void 0;
-exports.populateRoomInMemory = populateRoomInMemory;
+exports.findRoomInMemory = exports.decrementRoomUsersInMemory = void 0;
 exports.getAllRoomsfromMemory = getAllRoomsfromMemory;
 const npc_group_service_1 = require("../npc-group-service");
 const uuid_1 = require("uuid");
 const types_1 = require("shared/types");
 const npc_groups_1 = require("./npc-groups");
-const paths_1 = require("./paths");
 const rooms = new Map();
 // Room management functions
 const getRoomDataInMemory = (roomName) => {
     return rooms.get(roomName) || null;
 };
-exports.getRoomDataInMemory = getRoomDataInMemory;
 const setRoomDataInMemory = (roomName, room) => {
     rooms.set(roomName, room);
 };
-exports.setRoomDataInMemory = setRoomDataInMemory;
 const deleteRoomDataInMemory = (roomName) => {
     rooms.delete(roomName);
 };
-exports.deleteRoomDataInMemory = deleteRoomDataInMemory;
 const getAllRoomKeysInMemory = () => {
     return Array.from(rooms.keys());
 };
-exports.getAllRoomKeysInMemory = getAllRoomKeysInMemory;
 const decrementRoomUsersInMemory = (roomName, _userId) => {
     try {
-        const room = (0, exports.getRoomDataInMemory)(roomName);
+        const room = getRoomDataInMemory(roomName);
         if (!room) {
             console.error("Room not found:", roomName);
             return;
@@ -38,12 +32,11 @@ const decrementRoomUsersInMemory = (roomName, _userId) => {
         if (room.numUsers === 0) {
             console.log("Deleting room and all associated data:", roomName);
             // Delete room and all associated data from dedicated stores
-            (0, exports.deleteRoomDataInMemory)(roomName);
-            (0, npc_groups_1.deleteNPCGroupsInMemory)(roomName);
-            (0, paths_1.deletePathsInMemory)(roomName);
+            deleteRoomDataInMemory(roomName);
+            // Note: NPC groups and paths cleanup handled elsewhere
         }
         else {
-            (0, exports.setRoomDataInMemory)(roomName, room);
+            setRoomDataInMemory(roomName, room);
         }
     }
     catch (error) {
@@ -54,9 +47,9 @@ const decrementRoomUsersInMemory = (roomName, _userId) => {
 exports.decrementRoomUsersInMemory = decrementRoomUsersInMemory;
 const findRoomInMemory = () => {
     try {
-        const roomKeys = (0, exports.getAllRoomKeysInMemory)();
+        const roomKeys = getAllRoomKeysInMemory();
         const rooms = roomKeys.map((roomName) => {
-            const roomData = (0, exports.getRoomDataInMemory)(roomName);
+            const roomData = getRoomDataInMemory(roomName);
             return roomData ? Object.assign(Object.assign({}, roomData), { key: roomName }) : null;
         });
         const activeRooms = rooms
@@ -64,7 +57,7 @@ const findRoomInMemory = () => {
             .sort((a, b) => a.numUsers - b.numUsers);
         if (activeRooms.length > 0) {
             const room = activeRooms[0];
-            (0, exports.incrementRoomUsersInMemory)(room.name);
+            incrementRoomUsersInMemory(room.name);
             return room.name;
         }
         // If no suitable room exists, create a new one
@@ -81,19 +74,18 @@ const findRoomInMemory = () => {
 exports.findRoomInMemory = findRoomInMemory;
 const incrementRoomUsersInMemory = (roomName) => {
     try {
-        const room = (0, exports.getRoomDataInMemory)(roomName);
+        const room = getRoomDataInMemory(roomName);
         if (!room)
             throw new Error(`Room ${roomName} not found`);
         room.numUsers += 1;
         room.lastActive = new Date().toISOString();
-        (0, exports.setRoomDataInMemory)(roomName, room);
+        setRoomDataInMemory(roomName, room);
     }
     catch (error) {
         console.error("Error incrementing room users", error);
         throw error;
     }
 };
-exports.incrementRoomUsersInMemory = incrementRoomUsersInMemory;
 const createRoomInMemory = (roomName) => {
     try {
         const newRoom = {
@@ -103,7 +95,7 @@ const createRoomInMemory = (roomName) => {
             lastActive: new Date().toISOString(),
             createdAt: new Date().toISOString(),
         };
-        (0, exports.setRoomDataInMemory)(roomName, newRoom);
+        setRoomDataInMemory(roomName, newRoom);
         return newRoom;
     }
     catch (error) {
@@ -111,20 +103,7 @@ const createRoomInMemory = (roomName) => {
         throw error;
     }
 };
-const getRoomNumUsersInMemory = (roomName) => {
-    try {
-        const room = (0, exports.getRoomDataInMemory)(roomName);
-        if (!room)
-            return 0;
-        return room.numUsers;
-    }
-    catch (error) {
-        console.error("Error getting room users:", error);
-        throw error;
-    }
-};
-exports.getRoomNumUsersInMemory = getRoomNumUsersInMemory;
-function populateRoomInMemory(roomName) {
+const populateRoomInMemory = (roomName) => {
     try {
         const npcGroups = (0, npc_group_service_1.createNPCGroups)();
         const npcGroupsMap = new types_1.NPCGroupsBiMap();
@@ -136,13 +115,13 @@ function populateRoomInMemory(roomName) {
     catch (error) {
         console.error(`Error populating room ${roomName}:`, error);
     }
-}
+};
 function getAllRoomsfromMemory() {
     // Get room names from all stores, merge and deduplicate
     const roomDataKeys = Array.from(rooms.keys());
-    const npcRooms = (0, exports.getAllRoomKeysInMemory)();
-    const groupRooms = (0, exports.getAllRoomKeysInMemory)();
-    const pathRooms = (0, exports.getAllRoomKeysInMemory)();
+    const npcRooms = getAllRoomKeysInMemory();
+    const groupRooms = getAllRoomKeysInMemory();
+    const pathRooms = getAllRoomKeysInMemory();
     const allRooms = new Set([
         ...roomDataKeys,
         ...npcRooms,

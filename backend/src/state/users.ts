@@ -33,7 +33,3 @@ export const getAllUsersInRoom = (roomName: roomId): Map<userId, UserInfo> => {
   return roomUsers.get(roomName) || new Map();
 };
 
-export const getUserInRoom = (roomName: roomId, userId: userId): UserInfo | undefined => {
-  const users = roomUsers.get(roomName);
-  return users?.get(userId);
-};

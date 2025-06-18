@@ -1,0 +1,12 @@
+- fix slow text rendering on second capture (need to preload text)
+- add game timer
+- add leaderboard
+- clean up frontend
+- test with non local players
+- add more animal graphics
+- add more npcs
+- create robot players
+- create llm calls for npc speech
+- clean up game play logic
+- polish
+- make publicly available
