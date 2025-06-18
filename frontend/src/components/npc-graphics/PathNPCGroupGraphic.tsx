@@ -1,6 +1,5 @@
 import React, {
   useEffect,
-  useRef,
   useState,
 } from "react";
 import { Text } from "@react-three/drei";
@@ -14,7 +13,7 @@ import {
 } from "shared/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
-import { useMount, useNPCGroupBase } from "../../hooks/useNPCGroupBase";
+import { useMount, useNPCGroupBase } from "../../hooks/use-npc-group-base";
 import { TerrainBoundaries } from "../../utils/terrain";
 
 
@@ -46,7 +45,7 @@ const PathNPCGroupGraphic: React.FC<PathNPCGroupGraphicProps> = ({
   setPaths,
 }) => {
   const { group, positionRef, textureLoaded, updatePositionWithTracking, textInfo } =
-    useNPCGroupBase(npcGroup, user);
+    useNPCGroupBase(npcGroup, user, pathData);
 
 
   // State for extended path data (client-side collision avoidance)
@@ -283,7 +282,7 @@ const PathNPCGroupGraphic: React.FC<PathNPCGroupGraphicProps> = ({
     setExtendedPathData(pathData);
     setIsPathExtended(false);
     setLastDirectionUpdate(0);
-  }, [pathData.id, pathData.timestamp]);
+  }, [pathData.id, pathData.timestamp, pathData]);
 
 
   return (

@@ -3,10 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getRoomNumUsersInMemory = exports.incrementRoomUsersInMemory = exports.findRoomInMemory = exports.decrementRoomUsersInMemory = exports.getAllRoomKeysInMemory = exports.deleteRoomDataInMemory = exports.setRoomDataInMemory = exports.getRoomDataInMemory = void 0;
 exports.populateRoomInMemory = populateRoomInMemory;
 exports.getAllRoomsfromMemory = getAllRoomsfromMemory;
-const npcService_1 = require("../services/npcService");
+const npc_group_service_1 = require("../npc-group-service");
 const uuid_1 = require("uuid");
 const types_1 = require("shared/types");
-const npcGroups_1 = require("./npcGroups");
+const npc_groups_1 = require("./npc-groups");
 const paths_1 = require("./paths");
 const rooms = new Map();
 // Room management functions
@@ -26,7 +26,7 @@ const getAllRoomKeysInMemory = () => {
     return Array.from(rooms.keys());
 };
 exports.getAllRoomKeysInMemory = getAllRoomKeysInMemory;
-const decrementRoomUsersInMemory = (roomName, userId) => {
+const decrementRoomUsersInMemory = (roomName, _userId) => {
     try {
         const room = (0, exports.getRoomDataInMemory)(roomName);
         if (!room) {
@@ -39,7 +39,7 @@ const decrementRoomUsersInMemory = (roomName, userId) => {
             console.log("Deleting room and all associated data:", roomName);
             // Delete room and all associated data from dedicated stores
             (0, exports.deleteRoomDataInMemory)(roomName);
-            (0, npcGroups_1.deleteNPCGroupsInMemory)(roomName);
+            (0, npc_groups_1.deleteNPCGroupsInMemory)(roomName);
             (0, paths_1.deletePathsInMemory)(roomName);
         }
         else {
@@ -126,12 +126,12 @@ const getRoomNumUsersInMemory = (roomName) => {
 exports.getRoomNumUsersInMemory = getRoomNumUsersInMemory;
 function populateRoomInMemory(roomName) {
     try {
-        const npcGroups = (0, npcService_1.createNPCGroups)();
+        const npcGroups = (0, npc_group_service_1.createNPCGroups)();
         const npcGroupsMap = new types_1.NPCGroupsBiMap();
         npcGroups.forEach((npcGroup) => {
             npcGroupsMap.setByNpcGroupId(npcGroup.id, npcGroup);
         });
-        (0, npcGroups_1.setNPCGroupsInMemory)(roomName, npcGroupsMap);
+        (0, npc_groups_1.setNPCGroupsInMemory)(roomName, npcGroupsMap);
     }
     catch (error) {
         console.error(`Error populating room ${roomName}:`, error);

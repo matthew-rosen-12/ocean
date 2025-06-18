@@ -3,9 +3,9 @@ import { UserInfo, NPCGroup, NPCPhase } from "shared/types";
 import {
   generateGuestId,
   getRandomAnimal,
-  getPosition,
-  getDirection,
-} from "../user-info";
+  getInitialPosition,
+  getInitialDirection,
+} from "../initialization/user-info";
 
 import { findRoomInMemory } from "../state/rooms";
 
@@ -21,13 +21,13 @@ router.post("/", async (req, res) => {
       id: guestId,
       animal: getRandomAnimal(),
       room: room,
-      position: getPosition(),
-      direction: getDirection(),
+      position: getInitialPosition(),
+      direction: getInitialDirection(),
       npcGroup: new NPCGroup({ 
         id: guestId,
         fileNames: [],
-        position: getPosition(),
-        direction: getDirection(),
+        position: getInitialPosition(),
+        direction: getInitialDirection(),
         phase: NPCPhase.IDLE,
         captorId: guestId 
       }),

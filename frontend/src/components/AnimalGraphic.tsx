@@ -2,9 +2,10 @@ import React, { useMemo, useEffect, useRef } from "react";
 import { UserInfo, Animal } from "shared/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
+import { Text } from "@react-three/drei";
 import { ANIMAL_SCALES } from "../utils/user-info";
 import { smoothMove } from "../utils/movement";
-import { useMount } from "../hooks/useNPCGroupBase";
+import { useMount } from "../hooks/use-npc-group-base";
 import {
   loadAnimalSVG,
   animalGraphicsCache,
@@ -30,7 +31,7 @@ function AnimalSprite({
   isLocalPlayer,
   user,
   setAnimalDimensions,
-  terrainBoundaries,
+  terrainBoundaries: _terrainBoundaries,
 }: {
   animal: Animal;
   scale?: number;
@@ -176,8 +177,8 @@ function AnimalSprite({
           group.add(edgeLines);
         }
       })
-      .catch((error) => {
-        console.error("Error loading SVG:", error);
+      .catch(() => {
+        // SVG loading failed - silently handle
       });
 
     return () => {
@@ -371,7 +372,7 @@ export default function AnimalGraphic({
   user,
   myUserId,
   setAnimalDimensions,
-  terrainBoundaries,
+  terrainBoundaries: _terrainBoundaries,
 }: {
   user: UserInfo;
   myUserId: string;
@@ -381,6 +382,26 @@ export default function AnimalGraphic({
   ) => void;
   terrainBoundaries?: TerrainBoundaries;
 }) {
+  // Calculate loading count for the user
+  const loadingCount = user.npcGroup?.fileNames?.length || 0;
+  
+  // Get text info for loading count (similar to NPC group size indicator)
+  const getLoadingTextInfo = (count: number) => {
+    if (count <= 0) return null;
+    
+    const baseColor = new THREE.Color('#FFD700'); // Golden color
+    const outlineColor = getAnimalBorderColor(user); // Player's color for outline
+    
+    return {
+      count,
+      position: [0, -4.5, 0] as [number, number, number], // Position in front of player
+      fontSize: 2.8,
+      color: baseColor,
+      outlineColor: outlineColor
+    };
+  };
+  
+  const loadingTextInfo = getLoadingTextInfo(loadingCount);
   // Create position ref as Vector3
   const isLocalPlayer = myUserId === user.id;
   const positionRef = useRef(
@@ -415,8 +436,27 @@ export default function AnimalGraphic({
         isLocalPlayer={isLocalPlayer}
         user={user}
         setAnimalDimensions={setAnimalDimensions}
-        terrainBoundaries={terrainBoundaries}
+        terrainBoundaries={_terrainBoundaries}
       />
+      {/* Loading count display */}
+      {loadingTextInfo && (
+        <Text
+          position={[
+            user.position.x + loadingTextInfo.position[0],
+            user.position.y + loadingTextInfo.position[1],
+            loadingTextInfo.position[2]
+          ]}
+          fontSize={loadingTextInfo.fontSize}
+          color={loadingTextInfo.color}
+          anchorX="center"
+          anchorY="middle"
+          font="https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxM.woff"
+          outlineWidth={0.15}
+          outlineColor={loadingTextInfo.outlineColor}
+        >
+          {loadingTextInfo.count}
+        </Text>
+      )}
     </>
   );
 }

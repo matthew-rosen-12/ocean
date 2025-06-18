@@ -1,7 +1,7 @@
 import { useRef, useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { DEBUG } from "../utils/config";
-import { NPCGroup, UserInfo } from "shared/types";
+import { NPCGroup, UserInfo, pathData, PathPhase } from "shared/types";
 import { calculateNPCGroupScale } from "../utils/npc-group-utils";
 import { getAnimalColor, getAnimalIndicatorColor } from "../utils/animal-colors";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
@@ -22,11 +22,11 @@ console.log(
 // Use the specific debug flag
 const debug = DEBUG.NPC_MOVEMENT;
 
-export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo) {
+export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: pathData) {
   const group = useMemo(() => {
     const newGroup = new THREE.Group();
     return newGroup;
-  }, [npcGroup.id]);
+  }, []);
   const texture = useRef<THREE.Texture | null>(null);
   const material = useRef<THREE.MeshBasicMaterial | null>(null);
   const mesh = useRef<THREE.Mesh | null>(null);
@@ -36,6 +36,7 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo) {
   const previousPosition = useMemo(() => new THREE.Vector3(), []);
   const meshVersion = useRef(0);
   const outline = useRef<THREE.Object3D | null>(null);
+  const goldOutline = useRef<THREE.Object3D | null>(null);
 
   // Add a function to track position changes
   const updatePositionWithTracking = (
@@ -57,7 +58,7 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo) {
   };
 
   // Helper function to create outline (mirroring CapturedNPCGroupGraphic approach)
-  const createOutline = (scale: number, borderColor: THREE.Color) => {
+  const createOutline = (scale: number, borderColor: THREE.Color, isGold: boolean = false) => {
     
     // Create a square outline (1x1) like the original, then scale it
     const halfWidth = 0.5;
@@ -85,7 +86,7 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo) {
     
     const edgeMaterial = new LineMaterial({
       color: borderColor,
-      linewidth: 10.0,
+      linewidth: isGold ? 15.0 : 10.0,
       transparent: true,
       opacity: 1.0,
       depthTest: true,
@@ -95,9 +96,9 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo) {
     });
     
     const outlineObj = new LineSegments2(lineGeometry, edgeMaterial);
-    outlineObj.renderOrder = 9; // NPCs are never local player
-    outlineObj.scale.set(scale, scale, 1); // Square scaling like the original
-    outlineObj.position.z = -0.01; // Behind the image, like the original
+    outlineObj.renderOrder = isGold ? 7 : 9; // Gold outline renders behind regular outline
+    outlineObj.scale.set(scale * (isGold ? 1.1 : 1), scale * (isGold ? 1.1 : 1), 1); // Gold outline larger
+    outlineObj.position.z = isGold ? -0.02 : -0.01; // Gold outline behind regular outline
     
     return outlineObj;
   };
@@ -151,6 +152,13 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo) {
         (outline.current.material as LineMaterial).dispose();
       }
     }
+    if (goldOutline.current && goldOutline.current.parent === group) {
+      group.remove(goldOutline.current);
+      if (goldOutline.current instanceof LineSegments2) {
+        goldOutline.current.geometry?.dispose();
+        (goldOutline.current.material as LineMaterial).dispose();
+      }
+    }
 
     if (textureCache.has(texturePath)) {
       texture.current = textureCache.get(texturePath)!;
@@ -188,6 +196,14 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo) {
         group.add(outline.current);
       }
       
+      // Add golden outline for thrown NPCs
+      if (pathData?.pathPhase === PathPhase.THROWN) {
+        goldOutline.current = createOutline(scale, new THREE.Color('#FFD700'), true);
+        if (goldOutline.current) {
+          group.add(goldOutline.current);
+        }
+      }
+      
       textureLoaded.current = true;
       meshVersion.current += 1;
     } else {
@@ -210,6 +226,13 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo) {
             if (outline.current instanceof LineSegments2) {
               outline.current.geometry?.dispose();
               (outline.current.material as LineMaterial).dispose();
+            }
+          }
+          if (goldOutline.current && goldOutline.current.parent === group) {
+            group.remove(goldOutline.current);
+            if (goldOutline.current instanceof LineSegments2) {
+              goldOutline.current.geometry?.dispose();
+              (goldOutline.current.material as LineMaterial).dispose();
             }
           }
 
@@ -241,6 +264,14 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo) {
           outline.current = createOutline(scale, borderColor);
           if (outline.current) {
             group.add(outline.current);
+          }
+          
+          // Add golden outline for thrown NPCs
+          if (pathData?.pathPhase === PathPhase.THROWN) {
+            goldOutline.current = createOutline(scale, new THREE.Color('#FFD700'), true);
+            if (goldOutline.current) {
+              group.add(goldOutline.current);
+            }
           }
           
           textureLoaded.current = true;
@@ -284,8 +315,19 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo) {
           group.remove(outline.current);
         }
       }
+      if (goldOutline.current) {
+        if (goldOutline.current instanceof LineSegments2) {
+          goldOutline.current.geometry?.dispose();
+          if (goldOutline.current.material) {
+            (goldOutline.current.material as LineMaterial).dispose();
+          }
+        }
+        if (goldOutline.current.parent === group) {
+          group.remove(goldOutline.current);
+        }
+      }
     };
-  }, [npcGroup.faceFileName, npcGroup.fileNames.length]);
+  }, [npcGroup.faceFileName, npcGroup.fileNames.length, pathData?.pathPhase, group, user, previousPosition]);
 
   // Calculate current scale for text positioning
   const currentScale = useMemo(() => {

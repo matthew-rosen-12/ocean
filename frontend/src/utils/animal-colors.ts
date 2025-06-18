@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { Animal, UserInfo } from "shared/types";
 import * as THREE from "three";
 

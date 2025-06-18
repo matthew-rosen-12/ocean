@@ -6,21 +6,20 @@ exports.setPathCompleteInRoom = setPathCompleteInRoom;
 exports.createNPCGroups = createNPCGroups;
 exports.checkAndHandleNPCCollisions = checkAndHandleNPCCollisions;
 const types_1 = require("shared/types");
-const npc_info_1 = require("../initialization/npc-info");
+const npc_info_1 = require("./initialization/npc-info");
 const uuid_1 = require("uuid");
 const NUM_NPCS = 4;
 const NPC_WIDTH = 4;
 const NPC_HEIGHT = 4;
-const paths_1 = require("../state/paths");
-const npcGroups_1 = require("../state/npcGroups");
-const terrain_1 = require("../initialization/terrain");
-const typed_socket_1 = require("../typed-socket");
+const paths_1 = require("./state/paths");
+const npc_groups_1 = require("./state/npc-groups");
+const typed_socket_1 = require("./typed-socket");
 function updateNPCGroupInRoom(roomName, npcGroup) {
-    (0, npcGroups_1.updateNPCGroupInRoomInMemory)(roomName, npcGroup);
+    (0, npc_groups_1.updateNPCGroupInRoomInMemory)(roomName, npcGroup);
     (0, typed_socket_1.emitToRoom)(roomName, "npc-group-update", { npcGroup });
 }
 function removeTopNPCFromGroupInRoom(roomName, captorId, npcGroupId) {
-    (0, npcGroups_1.removeTopNPCFromGroupInRoomInMemory)(roomName, captorId);
+    (0, npc_groups_1.removeTopNPCFromGroupInRoomInMemory)(roomName, captorId);
     (0, typed_socket_1.emitToRoom)(roomName, "npc-group-pop", {
         npcGroupId,
     });
@@ -28,7 +27,6 @@ function removeTopNPCFromGroupInRoom(roomName, captorId, npcGroupId) {
 function setPathCompleteInRoom(room, npcGroup) {
     try {
         // Get room-specific terrain configuration
-        const terrainConfig = (0, terrain_1.generateRoomTerrain)(room);
         // Get the path data for this NPC
         const paths = (0, paths_1.getpathsfromMemory)(room);
         const pathDataForNPC = paths.get(npcGroup.id);
@@ -52,7 +50,6 @@ function setPathCompleteInRoom(room, npcGroup) {
     }
 }
 function calculateLandingPositionWithCollisionAvoidance(pathData, room, movingNpcGroupId) {
-    const COLLISION_RADIUS = 2.0; // Distance to check for collisions
     const EXTENSION_DISTANCE = 2.5; // How much to extend the path if collision detected
     const MAX_EXTENSIONS = 5; // Maximum number of extensions to prevent infinite loops
     let currentPathData = Object.assign({}, pathData);
@@ -61,7 +58,7 @@ function calculateLandingPositionWithCollisionAvoidance(pathData, room, movingNp
         // Calculate landing position without wrapping
         const landingPosition = calculateLandingPosition(currentPathData);
         // Get all NPCs in the room to check for collisions
-        const allNPCGroups = (0, npcGroups_1.getNPCGroupsfromMemory)(room);
+        const allNPCGroups = (0, npc_groups_1.getNPCGroupsfromMemory)(room);
         const idleNPCGroups = Array.from(allNPCGroups.values()).filter((npcGroup) => npcGroup.phase === types_1.NPCPhase.IDLE && npcGroup.id !== movingNpcGroupId);
         // Check for collisions with IDLE NPCs
         let hasCollision = false;
@@ -178,7 +175,7 @@ function checkAndHandleNPCCollisions(room) {
     try {
         // Get all necessary data for collision detection
         const allPaths = Array.from((0, paths_1.getpathsfromMemory)(room).values());
-        const allNPCGroups = (0, npcGroups_1.getNPCGroupsfromMemory)(room);
+        const allNPCGroups = (0, npc_groups_1.getNPCGroupsfromMemory)(room);
         // Check collision between path NPCs and idle NPCs
         for (let i = 0; i < allPaths.length; i++) {
             const pathData = allPaths[i];
@@ -250,7 +247,7 @@ function handlePathNPCMerge(room, winnerPathData, loser, collisionPosition) {
     }
     else {
         loser.npcGroup.fileNames = [];
-        (0, npcGroups_1.updateNPCGroupInRoomInMemory)(room, loser.npcGroup);
+        (0, npc_groups_1.updateNPCGroupInRoomInMemory)(room, loser.npcGroup);
     }
     // Update the winner's path data with the merged group
     const updatedPathData = Object.assign(Object.assign({}, winnerPathData), { npcGroup: mergedGroup });

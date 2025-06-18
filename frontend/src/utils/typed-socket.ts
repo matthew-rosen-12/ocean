@@ -11,11 +11,11 @@ superjson.registerClass(NPCGroupsBiMap);
 superjson.registerClass(NPCGroup);
 
 // For Redis storage
-export function serialize(data: any): string {
+export function serialize(data: unknown): string {
   return superjson.stringify(data);
 }
 
-export function deserialize(serialized: string): any {
+export function deserialize(serialized: string): unknown {
   if (!serialized) return null;
   return superjson.parse(serialized);
 }
@@ -31,9 +31,9 @@ export class TypedSocket {
     (this.socket as any).on(event, (serializedData: string) => {
       try {
         const data = deserialize(serializedData);
-        handler(data);
-      } catch (error) {
-        console.error(`Error deserializing ${event}:`, error);
+        handler(data as never);
+      } catch {
+        // Error deserializing event
       }
     });
   }

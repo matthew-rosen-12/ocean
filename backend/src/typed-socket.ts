@@ -1,4 +1,4 @@
-import { io } from "../server";
+import { io } from "./server";
 
 import superjson from "superjson";
 import { NPCGroupsBiMap, NPCGroup } from "shared/types";

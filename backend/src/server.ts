@@ -3,17 +3,17 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import cors from "cors";
 
-import { NPCPhase, userId, UserInfo, socketId, NPCGroup } from "shared/types";
+import { NPCPhase, NPCGroup } from "shared/types";
 import authRouter from "./routes/auth";
 import { getGameTicker } from "./game-ticker";
-import { decrementRoomUsersInMemory, getRoomNumUsersInMemory } from "./state/rooms";
+import { decrementRoomUsersInMemory } from "./state/rooms";
 import { addUserToRoom, removeUserFromRoom, updateUserInRoom, getAllUsersInRoom } from "./state/users";
-import { generateRoomTerrain } from "./utils/terrain";
+import { generateRoomTerrain } from "./initialization/terrain";
 import { getpathsfromMemory } from "./state/paths";
-import { getNPCGroupsfromMemory, removeTopNPCFromGroupInRoomInMemory, removeNPCGroupInRoomInMemory, setNPCGroupsInMemory, addNPCGroupToCaptorNPCGroupInMemory } from "./state/npcGroups";
+import { getNPCGroupsfromMemory, removeNPCGroupInRoomInMemory, setNPCGroupsInMemory } from "./state/npc-groups";
 import { setPathsInMemory } from "./state/paths";
-import { updateNPCGroupInRoom } from "./services/npcService";
-import { emitToRoom, TypedSocket } from "./utils/typed-socket";
+import { updateNPCGroupInRoom } from "./npc-group-service";
+import { TypedSocket } from "./typed-socket";
 
 // Initialize game ticker
 getGameTicker();

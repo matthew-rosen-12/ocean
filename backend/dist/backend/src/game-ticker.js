@@ -11,7 +11,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getGameTicker = getGameTicker;
 const types_1 = require("shared/types");
-const npcService_1 = require("./services/npcService");
+const npc_group_service_1 = require("./npc-group-service");
 const rooms_1 = require("./state/rooms");
 const paths_1 = require("./state/paths");
 let gameTickerInstance = null;
@@ -38,7 +38,7 @@ class GameTicker {
                 // Process each room
                 for (const roomName of roomNames) {
                     // Always check for collisions first (for thrown paths)
-                    (0, npcService_1.checkAndHandleNPCCollisions)(roomName);
+                    (0, npc_group_service_1.checkAndHandleNPCCollisions)(roomName);
                     // Get paths for this room
                     const allPaths = (0, paths_1.getpathsfromMemory)(roomName);
                     // filter paths that are not thrown (for completion checking)
@@ -61,7 +61,7 @@ class GameTicker {
                         const npcGroup = completedpath.npcGroup;
                         // Only complete path if NPC is still in PATH phase
                         if (npcGroup && npcGroup.phase === types_1.NPCPhase.PATH) {
-                            (0, npcService_1.setPathCompleteInRoom)(roomName, npcGroup);
+                            (0, npc_group_service_1.setPathCompleteInRoom)(roomName, npcGroup);
                         }
                     }
                 }

@@ -1,7 +1,7 @@
-import { createNPCGroups } from "../services/npcService";
+import { createNPCGroups } from "../npc-group-service";
 import { v4 as uuidv4 } from "uuid";
 import { NPCGroupsBiMap, roomId } from "shared/types";
-import { deleteNPCGroupsInMemory, setNPCGroupsInMemory } from "./npcGroups";
+import { deleteNPCGroupsInMemory, setNPCGroupsInMemory } from "./npc-groups";
 import { deletePathsInMemory } from "./paths";
 export interface Room {
   name: string;
@@ -35,7 +35,7 @@ export const getAllRoomKeysInMemory = (): string[] => {
 
 export const decrementRoomUsersInMemory = (
   roomName: string,
-  userId: string
+  _userId: string
 ): void => {
   try {
     const room =  getRoomDataInMemory(roomName);

@@ -74,9 +74,7 @@ export default function GuestLogin({
       });
 
       typedSocket.on("all-npc-groups", ({ npcGroups }: { npcGroups: NPCGroupsBiMap }) => {
-        console.log("Received all-npc-groups:", npcGroups);
-        console.log("npcGroups type:", typeof npcGroups);
-        console.log("npcGroups constructor:", npcGroups.constructor.name);
+        // Received all-npc-groups data
         
         // Create a new NPCGroupsBiMap instance from the received data
         const newNpcGroups = new NPCGroupsBiMap();
@@ -89,18 +87,18 @@ export default function GuestLogin({
           } else {
             // Handle case where it's deserialized as a plain object
             // Access the internal maps directly if they exist
-            const map1Data = (npcGroups as any).map1;
-            const map2Data = (npcGroups as any).map2;
+            const _map1Data = (npcGroups as Record<string, unknown>).map1;
+            const map2Data = (npcGroups as Record<string, unknown>).map2;
             
             if (map2Data && Array.isArray(map2Data)) {
               // map2Data is likely serialized as an array of [key, value] pairs
-              map2Data.forEach(([key, value]: [string, any]) => {
-                newNpcGroups.setByNpcGroupId(key, value);
+              map2Data.forEach(([key, value]: [string, Record<string, unknown>]) => {
+                newNpcGroups.setByNpcGroupId(key, value as unknown as NPCGroup);
               });
             } else if (map2Data && typeof map2Data === 'object') {
               // Or as an object
               Object.entries(map2Data).forEach(([key, value]) => {
-                newNpcGroups.setByNpcGroupId(key, value as any);
+                newNpcGroups.setByNpcGroupId(key, value as unknown as NPCGroup);
               });
             }
             setNPCGroups(newNpcGroups);
@@ -231,8 +229,8 @@ export default function GuestLogin({
       // Set initial user state
       setMyUser(user);
       setUsers(new Map([[user.id, user]]));
-    } catch (error) {
-      console.error("Login error:", error);
+    } catch {
+      // Login failed
     } finally {
       setLoading(false);
     }

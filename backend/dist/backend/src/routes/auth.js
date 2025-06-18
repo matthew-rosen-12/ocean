@@ -14,7 +14,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const types_1 = require("shared/types");
-const user_info_1 = require("../user-info");
+const user_info_1 = require("../initialization/user-info");
 const rooms_1 = require("../state/rooms");
 const router = express_1.default.Router();
 router.post("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -26,13 +26,13 @@ router.post("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             id: guestId,
             animal: (0, user_info_1.getRandomAnimal)(),
             room: room,
-            position: (0, user_info_1.getPosition)(),
-            direction: (0, user_info_1.getDirection)(),
+            position: (0, user_info_1.getInitialPosition)(),
+            direction: (0, user_info_1.getInitialDirection)(),
             npcGroup: new types_1.NPCGroup({
                 id: guestId,
                 fileNames: [],
-                position: (0, user_info_1.getPosition)(),
-                direction: (0, user_info_1.getDirection)(),
+                position: (0, user_info_1.getInitialPosition)(),
+                direction: (0, user_info_1.getInitialDirection)(),
                 phase: types_1.NPCPhase.IDLE,
                 captorId: guestId
             }),

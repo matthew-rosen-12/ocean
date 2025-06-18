@@ -97,8 +97,8 @@ function createFallbackTexture(color: number = 0x888888): THREE.Texture {
 // Create texture from SVG by rendering it to canvas
 function createSVGTexture(
   svgElement: SVGElement,
-  width: number,
-  height: number
+  _width: number,
+  _height: number
 ): Promise<THREE.Texture> {
   return new Promise((resolve, reject) => {
     try {
@@ -109,7 +109,7 @@ function createSVGTexture(
 
       const loader = new THREE.TextureLoader();
 
-      const texture = loader.load(
+      const _texture = loader.load(
         svgDataUrl,
         (loadedTexture) => {
           // Key color preservation settings:
@@ -299,8 +299,8 @@ function setupUVCoordinates(
   }
 
   const bbox = geometry.boundingBox;
-  const geoWidth = bbox.max.x - bbox.min.x;
-  const geoHeight = bbox.max.y - bbox.min.y;
+  const _geoWidth = bbox.max.x - bbox.min.x;
+  const _geoHeight = bbox.max.y - bbox.min.y;
 
   for (let i = 0; i < positions.count; i++) {
     const x = positions.getX(i);
@@ -412,8 +412,8 @@ export function loadAnimalSVG(
           // Ensure minimum dimensions
           const finalWidth = Math.max(width, 1);
           const finalHeight = Math.max(height, 1);
-          const centerX = (minX + maxX) / 2;
-          const centerY = (minY + maxY) / 2;
+          const _centerX = (minX + maxX) / 2;
+          const _centerY = (minY + maxY) / 2;
 
           // Calculate texture scale factor for high resolution
           // Target texture size (you can adjust this value)
@@ -580,7 +580,7 @@ export function loadAnimalSVG(
           );
 
           // Log detailed geometry information
-          const bbox = new THREE.Box3().setFromObject(group);
+          const _bbox = new THREE.Box3().setFromObject(group);
 
           // Cache the results
           animalGraphicsCache.set(animal, {

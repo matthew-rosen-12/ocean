@@ -22,12 +22,12 @@ const auth_1 = __importDefault(require("./routes/auth"));
 const game_ticker_1 = require("./game-ticker");
 const rooms_1 = require("./state/rooms");
 const users_1 = require("./state/users");
-const terrain_1 = require("./utils/terrain");
+const terrain_1 = require("./initialization/terrain");
 const paths_1 = require("./state/paths");
-const npcGroups_1 = require("./state/npcGroups");
+const npc_groups_1 = require("./state/npc-groups");
 const paths_2 = require("./state/paths");
-const npcService_1 = require("./services/npcService");
-const typed_socket_1 = require("./utils/typed-socket");
+const npc_group_service_1 = require("./npc-group-service");
+const typed_socket_1 = require("./typed-socket");
 // Initialize game ticker
 (0, game_ticker_1.getGameTicker)();
 const app = (0, express_1.default)();
@@ -100,7 +100,7 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
                     typedSocket.emit("all-paths", { paths: pathsData });
                 }
                 // Get existing NPC groups
-                const groupsData = (0, npcGroups_1.getNPCGroupsfromMemory)(name);
+                const groupsData = (0, npc_groups_1.getNPCGroupsfromMemory)(name);
                 if (groupsData) {
                     typedSocket.emit("all-npc-groups", { npcGroups: groupsData });
                 }
@@ -114,7 +114,7 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
         // Handle capture-npc request
         typedSocket.on("capture-npc-group", (_a) => __awaiter(void 0, [_a], void 0, function* ({ capturedNPCGroupId, room, updatedNpcGroup }) {
             try {
-                const npcGroups = (0, npcGroups_1.getNPCGroupsfromMemory)(room);
+                const npcGroups = (0, npc_groups_1.getNPCGroupsfromMemory)(room);
                 const capturedNPCGroup = npcGroups.getByNpcGroupId(capturedNPCGroupId);
                 if (!capturedNPCGroup) {
                     console.warn(`NPC group ${capturedNPCGroupId} not found in room ${room}`);
@@ -129,7 +129,7 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
                 // Remove the original NPC from the idle/path groups
                 npcGroups.deleteByNpcGroupId(capturedNPCGroupId);
                 npcGroups.setByNpcGroupId(updatedNpcGroup.id, updatedNpcGroup);
-                (0, npcGroups_1.setNPCGroupsInMemory)(room, npcGroups);
+                (0, npc_groups_1.setNPCGroupsInMemory)(room, npcGroups);
                 typedSocket.broadcast(room, "npc-group-captured", {
                     capturedNPCGroupId,
                     updatedNpcGroup,
@@ -143,7 +143,7 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
         typedSocket.on("path-npc-group", (_a) => __awaiter(void 0, [_a], void 0, function* ({ pathData }) {
             try {
                 const pathNPCGroup = pathData.npcGroup;
-                (0, npcService_1.updateNPCGroupInRoom)(pathData.room, pathNPCGroup);
+                (0, npc_group_service_1.updateNPCGroupInRoom)(pathData.room, pathNPCGroup);
                 const activepaths = (0, paths_1.getpathsfromMemory)(pathData.room);
                 // if pathData already exists, update it
                 const existingPath = activepaths.get(pathData.npcGroup.id);
@@ -164,7 +164,7 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
             try {
                 const room = typedSocket.data.room;
                 if (room) {
-                    (0, npcService_1.updateNPCGroupInRoom)(room, npcGroup);
+                    (0, npc_group_service_1.updateNPCGroupInRoom)(room, npcGroup);
                 }
             }
             catch (error) {
@@ -196,15 +196,15 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
                     console.log("disconnecting");
                     const userId = socket.data.user.id;
                     // set npcs of this user's npc groups to IDLE
-                    const npcGroups = (0, npcGroups_1.getNPCGroupsfromMemory)(room);
+                    const npcGroups = (0, npc_groups_1.getNPCGroupsfromMemory)(room);
                     const npcGroup = npcGroups.getByUserId(user.id);
                     if (npcGroup) {
                         const updatedNPCGroup = new types_1.NPCGroup(Object.assign(Object.assign({}, npcGroup), { position: lastPosition, phase: types_1.NPCPhase.IDLE }));
                         npcGroups.setByNpcGroupId(npcGroup.id, updatedNPCGroup);
-                        (0, npcGroups_1.setNPCGroupsInMemory)(room, npcGroups);
+                        (0, npc_groups_1.setNPCGroupsInMemory)(room, npcGroups);
                     }
                     // remove the user's npc groups from redis
-                    (0, npcGroups_1.removeNPCGroupInRoomInMemory)(room, user.id);
+                    (0, npc_groups_1.removeNPCGroupInRoomInMemory)(room, user.id);
                     // Remove user from room memory
                     (0, users_1.removeUserFromRoom)(room, user.id);
                     // Handle room users decrement

@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useEffect } from "react";
+import React, { useMemo } from "react";
 import { Text } from "@react-three/drei";
 import {
   NPCGroup,
@@ -11,8 +11,7 @@ import {
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { smoothMove } from "../../utils/movement";
-import { useNPCGroupBase, useMount } from "../../hooks/useNPCGroupBase";
-import { getAnimalBorderColor } from "../../utils/animal-colors";
+import { useNPCGroupBase, useMount } from "../../hooks/use-npc-group-base";
 import { TerrainBoundaries } from "../../utils/terrain";
 import {
   calculateNPCGroupScale,
@@ -22,7 +21,6 @@ import { socket } from "../../socket";
 import { serialize } from "../../utils/typed-socket";
 import { v4 as uuidv4 } from "uuid";
 // Constants for positioning
-const FOLLOW_DISTANCE = 2; // Distance behind the user
 
 // Deterministic random function that produces consistent results across all clients
 function getRandom(input: Record<string, any>): number {
@@ -75,21 +73,10 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
   isLocalUser = false, // Default to false for non-local users
 }) => {
   
-  // Skip rendering if no user or no NPCs
-  if (!user || group.fileNames.length === 0) {
-    return null;
-  }
-
-  // If animal width is not set, don't render
-  if (!animalWidth) {
-    return null;
-  }
-
   // Calculate logarithmic scale factor based on number of NPCs
   const scaleFactor = useMemo(() => {
     return calculateNPCGroupScale(group.fileNames.length);
   }, [group.fileNames.length]);
-
 
   // Get the real face NPC from the npcs map
   // Use the NPCBase hook with the face NPC (now handles outline, returns text info)
@@ -108,7 +95,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
   // Memoize target position calculation to avoid unnecessary recalculations
   // Only memoize for non-local users since local users need real-time updates
   const memoizedTargetPosition = useMemo(() => {
-    if (isLocalUser) return null; // Don't memoize for local users
+    if (isLocalUser || !animalWidth) return null; // Don't memoize for local users or if no animalWidth
     return calculateNPCGroupPosition(user, animalWidth, scaleFactor);
   }, [
     isLocalUser,
@@ -118,16 +105,17 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     user.direction.y,
     animalWidth,
     scaleFactor,
+    user,
   ]);
 
   // Export position and scale calculation functions for collision detection
   const calculateTargetPosition = (): THREE.Vector3 => {
     // For local users, always calculate fresh to ensure real-time updates
     // For non-local users, use memoized value for performance
-    if (isLocalUser) {
+    if (isLocalUser && animalWidth) {
       return calculateNPCGroupPosition(user, animalWidth, scaleFactor);
     }
-    return memoizedTargetPosition!;
+    return memoizedTargetPosition || new THREE.Vector3();
   };
 
 
@@ -136,7 +124,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     pathData: pathData,
     currentPathPosition: THREE.Vector3
   ) => {
-    if (!setPaths || !setNpcGroups || pathData.pathPhase !== PathPhase.THROWN) return;
+    if (!setPaths || !setNpcGroups || pathData.pathPhase !== PathPhase.THROWN || !animalWidth) return;
 
 
     // Calculate reflection direction (away from the group)
@@ -202,7 +190,6 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     setPaths((prev: Map<string, pathData>) => {
       const newPaths = new Map(prev);
       newPaths.set(npcGroup.id, reflectionPathData);
-      console.log("newPaths", newPaths);
       return newPaths;
     });
 
@@ -213,7 +200,9 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
         "path-npc",
         serialize({ pathData: reflectionPathData }),
         (response: { success: boolean }) => {
-          if (!response.success) console.error("NPC reflection failed");
+          if (!response.success) {
+            // NPC reflection failed
+          }
         }
       );
     }
@@ -270,14 +259,16 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
           "path-npc",
           serialize({ pathData: emissionPathData }),
           (response: { success: boolean }) => {
-            if (!response.success) console.error("NPC emission failed");
+            if (!response.success) {
+              // NPC emission failed
+            }
           }
         );
     }
   };
 
   const checkForPathNPCCollision = (npcGroup: NPCGroup, pathData: pathData) => {
-    if (pathData.pathPhase !== PathPhase.THROWN) return false;
+    if (pathData.pathPhase !== PathPhase.THROWN || !animalWidth) return false;
 
     const calculatePathPosition = (pathData: pathData, currentTime: number) => {
       // Calculate elapsed time in seconds
@@ -344,7 +335,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
 
   // Handle position updates to follow the user
   useFrame(() => {
-    if (!threeGroup || !textureLoaded.current) return;
+    if (!threeGroup || !textureLoaded.current || !user || group.fileNames.length === 0 || !animalWidth) return;
 
     // Calculate target position with offset from user
     const targetPosition = calculateTargetPosition();
@@ -408,6 +399,11 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
        });
     }
   });
+
+  // Final early return after all hooks are called
+  if (!user || group.fileNames.length === 0 || !animalWidth) {
+    return null;
+  }
 
   return (
     <>

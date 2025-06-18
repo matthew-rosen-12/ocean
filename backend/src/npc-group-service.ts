@@ -1,21 +1,21 @@
 import { pathData, NPCGroup, NPCPhase, PathPhase, roomId, userId, npcGroupId } from "shared/types";
 
-import { getPosition, getDirection } from "../npc-info";
+import { getInitialPosition, getInitialDirection } from "./initialization/npc-info";
 import { v4 as uuidv4 } from "uuid";
 
-// Redis Key prefixes for different data types
 const NUM_NPCS = 4;
+const NPC_WIDTH = 4;
+const NPC_HEIGHT = 4;
 
 import {
   deletePathInMemory,
   getpathsfromMemory,
   setPathsInMemory,
-} from "../state/paths";
+} from "./state/paths";
 
-import { getNPCGroupsfromMemory, removeTopNPCFromGroupInRoomInMemory, updateNPCGroupInRoomInMemory } from "../state/npcGroups";
+import { getNPCGroupsfromMemory, removeTopNPCFromGroupInRoomInMemory, updateNPCGroupInRoomInMemory } from "./state/npc-groups";
 
-import { generateRoomTerrain } from "../utils/terrain";
-import { emitToRoom } from "../utils/typed-socket";
+import { emitToRoom } from "./typed-socket";
 
 export function updateNPCGroupInRoom(
   roomName: roomId,
@@ -39,7 +39,6 @@ export function removeTopNPCFromGroupInRoom(
 export function setPathCompleteInRoom(room: string, npcGroup: NPCGroup) {
   try {
     // Get room-specific terrain configuration
-    const terrainConfig = generateRoomTerrain(room);
 
     // Get the path data for this NPC
     const paths =  getpathsfromMemory(room);
@@ -87,7 +86,6 @@ function calculateLandingPositionWithCollisionAvoidance(
   room: string,
   movingNpcGroupId: npcGroupId
 ) {
-  const COLLISION_RADIUS = 2.0; // Distance to check for collisions
   const EXTENSION_DISTANCE = 2.5; // How much to extend the path if collision detected
   const MAX_EXTENSIONS = 5; // Maximum number of extensions to prevent infinite loops
 
@@ -110,10 +108,10 @@ function calculateLandingPositionWithCollisionAvoidance(
       const collided = detectCollision(
         landingPosition,
         { ...idleNPCGroup.position, z: 0 },
-        4.0, // width1 - moving NPC
-        4.0, // height1 - moving NPC
-        4.0, // width2 - idle NPC
-        4.0  // height2 - idle NPC
+        NPC_WIDTH, // width1 - moving NPC
+        NPC_HEIGHT, // height1 - moving NPC
+        NPC_WIDTH, // width2 - idle NPC
+        NPC_HEIGHT  // height2 - idle NPC
       );
 
       if (collided) {
@@ -204,8 +202,8 @@ export function createNPCGroups(): NPCGroup[] {
     const npcGroup = new NPCGroup({
       id: uuidv4(),
       fileNames: [filename],
-      position: getPosition(),
-      direction: getDirection(),
+      position: getInitialPosition(),
+      direction: getInitialDirection(),
       phase: NPCPhase.IDLE,
     });
 
@@ -234,10 +232,10 @@ function getNPCFilenames(): string[] {
 const detectCollision = (
   position1: { x: number; y: number; z: number },
   position2: { x: number; y: number; z: number },
-  width1: number = 4.0,
-  height1: number = 4.0,
-  width2: number = 4.0,
-  height2: number = 4.0
+  width1: number = NPC_WIDTH,
+  height1: number = NPC_HEIGHT,
+  width2: number = NPC_WIDTH,
+  height2: number = NPC_HEIGHT
 ) => {
   // Bounding box collision detection
   const halfWidth1 = width1 / 2;
@@ -285,7 +283,7 @@ export function checkAndHandleNPCCollisions(room: string): void{
         const collided = detectCollision(
           pathPosition,
           { ...idleNPCGroup.position, z: 0 },
-          4.0, 4.0, 4.0, 4.0
+          NPC_WIDTH, NPC_HEIGHT, NPC_WIDTH, NPC_HEIGHT
         );
 
         if (collided) {
@@ -313,7 +311,7 @@ export function checkAndHandleNPCCollisions(room: string): void{
           const collided = detectCollision(
             currentPosition,
             otherPosition,
-            4.0, 4.0, 4.0, 4.0
+            NPC_WIDTH, NPC_HEIGHT, NPC_WIDTH, NPC_HEIGHT
           );
 
           if (collided) {

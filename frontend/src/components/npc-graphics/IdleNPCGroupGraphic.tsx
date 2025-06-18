@@ -3,7 +3,7 @@ import { Text } from "@react-three/drei";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { smoothMove } from "../../utils/movement";
-import { useMount, useNPCGroupBase } from "../../hooks/useNPCGroupBase";
+import { useMount, useNPCGroupBase } from "../../hooks/use-npc-group-base";
 import { NPCGroup } from "shared/types";
 
 interface IdleNPCGroupGraphicProps {

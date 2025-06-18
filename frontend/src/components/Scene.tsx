@@ -13,19 +13,17 @@ import {
   NPCGroupsBiMap,
 } from "shared/types";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { socket, typedSocket } from "../socket";
-import { Socket } from "socket.io-client";
+import { typedSocket } from "../socket";
 import { ANIMAL_SCALES, DIRECTION_OFFSET } from "../utils/user-info";
 import AnimalGraphic from "./AnimalGraphic";
 import { throttle } from "lodash";
 import { v4 as uuidv4 } from "uuid";
 import NPCGraphicWrapper from "./npc-graphics/NPCGroupGraphicWrapper";
-import { useMount } from "../hooks/useNPCGroupBase";
+import { useMount } from "../hooks/use-npc-group-base";
 import * as THREE from "three";
 // Note: These functions may no longer be needed since NPCs are now NPCGroups
 // import { removeFileNameFromGroup, addFileNameToGroup } from "../utils/npc-group-utils";
 import { TerrainConfig } from "../utils/terrain";
-("@react-three/fiber");
 // Extend Performance interface for Chrome's memory API
 declare global {
   interface Performance {
@@ -70,18 +68,22 @@ async function pathNPCGroup(
       | NPCGroupsBiMap
       | ((prev: NPCGroupsBiMap) => NPCGroupsBiMap)
   ) => void,
+  throwCount: number = 1,
 ) {
   try {
+    // Calculate how many NPCs to throw (limited by available NPCs)
+    const actualThrowCount = Math.min(throwCount, npcGroup.fileNames.length);
+    
     // Create new objects instead of mutating
     const captorNPCGroup = new NPCGroup({
       ...npcGroup,
-      fileNames: npcGroup.fileNames.slice(0, -1),
+      fileNames: npcGroup.fileNames.slice(0, -actualThrowCount),
 
     });
     const pathNPCGroup = new NPCGroup({
       ...npcGroup,
       id: uuidv4(),
-      fileNames: npcGroup.fileNames.slice(-1),
+      fileNames: npcGroup.fileNames.slice(-actualThrowCount),
       phase: NPCPhase.PATH,
     });
 
@@ -127,8 +129,8 @@ async function pathNPCGroup(
       newNpcGroups.setByNpcGroupId(pathNPCGroup.id, pathNPCGroup);
       return newNpcGroups;
     });
-  } catch (error) {
-    console.error("Error pathing NPC:", error);
+  } catch {
+    // Error pathing NPC
   }
 }
 
@@ -156,24 +158,19 @@ function useKeyboardMovement(
   const [position, setPosition] = useState(initialPosition);
   const [direction, setDirection] = useState<Direction>(initialDirection);
   const [keysPressed, setKeysPressed] = useState(new Set<string>());
+  const [spaceStartTime, setSpaceStartTime] = useState<number | null>(null);
   const animationFrameRef = useRef<number>();
 
   const handleKeyDown = (event: KeyboardEvent) => {
     setKeysPressed((prev) => new Set(prev).add(event.key));
 
-    // Handle space bar press for pathing NPCs
+    // Handle space bar press for pathing NPCs - start charging
     if (
       (event.key === " " || event.key === "Spacebar") &&
-      npcGroups.getByUserId(myUser.id)?.fileNames.length !== 0
+      npcGroups.getByUserId(myUser.id)?.fileNames.length !== 0 &&
+      spaceStartTime === null
     ) {
-      // Get the first NPC ID from the set
-      pathNPCGroup(
-        myUser,
-        npcGroups.getByUserId(myUser.id)!,
-        paths,
-        setPaths,
-        setNpcGroups,
-      );
+      setSpaceStartTime(Date.now());
     }
   };
 
@@ -183,6 +180,30 @@ function useKeyboardMovement(
       next.delete(event.key);
       return next;
     });
+
+    // Handle space bar release - throw NPCs based on charge time
+    if (
+      (event.key === " " || event.key === "Spacebar") &&
+      spaceStartTime !== null &&
+      npcGroups.getByUserId(myUser.id)?.fileNames.length !== 0
+    ) {
+      const chargeDuration = Date.now() - spaceStartTime;
+      // Calculate throw count: doubles every 1000ms (1 second)
+      // Base count is 1, then 2^(seconds)
+      const secondsHeld = Math.min(chargeDuration / 1000, 10); // Cap at 10 seconds
+      const throwCount = Math.floor(Math.pow(2, secondsHeld));
+      
+      pathNPCGroup(
+        myUser,
+        npcGroups.getByUserId(myUser.id)!,
+        paths,
+        setPaths,
+        setNpcGroups,
+        throwCount,
+      );
+      
+      setSpaceStartTime(null);
+    }
   };
 
   const updatePosition = () => {
@@ -351,23 +372,18 @@ export default function Scene({
     y: myUser.direction.y,
   };
 
-  const [animalWidths, setAnimalWidths] = useState<{
-    [animal: string]: number;
-  }>({});
 
   const [animalDimensions, setAnimalDimensions] = useState<{
     [animal: string]: { width: number; height: number };
   }>({});
 
-  // Track NPCs currently being processed to prevent duplicate captures
-  const processingNPCs = useRef<Set<npcGroupId>>(new Set());
 
   // Helper function to check simple center-based collision with terrain boundaries
   const checkBoundaryCollision = (
     position: THREE.Vector3,
     change: THREE.Vector3,
-    rotation: number,
-    dimensions: { width: number; height: number }
+    _rotation: number,
+    _dimensions: { width: number; height: number }
   ): THREE.Vector3 => {
     const newPosition = position.clone().add(change);
 
@@ -451,7 +467,7 @@ export default function Scene({
     myUser.direction = { ...direction };
     users.set(myUser.id, myUser);
     throttledBroadcast();
-  }, [position, direction]);
+  }, [position, direction, myUser, throttledBroadcast, users]);
 
   const handleNPCGroupCollision = useCallback(
     (capturedNPCGroup: NPCGroup, localUser: boolean) => {
@@ -506,7 +522,7 @@ export default function Scene({
         return newNpcGroups;
       });
     },
-    [myUser.id, myUser.room, myUser.position]
+    [myUser.id, myUser.room, myUser.position, setNpcGroups, setPaths]
   );
 
   const normalizeDirection = useCallback((direction: Direction) => {
@@ -657,7 +673,7 @@ export default function Scene({
         return newNpcGroups;
       });
     },
-    [myUser, npcGroups, paths, setPaths, setNpcGroups, normalizeDirection, users]
+    [myUser, paths, setPaths, setNpcGroups, normalizeDirection, users]
   );
 
   // Function to check for collisions with NPCs
@@ -687,7 +703,7 @@ export default function Scene({
       if (npcGroup.phase === NPCPhase.IDLE || npcGroup.phase === NPCPhase.PATH) {
         if (distance < CAPTURE_THRESHOLD) {
           // Close enough to capture
-          console.log("Capturing NPC");
+          // Capturing NPC
           handleNPCGroupCollision(npcGroup, isLocalUser);
           return true;
         } else if (distance < FLEE_THRESHOLD) {
@@ -697,7 +713,7 @@ export default function Scene({
       }
       return false
     },
-    [handleNPCGroupCollision, makeNPCGroupFlee, animalDimensions, myUser.animal]
+    [handleNPCGroupCollision, makeNPCGroupFlee, animalDimensions, myUser.animal, myUser.position.x, myUser.position.y]
   );
 
   const setAnimalDimensionsCallback = useCallback(
