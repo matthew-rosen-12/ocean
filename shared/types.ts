@@ -196,6 +196,12 @@ export interface TerrainConfig {
     width: number;
     height: number;
     cellSize: number;
+    startTime?: number; // When the game started (timestamp)
+    duration?: number; // Game duration in milliseconds
+}
+
+export interface FinalScores {
+    [userId: string]: number;
 }
 
 export interface Position {

@@ -28,6 +28,7 @@ const npc_groups_1 = require("./state/npc-groups");
 const paths_2 = require("./state/paths");
 const npc_group_service_1 = require("./npc-group-service");
 const typed_socket_1 = require("./typed-socket");
+const game_timer_1 = require("./game-timer");
 // Initialize game ticker
 (0, game_ticker_1.getGameTicker)();
 const app = (0, express_1.default)();
@@ -82,11 +83,18 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
             console.log("joining room");
             typedSocket.join(name);
             typedSocket.data.room = name;
+            // Check if this is the first user in the room (before adding)
+            const existingUsers = (0, users_1.getAllUsersInRoom)(name);
+            const isFirstUser = existingUsers.size === 0;
             // Add user to server memory for this room
             (0, users_1.addUserToRoom)(name, user);
+            // Start game timer if this is the first user
+            if (isFirstUser) {
+                (0, game_timer_1.startGameTimer)(name);
+            }
             // Send all existing users in the room to the joining user
-            const existingUsers = (0, users_1.getAllUsersInRoom)(name);
-            if (existingUsers.size > 0) {
+            const allUsers = (0, users_1.getAllUsersInRoom)(name);
+            if (allUsers.size > 1) { // More than just the current user
                 typedSocket.emit("all-users", { users: existingUsers });
             }
             // Send other room state to the joining socket
@@ -94,6 +102,14 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
                 // Send terrain configuration for this room
                 const terrainConfig = (0, terrain_1.generateRoomTerrain)(name);
                 typedSocket.emit("terrain-config", { terrainConfig });
+                // Send game timing information
+                const gameStartTime = (0, game_timer_1.getGameStartTime)(name);
+                if (gameStartTime) {
+                    typedSocket.emit("game-timer-info", {
+                        gameStartTime,
+                        gameDuration: game_timer_1.GAME_DURATION
+                    });
+                }
                 // Get existing paths
                 const pathsData = (0, paths_1.getpathsfromMemory)(name);
                 if (pathsData) {
@@ -209,6 +225,11 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
                     (0, users_1.removeUserFromRoom)(room, user.id);
                     // Handle room users decrement
                     (0, rooms_1.decrementRoomUsersInMemory)(room, socket.id);
+                    // Check if room is now empty and cleanup game timer
+                    const remainingUsers = (0, users_1.getAllUsersInRoom)(room);
+                    if (remainingUsers.size === 0) {
+                        (0, game_timer_1.cleanupGameTimer)(room);
+                    }
                     if (userId) {
                         typedSocket.broadcast(room, "user-left", { lastPosition, userId });
                     }

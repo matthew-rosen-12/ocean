@@ -93,6 +93,11 @@ export interface TerrainConfig {
     width: number;
     height: number;
     cellSize: number;
+    startTime?: number;
+    duration?: number;
+}
+export interface FinalScores {
+    [userId: string]: number;
 }
 export interface Position {
     x: number;

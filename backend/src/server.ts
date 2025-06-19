@@ -14,6 +14,7 @@ import { getNPCGroupsfromMemory, removeNPCGroupInRoomInMemory, setNPCGroupsInMem
 import { setPathsInMemory } from "./state/paths";
 import { updateNPCGroupInRoom } from "./npc-group-service";
 import { TypedSocket } from "./typed-socket";
+import { startGameTimer, stopGameTimer, cleanupGameTimer, getGameStartTime, GAME_DURATION } from "./game-timer";
 
 // Initialize game ticker
 getGameTicker();
@@ -84,12 +85,21 @@ io.on("connection", async (socket) => {
       typedSocket.join(name);
       typedSocket.data.room = name;
 
+      // Check if this is the first user in the room (before adding)
+      const existingUsers = getAllUsersInRoom(name);
+      const isFirstUser = existingUsers.size === 0;
+
       // Add user to server memory for this room
       addUserToRoom(name, user);
 
+      // Start game timer if this is the first user
+      if (isFirstUser) {
+        startGameTimer(name);
+      }
+
       // Send all existing users in the room to the joining user
-      const existingUsers = getAllUsersInRoom(name);
-      if (existingUsers.size > 0) {
+      const allUsers = getAllUsersInRoom(name);
+      if (allUsers.size > 1) { // More than just the current user
         typedSocket.emit("all-users", { users: existingUsers });
       }
 
@@ -98,6 +108,15 @@ io.on("connection", async (socket) => {
         // Send terrain configuration for this room
         const terrainConfig = generateRoomTerrain(name);
         typedSocket.emit("terrain-config", { terrainConfig });
+
+        // Send game timing information
+        const gameStartTime = getGameStartTime(name);
+        if (gameStartTime) {
+          typedSocket.emit("game-timer-info", { 
+            gameStartTime, 
+            gameDuration: GAME_DURATION 
+          });
+        }
 
         // Get existing paths
         const pathsData =  getpathsfromMemory(name);
@@ -231,6 +250,12 @@ io.on("connection", async (socket) => {
 
           // Handle room users decrement
           decrementRoomUsersInMemory(room, socket.id);
+
+          // Check if room is now empty and cleanup game timer
+          const remainingUsers = getAllUsersInRoom(room);
+          if (remainingUsers.size === 0) {
+            cleanupGameTimer(room);
+          }
 
           if (userId) {
             typedSocket.broadcast(room, "user-left", { lastPosition, userId });

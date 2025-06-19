@@ -72,10 +72,20 @@ export const findRoomInMemory = (): string => {
         return roomData ? { ...roomData, key: roomName } : null;
       })
 
+    const currentTime = Date.now();
+    const ROOM_JOIN_WINDOW = 30 * 1000; // 30 seconds in milliseconds
+
     const activeRooms = rooms
       .filter(
-        (room): room is Room & { key: string } =>
-          room !== null && room.isActive !== false && room.numUsers < 10
+        (room): room is Room & { key: string } => {
+          if (!room || room.isActive === false || room.numUsers >= 10) {
+            return false;
+          }
+          
+          // Check if room is less than 30 seconds old
+          const roomAge = currentTime - new Date(room.createdAt).getTime();
+          return roomAge < ROOM_JOIN_WINDOW;
+        }
       )
       .sort((a, b) => a.numUsers - b.numUsers);
 

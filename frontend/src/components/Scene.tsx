@@ -11,6 +11,7 @@ import {
   userId,
   UserInfo,
   NPCGroupsBiMap,
+  FinalScores,
 } from "shared/types";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { typedSocket } from "../socket";
@@ -166,7 +167,8 @@ function useKeyboardMovement(
     change: THREE.Vector3,
     rotation: number,
     dimensions: { width: number; height: number }
-  ) => THREE.Vector3
+  ) => THREE.Vector3,
+  inputDisabled: boolean = false
 ) {
   const [position, setPosition] = useState(initialPosition);
   const [direction, setDirection] = useState<Direction>(initialDirection);
@@ -175,6 +177,8 @@ function useKeyboardMovement(
   const animationFrameRef = useRef<number>();
 
   const handleKeyDown = (event: KeyboardEvent) => {
+    if (inputDisabled) return;
+    
     setKeysPressed((prev) => new Set(prev).add(event.key));
 
     // Handle space bar press for pathing NPCs - start charging
@@ -188,6 +192,8 @@ function useKeyboardMovement(
   };
 
   const handleKeyUp = (event: KeyboardEvent) => {
+    if (inputDisabled) return;
+    
     setKeysPressed((prev) => {
       const next = new Set(prev);
       next.delete(event.key);
@@ -220,6 +226,8 @@ function useKeyboardMovement(
   };
 
   const updatePosition = () => {
+    if (inputDisabled) return;
+    
     const change = new THREE.Vector3(0, 0, 0);
 
     // Check which keys are pressed
@@ -363,6 +371,8 @@ interface Props {
       | ((prev: NPCGroupsBiMap) => NPCGroupsBiMap)
   ) => void;
   terrain: TerrainConfig;
+  onScreenshotCapture?: (screenshot: string) => void;
+  onGameOver?: (finalScores: FinalScores) => void;
 }
 
 export default function Scene({
@@ -373,6 +383,8 @@ export default function Scene({
   setPaths,
   setNpcGroups,
   terrain,
+  onScreenshotCapture,
+  onGameOver,
 }: Props) {
   const initialPosition = new THREE.Vector3(
     myUser.position.x,
@@ -385,6 +397,8 @@ export default function Scene({
     y: myUser.direction.y,
   };
 
+  const [cinematicActive, setCinematicActive] = useState(false);
+  const [showTimesUpText, setShowTimesUpText] = useState(false);
 
   const [animalDimensions, setAnimalDimensions] = useState<{
     [animal: string]: { width: number; height: number };
@@ -433,7 +447,8 @@ export default function Scene({
     setNpcGroups,
     terrain,
     animalDimensions,
-    checkBoundaryCollision
+    checkBoundaryCollision,
+    cinematicActive
   );
 
   // --- REFACTOR: Use refs for last broadcasted position/direction ---
@@ -772,56 +787,266 @@ export default function Scene({
     [animalDimensions]
   );
 
-  return (
-    <Canvas
-      style={{
-        border: "1px solid white",
-        width: "100%",
-        height: "100%",
-      }}
-    >
-      <CameraController
-        targetPosition={position}
-        animalScale={ANIMAL_SCALES[myUser.animal]}
-      />
-      <ambientLight intensity={Math.PI / 2} />
-      <spotLight
-        position={[10, 10, 10]}
-        angle={0.15}
-        penumbra={1}
-        decay={0}
-        intensity={Math.PI}
-      />
-      <pointLight position={[-10, -10, -10]} decay={0} intensity={Math.PI} />
-      {terrain.renderBackground()}
-      {/* Render all users with their NPCs */}
-      {Array.from(users.values()).map((user) => (
-        <AnimalGraphic
-          key={user.id}
-          user={user}
-          myUserId={myUser.id}
-          setAnimalDimensions={setAnimalDimensionsCallback}
-          animalDimensions={animalDimensions}
-        />
-      ))}
+  // State for flash effect
+  const [showFlash, setShowFlash] = useState(false);
 
-      {npcGroups.values()
-        .map((npcGroup) => (
-          <NPCGraphicWrapper
-            key={npcGroup.id}
-            npcGroup={npcGroup}
-            checkForCollision={checkForNPCGroupCollision}
-            pathData={paths.get(npcGroup.id)}
-            users={users}
-            allPaths={paths}
-            npcGroups={npcGroups}
+  // Cinematic Screenshot Component
+  function CinematicScreenshot() {
+    const { gl, scene, camera } = useThree();
+    const [isAnimating, setIsAnimating] = useState(false);
+    
+    useEffect(() => {
+      const startCinematicSequence = (winnerUserId: string) => {
+        if (!onScreenshotCapture || !winnerUserId || isAnimating) return;
+        
+        const winnerUser = users.get(winnerUserId);
+        if (!winnerUser) return;
+        
+        setIsAnimating(true);
+        setCinematicActive(true);
+        setShowTimesUpText(true);
+        
+        // Calculate winner's NPC group size and animal type for zoom adjustment
+        const winnerNpcGroup = npcGroups.getByUserId(winnerUserId);
+        const npcCount = winnerNpcGroup?.fileNames?.length || 0;
+        
+        // Get winner's animal scale
+        const winnerAnimal = winnerUser.animal?.toUpperCase() as keyof typeof ANIMAL_SCALES;
+        const animalScale = ANIMAL_SCALES[winnerAnimal] || 1.0;
+        
+        // Calculate zoom based on animal size and NPC group size
+        const currentCameraDistance = 30; // Normal camera distance
+        const baseZoomIn = 0.2; // Zoom in much closer (smaller Z = closer)
+        
+        // Adjust zoom based on animal size (larger animals need to be further back)
+        const animalSizeAdjustment = animalScale * 0.3;
+        
+        // Adjust zoom based on NPC count (more NPCs = need to be further back to fit all)
+        const npcSizeAdjustment = Math.sqrt(npcCount) * 0.2;
+        
+        // Final zoom calculation: zoom in from current distance, then adjust for animal and NPC size
+        const targetZoom = currentCameraDistance * (baseZoomIn + animalSizeAdjustment + npcSizeAdjustment);
+        
+        // Store original camera position
+        const originalPosition = camera.position.clone();
+        
+        // Phase 1: Keep camera on current player but zoom to target Z
+        const zTargetPosition = new THREE.Vector3(
+          originalPosition.x, // Stay at current player's X position
+          originalPosition.y, // Stay at current player's Y position
+          targetZoom // Zoom to target Z level
+        );
+        
+        // Phase 2: Move from current player to winner in XY plane
+        const finalTargetPosition = new THREE.Vector3(
+          winnerUser.position.x, // Move to winner's X position
+          winnerUser.position.y, // Move to winner's Y position
+          targetZoom // Keep the zoomed Z level
+        );
+        
+        // Animation timing
+        const phase1Duration = 1000; // 1 second for Z movement
+        const phase2Duration = 500;  // 0.5 seconds for XY movement
+        const totalDuration = phase1Duration + phase2Duration;
+        const startTime = Date.now();
+        
+        // Hide "TIMES UP!" text 500ms before flash (at 1000ms)
+        setTimeout(() => {
+          setShowTimesUpText(false);
+        }, 1000);
+        
+        const animateCamera = () => {
+          const elapsed = Date.now() - startTime;
+          const totalProgress = Math.min(elapsed / totalDuration, 1);
+          
+          if (elapsed < phase1Duration) {
+            // Phase 1: Keep camera on current player, zoom to target Z
+            const phase1Progress = elapsed / phase1Duration;
+            const easedProgress = 1 - Math.pow(1 - phase1Progress, 3); // ease-out-cubic
+            
+            camera.position.lerpVectors(originalPosition, zTargetPosition, easedProgress);
+          } else {
+            // Phase 2: Move camera from current player to winner in XY plane
+            const phase2Progress = (elapsed - phase1Duration) / phase2Duration;
+            const easedProgress = 1 - Math.pow(1 - phase2Progress, 3); // ease-out-cubic
+            
+            camera.position.lerpVectors(zTargetPosition, finalTargetPosition, easedProgress);
+          }
+          camera.updateProjectionMatrix();
+          
+          if (totalProgress < 1) {
+            requestAnimationFrame(animateCamera);
+          } else {
+            // Animation complete - trigger flash and screenshot
+            triggerFlashAndScreenshot();
+          }
+        };
+        
+        const triggerFlashAndScreenshot = () => {
+          // Show flash effect
+          setShowFlash(true);
+          
+          // Take screenshot after flash starts
+          setTimeout(() => {
+            try {
+              // Force a final render to ensure canvas is up to date
+              gl.render(scene, camera);
+              
+              const canvas = gl.domElement;
+              const screenshot = canvas.toDataURL('image/png', 0.9);
+              onScreenshotCapture(screenshot);
+            } catch (error) {
+              console.error('Screenshot failed:', error);
+            }
+            
+            // Hide flash and trigger game over
+            setTimeout(() => {
+              setShowFlash(false);
+              setIsAnimating(false);
+              setCinematicActive(false);
+              setShowTimesUpText(false);
+              if (onGameOver) {
+                const storedFinalScores = (window as any).finalScores;
+                onGameOver(storedFinalScores);
+              }
+            }, 200); // Flash duration
+            
+          }, 100); // Small delay for flash effect
+        };
+        
+        // Start the animation
+        requestAnimationFrame(animateCamera);
+      };
+
+      // Expose the function globally
+      (window as any).captureGameScreenshot = startCinematicSequence;
+
+      return () => {
+        delete (window as any).captureGameScreenshot;
+      };
+    }, [gl, scene, camera, onScreenshotCapture, users, npcGroups, isAnimating, onGameOver]);
+
+    return null; // This component doesn't render anything in the Canvas
+  }
+
+  // Component to set the canvas clear color to match the game background
+  function BackgroundColorSetter() {
+    const { gl } = useThree();
+    
+    useEffect(() => {
+      // Set clear color to black to match the game's background
+      gl.setClearColor(0x000000, 1.0); // Black background
+    }, [gl]);
+    
+    return null;
+  }
+
+  // Note: times-up event is handled by GuestLogin component, which triggers the cinematic sequence
+
+  return (
+    <>
+      <style>{`
+        @keyframes flash {
+          0% { opacity: 0; }
+          50% { opacity: 0.9; }
+          100% { opacity: 0.3; }
+        }
+        @keyframes timesUpPulse {
+          0% { transform: scale(1); opacity: 0.9; }
+          50% { transform: scale(1.05); opacity: 1; }
+          100% { transform: scale(1); opacity: 0.9; }
+        }
+      `}</style>
+      
+      <Canvas
+        style={{
+          border: "1px solid white",
+          width: "100%",
+          height: "100%",
+        }}
+        gl={{ preserveDrawingBuffer: true }}
+      >
+        <CameraController
+          targetPosition={position}
+          animalScale={ANIMAL_SCALES[myUser.animal]}
+        />
+        <BackgroundColorSetter />
+        <CinematicScreenshot />
+        <ambientLight intensity={Math.PI / 2} />
+        <spotLight
+          position={[10, 10, 10]}
+          angle={0.15}
+          penumbra={1}
+          decay={0}
+          intensity={Math.PI}
+        />
+        <pointLight position={[-10, -10, -10]} decay={0} intensity={Math.PI} />
+        {terrain.renderBackground()}
+        {/* Render all users with their NPCs */}
+        {Array.from(users.values()).map((user) => (
+          <AnimalGraphic
+            key={user.id}
+            user={user}
             myUserId={myUser.id}
+            setAnimalDimensions={setAnimalDimensionsCallback}
             animalDimensions={animalDimensions}
-            setPaths={setPaths}
-            setNpcGroups={setNpcGroups}
-            throwChargeCount={npcGroup.captorId === myUser.id ? currentThrowCount : undefined}
           />
         ))}
-    </Canvas>
+
+        {npcGroups.values()
+          .map((npcGroup) => (
+            <NPCGraphicWrapper
+              key={npcGroup.id}
+              npcGroup={npcGroup}
+              checkForCollision={checkForNPCGroupCollision}
+              pathData={paths.get(npcGroup.id)}
+              users={users}
+              allPaths={paths}
+              npcGroups={npcGroups}
+              myUserId={myUser.id}
+              animalDimensions={animalDimensions}
+              setPaths={setPaths}
+              setNpcGroups={setNpcGroups}
+              throwChargeCount={npcGroup.captorId === myUser.id ? currentThrowCount : undefined}
+            />
+          ))}
+      </Canvas>
+
+      {/* TIMES UP! Text */}
+      {showTimesUpText && (
+        <div style={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          fontSize: '4rem',
+          fontWeight: 'bold',
+          color: '#FF0000',
+          textShadow: '3px 3px 6px rgba(0,0,0,0.8)',
+          zIndex: 1001,
+          pointerEvents: 'none',
+          animation: 'timesUpPulse 800ms ease-in-out infinite',
+          fontFamily: 'system-ui, -apple-system, sans-serif'
+        }}>
+          TIMES UP!
+        </div>
+      )}
+      
+      {/* Flash Effect */}
+      {showFlash && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'white',
+          opacity: 0.8,
+          zIndex: 1000,
+          pointerEvents: 'none',
+          animation: 'flash 200ms ease-out'
+        }} />
+      )}
+    </>
   );
 }

@@ -1,4 +1,4 @@
-import { UserInfo, TerrainConfig, NPCGroup, pathData, Position, npcGroupId, NPCGroupsBiMap, userId } from "./types";
+import { UserInfo, TerrainConfig, NPCGroup, pathData, Position, npcGroupId, NPCGroupsBiMap, userId, FinalScores } from "./types";
 
 export interface ServerToClientEvents {
     "user-joined": (data: { user: UserInfo }) => void;
@@ -10,6 +10,7 @@ export interface ServerToClientEvents {
     "all-npc-groups": (data: { npcGroups: NPCGroupsBiMap }) => void;
     "all-paths": (data: { paths: Map<npcGroupId, pathData> }) => void;
     "terrain-config": (data: { terrainConfig: TerrainConfig }) => void;
+    "game-timer-info": (data: { gameStartTime: number; gameDuration: number }) => void;
 
     "npc-group-update": (data: { npcGroup: NPCGroup }) => void;
     "npc-group-captured": (data: { capturedNPCGroupId: npcGroupId; updatedNpcGroup: NPCGroup }) => void;
@@ -18,6 +19,7 @@ export interface ServerToClientEvents {
     "path-update": (data: { pathData: pathData }) => void;
     "path-complete": (data: { npcGroup: NPCGroup }) => void;
     "path-absorbed": (data: { pathData: pathData }) => void;
+    "times-up": (data: { finalScores: FinalScores }) => void;
   }
   
   export interface ClientToServerEvents {

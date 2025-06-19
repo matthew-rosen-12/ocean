@@ -11,10 +11,29 @@ import {
   NPCGroupsBiMap,
   Position,
   TerrainConfig,
+  FinalScores,
 } from "shared/types";
 import { getSocket } from "../socket";
 import { ServerTerrainConfig } from "../utils/terrain";
 import { TypedSocket } from "../utils/typed-socket";
+
+// Cookie utility functions
+const setCookie = (name: string, value: string, days: number = 365) => {
+  const expires = new Date();
+  expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+};
+
+const getCookie = (name: string): string | null => {
+  const nameEQ = name + "=";
+  const cookies = document.cookie.split(';');
+  for (let i = 0; i < cookies.length; i++) {
+    let cookie = cookies[i];
+    while (cookie.charAt(0) === ' ') cookie = cookie.substring(1, cookie.length);
+    if (cookie.indexOf(nameEQ) === 0) return cookie.substring(nameEQ.length, cookie.length);
+  }
+  return null;
+};
 
 interface Props {
   setMyUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
@@ -26,6 +45,9 @@ interface Props {
   setTerrainConfig: React.Dispatch<
     React.SetStateAction<ServerTerrainConfig | null>
   >;
+  setGameStartTime: React.Dispatch<React.SetStateAction<number | undefined>>;
+  setGameDuration: React.Dispatch<React.SetStateAction<number | undefined>>;
+  // Note: setGameOver, setFinalScores, and setWinnerScreenshot are now handled by Scene component
 }
 
 export default function GuestLogin({
@@ -34,6 +56,8 @@ export default function GuestLogin({
   setPaths,
   setNPCGroups,
   setTerrainConfig,
+  setGameStartTime,
+  setGameDuration,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [nickname, setNickname] = useState("");
@@ -41,7 +65,7 @@ export default function GuestLogin({
   const [userHasTyped, setUserHasTyped] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Generate random nickname suggestion
+  // Load saved nickname and generate random suggestion
   useEffect(() => {
     const generateNickname = () => {
       return uniqueNamesGenerator({
@@ -54,7 +78,15 @@ export default function GuestLogin({
     
     const suggestion = generateNickname();
     setSuggestedNickname(suggestion);
-    setNickname(suggestion);
+    
+    // Try to load saved nickname from cookie
+    const savedNickname = getCookie('lastNickname');
+    if (savedNickname && savedNickname.trim()) {
+      setNickname(savedNickname);
+      setUserHasTyped(true); // User has previously typed this nickname
+    } else {
+      setNickname(suggestion);
+    }
   }, []);
 
   // Set cursor to beginning whenever we're in suggestion mode
@@ -150,6 +182,11 @@ export default function GuestLogin({
 
       typedSocket.on("terrain-config", ({ terrainConfig }: { terrainConfig: TerrainConfig }) => {
         setTerrainConfig(terrainConfig);
+      });
+
+      typedSocket.on("game-timer-info", ({ gameStartTime, gameDuration }: { gameStartTime: number; gameDuration: number }) => {
+        setGameStartTime(gameStartTime);
+        setGameDuration(gameDuration);
       });
 
       typedSocket.on("all-npc-groups", ({ npcGroups }: { npcGroups: NPCGroupsBiMap }) => {
@@ -305,6 +342,22 @@ export default function GuestLogin({
         });
       });
 
+      // Handle game over event - trigger cinematic sequence
+      typedSocket.on("times-up", ({ finalScores }: { finalScores: FinalScores }) => {
+        // Find the winner from final scores
+        const winnerUserId = Object.entries(finalScores)
+          .sort(([, scoreA], [, scoreB]) => scoreB - scoreA)[0]?.[0];
+        
+        // Store final scores for the cinematic sequence to use
+        (window as any).finalScores = finalScores;
+        
+        // Start cinematic sequence focused on winner
+        const captureFunction = (window as any).captureGameScreenshot;
+        if (captureFunction && winnerUserId) {
+          captureFunction(winnerUserId);
+        }
+      });
+
       // Set initial user state with nickname (ensure it's never empty)
       // If user hasn't typed or the current nickname is the suggestion, use suggestion
       // Otherwise use what the user typed
@@ -317,6 +370,10 @@ export default function GuestLogin({
       })();
       
       const userWithNickname = { ...user, nickname: finalNickname };
+      
+      // Save the nickname to cookie for future use
+      setCookie('lastNickname', finalNickname);
+      
       setMyUser(userWithNickname);
       setUsers(new Map([[user.id, userWithNickname]]));
     } catch {

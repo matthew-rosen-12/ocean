@@ -5,10 +5,12 @@ import {
   NPCGroupsBiMap,
   npcGroupId,
   userId,
+  FinalScores,
 } from "shared/types";
 import Scene from "./components/Scene";
 import GuestLogin from "./components/GuestLogin";
-import { ANIMAL_FACTS } from "../public/facts";
+import Leaderboard from "./components/Leaderboard";
+import GameOverScreen from "./components/GameOverScreen";
 import {
   createTerrain,
   createTerrainFromServer,
@@ -25,6 +27,11 @@ function App() {
   );
   const [serverTerrainConfig, setServerTerrainConfig] =
     useState<ServerTerrainConfig | null>(null);
+  const [gameStartTime, setGameStartTime] = useState<number | undefined>(undefined);
+  const [gameDuration, setGameDuration] = useState<number | undefined>(undefined);
+  const [gameOver, setGameOver] = useState(false);
+  const [finalScores, setFinalScores] = useState<FinalScores>({});
+  const [winnerScreenshot, setWinnerScreenshot] = useState<string>("");
 
   // Preload fonts on app initialization
   useEffect(() => {
@@ -36,6 +43,33 @@ function App() {
     ? createTerrainFromServer(serverTerrainConfig)
     : createTerrain();
 
+  const handleReturnToLogin = () => {
+    // Reset all game state
+    setMyUser(null);
+    setUsers(new Map());
+    setPaths(new Map());
+    setNPCGroups(new NPCGroupsBiMap());
+    setServerTerrainConfig(null);
+    setGameStartTime(undefined);
+    setGameDuration(undefined);
+    setGameOver(false);
+    setFinalScores({});
+    setWinnerScreenshot("");
+  };
+
+  // Show game over screen if game has ended
+  if (gameOver && myUser) {
+    return (
+      <GameOverScreen
+        finalScores={finalScores}
+        users={users}
+        onReturnToLogin={handleReturnToLogin}
+        winnerScreenshot={winnerScreenshot}
+        currentUserId={myUser.id}
+      />
+    );
+  }
+
   if (!myUser) {
     return (
       <GuestLogin
@@ -44,6 +78,8 @@ function App() {
         setPaths={setPaths}
         setNPCGroups={setNPCGroups}
         setTerrainConfig={setServerTerrainConfig}
+        setGameStartTime={setGameStartTime}
+        setGameDuration={setGameDuration}
       />
     );
   }
@@ -58,27 +94,21 @@ function App() {
         setPaths={setPaths}
         setNpcGroups={setNPCGroups}
         terrain={terrain}
+        onScreenshotCapture={setWinnerScreenshot}
+        onGameOver={(finalScores) => {
+          setFinalScores(finalScores);
+          setGameOver(true);
+        }}
       />
 
-      {/* Fixed overlay */}
-      <div
-        style={{
-          position: "absolute",
-          top: 20,
-          right: 20,
-          color: "white",
-          textShadow: "2px 2px black",
-          zIndex: 1000,
-          pointerEvents: "none",
-        }}
-      >
-        <div style={{ fontSize: "24px", marginBottom: "10px" }}>
-          {myUser.animal}
-        </div>
-        <div style={{ fontSize: "16px", maxWidth: "300px" }}>
-          {ANIMAL_FACTS[myUser.animal]}
-        </div>
-      </div>
+      {/* Leaderboard */}
+      <Leaderboard 
+        users={users} 
+        myUserId={myUser.id} 
+        npcGroups={npcGroups}
+        gameStartTime={gameStartTime}
+        gameDuration={gameDuration}
+      />
     </div>
   );
 }
