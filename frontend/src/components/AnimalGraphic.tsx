@@ -372,6 +372,7 @@ export default function AnimalGraphic({
   user,
   myUserId,
   setAnimalDimensions,
+  animalDimensions,
   terrainBoundaries: _terrainBoundaries,
 }: {
   user: UserInfo;
@@ -380,6 +381,7 @@ export default function AnimalGraphic({
     animal: string,
     dimensions: { width: number; height: number }
   ) => void;
+  animalDimensions?: { [animal: string]: { width: number; height: number } };
   terrainBoundaries?: TerrainBoundaries;
 }) {
   // Calculate captured NPC count (always show if > 0)
@@ -401,7 +403,80 @@ export default function AnimalGraphic({
     };
   };
   
+  // Calculate the highest point of the animal considering rotation and dimensions
+  const calculateHighestPoint = () => {
+    const dimensions = animalDimensions?.[user.animal as Animal];
+    if (!dimensions) {
+      return 3.0; // Fallback distance if dimensions not available
+    }
+
+    const { width, height } = dimensions;
+    
+    // Get the current direction to calculate rotation
+    const direction = user.direction;
+    let rotation = Math.atan2(direction.y, direction.x);
+    
+    // Apply initial animal orientation
+    const orientation = ANIMAL_ORIENTATION[user.animal as Animal] || { rotation: 0, flipY: false };
+    rotation += orientation.rotation;
+    
+    // Calculate the four corners of the animal's bounding box
+    const halfWidth = width / 2;
+    const halfHeight = height / 2;
+    
+    // Account for potential Y-axis flipping
+    const effectiveHeight = orientation.flipY ? height : height;
+    const effectiveHalfHeight = effectiveHeight / 2;
+    
+    const corners = [
+      { x: -halfWidth, y: -effectiveHalfHeight },
+      { x: halfWidth, y: -effectiveHalfHeight },
+      { x: halfWidth, y: effectiveHalfHeight },
+      { x: -halfWidth, y: effectiveHalfHeight }
+    ];
+    
+    // If the animal is flipped horizontally (direction.x < 0), we might also have Y-flipping
+    const isFlippedHorizontally = direction.x < 0;
+    
+    // Rotate each corner and find the highest Y coordinate
+    let maxY = -Infinity;
+    corners.forEach(corner => {
+      let { x, y } = corner;
+      
+      // Apply Y-flip if the animal is facing left and has flipY behavior
+      if (isFlippedHorizontally && orientation.flipY) {
+        y = -y;
+      }
+      
+      // Apply rotation
+      const rotatedX = x * Math.cos(rotation) - y * Math.sin(rotation);
+      const rotatedY = x * Math.sin(rotation) + y * Math.cos(rotation);
+      maxY = Math.max(maxY, rotatedY);
+    });
+    
+    // Add padding above the highest point
+    return maxY + 1.5;
+  };
+
+  // Get text info for nickname
+  const getNicknameTextInfo = () => {
+    const baseColor = new THREE.Color('#FFFFFF'); // White for nickname
+    const outlineColor = getAnimalBorderColor(user); // Player's color for outline
+    
+    // Calculate position based on the actual highest point of the rotated animal
+    const yOffset = calculateHighestPoint();
+    
+    return {
+      text: user.nickname,
+      position: [0, yOffset, 0] as [number, number, number], // Position above the highest point
+      fontSize: 1.8, // Slightly smaller font
+      color: baseColor,
+      outlineColor: outlineColor
+    };
+  };
+  
   const capturedTextInfo = getCapturedTextInfo(capturedCount);
+  const nicknameTextInfo = getNicknameTextInfo();
   // Create position ref as Vector3
   const isLocalPlayer = myUserId === user.id;
   const positionRef = useRef(
@@ -438,6 +513,25 @@ export default function AnimalGraphic({
         setAnimalDimensions={setAnimalDimensions}
         terrainBoundaries={_terrainBoundaries}
       />
+      {/* Nickname */}
+      {nicknameTextInfo && (
+        <Text
+          position={[
+            user.position.x + nicknameTextInfo.position[0],
+            user.position.y + nicknameTextInfo.position[1],
+            nicknameTextInfo.position[2]
+          ]}
+          fontSize={nicknameTextInfo.fontSize}
+          color={nicknameTextInfo.color}
+          anchorX="center"
+          anchorY="middle"
+          font="https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxM.woff"
+          outlineWidth={0.2}
+          outlineColor={nicknameTextInfo.outlineColor}
+        >
+          {nicknameTextInfo.text}
+        </Text>
+      )}
       {/* Captured NPCs count */}
       {capturedTextInfo && (
         <Text
@@ -451,6 +545,7 @@ export default function AnimalGraphic({
           anchorX="center"
           anchorY="middle"
           font="https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxM.woff"
+          characters="0123456789"
           outlineWidth={0.15}
           outlineColor={capturedTextInfo.outlineColor}
         >

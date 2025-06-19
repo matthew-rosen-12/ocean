@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   pathData,
   UserInfo,
-  NPCGroup,
   NPCGroupsBiMap,
   npcGroupId,
   userId,
@@ -15,6 +14,7 @@ import {
   createTerrainFromServer,
   ServerTerrainConfig,
 } from "./utils/terrain";
+import { preloadFonts } from "./utils/font-preloader";
 
 function App() {
   const [myUser, setMyUser] = useState<UserInfo | null>(null);
@@ -25,6 +25,11 @@ function App() {
   );
   const [serverTerrainConfig, setServerTerrainConfig] =
     useState<ServerTerrainConfig | null>(null);
+
+  // Preload fonts on app initialization
+  useEffect(() => {
+    preloadFonts();
+  }, []);
 
   // Generate terrain configuration
   const terrain = serverTerrainConfig

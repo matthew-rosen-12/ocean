@@ -31,6 +31,7 @@ router.post("/", async (req, res) => {
         phase: NPCPhase.IDLE,
         captorId: guestId 
       }),
+      nickname: "", // Placeholder, will be set by frontend
     };
 
     // Generate token (base64 encoded user info)

@@ -801,6 +801,7 @@ export default function Scene({
           user={user}
           myUserId={myUser.id}
           setAnimalDimensions={setAnimalDimensionsCallback}
+          animalDimensions={animalDimensions}
         />
       ))}
 

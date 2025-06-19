@@ -36,6 +36,7 @@ router.post("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
                 phase: types_1.NPCPhase.IDLE,
                 captorId: guestId
             }),
+            nickname: "", // Placeholder, will be set by frontend
         };
         // Generate token (base64 encoded user info)
         const token = Buffer.from(JSON.stringify(guestUser)).toString("base64");

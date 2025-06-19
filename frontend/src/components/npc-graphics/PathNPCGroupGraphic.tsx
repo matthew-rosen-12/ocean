@@ -297,6 +297,7 @@ const PathNPCGroupGraphic: React.FC<PathNPCGroupGraphicProps> = ({
             anchorX="center"
             anchorY="middle"
             font="https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxM.woff"
+            characters="0123456789"
             outlineWidth={0.1}
             outlineColor="white"
           >

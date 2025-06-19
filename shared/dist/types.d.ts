@@ -23,6 +23,7 @@ export interface UserInfo {
     position: Position;
     direction: Direction;
     npcGroup: NPCGroup;
+    nickname: string;
 }
 export declare enum NPCPhase {
     IDLE = "IDLE",

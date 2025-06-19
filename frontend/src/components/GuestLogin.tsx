@@ -1,5 +1,6 @@
 // nature_v_npc/app/components/GuestLogin.tsx
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { uniqueNamesGenerator, adjectives, animals, colors } from 'unique-names-generator';
 import {
   NPCGroup,
   pathData,
@@ -35,6 +36,84 @@ export default function GuestLogin({
   setTerrainConfig,
 }: Props) {
   const [loading, setLoading] = useState(false);
+  const [nickname, setNickname] = useState("");
+  const [suggestedNickname, setSuggestedNickname] = useState("");
+  const [userHasTyped, setUserHasTyped] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Generate random nickname suggestion
+  useEffect(() => {
+    const generateNickname = () => {
+      return uniqueNamesGenerator({
+        dictionaries: [adjectives, colors, animals],
+        separator: '',
+        style: 'capital',
+        length: 2
+      });
+    };
+    
+    const suggestion = generateNickname();
+    setSuggestedNickname(suggestion);
+    setNickname(suggestion);
+  }, []);
+
+  // Set cursor to beginning whenever we're in suggestion mode
+  useEffect(() => {
+    if (!userHasTyped && inputRef.current && nickname === suggestedNickname) {
+      inputRef.current.setSelectionRange(0, 0);
+    }
+  }, [userHasTyped, nickname, suggestedNickname]);
+
+  const handleNicknameFocus = () => {
+    if (!userHasTyped && inputRef.current) {
+      // Ensure cursor is at beginning when focusing on suggestion
+      inputRef.current.setSelectionRange(0, 0);
+    }
+  };
+
+  const handleNicknameClick = () => {
+    if (!userHasTyped && inputRef.current) {
+      // Ensure cursor is at beginning when clicking on suggestion
+      inputRef.current.setSelectionRange(0, 0);
+    }
+  };
+
+  const handleNicknameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Handle Enter key to submit
+    if (e.key === 'Enter') {
+      handleGuestLogin();
+      return;
+    }
+    
+    // Prevent backspace/delete from clearing suggestion when we're already in suggestion mode
+    if (!userHasTyped && (e.key === 'Backspace' || e.key === 'Delete')) {
+      e.preventDefault(); // Prevent the backspace from doing anything
+      return;
+    }
+    
+    if (!userHasTyped && e.key !== 'Tab' && e.key !== 'Shift' && e.key !== 'Control' && e.key !== 'Alt' && e.key !== 'Meta') {
+      // User is starting to type a character - clear suggestion, character will be added by onChange
+      setNickname("");
+      setUserHasTyped(true);
+    }
+  };
+
+  const handleNicknameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    
+    if (value === "" && userHasTyped) {
+      // User deleted everything, go back to suggestion
+      setNickname(suggestedNickname);
+      setUserHasTyped(false);
+      // Cursor positioning will be handled by the useEffect
+    } else if (userHasTyped || value !== suggestedNickname) {
+      // User is typing or has typed something
+      setNickname(value);
+      if (!userHasTyped) {
+        setUserHasTyped(true);
+      }
+    }
+  };
 
   const handleGuestLogin = async () => {
     setLoading(true);
@@ -226,9 +305,20 @@ export default function GuestLogin({
         });
       });
 
-      // Set initial user state
-      setMyUser(user);
-      setUsers(new Map([[user.id, user]]));
+      // Set initial user state with nickname (ensure it's never empty)
+      // If user hasn't typed or the current nickname is the suggestion, use suggestion
+      // Otherwise use what the user typed
+      const finalNickname = (() => {
+        const trimmedNickname = nickname.trim();
+        if (!trimmedNickname || (!userHasTyped && nickname === suggestedNickname)) {
+          return suggestedNickname;
+        }
+        return trimmedNickname;
+      })();
+      
+      const userWithNickname = { ...user, nickname: finalNickname };
+      setMyUser(userWithNickname);
+      setUsers(new Map([[user.id, userWithNickname]]));
     } catch {
       // Login failed
     } finally {
@@ -242,6 +332,26 @@ export default function GuestLogin({
         <h1 className="text-2xl font-bold mb-4 text-center text-black">
           Welcome to Dolphin and Wolf
         </h1>
+        <div className="mb-4">
+          <label htmlFor="nickname" className="block text-sm font-medium text-gray-700 mb-2">
+            Nickname
+          </label>
+          <input
+            ref={inputRef}
+            id="nickname"
+            type="text"
+            value={nickname}
+            onChange={handleNicknameChange}
+            onKeyDown={handleNicknameKeyDown}
+            onFocus={handleNicknameFocus}
+            onClick={handleNicknameClick}
+            placeholder=""
+            className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white placeholder-gray-500 ${
+              !userHasTyped ? 'text-gray-400' : 'text-gray-900'
+            }`}
+            maxLength={20}
+          />
+        </div>
         <button
           onClick={handleGuestLogin}
           disabled={loading}

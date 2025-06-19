@@ -27,6 +27,7 @@ export interface UserInfo {
   position: Position;
   direction: Direction;
   npcGroup: NPCGroup;
+  nickname: string;
 }
 
 export enum NPCPhase {

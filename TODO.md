@@ -1,7 +1,12 @@
-- fix slow text rendering on second capture (need to preload text)
-- add game timer
 - add leaderboard
-- clean up frontend
+    - allow user to choose a nickname on guest login
+    - display nickname on top of NPC
+    - create leaderboard of all users based on captured npc group size
+- add game timer
+    - add a start time per room
+    - display winner at end of room
+    - send back to login (remember previous nickname)
+- clean up frontend code
 - test with non local players
 - add more animal graphics
 - add more npcs

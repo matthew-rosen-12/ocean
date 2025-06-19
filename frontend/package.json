@@ -30,6 +30,7 @@
     "superjson": "^2.2.2",
     "three": "0.168.0",
     "typescript": "^5.3.3",
+    "unique-names-generator": "^4.7.1",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
