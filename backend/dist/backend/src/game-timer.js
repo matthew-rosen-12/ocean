@@ -22,7 +22,7 @@ const game_data_cleaner_1 = require("./game-data-cleaner");
 const typed_socket_1 = require("./typed-socket");
 // Map of room names to their game timers
 const gameTimers = new Map();
-exports.GAME_DURATION = 3 * 1000; // 5 minutes in milliseconds
+exports.GAME_DURATION = 3 * 60 * 1000; // 5 minutes in milliseconds
 function startGameTimer(roomName) {
     // Don't start a new timer if one already exists for this room
     if (gameTimers.has(roomName)) {

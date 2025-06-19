@@ -130,6 +130,10 @@ export class NPCGroupsBiMap {
 
   setByUserId(userId: userId, npcGroup: NPCGroup) {
     // Only set in map1 if it's a CAPTURED group
+    if (npcGroup.fileNames.length == 0) {
+      this.deleteByUserId(userId);
+      return;
+    }
     if (npcGroup.phase === NPCPhase.CAPTURED) {
       this.map1.set(userId, npcGroup);
     }
@@ -137,6 +141,10 @@ export class NPCGroupsBiMap {
   }
 
   setByNpcGroupId(npcGroupId: npcGroupId, npcGroup: NPCGroup) {
+    if (npcGroup.fileNames.length == 0) {
+      this.deleteByNpcGroupId(npcGroupId);
+      return;
+    }
     this.map2.set(npcGroupId, npcGroup);
     if (npcGroup.captorId && npcGroup.phase === NPCPhase.CAPTURED) {
 

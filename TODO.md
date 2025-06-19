@@ -1,11 +1,5 @@
-- add game timer
-    - add a start time per room
-    - display winner at end of room
-    - send back to login (remember previous nickname)
-
-- npcs should flee from thrown npcs too
 - clean up frontend code
-- test with non local players
+- test /fix with non local players
 - add more animal graphics
 - add more npcs
 - create robot players

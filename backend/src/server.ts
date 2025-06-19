@@ -14,7 +14,7 @@ import { getNPCGroupsfromMemory, removeNPCGroupInRoomInMemory, setNPCGroupsInMem
 import { setPathsInMemory } from "./state/paths";
 import { updateNPCGroupInRoom } from "./npc-group-service";
 import { TypedSocket } from "./typed-socket";
-import { startGameTimer, stopGameTimer, cleanupGameTimer, getGameStartTime, GAME_DURATION } from "./game-timer";
+import { startGameTimer, cleanupGameTimer, getGameStartTime, GAME_DURATION } from "./game-timer";
 
 // Initialize game ticker
 getGameTicker();

@@ -15,6 +15,10 @@ const npc_groups_1 = require("./state/npc-groups");
 const typed_socket_1 = require("./typed-socket");
 function updateNPCGroupInRoom(roomName, npcGroup) {
     (0, npc_groups_1.updateNPCGroupInRoomInMemory)(roomName, npcGroup);
+    // Only log for captured groups (collision emissions)
+    if (npcGroup.phase === "CAPTURED") {
+        console.log("🟩 SERVER: Broadcasting captured group update", npcGroup.id, "size:", npcGroup.fileNames.length);
+    }
     (0, typed_socket_1.emitToRoom)(roomName, "npc-group-update", { npcGroup });
 }
 function setPathCompleteInRoom(room, npcGroup) {

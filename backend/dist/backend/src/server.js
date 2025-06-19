@@ -180,6 +180,10 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
             try {
                 const room = typedSocket.data.room;
                 if (room) {
+                    // Only log for captured groups (collision emissions)
+                    if (npcGroup.phase === "CAPTURED") {
+                        console.log("🟦 SERVER: Received captured group update", npcGroup.id, "size:", npcGroup.fileNames.length);
+                    }
                     (0, npc_group_service_1.updateNPCGroupInRoom)(room, npcGroup);
                 }
             }

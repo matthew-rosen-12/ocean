@@ -295,6 +295,7 @@ export default function GuestLogin({
             newNpcGroups.setByNpcGroupId(npcGroupId, updatedGroup);
           } else if (npcGroup?.captorId) {
             // Remove the group entirely if it would be empty
+            console.log("pop it")
             newNpcGroups.deleteByUserId(npcGroup.captorId);
           }
           return newNpcGroups;

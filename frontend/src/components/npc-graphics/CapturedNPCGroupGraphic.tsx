@@ -18,8 +18,7 @@ import {
   calculateNPCGroupPosition,
 } from "../../utils/npc-group-utils";
 import { getAnimalColor } from "../../utils/animal-colors";
-import { socket } from "../../socket";
-import { serialize } from "../../utils/typed-socket";
+import { typedSocket } from "../../socket";
 import { v4 as uuidv4 } from "uuid";
 // Constants for positioning
 
@@ -198,22 +197,13 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     });
 
     // Send reflection to server
-    const currentSocket = socket();
-    if (currentSocket) {
-      currentSocket.emit(
-        "path-npc",
-        serialize({ pathData: reflectionPathData }),
-        (response: { success: boolean }) => {
-          if (!response.success) {
-            // NPC reflection failed
-          }
-        }
-      );
+    const currentTypedSocket = typedSocket();
+    if (currentTypedSocket) {
+      currentTypedSocket.emit("path-npc-group", { pathData: reflectionPathData });
     }
 
 
-      const groupPosition = calculateTargetPosition();
-             // split npc group into 2 groups - one with no captor Id and just the face npc, and the other with the captor id and the rest of the filenames
+      // split npc group into 2 groups - one with no captor Id and just the face npc, and the other with the captor id and the rest of the filenames
        const faceFileName = group.faceFileName;
        if (!faceFileName) return;
        
@@ -224,7 +214,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
          captorId: undefined,
          phase: NPCPhase.PATH,
          direction: normalizedDirection,
-         position: groupPosition,
+         position: group.position,
        });
 
        const restOfNPCs = group.fileNames.filter((fileName) => fileName !== faceFileName);
@@ -258,16 +248,10 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
           newNpcGroups.setByNpcGroupId(restOfNPCsGroup.id, restOfNPCsGroup);
           return newNpcGroups;
         });
-
-        currentSocket.emit(
-          "path-npc",
-          serialize({ pathData: emissionPathData }),
-          (response: { success: boolean }) => {
-            if (!response.success) {
-              // NPC emission failed
-            }
-          }
-        );
+        currentTypedSocket.emit("path-npc-group", { pathData: emissionPathData });
+        
+        // Always send the update - server will handle deletion if empty
+        currentTypedSocket.emit("update-npc-group", { npcGroup: restOfNPCsGroup });
     }
   };
 
@@ -391,14 +375,12 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     }
     // only check for collision for local npc group
     if (isLocalUser) {
-             Array.from(allPaths.entries()).forEach(([npcId, pathData]) => {
+             Array.from(allPaths.entries()).forEach(([_npcId, pathData]) => {
          if (
            pathData.pathPhase === PathPhase.THROWN &&
            pathData.npcGroup.captorId !== group.captorId
          ) {
-           const pathNPC = npcGroups.getByNpcGroupId(npcId)!;
-
-           checkForPathNPCCollision(pathNPC, pathData);
+           checkForPathNPCCollision(pathData.npcGroup, pathData);
          }
        });
     }
@@ -452,6 +434,7 @@ export default React.memo(CapturedNPCGroupGraphic, (prevProps, nextProps) => {
   // Compare group properties
   const captorIdSame = prevProps.group.captorId === nextProps.group.captorId;
   const sizeSame = prevProps.group.fileNames.length === nextProps.group.fileNames.length;
+  
   const prevNpcIds = Array.from(prevProps.group.fileNames).sort();
   const nextNpcIds = Array.from(nextProps.group.fileNames).sort();
   const npcIdsSame = prevNpcIds.every((id, index) => id === nextNpcIds[index]);
