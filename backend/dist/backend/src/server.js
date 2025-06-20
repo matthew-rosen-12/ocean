@@ -26,9 +26,10 @@ const terrain_1 = require("./initialization/terrain");
 const paths_1 = require("./state/paths");
 const npc_groups_1 = require("./state/npc-groups");
 const paths_2 = require("./state/paths");
-const npc_group_service_1 = require("./npc-group-service");
+const npc_group_service_1 = require("./services/npc-group-service");
 const typed_socket_1 = require("./typed-socket");
 const game_timer_1 = require("./game-timer");
+const path_service_1 = require("./services/path-service");
 // Initialize game ticker
 (0, game_ticker_1.getGameTicker)();
 const app = (0, express_1.default)();
@@ -128,7 +129,7 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
             typedSocket.broadcast(name, "user-joined", { user });
         }));
         // Handle path-npc request
-        typedSocket.on("path-npc-group", (_a) => __awaiter(void 0, [_a], void 0, function* ({ pathData }) {
+        typedSocket.on("update-path", (_a) => __awaiter(void 0, [_a], void 0, function* ({ pathData }) {
             try {
                 // Get the NPC group from memory using the ID
                 const npcGroups = (0, npc_groups_1.getNPCGroupsfromMemory)(pathData.room);
@@ -153,15 +154,16 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
                 console.error("Error pathing NPC:", error);
             }
         }));
-        typedSocket.on("update-npc-group", (_a) => __awaiter(void 0, [_a], void 0, function* ({ npcGroup }) {
-            try {
-                const room = typedSocket.data.room;
-                if (room) {
-                    (0, npc_group_service_1.updateNPCGroupInRoom)(room, npcGroup);
-                }
+        typedSocket.on("delete-path", (_a) => __awaiter(void 0, [_a], void 0, function* ({ pathData }) {
+            const room = typedSocket.data.room;
+            if (room) {
+                (0, path_service_1.deletePathInRoom)(room, pathData);
             }
-            catch (error) {
-                console.error("Error updating NPC group:", error);
+        }));
+        typedSocket.on("update-npc-group", (_a) => __awaiter(void 0, [_a], void 0, function* ({ npcGroup }) {
+            const room = typedSocket.data.room;
+            if (room) {
+                (0, npc_group_service_1.updateNPCGroupInRoom)(room, npcGroup);
             }
         }));
         // Handle user position updates

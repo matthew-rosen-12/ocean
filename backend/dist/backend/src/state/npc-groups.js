@@ -26,11 +26,6 @@ function removeNPCGroupInRoomInMemory(roomName, captorId) {
 }
 function updateNPCGroupInRoomInMemory(roomName, npcGroup) {
     const roomGroups = npcGroups.get(roomName) || new types_1.NPCGroupsBiMap();
-    if (npcGroup.fileNames.length == 0) {
-        roomGroups.deleteByNpcGroupId(npcGroup.id);
-    }
-    else {
-        roomGroups.setByNpcGroupId(npcGroup.id, npcGroup);
-    }
+    roomGroups.setByNpcGroupId(npcGroup.id, npcGroup);
     npcGroups.set(roomName, roomGroups);
 }

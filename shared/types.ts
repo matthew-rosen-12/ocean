@@ -100,10 +100,9 @@ export class NPCGroupsBiMap {
     if (existing) {
       // Check if existing is a proper NPCGroupsBiMap instance
       if (existing instanceof NPCGroupsBiMap && typeof existing.values === 'function') {
-        // Copy all entries from existing maps using the public methods
-        existing.values().forEach(npcGroup => {
-          this.setByNpcGroupId(npcGroup.id, npcGroup);
-        });
+        // OPTIMIZED: Direct map copying for performance
+        this.map1 = new Map(existing.map1);
+        this.map2 = new Map(existing.map2);
       } else if (existing && typeof existing === 'object') {
         // Handle case where existing is a plain object (from deserialization)
         const existingAny = existing as any;

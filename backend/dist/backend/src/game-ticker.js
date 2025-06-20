@@ -11,7 +11,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getGameTicker = getGameTicker;
 const types_1 = require("shared/types");
-const npc_group_service_1 = require("./npc-group-service");
+const npc_group_service_1 = require("./services/npc-group-service");
 const rooms_1 = require("./state/rooms");
 const paths_1 = require("./state/paths");
 const npc_groups_1 = require("./state/npc-groups");

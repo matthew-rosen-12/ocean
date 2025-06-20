@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.findRoomInMemory = exports.decrementRoomUsersInMemory = void 0;
 exports.getAllRoomsfromMemory = getAllRoomsfromMemory;
-const npc_group_service_1 = require("../npc-group-service");
+const npc_group_service_1 = require("../services/npc-group-service");
 const uuid_1 = require("uuid");
 const types_1 = require("shared/types");
 const npc_groups_1 = require("./npc-groups");

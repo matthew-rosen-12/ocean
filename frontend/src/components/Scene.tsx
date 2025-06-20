@@ -493,28 +493,32 @@ export default function Scene({
     throttledBroadcast();
   }, [position, direction, myUser, throttledBroadcast, users]);
 
-  // Expose NPC groups for debugging in browser developer tools
-  useEffect(() => {
-    const debugObject = {
-      npcGroups: npcGroups,
-      // all npc group id and their captor id
-      getAllIdsAndCaptorIds: () => Array.from(npcGroups.keys()).map(id => ({ 
-        id: id.slice(0, 8), 
-        captorId: npcGroups.getByNpcGroupId(id)?.captorId?.slice(0, 8) 
-      })),
-      getAllIds: () => Array.from(npcGroups.keys()),
-      getByUserId: (userId: string) => npcGroups.getByUserId(userId),
-      getByNpcGroupId: (npcGroupId: string) => npcGroups.getByNpcGroupId(npcGroupId),
-      getAllNPCGroups: () => Array.from(npcGroups.values()),
-      paths: paths,
-      getAllPathIds: () => Array.from(paths.keys()),
-      myUserId: myUser.id,
-      users: users,
-    };
+  // Expose NPC groups for debugging in browser developer tools (throttled for performance)
+  // useEffect(() => {
+  //   const timer = setTimeout(() => {
+  //     const debugObject = {
+  //       npcGroups: npcGroups,
+  //       // all npc group id and their captor id
+  //       getAllIdsAndCaptorIds: () => Array.from(npcGroups.keys()).map(id => ({ 
+  //         id: id.slice(0, 8), 
+  //         captorId: npcGroups.getByNpcGroupId(id)?.captorId?.slice(0, 8) 
+  //       })),
+  //       getAllIds: () => Array.from(npcGroups.keys()),
+  //       getByUserId: (userId: string) => npcGroups.getByUserId(userId),
+  //       getByNpcGroupId: (npcGroupId: string) => npcGroups.getByNpcGroupId(npcGroupId),
+  //       getAllNPCGroups: () => Array.from(npcGroups.values()),
+  //       paths: paths,
+  //       getAllPathIds: () => Array.from(paths.keys()),
+  //       myUserId: myUser.id,
+  //       users: users,
+  //     };
+      
+  //     // Type assertion to avoid TypeScript warnings
+  //     (window as typeof window & { debugNPCGroups: typeof debugObject }).debugNPCGroups = debugObject;
+  //   }, 100); // Throttle to every 100ms
     
-    // Type assertion to avoid TypeScript warnings
-    (window as typeof window & { debugNPCGroups: typeof debugObject }).debugNPCGroups = debugObject;
-  }, [npcGroups, paths, myUser.id, users]);
+  //   return () => clearTimeout(timer);
+  // }, [npcGroups, paths, myUser.id, users]);
 
   const handleNPCGroupCollision = useCallback(
     (capturedNPCGroup: NPCGroup, localUser: boolean) => {
@@ -530,7 +534,11 @@ export default function Scene({
       });
 
 
-      let userNpcGroup = npcGroups.getByUserId(myUser.id);
+      setNpcGroups((prev) => {
+        const newNpcGroups = new NPCGroupsBiMap(prev);
+        
+        // 1. get user's existing captured npc group from the CURRENT state (not stale closure)
+        let userNpcGroup = newNpcGroups.getByUserId(myUser.id);
         let existingFileNames: string[] = [];
         let groupId: string;
         
@@ -541,7 +549,6 @@ export default function Scene({
         } else {
           // First capture for this user - create new ID
           groupId = uuidv4();
-          console.log("groupId", groupId);
         }
 
         // 2. create new merged npc group with existing NPCs + newly captured NPC
@@ -553,30 +560,24 @@ export default function Scene({
           captorId: myUser.id, // Set the captorId
           direction: { x: 0, y: 0 },
         });
-
-
-      setNpcGroups((prev) => {
-        const newNpcGroups = new NPCGroupsBiMap(prev);
-        
-        // 1. get user's existing captured npc group from the CURRENT state (not stale closure)
         
         // Remove the original captured NPC group
         newNpcGroups.deleteByNpcGroupId(capturedNPCGroup.id);
         // Add the updated merged group
         newNpcGroups.setByNpcGroupId(updatedNpcGroup.id, updatedNpcGroup);
 
-        // Emit socket events inside the state update to use the correct updatedNpcGroup
+        // Emit socket events after state update
+        if (localUser) {
+          const currentTypedSocket = typedSocket();
+          // Delete the captured NPC group and add the updated merged group
+          currentTypedSocket.emit("update-npc-group", { npcGroup: new NPCGroup({ ...capturedNPCGroup, fileNames: [] }) }); // Mark as deleted
+          currentTypedSocket.emit("update-npc-group", { npcGroup: updatedNpcGroup });
+        }
 
         return newNpcGroups;
       });
-      if (localUser) {
-        const currentTypedSocket = typedSocket();
-        // Delete the captured NPC group and add the updated merged group
-        currentTypedSocket.emit("update-npc-group", { npcGroup: new NPCGroup({ ...capturedNPCGroup, fileNames: [] }) }); // Mark as deleted
-        currentTypedSocket.emit("update-npc-group", { npcGroup: updatedNpcGroup });
-      }
     },
-    [myUser.id, myUser.position, setNpcGroups, setPaths]
+    []
   );
 
   // Function to check for collisions with NPCs
@@ -640,7 +641,7 @@ export default function Scene({
     updateChargeCount();
     
     // Continue updating while charging
-    const interval = setInterval(updateChargeCount, 50); // Update every 50ms for smooth animation
+    const interval = setInterval(updateChargeCount, 100); // Update every 100ms (was 50ms)
     
     return () => clearInterval(interval);
   }, [spaceStartTime, npcGroups, myUser.id]);
