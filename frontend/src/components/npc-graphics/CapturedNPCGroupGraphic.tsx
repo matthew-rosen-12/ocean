@@ -187,7 +187,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
       pathDuration: 1200, // Reflection duration
       velocity:pathData.velocity, // Fast reflection speed
       timestamp: Date.now(),
-      pathPhase: PathPhase.BOUNCING,
+      pathPhase: PathPhase.THROWN,
     };
 
     setPaths((prev: Map<string, pathData>) => {
@@ -242,7 +242,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
           pathDuration: 1500, // Longer emission duration
           velocity: 5, // Very fast emission speed
           timestamp: Date.now(),
-          pathPhase: PathPhase.BOUNCING,
+          pathPhase: PathPhase.FLEEING,
         };
         setPaths((prev: Map<string, pathData>) => {
           const newPaths = new Map(prev);

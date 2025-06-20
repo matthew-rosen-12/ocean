@@ -37,27 +37,9 @@ export function setPathCompleteInRoom(room: string, npcGroup: NPCGroup) {
       return;
     }
 
-    // Check if this is a fleeing path - calculate landing position and return to IDLE
-    if (pathDataForNPC.pathPhase === PathPhase.FLEEING) {
-      // Calculate where the NPC should land at the end of the fleeing path
-      const landingPosition = calculateLandingPosition(pathDataForNPC);
-      
-      // Set NPC back to IDLE phase at the landing position
-      const updatedNPCGroup = new NPCGroup({
-        ...npcGroup,
-        position: landingPosition,
-        phase: NPCPhase.IDLE,
-      });
-      updateNPCGroupInRoom(room, updatedNPCGroup);
-      
-      // Remove this path from active paths
-      deletePathInMemory(room, npcGroup.id);
-      
-      return;
-    }
 
     // Check if this is a bouncing path that should transition to returning
-    if (pathDataForNPC.pathPhase === PathPhase.BOUNCING && npcGroup.captorId) {
+    if (pathDataForNPC.pathPhase === PathPhase.THROWN && npcGroup.captorId) {
       // Create a returning path back to the thrower
       const returningPathData: pathData = {
         id: uuidv4(),
@@ -78,14 +60,14 @@ export function setPathCompleteInRoom(room: string, npcGroup: NPCGroup) {
 
       // Broadcast the new returning path
       emitToRoom(room, "path-update", { pathData: returningPathData });
-    } else {
+    } else if (pathDataForNPC.pathPhase === PathPhase.FLEEING) {
       // Normal path completion - go to IDLE
       let landingPosition;
       
       // Only apply collision avoidance for emitted NPCs (bouncing NPCs that came from collisions)
       // These are NPCs without captorId that are in bouncing/path phase
       // Thrown NPCs (with captorId) should land normally and trigger capture/merge logic
-      if (!npcGroup.captorId && pathDataForNPC.pathPhase === PathPhase.BOUNCING) {
+      if (pathDataForNPC.pathPhase === PathPhase.FLEEING) {
         const collisionResult = calculateLandingPositionWithCollisionAvoidance(
           pathDataForNPC,
           room,
@@ -476,7 +458,7 @@ function handleNPCBounce(
     pathDuration: 1000, // Short bounce duration
     velocity: 15, // Medium bounce speed
     timestamp: Date.now(),
-    pathPhase: PathPhase.BOUNCING,
+    pathPhase: PathPhase.THROWN,
   };
 
   // Update the path in memory
