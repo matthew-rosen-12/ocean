@@ -268,47 +268,12 @@ export default function GuestLogin({
       });
 
 
-      typedSocket.on("npc-group-captured", ({ capturedNPCGroupId, updatedNpcGroup }) => {
-        setNPCGroups((prev) => {
-          const newNpcGroups = new NPCGroupsBiMap(prev);
-          
-          // Check if the captor already has a captured group and remove it to avoid duplicates
-          if (updatedNpcGroup.captorId) {
-            const existingCapturedGroup = newNpcGroups.getByUserId(updatedNpcGroup.captorId);
-            if (existingCapturedGroup && existingCapturedGroup.id !== updatedNpcGroup.id) {
-              // Remove the old captured group to prevent duplicates
-              newNpcGroups.deleteByNpcGroupId(existingCapturedGroup.id);
-            }
-          }
-          
-          newNpcGroups.deleteByNpcGroupId(capturedNPCGroupId);
-          newNpcGroups.setByNpcGroupId(updatedNpcGroup.id, updatedNpcGroup);
-          return newNpcGroups;
-        });
+
+      typedSocket.on("path-deleted", ({ pathData }: { pathData: pathData }) => {
         setPaths((prev) => {
           const newPaths = new Map(prev);
-          newPaths.delete(capturedNPCGroupId);
+          newPaths.delete(pathData.npcGroupId);
           return newPaths;
-        });
-      });
-
-      typedSocket.on("npc-group-pop", ({ npcGroupId }: { npcGroupId: npcGroupId }) => {
-        setNPCGroups((prev) => {
-          const newNpcGroups = new NPCGroupsBiMap(prev);
-          const npcGroup = newNpcGroups.getByNpcGroupId(npcGroupId);
-          if (npcGroup && npcGroup.fileNames.length > 1) {
-            const updatedGroup = {
-              ...npcGroup,
-              fileNames: npcGroup.fileNames.slice(0, -1),  // Remove last element (pop)
-              faceFileName: npcGroup.fileNames[npcGroup.fileNames.length - 2] // New face is second-to-last
-            };
-            newNpcGroups.setByNpcGroupId(npcGroupId, updatedGroup);
-          } else if (npcGroup?.captorId) {
-            // Remove the group entirely if it would be empty
-            console.log("pop it")
-            newNpcGroups.deleteByUserId(npcGroup.captorId);
-          }
-          return newNpcGroups;
         });
       });
 
@@ -332,19 +297,6 @@ export default function GuestLogin({
           const newpaths = new Map(prev);
           newpaths.delete(npcGroup.id);
           return newpaths;
-        });
-      });
-
-      typedSocket.on("path-absorbed", ({ pathData }: { pathData: pathData }) => {
-        setPaths((prev) => {
-          const newPaths = new Map(prev);
-          newPaths.delete(pathData.npcGroupId);
-          return newPaths;
-        });
-        setNPCGroups((prev) => {
-          const newNpcGroups = new NPCGroupsBiMap(prev);
-          newNpcGroups.deleteByNpcGroupId(pathData.npcGroupId);
-          return newNpcGroups;
         });
       });
 

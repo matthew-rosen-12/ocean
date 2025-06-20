@@ -1,6 +1,6 @@
 import { pathData, NPCGroup, NPCPhase, PathPhase, roomId, npcGroupId } from "shared/types";
 
-import { getInitialPosition, getInitialDirection } from "./initialization/npc-info";
+import { getInitialPosition, getInitialDirection } from "../initialization/npc-info";
 import { v4 as uuidv4 } from "uuid";
 
 const NUM_NPCS = 4;
@@ -11,12 +11,12 @@ import {
   deletePathInMemory,
   getpathsfromMemory,
   setPathsInMemory,
-} from "./state/paths";
+} from "../state/paths";
 
-import { getNPCGroupsfromMemory, updateNPCGroupInRoomInMemory } from "./state/npc-groups";
+import { getNPCGroupsfromMemory, updateNPCGroupInRoomInMemory } from "../state/npc-groups";
 
-import { emitToRoom } from "./typed-socket";
-import { getAllUsersInRoom } from "./state/users";
+import { emitToRoom } from "../typed-socket";
+import { getAllUsersInRoom } from "../state/users";
 import { ANIMAL_SCALES } from "shared/types";
 
 export function updateNPCGroupInRoom(
@@ -27,12 +27,8 @@ export function updateNPCGroupInRoom(
    emitToRoom(roomName, "npc-group-update", { npcGroup });
 }
 
-
 export function setPathCompleteInRoom(room: string, npcGroup: NPCGroup) {
-  try {
-    // Get room-specific terrain configuration
 
-    // Get the path data for this NPC
     const paths =  getpathsfromMemory(room);
     const pathDataForNPC = paths.get(npcGroup.id);
 
@@ -132,13 +128,6 @@ export function setPathCompleteInRoom(room: string, npcGroup: NPCGroup) {
         emitToRoom(room, "path-complete", { npcGroup: updatedNPCGroup });
       }
     }
-
-  } catch (error) {
-    console.error(
-      `Error setting path complete for NPC ${npcGroup.id} in room ${room}:`,
-      error
-    );
-  }
 }
 
 function calculateLandingPositionWithCollisionAvoidance(

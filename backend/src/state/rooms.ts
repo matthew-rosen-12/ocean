@@ -1,4 +1,4 @@
-import { createNPCGroups } from "../npc-group-service";
+import { createNPCGroups } from "../services/npc-group-service";
 import { v4 as uuidv4 } from "uuid";
 import { NPCGroupsBiMap, roomId } from "shared/types";
 import { setNPCGroupsInMemory } from "./npc-groups";

@@ -236,61 +236,55 @@ function checkAndHandleNPCCollisions(room) {
         const allPaths = Array.from((0, paths_1.getpathsfromMemory)(room).values());
         const allNPCGroups = (0, npc_groups_1.getNPCGroupsfromMemory)(room);
         // Check collision between thrown PATH NPCs and idle NPCs
-        for (let i = 0; i < allPaths.length; i++) {
-            const pathData = allPaths[i];
-            if (pathData.pathPhase !== types_1.PathPhase.THROWN) {
-                continue;
-            }
-            const pathPosition = calculatePathPosition(pathData, Date.now());
-            // Get the NPC group for this path
-            const pathNPCGroup = allNPCGroups.getByNpcGroupId(pathData.npcGroupId);
+        const thrownPaths = allPaths.filter(path => path.pathPhase === types_1.PathPhase.THROWN);
+        const idleNPCGroups = Array.from(allNPCGroups.values()).filter(npcGroup => npcGroup.phase === types_1.NPCPhase.IDLE);
+        for (const thrownPath of thrownPaths) {
+            const pathPosition = calculatePathPosition(thrownPath, Date.now());
+            const pathNPCGroup = allNPCGroups.getByNpcGroupId(thrownPath.npcGroupId);
             if (!pathNPCGroup)
                 continue;
-            // Check collision with idle NPCs
-            const idleNPCGroups = Array.from(allNPCGroups.values()).filter((npcGroup) => npcGroup.phase === types_1.NPCPhase.IDLE && npcGroup.id !== pathData.npcGroupId);
+            // Check collision with idle NPC
             for (const idleNPCGroup of idleNPCGroups) {
                 const collided = detectCollision(pathPosition, Object.assign(Object.assign({}, idleNPCGroup.position), { z: 0 }), NPC_WIDTH, NPC_HEIGHT, NPC_WIDTH, NPC_HEIGHT);
                 if (collided) {
-                    console.log(`Path NPC ${pathData.npcGroupId} collided with idle NPC ${idleNPCGroup.id}`);
-                    handlePathNPCMerge(room, pathData, pathNPCGroup, idleNPCGroup, pathPosition);
+                    console.log(`Path NPC ${thrownPath.npcGroupId} collided with idle NPC ${idleNPCGroup.id}`);
+                    handlePathNPCMerge(room, thrownPath, pathNPCGroup, idleNPCGroup, pathPosition);
                     return;
                 }
             }
         }
         // Check collision between path NPCs
-        for (let i = 0; i < allPaths.length; i++) {
-            const currentPathData = allPaths[i];
-            if (currentPathData.pathPhase !== types_1.PathPhase.THROWN) {
-                continue;
-            }
-            const currentPosition = calculatePathPosition(currentPathData, Date.now());
-            for (let j = i + 1; j < allPaths.length; j++) {
-                const otherPathData = allPaths[j];
-                // Get the NPC groups for both paths
-                const currentPathNPCGroup = allNPCGroups.getByNpcGroupId(currentPathData.npcGroupId);
-                const otherPathNPCGroup = allNPCGroups.getByNpcGroupId(otherPathData.npcGroupId);
-                if (!currentPathNPCGroup || !otherPathNPCGroup)
+        for (const thrownPath of thrownPaths) {
+            const thrownPathPosition = calculatePathPosition(thrownPath, Date.now());
+            for (const otherPath of allPaths) {
+                if (otherPath.id === thrownPath.id) {
                     continue;
-                if (otherPathNPCGroup.captorId !== currentPathNPCGroup.captorId // Ignore same captor
+                }
+                // Get the NPC groups for both paths
+                const thrownPathNPCGroup = allNPCGroups.getByNpcGroupId(thrownPath.npcGroupId);
+                const otherPathNPCGroup = allNPCGroups.getByNpcGroupId(otherPath.npcGroupId);
+                if (!thrownPathNPCGroup || !otherPathNPCGroup)
+                    continue;
+                if (otherPathNPCGroup.captorId !== thrownPathNPCGroup.captorId // Ignore same captor
                 ) {
-                    const otherPosition = calculatePathPosition(otherPathData, Date.now());
-                    const collided = detectCollision(currentPosition, otherPosition, NPC_WIDTH, NPC_HEIGHT, NPC_WIDTH, NPC_HEIGHT);
+                    const otherPathPosition = calculatePathPosition(otherPath, Date.now());
+                    const collided = detectCollision(thrownPathPosition, otherPathPosition, NPC_WIDTH, NPC_HEIGHT, NPC_WIDTH, NPC_HEIGHT);
                     if (collided) {
                         console.log("Path NPC collision detected");
-                        const currentSize = currentPathNPCGroup.fileNames.length;
-                        const otherSize = otherPathNPCGroup.fileNames.length;
-                        if (currentSize === otherSize && otherPathData.pathPhase === types_1.PathPhase.THROWN) {
+                        const thrownPathSize = thrownPathNPCGroup.fileNames.length;
+                        const otherPathSize = otherPathNPCGroup.fileNames.length;
+                        if (thrownPathSize === otherPathSize && otherPath.pathPhase === types_1.PathPhase.THROWN) {
                             // Same size: bounce as before
-                            handleNPCBounce(room, currentPathData, currentPosition, otherPosition);
-                            handleNPCBounce(room, otherPathData, otherPosition, currentPosition);
+                            handleNPCBounce(room, thrownPath, thrownPathPosition, otherPathPosition);
+                            handleNPCBounce(room, otherPath, otherPathPosition, thrownPathPosition);
                         }
                         else {
                             // Different sizes: merge into bigger group
-                            if (currentSize >= otherSize) {
-                                handlePathNPCMerge(room, currentPathData, currentPathNPCGroup, otherPathNPCGroup, currentPosition);
+                            if (thrownPathSize >= otherPathSize) {
+                                handlePathNPCMerge(room, thrownPath, thrownPathNPCGroup, otherPathNPCGroup, thrownPathPosition);
                             }
                             else {
-                                handlePathNPCMerge(room, otherPathData, otherPathNPCGroup, currentPathNPCGroup, otherPosition);
+                                handlePathNPCMerge(room, otherPath, otherPathNPCGroup, thrownPathNPCGroup, otherPathPosition);
                             }
                         }
                         return;
@@ -515,7 +509,6 @@ function makeNPCGroupFlee(room, npcGroup, npcPosition, users, allPaths) {
         }
         // Broadcast the flee path to all clients
         (0, typed_socket_1.emitToRoom)(room, "path-update", { pathData: newPathData });
-        console.log(`NPC ${npcGroup.id} started fleeing in room ${room}`);
     }
     catch (error) {
         console.error("Error in makeNPCGroupFlee:", error);

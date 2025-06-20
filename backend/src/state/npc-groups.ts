@@ -1,4 +1,4 @@
-import { NPCGroup, roomId, userId, NPCGroupsBiMap, NPCPhase } from "shared/types";
+import { NPCGroup, roomId, userId, NPCGroupsBiMap } from "shared/types";
 
 const npcGroups: Map<roomId, NPCGroupsBiMap> = new Map();
 
@@ -38,11 +38,8 @@ export function getNPCGroupsfromMemory(
 
   export function updateNPCGroupInRoomInMemory(roomName: roomId, npcGroup: NPCGroup): void {
     const roomGroups = npcGroups.get(roomName) || new NPCGroupsBiMap();
-    if (npcGroup.fileNames.length == 0) {
-      roomGroups.deleteByNpcGroupId(npcGroup.id);
-    }
-    else {
-      roomGroups.setByNpcGroupId(npcGroup.id, npcGroup);
-    }
+
+    roomGroups.setByNpcGroupId(npcGroup.id, npcGroup);
+    
     npcGroups.set(roomName, roomGroups);
   }

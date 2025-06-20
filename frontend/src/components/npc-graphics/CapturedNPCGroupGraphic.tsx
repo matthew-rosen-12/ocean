@@ -199,7 +199,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     // Send reflection to server
     const currentTypedSocket = typedSocket();
     if (currentTypedSocket) {
-      currentTypedSocket.emit("path-npc-group", { pathData: reflectionPathData });
+      currentTypedSocket.emit("update-path", { pathData: reflectionPathData });
     }
 
 
@@ -257,7 +257,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
         });
         currentTypedSocket.emit("update-npc-group", { npcGroup: restOfNPCsGroup });
         currentTypedSocket.emit("update-npc-group", { npcGroup: emittedNPCGroup });
-        currentTypedSocket.emit("path-npc-group", { pathData: emissionPathData });
+        currentTypedSocket.emit("update-path", { pathData: emissionPathData });
         
         // Always send the update - server will handle deletion if empty
     }

@@ -129,18 +129,13 @@ async function pathNPCGroup(
     const currentTypedSocket = typedSocket();
     currentTypedSocket.emit("update-npc-group", { npcGroup: captorNPCGroup });
     currentTypedSocket.emit("update-npc-group", { npcGroup: pathNPCGroup });
-    currentTypedSocket.emit("path-npc-group", { pathData: newpathData });
+    currentTypedSocket.emit("update-path", { pathData: newpathData });
     // Always send the update - server will handle deletion if empty
 
     setPaths(updatedpaths);
     setNpcGroups((prev) => {
       const newNpcGroups = new NPCGroupsBiMap(prev);
-      if (captorNPCGroup.fileNames.length == 0) {
-        newNpcGroups.deleteByNpcGroupId(captorNPCGroup.id);
-      }
-      else {
-        newNpcGroups.setByNpcGroupId(captorNPCGroup.id, captorNPCGroup);
-      }
+      newNpcGroups.setByNpcGroupId(captorNPCGroup.id, captorNPCGroup);
       newNpcGroups.setByNpcGroupId(pathNPCGroup.id, pathNPCGroup);
       return newNpcGroups;
     });
@@ -524,17 +519,18 @@ export default function Scene({
   const handleNPCGroupCollision = useCallback(
     (capturedNPCGroup: NPCGroup, localUser: boolean) => {
       // Prevent duplicate processing of the same NPC
+      if (localUser && paths.get(capturedNPCGroup.id)) {
+        const currentTypedSocket = typedSocket();
+        currentTypedSocket.emit("delete-path", { pathData: paths.get(capturedNPCGroup.id)! });
+      }
       setPaths((prev: Map<npcGroupId, pathData>) => {
         const newPaths = new Map(prev);
         newPaths.delete(capturedNPCGroup.id); // remove the path data for the captured NPC
         return newPaths as Map<npcGroupId, pathData>;
       });
 
-      setNpcGroups((prev) => {
-        const newNpcGroups = new NPCGroupsBiMap(prev);
-        
-        // 1. get user's existing captured npc group from the CURRENT state (not stale closure)
-        let userNpcGroup = newNpcGroups.getByUserId(myUser.id);
+
+      let userNpcGroup = npcGroups.getByUserId(myUser.id);
         let existingFileNames: string[] = [];
         let groupId: string;
         
@@ -542,10 +538,10 @@ export default function Scene({
         if (userNpcGroup) {
           existingFileNames = userNpcGroup.fileNames;
           groupId = userNpcGroup.id; // Keep the existing group ID
-
         } else {
           // First capture for this user - create new ID
           groupId = uuidv4();
+          console.log("groupId", groupId);
         }
 
         // 2. create new merged npc group with existing NPCs + newly captured NPC
@@ -558,25 +554,29 @@ export default function Scene({
           direction: { x: 0, y: 0 },
         });
 
+
+      setNpcGroups((prev) => {
+        const newNpcGroups = new NPCGroupsBiMap(prev);
+        
+        // 1. get user's existing captured npc group from the CURRENT state (not stale closure)
+        
         // Remove the original captured NPC group
         newNpcGroups.deleteByNpcGroupId(capturedNPCGroup.id);
         // Add the updated merged group
         newNpcGroups.setByNpcGroupId(updatedNpcGroup.id, updatedNpcGroup);
 
-        // Emit socket event inside the state update to use the correct updatedNpcGroup
-        if (localUser) {
-          const currentTypedSocket = typedSocket();
-          currentTypedSocket.emit("capture-npc-group", {
-            capturedNPCGroupId: capturedNPCGroup.id,
-            room: myUser.room,
-            updatedNpcGroup: updatedNpcGroup,
-          });
-        }
+        // Emit socket events inside the state update to use the correct updatedNpcGroup
 
         return newNpcGroups;
       });
+      if (localUser) {
+        const currentTypedSocket = typedSocket();
+        // Delete the captured NPC group and add the updated merged group
+        currentTypedSocket.emit("update-npc-group", { npcGroup: new NPCGroup({ ...capturedNPCGroup, fileNames: [] }) }); // Mark as deleted
+        currentTypedSocket.emit("update-npc-group", { npcGroup: updatedNpcGroup });
+      }
     },
-    [myUser.id, myUser.room, myUser.position, setNpcGroups, setPaths]
+    [myUser.id, myUser.position, setNpcGroups, setPaths]
   );
 
   // Function to check for collisions with NPCs
@@ -588,7 +588,6 @@ export default function Scene({
 
       // Use animal width as base for thresholds
       const CAPTURE_THRESHOLD = animalWidth * 0.5; // Slightly larger than animal width for capture
-      const FLEE_THRESHOLD = animalWidth * 5.0; // Much larger range for flee behavior
 
       const userPos = new THREE.Vector3(
         myUser.position.x,
@@ -609,9 +608,6 @@ export default function Scene({
           // Capturing NPC
           handleNPCGroupCollision(npcGroup, isLocalUser);
           return true;
-        } else if (distance < FLEE_THRESHOLD) {
-          // Fleeing is now handled server-side when user positions are updated
-          // No client-side action needed
         }
       }
       return false

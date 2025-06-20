@@ -12,9 +12,10 @@ import { generateRoomTerrain } from "./initialization/terrain";
 import { getpathsfromMemory } from "./state/paths";
 import { getNPCGroupsfromMemory, removeNPCGroupInRoomInMemory, setNPCGroupsInMemory } from "./state/npc-groups";
 import { setPathsInMemory } from "./state/paths";
-import { updateNPCGroupInRoom, checkAndHandleNPCFleeing } from "./npc-group-service";
+import { updateNPCGroupInRoom, checkAndHandleNPCFleeing } from "./services/npc-group-service";
 import { TypedSocket } from "./typed-socket";
 import { startGameTimer, cleanupGameTimer, getGameStartTime, GAME_DURATION } from "./game-timer";
+import { deletePathInRoom } from "./services/path-service";
 
 // Initialize game ticker
 getGameTicker();
@@ -137,40 +138,9 @@ io.on("connection", async (socket) => {
       typedSocket.broadcast(name, "user-joined", { user });
     });
 
-    // Handle capture-npc request
-    typedSocket.on("capture-npc-group", async ({ capturedNPCGroupId, room, updatedNpcGroup }) => {
-      try {
-        const npcGroups =  getNPCGroupsfromMemory(room);
-        const capturedNPCGroup = npcGroups.getByNpcGroupId(capturedNPCGroupId);
-
-        if (!capturedNPCGroup) {
-          console.warn(`NPC group ${capturedNPCGroupId} not found in room ${room}`);
-          return;
-        }
-
-        // Clean up path if NPC was in PATH phase
-          const paths =  getpathsfromMemory(room);
-          paths.delete(capturedNPCGroupId);
-           setPathsInMemory(room, paths);
-      
-
-        // Remove the original NPC from the idle/path groups
-        npcGroups.deleteByNpcGroupId(capturedNPCGroupId);
-        npcGroups.setByNpcGroupId(updatedNpcGroup.id, updatedNpcGroup);
-        setNPCGroupsInMemory(room, npcGroups);
-
-        console.log("SERVER BROADCAST - Sending to clients:", updatedNpcGroup.id.slice(0,8));
-          typedSocket.broadcast(room, "npc-group-captured", {
-            capturedNPCGroupId,
-            updatedNpcGroup,
-        });
-      } catch (error) {
-        console.error("Error capturing NPC:", error);
-      }
-    });
 
     // Handle path-npc request
-    typedSocket.on("path-npc-group", async ({ pathData }) => {
+    typedSocket.on("update-path", async ({ pathData }) => {
       try {        
         // Get the NPC group from memory using the ID
         const npcGroups = getNPCGroupsfromMemory(pathData.room);
@@ -199,14 +169,17 @@ io.on("connection", async (socket) => {
       }
     });
 
-    typedSocket.on("update-npc-group", async ({ npcGroup }) => {
-      try {
+    typedSocket.on("delete-path", async ({ pathData }) => {
         const room = typedSocket.data.room;
         if (room) {
-          updateNPCGroupInRoom(room, npcGroup);
+          deletePathInRoom(room, pathData);
         }
-      } catch (error) {
-        console.error("Error updating NPC group:", error);
+      });
+
+    typedSocket.on("update-npc-group", async ({ npcGroup }) => {
+      const room = typedSocket.data.room;
+      if (room) {
+        updateNPCGroupInRoom(room, npcGroup);
       }
     });
 

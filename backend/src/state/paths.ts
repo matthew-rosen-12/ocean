@@ -7,7 +7,7 @@ export function getpathsfromMemory(room: string): Map<npcGroupId, pathData> {
    return paths.get(room);
 }
 
-export  function setPathsInMemory(
+export function setPathsInMemory(
   roomName: roomId,
   newPaths: Map<npcGroupId, pathData>
 ): void {
@@ -17,10 +17,10 @@ export  function setPathsInMemory(
 
 // Direct Path operations - no read-modify-set needed
 
-export async function deletePathInMemory(
+export  function deletePathInMemory(
   roomName: string,
   npcGroupId: npcGroupId
-): Promise<void> {
+): void{
     const roomPaths = paths.get(roomName);
     if (roomPaths) {
       roomPaths.delete(npcGroupId);

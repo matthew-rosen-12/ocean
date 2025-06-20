@@ -127,47 +127,9 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
             // Broadcast to room that user joined
             typedSocket.broadcast(name, "user-joined", { user });
         }));
-        // Handle capture-npc request
-        typedSocket.on("capture-npc-group", (_a) => __awaiter(void 0, [_a], void 0, function* ({ capturedNPCGroupId, room, updatedNpcGroup }) {
-            try {
-                const npcGroups = (0, npc_groups_1.getNPCGroupsfromMemory)(room);
-                const capturedNPCGroup = npcGroups.getByNpcGroupId(capturedNPCGroupId);
-                if (!capturedNPCGroup) {
-                    console.warn(`NPC group ${capturedNPCGroupId} not found in room ${room}`);
-                    return;
-                }
-                // Clean up path if NPC was in PATH phase
-                if (capturedNPCGroup.phase === types_1.NPCPhase.PATH) {
-                    const paths = (0, paths_1.getpathsfromMemory)(room);
-                    paths.delete(capturedNPCGroupId);
-                    (0, paths_2.setPathsInMemory)(room, paths);
-                }
-                // Check if the captor already has a captured group and remove it to avoid duplicates
-                if (updatedNpcGroup.captorId) {
-                    const existingCapturedGroup = npcGroups.getByUserId(updatedNpcGroup.captorId);
-                    if (existingCapturedGroup && existingCapturedGroup.id !== updatedNpcGroup.id) {
-                        // Remove the old captured group to prevent duplicates
-                        npcGroups.deleteByNpcGroupId(existingCapturedGroup.id);
-                    }
-                }
-                // Remove the original NPC from the idle/path groups
-                npcGroups.deleteByNpcGroupId(capturedNPCGroupId);
-                npcGroups.setByNpcGroupId(updatedNpcGroup.id, updatedNpcGroup);
-                (0, npc_groups_1.setNPCGroupsInMemory)(room, npcGroups);
-                console.log("SERVER BROADCAST - Sending to clients:", updatedNpcGroup.id.slice(0, 8));
-                typedSocket.broadcast(room, "npc-group-captured", {
-                    capturedNPCGroupId,
-                    updatedNpcGroup,
-                });
-            }
-            catch (error) {
-                console.error("Error capturing NPC:", error);
-            }
-        }));
         // Handle path-npc request
         typedSocket.on("path-npc-group", (_a) => __awaiter(void 0, [_a], void 0, function* ({ pathData }) {
             try {
-                console.log(`Server received path for NPC ${pathData.npcGroupId.slice(0, 8)} with phase: ${pathData.pathPhase}`);
                 // Get the NPC group from memory using the ID
                 const npcGroups = (0, npc_groups_1.getNPCGroupsfromMemory)(pathData.room);
                 const pathNPCGroup = npcGroups.getByNpcGroupId(pathData.npcGroupId);

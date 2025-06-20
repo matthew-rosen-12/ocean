@@ -1,5 +1,5 @@
 import { pathData, PathPhase, NPCPhase } from "shared/types";
-import { checkAndHandleNPCCollisions, setPathCompleteInRoom } from "./npc-group-service";
+import { checkAndHandleNPCCollisions, setPathCompleteInRoom } from "./services/npc-group-service";
 
 
 import { getAllRoomsfromMemory } from "./state/rooms";

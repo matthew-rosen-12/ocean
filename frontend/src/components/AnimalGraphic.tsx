@@ -403,7 +403,6 @@ export default function AnimalGraphic({
     
     // Calculate the four corners of the animal's bounding box
     const halfWidth = width / 2;
-    const halfHeight = height / 2;
     
     // Account for potential Y-axis flipping
     const effectiveHeight = orientation.flipY ? height : height;
@@ -430,7 +429,6 @@ export default function AnimalGraphic({
       }
       
       // Apply rotation
-      const rotatedX = x * Math.cos(rotation) - y * Math.sin(rotation);
       const rotatedY = x * Math.sin(rotation) + y * Math.cos(rotation);
       maxY = Math.max(maxY, rotatedY);
     });

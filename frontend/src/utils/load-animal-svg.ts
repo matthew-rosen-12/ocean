@@ -33,22 +33,15 @@ export function createEdgeGeometry(
 
   if (outlineLineGeometry) {
     // Use the provided LineGeometry directly
-    console.log(
-      `[EDGE GEOMETRY] Using provided LineGeometry for edge creation`
-    );
     lineSegmentsGeometry = outlineLineGeometry;
   } else if (fallbackGeometry) {
     // Fallback to EdgesGeometry
-    console.log(
-      `[EDGE GEOMETRY] No LineGeometry provided, using EdgesGeometry fallback`
-    );
     const edgeGeometry = new THREE.EdgesGeometry(fallbackGeometry);
     const positions = new Float32Array(edgeGeometry.attributes.position.array);
 
     lineSegmentsGeometry = new LineGeometry();
     lineSegmentsGeometry.setPositions(positions);
   } else {
-    console.error(`[EDGE GEOMETRY] No geometry provided for edge creation`);
     // Create empty LineGeometry as last resort
     lineSegmentsGeometry = new LineGeometry();
     lineSegmentsGeometry.setPositions(new Float32Array([]));
@@ -356,10 +349,6 @@ export function loadAnimalSVG(
     loader.load(
       `/public/animals/${animal}.svg`,
       async (data) => {
-        console.log(
-          `[SVG LOADER] Successfully loaded SVG for ${animal}:`,
-          data
-        );
 
         try {
           // Validate that we have paths with data
@@ -470,18 +459,10 @@ export function loadAnimalSVG(
           // Create texture from SVG
           let texture: THREE.Texture;
           try {
-            console.log(
-              `[SVG LOADER] Creating high-res texture for ${animal}, dimensions: ${textureWidth}x${textureHeight} (scale factor: ${textureScaleFactor.toFixed(
-                2
-              )})`
-            );
             texture = await createSVGTexture(
               svgElement,
               textureWidth,
               textureHeight
-            );
-            console.log(
-              `[SVG LOADER] Successfully created texture for ${animal}`
             );
           } catch (textureError) {
             console.warn(
@@ -499,10 +480,6 @@ export function loadAnimalSVG(
           // Create outline geometry - always try to use the actual SVG shape
           const { geometry, outlineShape } =
             createGeometryFromOutlinePath(data);
-
-          console.log(
-            `[SVG LOADER] Successfully created geometry for ${animal}`
-          );
 
           // Set up UV coordinates BEFORE centering the geometry
           // This ensures UV mapping corresponds to the original geometry layout
@@ -537,10 +514,6 @@ export function loadAnimalSVG(
               -centerOffset.y,
               -centerOffset.z
             );
-            console.log(
-              `[SVG LOADER] Centered geometry for ${animal}, was at:`,
-              centerOffset.toArray()
-            );
           }
 
           // Create LineGeometry from outline shape AFTER centering, applying the same offset
@@ -568,16 +541,9 @@ export function loadAnimalSVG(
 
             outlineLineGeometry = new LineGeometry();
             outlineLineGeometry.setPositions(new Float32Array(linePositions));
-            console.log(
-              `[SVG LOADER] Created centered LineGeometry with ${points.length} outline segments`
-            );
           }
 
           group.add(mesh);
-
-          console.log(
-            `[SVG LOADER] Successfully created mesh for ${animal}, added to group`
-          );
 
           // Log detailed geometry information
           const _bbox = new THREE.Box3().setFromObject(group);
@@ -616,15 +582,6 @@ export function loadAnimalSVG(
             width: scaledSize.x,
             height: scaledSize.y,
           });
-          console.log(
-            `[SVG LOADER] Final dimensions for ${animal}: width=${scaledSize.x.toFixed(
-              2
-            )}, height=${scaledSize.y.toFixed(
-              2
-            )} (after orientation: rotation=${orientation.rotation}, flipY=${
-              orientation.flipY
-            })`
-          );
 
           // Store the initial scale AFTER applying orientation flips
           initialScale.current = group.scale.clone();
