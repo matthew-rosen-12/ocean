@@ -1,9 +1,8 @@
 import React, { useMemo, useEffect, useRef } from "react";
-import { UserInfo, Animal } from "shared/types";
+import { UserInfo, Animal, ANIMAL_SCALES } from "shared/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { Text } from "@react-three/drei";
-import { ANIMAL_SCALES } from "../constants";
 import { smoothMove } from "../utils/movement";
 import { useMount } from "../hooks/use-npc-group-base";
 import {
@@ -384,24 +383,6 @@ export default function AnimalGraphic({
   animalDimensions?: { [animal: string]: { width: number; height: number } };
   terrainBoundaries?: TerrainBoundaries;
 }) {
-  // Calculate captured NPC count (always show if > 0)
-  const capturedCount = user.npcGroup?.fileNames?.length || 0;
-  
-  // Get text info for captured NPCs (golden)
-  const getCapturedTextInfo = (count: number) => {
-    if (count <= 0) return null;
-    
-    const baseColor = new THREE.Color('#FFD700'); // Golden for captured NPCs
-    const outlineColor = getAnimalBorderColor(user); // Player's color for outline
-    
-    return {
-      count,
-      position: [0, -4.5, 0] as [number, number, number], // Position in front of player
-      fontSize: 2.8,
-      color: baseColor,
-      outlineColor: outlineColor
-    };
-  };
   
   // Calculate the highest point of the animal considering rotation and dimensions
   const calculateHighestPoint = () => {
@@ -475,7 +456,6 @@ export default function AnimalGraphic({
     };
   };
   
-  const capturedTextInfo = getCapturedTextInfo(capturedCount);
   const nicknameTextInfo = getNicknameTextInfo();
   // Create position ref as Vector3
   const isLocalPlayer = myUserId === user.id;
@@ -533,25 +513,6 @@ export default function AnimalGraphic({
         </Text>
       )}
       {/* Captured NPCs count */}
-      {capturedTextInfo && (
-        <Text
-          position={[
-            user.position.x + capturedTextInfo.position[0],
-            user.position.y + capturedTextInfo.position[1],
-            capturedTextInfo.position[2]
-          ]}
-          fontSize={capturedTextInfo.fontSize}
-          color={capturedTextInfo.color}
-          anchorX="center"
-          anchorY="middle"
-          font="https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxM.woff"
-          characters="0123456789"
-          outlineWidth={0.15}
-          outlineColor={capturedTextInfo.outlineColor}
-        >
-          {capturedTextInfo.count}
-        </Text>
-      )}
     </>
   );
 }

@@ -1,5 +1,5 @@
 import express from "express";
-import { UserInfo, NPCGroup, NPCPhase } from "shared/types";
+import { UserInfo } from "shared/types";
 import {
   generateGuestId,
   getRandomAnimal,
@@ -23,14 +23,6 @@ router.post("/", async (req, res) => {
       room: room,
       position: getInitialPosition(),
       direction: getInitialDirection(),
-      npcGroup: new NPCGroup({ 
-        id: guestId,
-        fileNames: [],
-        position: getInitialPosition(),
-        direction: getInitialDirection(),
-        phase: NPCPhase.IDLE,
-        captorId: guestId 
-      }),
       nickname: "", // Placeholder, will be set by frontend
     };
 

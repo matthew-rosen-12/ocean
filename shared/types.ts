@@ -1,5 +1,12 @@
 export type Animal = "DOLPHIN" | "WOLF";
 
+export const ANIMAL_SCALES = {
+  DOLPHIN: 3.0,
+  WOLF: 1.0,
+};
+
+export const DIRECTION_OFFSET = 0.1;
+
 // Path phases for different types of movement
 export enum PathPhase {
   THROWN = "THROWN", // NPCs thrown by players
@@ -11,7 +18,7 @@ export enum PathPhase {
 export interface pathData {
   id: string;
   room: string;
-  npcGroup: NPCGroup;
+  npcGroupId: npcGroupId;
   startPosition: Position;
   direction: Direction;
   velocity: number;
@@ -26,7 +33,6 @@ export interface UserInfo {
   room: string;
   position: Position;
   direction: Direction;
-  npcGroup: NPCGroup;
   nickname: string;
 }
 
@@ -173,6 +179,7 @@ export class NPCGroupsBiMap {
   }
 
   values(): NPCGroup[] { return Array.from(this.map2.values()); }
+  keys(): npcGroupId[] { return Array.from(this.map2.keys()); }
   
   getByUserId(userId: userId): NPCGroup | undefined { return this.map1.get(userId); }
   getByNpcGroupId(npcGroupId: npcGroupId): NPCGroup | undefined { return this.map2.get(npcGroupId); }

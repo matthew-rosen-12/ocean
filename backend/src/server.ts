@@ -12,7 +12,7 @@ import { generateRoomTerrain } from "./initialization/terrain";
 import { getpathsfromMemory } from "./state/paths";
 import { getNPCGroupsfromMemory, removeNPCGroupInRoomInMemory, setNPCGroupsInMemory } from "./state/npc-groups";
 import { setPathsInMemory } from "./state/paths";
-import { updateNPCGroupInRoom } from "./npc-group-service";
+import { updateNPCGroupInRoom, checkAndHandleNPCFleeing } from "./npc-group-service";
 import { TypedSocket } from "./typed-socket";
 import { startGameTimer, cleanupGameTimer, getGameStartTime, GAME_DURATION } from "./game-timer";
 
@@ -149,17 +149,17 @@ io.on("connection", async (socket) => {
         }
 
         // Clean up path if NPC was in PATH phase
-        if (capturedNPCGroup.phase === NPCPhase.PATH) {
           const paths =  getpathsfromMemory(room);
           paths.delete(capturedNPCGroupId);
            setPathsInMemory(room, paths);
-        }
+      
 
         // Remove the original NPC from the idle/path groups
         npcGroups.deleteByNpcGroupId(capturedNPCGroupId);
         npcGroups.setByNpcGroupId(updatedNpcGroup.id, updatedNpcGroup);
         setNPCGroupsInMemory(room, npcGroups);
 
+        console.log("SERVER BROADCAST - Sending to clients:", updatedNpcGroup.id.slice(0,8));
           typedSocket.broadcast(room, "npc-group-captured", {
             capturedNPCGroupId,
             updatedNpcGroup,
@@ -171,17 +171,23 @@ io.on("connection", async (socket) => {
 
     // Handle path-npc request
     typedSocket.on("path-npc-group", async ({ pathData }) => {
-      try {
-        const pathNPCGroup = pathData.npcGroup;
+      try {        
+        // Get the NPC group from memory using the ID
+        const npcGroups = getNPCGroupsfromMemory(pathData.room);
+        const pathNPCGroup = npcGroups.getByNpcGroupId(pathData.npcGroupId);
 
-        updateNPCGroupInRoom(pathData.room, pathNPCGroup);
+        if (pathNPCGroup) {
+          updateNPCGroupInRoom(pathData.room, pathNPCGroup);
+        }
+        
         const activepaths = getpathsfromMemory(pathData.room);
         // if pathData already exists, update it
-        const existingPath = activepaths.get(pathData.npcGroup.id);
+        const existingPath = activepaths.get(pathData.npcGroupId);
         if (existingPath) {
-          activepaths.delete(pathData.npcGroup.id);
+          console.log(`Replacing existing path for ${pathData.npcGroupId.slice(0,8)}: ${existingPath.pathPhase} -> ${pathData.pathPhase}`);
+          activepaths.delete(pathData.npcGroupId);
         }
-        activepaths.set(pathData.npcGroup.id, pathData);
+        activepaths.set(pathData.npcGroupId, pathData);
         setPathsInMemory(pathData.room, activepaths);
 
 
@@ -212,6 +218,8 @@ io.on("connection", async (socket) => {
         if (room) {
           // Update user in server memory
           updateUserInRoom(room, user);
+          // Check for NPC fleeing behavior when any user moves
+          checkAndHandleNPCFleeing(room, user.id);
           // Broadcast update to other users
           typedSocket.broadcast(room, "user-updated", { user });
         }

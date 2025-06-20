@@ -142,10 +142,19 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
                     paths.delete(capturedNPCGroupId);
                     (0, paths_2.setPathsInMemory)(room, paths);
                 }
+                // Check if the captor already has a captured group and remove it to avoid duplicates
+                if (updatedNpcGroup.captorId) {
+                    const existingCapturedGroup = npcGroups.getByUserId(updatedNpcGroup.captorId);
+                    if (existingCapturedGroup && existingCapturedGroup.id !== updatedNpcGroup.id) {
+                        // Remove the old captured group to prevent duplicates
+                        npcGroups.deleteByNpcGroupId(existingCapturedGroup.id);
+                    }
+                }
                 // Remove the original NPC from the idle/path groups
                 npcGroups.deleteByNpcGroupId(capturedNPCGroupId);
                 npcGroups.setByNpcGroupId(updatedNpcGroup.id, updatedNpcGroup);
                 (0, npc_groups_1.setNPCGroupsInMemory)(room, npcGroups);
+                console.log("SERVER BROADCAST - Sending to clients:", updatedNpcGroup.id.slice(0, 8));
                 typedSocket.broadcast(room, "npc-group-captured", {
                     capturedNPCGroupId,
                     updatedNpcGroup,
@@ -158,15 +167,21 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
         // Handle path-npc request
         typedSocket.on("path-npc-group", (_a) => __awaiter(void 0, [_a], void 0, function* ({ pathData }) {
             try {
-                const pathNPCGroup = pathData.npcGroup;
-                (0, npc_group_service_1.updateNPCGroupInRoom)(pathData.room, pathNPCGroup);
+                console.log(`Server received path for NPC ${pathData.npcGroupId.slice(0, 8)} with phase: ${pathData.pathPhase}`);
+                // Get the NPC group from memory using the ID
+                const npcGroups = (0, npc_groups_1.getNPCGroupsfromMemory)(pathData.room);
+                const pathNPCGroup = npcGroups.getByNpcGroupId(pathData.npcGroupId);
+                if (pathNPCGroup) {
+                    (0, npc_group_service_1.updateNPCGroupInRoom)(pathData.room, pathNPCGroup);
+                }
                 const activepaths = (0, paths_1.getpathsfromMemory)(pathData.room);
                 // if pathData already exists, update it
-                const existingPath = activepaths.get(pathData.npcGroup.id);
+                const existingPath = activepaths.get(pathData.npcGroupId);
                 if (existingPath) {
-                    activepaths.delete(pathData.npcGroup.id);
+                    console.log(`Replacing existing path for ${pathData.npcGroupId.slice(0, 8)}: ${existingPath.pathPhase} -> ${pathData.pathPhase}`);
+                    activepaths.delete(pathData.npcGroupId);
                 }
-                activepaths.set(pathData.npcGroup.id, pathData);
+                activepaths.set(pathData.npcGroupId, pathData);
                 (0, paths_2.setPathsInMemory)(pathData.room, activepaths);
                 typedSocket.broadcast(pathData.room, "path-update", {
                     pathData,
@@ -180,10 +195,6 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
             try {
                 const room = typedSocket.data.room;
                 if (room) {
-                    // Only log for captured groups (collision emissions)
-                    if (npcGroup.phase === "CAPTURED") {
-                        console.log("🟦 SERVER: Received captured group update", npcGroup.id, "size:", npcGroup.fileNames.length);
-                    }
                     (0, npc_group_service_1.updateNPCGroupInRoom)(room, npcGroup);
                 }
             }
@@ -199,6 +210,8 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
                 if (room) {
                     // Update user in server memory
                     (0, users_1.updateUserInRoom)(room, user);
+                    // Check for NPC fleeing behavior when any user moves
+                    (0, npc_group_service_1.checkAndHandleNPCFleeing)(room, user.id);
                     // Broadcast update to other users
                     typedSocket.broadcast(room, "user-updated", { user });
                 }

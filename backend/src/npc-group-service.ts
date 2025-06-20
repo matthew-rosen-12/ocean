@@ -16,6 +16,8 @@ import {
 import { getNPCGroupsfromMemory, updateNPCGroupInRoomInMemory } from "./state/npc-groups";
 
 import { emitToRoom } from "./typed-socket";
+import { getAllUsersInRoom } from "./state/users";
+import { ANIMAL_SCALES } from "shared/types";
 
 export function updateNPCGroupInRoom(
   roomName: roomId,
@@ -39,28 +41,96 @@ export function setPathCompleteInRoom(room: string, npcGroup: NPCGroup) {
       return;
     }
 
-    // Calculate landing position with wrap-around and collision avoidance
-    const landingPosition =
-       calculateLandingPositionWithCollisionAvoidance(
-        pathDataForNPC,
-        room,
-        npcGroup.id
-      );
+    // Check if this is a fleeing path - calculate landing position and return to IDLE
+    if (pathDataForNPC.pathPhase === PathPhase.FLEEING) {
+      // Calculate where the NPC should land at the end of the fleeing path
+      const landingPosition = calculateLandingPosition(pathDataForNPC);
+      
+      // Set NPC back to IDLE phase at the landing position
+      const updatedNPCGroup = new NPCGroup({
+        ...npcGroup,
+        position: landingPosition,
+        phase: NPCPhase.IDLE,
+      });
+      updateNPCGroupInRoom(room, updatedNPCGroup);
+      
+      // Remove this path from active paths
+      deletePathInMemory(room, npcGroup.id);
+      
+      return;
+    }
 
-    const updatedNPCGroup = new NPCGroup({
-      ...npcGroup,
-      position: landingPosition,
-      phase: NPCPhase.IDLE,
-    });
+    // Check if this is a bouncing path that should transition to returning
+    if (pathDataForNPC.pathPhase === PathPhase.BOUNCING && npcGroup.captorId) {
+      // Create a returning path back to the thrower
+      const returningPathData: pathData = {
+        id: uuidv4(),
+        room: room,
+        npcGroupId: npcGroup.id,
+        startPosition: calculateLandingPosition(pathDataForNPC),
+        direction: { x: 0, y: 0 }, // Will be calculated based on thrower position
+        pathDuration: 2000, // 2 second return journey
+        velocity: 8, // Moderate return speed
+        timestamp: Date.now(),
+        pathPhase: PathPhase.RETURNING,
+      };
 
-     updateNPCGroupInRoom(room, updatedNPCGroup);
+      // Update paths in memory
+      const paths = getpathsfromMemory(room);
+      paths.set(npcGroup.id, returningPathData);
+      setPathsInMemory(room, paths);
 
-    // Remove this path from active paths
-    deletePathInMemory(room, npcGroup.id);
+      // Broadcast the new returning path
+      emitToRoom(room, "path-update", { pathData: returningPathData });
+    } else {
+      // Normal path completion - go to IDLE
+      let landingPosition;
+      
+      // Only apply collision avoidance for emitted NPCs (bouncing NPCs that came from collisions)
+      // These are NPCs without captorId that are in bouncing/path phase
+      // Thrown NPCs (with captorId) should land normally and trigger capture/merge logic
+      if (!npcGroup.captorId && pathDataForNPC.pathPhase === PathPhase.BOUNCING) {
+        const collisionResult = calculateLandingPositionWithCollisionAvoidance(
+          pathDataForNPC,
+          room,
+          npcGroup.id
+        );
 
-    // Only broadcast for thrown NPCs (ones with captorId)
-    if (npcGroup.captorId) {
-      emitToRoom(room, "path-complete", { npcGroup: updatedNPCGroup });
+        // If path was extended due to collision, update clients with new path
+        if (collisionResult.extendedPath) {
+          // Update the path in memory and broadcast to clients
+          const paths = getpathsfromMemory(room);
+          paths.set(npcGroup.id, collisionResult.extendedPath);
+          setPathsInMemory(room, paths);
+          
+          // Broadcast the extended path to clients so they can animate smoothly
+          emitToRoom(room, "path-update", { pathData: collisionResult.extendedPath });
+          
+          // Don't complete the path yet - let the extended path finish naturally
+          return;
+        }
+        
+        landingPosition = collisionResult.position;
+      } else {
+        // For thrown NPCs, just calculate normal landing position without collision avoidance
+        landingPosition = calculateLandingPosition(pathDataForNPC);
+      }
+
+      const updatedNPCGroup = new NPCGroup({
+        ...npcGroup,
+        position: landingPosition,
+        phase: NPCPhase.IDLE,
+      });
+
+       updateNPCGroupInRoom(room, updatedNPCGroup);
+
+      // Remove this path from active paths
+      deletePathInMemory(room, npcGroup.id);
+
+      // Only broadcast for thrown NPCs (ones with captorId)
+      if (npcGroup.captorId) {
+        emitToRoom(room, "path-complete", { npcGroup: updatedNPCGroup });
+      }
     }
 
   } catch (error) {
@@ -75,7 +145,7 @@ function calculateLandingPositionWithCollisionAvoidance(
   pathData: pathData,
   room: string,
   movingNpcGroupId: npcGroupId
-) {
+): { position: { x: number; y: number; z: number }, extendedPath?: pathData } {
   const EXTENSION_DISTANCE = 2.5; // How much to extend the path if collision detected
   const MAX_EXTENSIONS = 5; // Maximum number of extensions to prevent infinite loops
 
@@ -115,7 +185,11 @@ function calculateLandingPositionWithCollisionAvoidance(
 
     // If no collision, return this position
     if (!hasCollision) {
-      return landingPosition;
+      // If we extended the path, return the extended path data
+      if (extensionCount > 0) {
+        return { position: landingPosition, extendedPath: currentPathData };
+      }
+      return { position: landingPosition };
     }
 
     // Extend the path in the same direction
@@ -127,6 +201,7 @@ function calculateLandingPositionWithCollisionAvoidance(
     currentPathData = {
       ...currentPathData,
       pathDuration: (newDistance / currentPathData.velocity) * 1000,
+      timestamp: Date.now(), // Update timestamp so clients start fresh
     };
 
     extensionCount++;
@@ -135,11 +210,14 @@ function calculateLandingPositionWithCollisionAvoidance(
     );
   }
 
-  // If we've reached max extensions, just return the last calculated position
+  // If we've reached max extensions, return the last calculated position and extended path
   console.log(
     `Max extensions reached for NPC ${movingNpcGroupId}, settling at final position`
   );
-  return calculateLandingPosition(currentPathData);
+  return { 
+    position: calculateLandingPosition(currentPathData),
+    extendedPath: currentPathData 
+  };
 }
 
 // Mirror client-side path position calculation function
@@ -255,20 +333,17 @@ export function checkAndHandleNPCCollisions(room: string): void{
 
     const allNPCGroups = getNPCGroupsfromMemory(room);
 
-    // Check collision between path NPCs and idle NPCs
-    for (let i = 0; i < allPaths.length; i++) {
-      const pathData = allPaths[i];
 
-      if (pathData.pathPhase !== PathPhase.THROWN) {
-        continue;
-      }
-      const pathPosition = calculatePathPosition(pathData, Date.now());
+    // Check collision between thrown PATH NPCs and idle NPCs
+    const thrownPaths = allPaths.filter(path => path.pathPhase === PathPhase.THROWN);
+    const idleNPCGroups = Array.from(allNPCGroups.values()).filter(npcGroup => npcGroup.phase === NPCPhase.IDLE);
 
-      // Check collision with idle NPCs
-      const idleNPCGroups = Array.from(allNPCGroups.values()).filter(
-        (npcGroup) => npcGroup.phase === NPCPhase.IDLE && npcGroup.id !== pathData.npcGroup.id
-      );
+    for (const thrownPath of thrownPaths) {
+      const pathPosition = calculatePathPosition(thrownPath, Date.now());
+      const pathNPCGroup = allNPCGroups.getByNpcGroupId(thrownPath.npcGroupId);
+      if (!pathNPCGroup) continue;
 
+      // Check collision with idle NPC
       for (const idleNPCGroup of idleNPCGroups) {
         const collided = detectCollision(
           pathPosition,
@@ -276,49 +351,55 @@ export function checkAndHandleNPCCollisions(room: string): void{
           NPC_WIDTH, NPC_HEIGHT, NPC_WIDTH, NPC_HEIGHT
         );
 
+
         if (collided) {
-          console.log(`Path NPC ${pathData.npcGroup.id} collided with idle NPC ${idleNPCGroup.id}`);
-          handlePathNPCMerge(room, pathData, idleNPCGroup, pathPosition);
+          console.log(`Path NPC ${thrownPath.npcGroupId} collided with idle NPC ${idleNPCGroup.id}`);
+          handlePathNPCMerge(room, thrownPath, pathNPCGroup, idleNPCGroup, pathPosition);
           return;
         }
       }
     }
 
     // Check collision between path NPCs
-    for (let i = 0; i < allPaths.length; i++) {
-      const currentPathData = allPaths[i];
-      if (currentPathData.pathPhase !== PathPhase.THROWN) {
-        continue;
-      }
-      const currentPosition = calculatePathPosition(currentPathData, Date.now());
+    for (const thrownPath of thrownPaths) {
+      const thrownPathPosition = calculatePathPosition(thrownPath, Date.now());
 
-      for (let j = i + 1; j < allPaths.length; j++) {
-        const otherPathData = allPaths[j];
+      for (const otherPath of allPaths) {
+        if (otherPath.id === thrownPath.id) {
+          continue
+        }
+        
+        // Get the NPC groups for both paths
+        const thrownPathNPCGroup = allNPCGroups.getByNpcGroupId(thrownPath.npcGroupId);
+        const otherPathNPCGroup = allNPCGroups.getByNpcGroupId(otherPath.npcGroupId);
+        if (!thrownPathNPCGroup || !otherPathNPCGroup) continue;
         if (
-          otherPathData.npcGroup.captorId !== currentPathData.npcGroup.captorId // Ignore same captor
+          otherPathNPCGroup.captorId !== thrownPathNPCGroup.captorId // Ignore same captor
         ) {
-          const otherPosition = calculatePathPosition(otherPathData, Date.now());
+          const otherPathPosition = calculatePathPosition(otherPath, Date.now());
           const collided = detectCollision(
-            currentPosition,
-            otherPosition,
+            thrownPathPosition,
+            otherPathPosition,
             NPC_WIDTH, NPC_HEIGHT, NPC_WIDTH, NPC_HEIGHT
           );
 
+
+
           if (collided) {
             console.log("Path NPC collision detected");
-            const currentSize = currentPathData.npcGroup.fileNames.length;
-            const otherSize = otherPathData.npcGroup.fileNames.length;
+            const thrownPathSize = thrownPathNPCGroup.fileNames.length;
+            const otherPathSize = otherPathNPCGroup.fileNames.length;
 
-            if (currentSize === otherSize &&  otherPathData.pathPhase === PathPhase.THROWN) {
+            if (thrownPathSize === otherPathSize &&  otherPath.pathPhase === PathPhase.THROWN) {
               // Same size: bounce as before
-              handleNPCBounce(room, currentPathData, currentPosition, otherPosition);
-              handleNPCBounce(room, otherPathData, otherPosition, currentPosition);
+              handleNPCBounce(room, thrownPath, thrownPathPosition, otherPathPosition);
+              handleNPCBounce(room, otherPath, otherPathPosition, thrownPathPosition);
             } else {
               // Different sizes: merge into bigger group
-              if (currentSize >= otherSize) {
-                handlePathNPCMerge(room, currentPathData, otherPathData, currentPosition);
+              if (thrownPathSize >= otherPathSize) {
+                handlePathNPCMerge(room, thrownPath, thrownPathNPCGroup, otherPathNPCGroup, thrownPathPosition);
               } else {
-                handlePathNPCMerge(room, otherPathData, currentPathData, otherPosition);
+                handlePathNPCMerge(room, otherPath, otherPathNPCGroup, thrownPathNPCGroup, otherPathPosition);
               }
             }
             return;
@@ -331,57 +412,43 @@ export function checkAndHandleNPCCollisions(room: string): void{
   }
 }
 
-// Handle merging between two path NPCs
+// Handle merging between two path NPCs or path NPC with idle NPC
 function handlePathNPCMerge(
   room: string,
   winnerPathData: pathData,
-  loser: pathData | NPCGroup,
+  winnerNPCGroup: NPCGroup,
+  loser: NPCGroup,
   collisionPosition: { x: number; y: number; z: number }
 ): void {
   // Create merged group with winner's captor ID
   const mergedGroup = new NPCGroup({
-    ...winnerPathData.npcGroup,
-    fileNames: [...loser instanceof NPCGroup ? loser.fileNames : loser.npcGroup.fileNames, ...winnerPathData.npcGroup.fileNames],
+    ...winnerNPCGroup,
+    fileNames: [...loser.fileNames, ...winnerNPCGroup.fileNames],
     position: collisionPosition,
     phase: NPCPhase.PATH,
   });
 
   // update the groups in memory
   updateNPCGroupInRoom(room, mergedGroup);
-  if (loser instanceof NPCGroup) {
-    loser.fileNames = [];
-    updateNPCGroupInRoom(room, loser);
-  }
-  else {
-    loser.npcGroup.fileNames = [];
-    updateNPCGroupInRoomInMemory(room, loser.npcGroup);
-  }
+  loser.fileNames = [];
+  updateNPCGroupInRoom(room, loser);
 
   // Update the winner's path data with the merged group
   const updatedPathData: pathData = {
     ...winnerPathData,
-    npcGroup: mergedGroup,
+    npcGroupId: mergedGroup.id,
   };
 
   // Update memory
   const paths = getpathsfromMemory(room);
   paths.set(mergedGroup.id, updatedPathData);
-  if (loser instanceof NPCGroup) {
-    paths.delete(loser.id); // Remove the loser's path
-  }
-  else {
-    console.log("loser is a path data", loser.npcGroup.id);
-    paths.delete(loser.npcGroup.id); // Remove the loser's path
-  }
+  paths.delete(loser.id); // Remove the loser's path if it exists
   setPathsInMemory(room, paths);
 
   // Broadcast updates
   emitToRoom(room, "path-update", { pathData: updatedPathData });
-  if (!(loser instanceof NPCGroup)) {
-    emitToRoom(room, "path-absorbed", { pathData: loser });
-  }
 
-  console.log(`Merged path NPCs: ${winnerPathData.npcGroup.id} absorbed ${loser instanceof NPCGroup ? loser.id : loser.npcGroup.id}`);
+  console.log(`Merged path NPCs: ${winnerPathData.npcGroupId} absorbed ${loser.id}`);
 }
 
 // Handle bouncing between two path NPCs
@@ -411,7 +478,7 @@ function handleNPCBounce(
   const bouncePathData: pathData = {
     id: uuidv4(),
     room: pathData.room,
-    npcGroup: pathData.npcGroup,
+    npcGroupId: pathData.npcGroupId,
     startPosition: {
       x: myPosition.x,
       y: myPosition.y,
@@ -425,11 +492,221 @@ function handleNPCBounce(
 
   // Update the path in memory
   const paths =  getpathsfromMemory(room);
-  paths.set(bouncePathData.npcGroup.id, bouncePathData);
+  paths.set(pathData.npcGroupId, bouncePathData);
    setPathsInMemory(room, paths);
 
   console.log("handle npc bounce");
 
   // Broadcast to all clients
   emitToRoom(room, "path-update", { pathData: bouncePathData });
+}
+
+// Utility function to normalize direction vectors
+function normalizeDirection(direction: { x: number; y: number }): { x: number; y: number } {
+  const length = Math.sqrt(direction.x * direction.x + direction.y * direction.y);
+  if (length === 0) {
+    return { x: 0, y: 0 };
+  }
+  return { x: direction.x / length, y: direction.y / length };
+}
+
+// Server-side fleeing logic - called when user positions are updated
+export function checkAndHandleNPCFleeing(room: string, _updatedUserId?: string): void {
+  try {
+    // Get all users and NPCs in the room
+    const allUsers = getAllUsersInRoom(room);
+    const allNPCGroups = getNPCGroupsfromMemory(room);
+    const allPaths = getpathsfromMemory(room);
+
+    if (allUsers.size === 0) return;
+
+    // Convert users to array for easier processing
+    const users = Array.from(allUsers.values());
+
+    // Check each NPC for fleeing behavior
+    Array.from(allNPCGroups.values()).forEach((npcGroup) => {
+      // Only process IDLE or PATH NPCs (not captured ones)
+      if (npcGroup.phase !== NPCPhase.IDLE && npcGroup.phase !== NPCPhase.PATH) {
+        return;
+      }
+
+      // Skip NPCs that are captured
+      if (npcGroup.captorId) {
+        return;
+      }
+
+      const npcPosition = allPaths.get(npcGroup.id) ? calculatePathPosition(allPaths.get(npcGroup.id)!, Date.now()) : npcGroup.position;
+
+      // Check if any user is within flee range (per-user animal scale)
+      let shouldFlee = false;
+      let withinCaptureRange = false;
+
+      for (const user of users) {
+        const distance = Math.sqrt(
+          (npcPosition.x - user.position.x) ** 2 +
+          (npcPosition.y - user.position.y) ** 2
+        );
+
+        // Calculate thresholds based on user's animal scale
+        const animalScale = ANIMAL_SCALES[user.animal as keyof typeof ANIMAL_SCALES] || 1.0;
+        const CAPTURE_THRESHOLD = animalScale * 0.5;
+        const FLEE_THRESHOLD = animalScale * 50.0;
+
+        if (distance < CAPTURE_THRESHOLD) {
+          withinCaptureRange = true;
+          break; // Capture takes priority over fleeing
+        } else if (distance < FLEE_THRESHOLD) {
+          shouldFlee = true;
+        }
+      }
+
+      // Don't flee if within capture range
+      if (withinCaptureRange) {
+        return;
+      }
+
+      // If should flee, calculate flee direction and create flee path
+      if (shouldFlee) {
+        makeNPCGroupFlee(room, npcGroup, npcPosition, users, allPaths);
+      }
+    });
+  } catch (error) {
+    console.error("Error in checkAndHandleNPCFleeing:", error);
+  }
+}
+
+// Create fleeing path for an NPC (server-side version of frontend logic)
+function makeNPCGroupFlee(
+  room: string,
+  npcGroup: NPCGroup,
+  npcPosition: { x: number; y: number },
+  users: { id: string; position: { x: number; y: number; z?: number }; room: string; animal: string; direction: { x: number; y: number }; nickname: string }[],
+  allPaths: Map<npcGroupId, pathData>
+): void {
+  try {
+    // Get current path data
+    const currentPathData = allPaths.get(npcGroup.id);
+
+    // Calculate flee direction from all nearby users using weighted averaging
+    let totalFleeForce = { x: 0, y: 0 };
+    let totalWeight = 0;
+
+    // Check all users for flee influence
+    users.forEach((user) => {
+      const distance = Math.sqrt(
+        (npcPosition.x - user.position.x) ** 2 +
+        (npcPosition.y - user.position.y) ** 2
+      );
+
+      // Calculate flee direction away from this user
+      const fleeDirection = {
+        x: npcPosition.x - user.position.x,
+        y: npcPosition.y - user.position.y,
+      };
+
+      // Normalize the flee direction
+      const length = Math.sqrt(fleeDirection.x ** 2 + fleeDirection.y ** 2);
+      if (length > 0) {
+        fleeDirection.x /= length;
+        fleeDirection.y /= length;
+
+        // Weight inversely by distance (closer users have more influence)
+        const weight = 1.0 / (distance * distance);
+
+        totalFleeForce.x += fleeDirection.x * weight;
+        totalFleeForce.y += fleeDirection.y * weight;
+        totalWeight += weight;
+      }
+    });
+
+    // If no flee forces, don't create a flee path
+    if (totalWeight === 0) {
+      return;
+    }
+
+    // Average the flee forces
+    const averageFleeDirection = {
+      x: totalFleeForce.x / totalWeight,
+      y: totalFleeForce.y / totalWeight,
+    };
+
+    // Normalize the final direction
+    let finalFleeDirection = normalizeDirection(averageFleeDirection);
+
+    // If normalization failed (zero vector), use fallback
+    if (finalFleeDirection.x === 0 && finalFleeDirection.y === 0 && users.length > 0) {
+      // Fallback to flee from first user
+      finalFleeDirection = normalizeDirection({
+        x: npcPosition.x - users[0].position.x,
+        y: npcPosition.y - users[0].position.y,
+      });
+    }
+
+    // Add stability: if already fleeing, blend with current direction
+    if (currentPathData && currentPathData.pathPhase === PathPhase.FLEEING) {
+      const timeSinceLastUpdate = Date.now() - currentPathData.timestamp;
+      const MIN_UPDATE_INTERVAL = 300; // Update more frequently but still stable
+
+      // Only update if enough time has passed
+      if (timeSinceLastUpdate < MIN_UPDATE_INTERVAL) {
+        return;
+      }
+
+      // Blend current direction with new flee direction for stability
+      const currentDir = currentPathData.direction;
+      finalFleeDirection = normalizeDirection({
+        x: currentDir.x * 0.4 + finalFleeDirection.x * 0.6,
+        y: currentDir.y * 0.4 + finalFleeDirection.y * 0.6,
+      });
+    }
+
+    // Create new path data
+    const newPathData: pathData = currentPathData
+      ? {
+          ...currentPathData,
+          startPosition: {
+            x: npcPosition.x,
+            y: npcPosition.y,
+          },
+          direction: finalFleeDirection,
+          timestamp: Date.now(),
+          pathPhase: PathPhase.FLEEING,
+          velocity: 3.0, // Consistent flee speed
+        }
+      : {
+          // create new path data
+          id: uuidv4(),
+          room: room,
+          npcGroupId: npcGroup.id,
+          startPosition: {
+            x: npcPosition.x,
+            y: npcPosition.y,
+          },
+          pathDuration: 1500,
+          timestamp: Date.now(),
+          direction: finalFleeDirection,
+          velocity: 3.0, // Consistent flee speed
+          pathPhase: PathPhase.FLEEING,
+        };
+
+    // Update paths in memory
+    const paths = getpathsfromMemory(room);
+    paths.set(npcGroup.id, newPathData);
+    setPathsInMemory(room, paths);
+
+    // Update NPC to PATH phase
+    if (npcGroup.phase !== NPCPhase.PATH) {
+    const updatedNpcGroup = new NPCGroup({
+      ...npcGroup,
+      phase: NPCPhase.PATH,
+      });
+      updateNPCGroupInRoom(room, updatedNpcGroup);
+    }
+
+    // Broadcast the flee path to all clients
+    emitToRoom(room, "path-update", { pathData: newPathData });
+
+  } catch (error) {
+    console.error("Error in makeNPCGroupFlee:", error);
+  }
 }

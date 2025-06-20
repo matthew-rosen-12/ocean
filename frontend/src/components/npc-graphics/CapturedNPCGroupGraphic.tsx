@@ -178,7 +178,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     const reflectionPathData: pathData = {
       id: uuidv4(),
       room: pathData.room,
-      npcGroup: npcGroup,
+      npcGroupId: npcGroup.id,
       startPosition: {
         x: currentPathPosition.x,
         y: currentPathPosition.y,
@@ -225,12 +225,19 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
 
 
       if (emittedNPCGroup) {
+        // Calculate current position of the captured group (not the stored position)
+        const currentNPCGroupPosition = calculateNPCGroupPosition(user, animalWidth, scaleFactor);
+        const emissionStartPosition = currentNPCGroupPosition ? {
+          x: currentNPCGroupPosition.x,
+          y: currentNPCGroupPosition.y,
+        } : group.position;
+        
         // Update local state
         const emissionPathData: pathData = {
           id: uuidv4(),
           room: pathData.room,
-          npcGroup: emittedNPCGroup,
-          startPosition: group.position,
+          npcGroupId: emittedNPCGroup.id,
+          startPosition: emissionStartPosition,
           direction: normalizedDirection,
           pathDuration: 1500, // Longer emission duration
           velocity: 5, // Very fast emission speed
@@ -248,10 +255,11 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
           newNpcGroups.setByNpcGroupId(restOfNPCsGroup.id, restOfNPCsGroup);
           return newNpcGroups;
         });
+        currentTypedSocket.emit("update-npc-group", { npcGroup: restOfNPCsGroup });
+        currentTypedSocket.emit("update-npc-group", { npcGroup: emittedNPCGroup });
         currentTypedSocket.emit("path-npc-group", { pathData: emissionPathData });
         
         // Always send the update - server will handle deletion if empty
-        currentTypedSocket.emit("update-npc-group", { npcGroup: restOfNPCsGroup });
     }
   };
 
@@ -376,11 +384,14 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     // only check for collision for local npc group
     if (isLocalUser) {
              Array.from(allPaths.entries()).forEach(([_npcId, pathData]) => {
+         // Get the NPC group from the groups map using the ID
+         const pathNPCGroup = npcGroups.getByNpcGroupId(pathData.npcGroupId);
          if (
            pathData.pathPhase === PathPhase.THROWN &&
-           pathData.npcGroup.captorId !== group.captorId
+           pathNPCGroup &&
+           pathNPCGroup.captorId !== group.captorId
          ) {
-           checkForPathNPCCollision(pathData.npcGroup, pathData);
+           checkForPathNPCCollision(pathNPCGroup, pathData);
          }
        });
     }

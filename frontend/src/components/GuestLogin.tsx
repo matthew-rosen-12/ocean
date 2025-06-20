@@ -271,6 +271,16 @@ export default function GuestLogin({
       typedSocket.on("npc-group-captured", ({ capturedNPCGroupId, updatedNpcGroup }) => {
         setNPCGroups((prev) => {
           const newNpcGroups = new NPCGroupsBiMap(prev);
+          
+          // Check if the captor already has a captured group and remove it to avoid duplicates
+          if (updatedNpcGroup.captorId) {
+            const existingCapturedGroup = newNpcGroups.getByUserId(updatedNpcGroup.captorId);
+            if (existingCapturedGroup && existingCapturedGroup.id !== updatedNpcGroup.id) {
+              // Remove the old captured group to prevent duplicates
+              newNpcGroups.deleteByNpcGroupId(existingCapturedGroup.id);
+            }
+          }
+          
           newNpcGroups.deleteByNpcGroupId(capturedNPCGroupId);
           newNpcGroups.setByNpcGroupId(updatedNpcGroup.id, updatedNpcGroup);
           return newNpcGroups;
@@ -305,16 +315,11 @@ export default function GuestLogin({
       typedSocket.on("path-update", ({ pathData }: { pathData: pathData }) => {
         setPaths((prev) => {
           const newPaths = new Map(prev);
-          newPaths.set(pathData.npcGroup.id, pathData);
+          newPaths.set(pathData.npcGroupId, pathData);
           return newPaths;
         });
-        setNPCGroups((prev) => {
-          const newNpcGroups = new NPCGroupsBiMap(prev);
-          newNpcGroups.setByNpcGroupId(pathData.npcGroup.id, new NPCGroup({
-            ...pathData.npcGroup,
-          }));
-          return newNpcGroups;
-        });
+        // Note: NPC group data should be sent separately via npc-group-update events
+        // This path-update only contains the path data with npcGroupId reference
       });
 
       typedSocket.on("path-complete", ({ npcGroup }) => {
@@ -333,12 +338,12 @@ export default function GuestLogin({
       typedSocket.on("path-absorbed", ({ pathData }: { pathData: pathData }) => {
         setPaths((prev) => {
           const newPaths = new Map(prev);
-          newPaths.delete(pathData.npcGroup.id);
+          newPaths.delete(pathData.npcGroupId);
           return newPaths;
         });
         setNPCGroups((prev) => {
           const newNpcGroups = new NPCGroupsBiMap(prev);
-          newNpcGroups.deleteByNpcGroupId(pathData.npcGroup.id);
+          newNpcGroups.deleteByNpcGroupId(pathData.npcGroupId);
           return newNpcGroups;
         });
       });

@@ -14,6 +14,7 @@ const types_1 = require("shared/types");
 const npc_group_service_1 = require("./npc-group-service");
 const rooms_1 = require("./state/rooms");
 const paths_1 = require("./state/paths");
+const npc_groups_1 = require("./state/npc-groups");
 let gameTickerInstance = null;
 function getGameTicker() {
     if (!gameTickerInstance) {
@@ -41,7 +42,8 @@ class GameTicker {
                     (0, npc_group_service_1.checkAndHandleNPCCollisions)(roomName);
                     // Get paths for this room
                     const allPaths = (0, paths_1.getpathsfromMemory)(roomName);
-                    // filter paths that are not thrown (for completion checking)
+                    // filter paths that are not thrown or returning (for completion checking)
+                    // Include FLEEING paths for completion checking
                     const paths = Array.from(allPaths.values()).filter((path) => path.pathPhase !== types_1.PathPhase.THROWN && path.pathPhase !== types_1.PathPhase.RETURNING);
                     if (!paths || paths.length === 0)
                         continue;
@@ -58,7 +60,8 @@ class GameTicker {
                     // Process completed paths
                     for (const completedpath of completedpaths) {
                         // Get current NPC state to check if it's still in PATH phase
-                        const npcGroup = completedpath.npcGroup;
+                        const npcGroups = (0, npc_groups_1.getNPCGroupsfromMemory)(roomName);
+                        const npcGroup = npcGroups.getByNpcGroupId(completedpath.npcGroupId);
                         // Only complete path if NPC is still in PATH phase
                         if (npcGroup && npcGroup.phase === types_1.NPCPhase.PATH) {
                             (0, npc_group_service_1.setPathCompleteInRoom)(roomName, npcGroup);

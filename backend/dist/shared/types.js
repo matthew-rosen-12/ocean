@@ -1,6 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NPCGroupsBiMap = exports.DefaultMap = exports.NPCGroup = exports.NPCPhase = exports.PathPhase = void 0;
+exports.NPCGroupsBiMap = exports.DefaultMap = exports.NPCGroup = exports.NPCPhase = exports.PathPhase = exports.DIRECTION_OFFSET = exports.ANIMAL_SCALES = void 0;
+exports.ANIMAL_SCALES = {
+    DOLPHIN: 3.0,
+    WOLF: 1.0,
+};
+exports.DIRECTION_OFFSET = 0.1;
 // Path phases for different types of movement
 var PathPhase;
 (function (PathPhase) {
@@ -123,6 +128,7 @@ class NPCGroupsBiMap {
         this.map2.delete(npcGroupId);
     }
     values() { return Array.from(this.map2.values()); }
+    keys() { return Array.from(this.map2.keys()); }
     getByUserId(userId) { return this.map1.get(userId); }
     getByNpcGroupId(npcGroupId) { return this.map2.get(npcGroupId); }
 }

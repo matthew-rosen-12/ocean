@@ -1,4 +1,9 @@
 export type Animal = "DOLPHIN" | "WOLF";
+export declare const ANIMAL_SCALES: {
+    DOLPHIN: number;
+    WOLF: number;
+};
+export declare const DIRECTION_OFFSET = 0.1;
 export declare enum PathPhase {
     THROWN = "THROWN",// NPCs thrown by players
     FLEEING = "FLEEING",// NPCs fleeing from players
@@ -8,7 +13,7 @@ export declare enum PathPhase {
 export interface pathData {
     id: string;
     room: string;
-    npcGroup: NPCGroup;
+    npcGroupId: npcGroupId;
     startPosition: Position;
     direction: Direction;
     velocity: number;
@@ -22,7 +27,6 @@ export interface UserInfo {
     room: string;
     position: Position;
     direction: Direction;
-    npcGroup: NPCGroup;
     nickname: string;
 }
 export declare enum NPCPhase {
@@ -66,6 +70,7 @@ export declare class NPCGroupsBiMap {
     deleteByUserId(userId: userId): void;
     deleteByNpcGroupId(npcGroupId: npcGroupId): void;
     values(): NPCGroup[];
+    keys(): npcGroupId[];
     getByUserId(userId: userId): NPCGroup | undefined;
     getByNpcGroupId(npcGroupId: npcGroupId): NPCGroup | undefined;
 }

@@ -4,6 +4,7 @@ import { checkAndHandleNPCCollisions, setPathCompleteInRoom } from "./npc-group-
 
 import { getAllRoomsfromMemory } from "./state/rooms";
 import { getpathsfromMemory } from "./state/paths";
+import { getNPCGroupsfromMemory } from "./state/npc-groups";
 
 let gameTickerInstance: GameTicker | null = null;
 
@@ -38,7 +39,8 @@ class GameTicker {
 
         // Get paths for this room
         const allPaths =  getpathsfromMemory(roomName);
-        // filter paths that are not thrown (for completion checking)
+        // filter paths that are not thrown or returning (for completion checking)
+        // Include FLEEING paths for completion checking
         const paths = Array.from(allPaths.values()).filter((path: pathData) => path.pathPhase !== PathPhase.THROWN && path.pathPhase !== PathPhase.RETURNING);
         if (!paths || paths.length === 0) continue;
 
@@ -58,7 +60,8 @@ class GameTicker {
         // Process completed paths
         for (const completedpath of completedpaths) {
           // Get current NPC state to check if it's still in PATH phase
-          const npcGroup = completedpath.npcGroup;
+          const npcGroups = getNPCGroupsfromMemory(roomName);
+          const npcGroup = npcGroups.getByNpcGroupId(completedpath.npcGroupId);
 
           // Only complete path if NPC is still in PATH phase
           if (npcGroup && npcGroup.phase === NPCPhase.PATH) {

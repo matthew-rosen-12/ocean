@@ -12,10 +12,11 @@ import {
   UserInfo,
   NPCGroupsBiMap,
   FinalScores,
+  ANIMAL_SCALES,
+  DIRECTION_OFFSET,
 } from "shared/types";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { typedSocket } from "../socket";
-import { ANIMAL_SCALES, DIRECTION_OFFSET } from "../constants";
 import AnimalGraphic from "./AnimalGraphic";
 import { throttle } from "lodash";
 import { v4 as uuidv4 } from "uuid";
@@ -105,7 +106,7 @@ async function pathNPCGroup(
     const newpathData: pathData = {
       id: uuidv4(),
       room: myUser.room,
-      npcGroup: pathNPCGroup,
+      npcGroupId: pathNPCGroup.id,
       startPosition: {
         x: myUser.position.x,
         y: myUser.position.y,
@@ -126,10 +127,10 @@ async function pathNPCGroup(
 
         // Socket call to path the NPC
     const currentTypedSocket = typedSocket();
+    currentTypedSocket.emit("update-npc-group", { npcGroup: captorNPCGroup });
+    currentTypedSocket.emit("update-npc-group", { npcGroup: pathNPCGroup });
     currentTypedSocket.emit("path-npc-group", { pathData: newpathData });
-    if (captorNPCGroup.fileNames.length > 0) {
-      currentTypedSocket.emit("update-npc-group", { npcGroup: captorNPCGroup });
-    }
+    // Always send the update - server will handle deletion if empty
 
     setPaths(updatedpaths);
     setNpcGroups((prev) => {
@@ -497,10 +498,32 @@ export default function Scene({
     throttledBroadcast();
   }, [position, direction, myUser, throttledBroadcast, users]);
 
+  // Expose NPC groups for debugging in browser developer tools
+  useEffect(() => {
+    const debugObject = {
+      npcGroups: npcGroups,
+      // all npc group id and their captor id
+      getAllIdsAndCaptorIds: () => Array.from(npcGroups.keys()).map(id => ({ 
+        id: id.slice(0, 8), 
+        captorId: npcGroups.getByNpcGroupId(id)?.captorId?.slice(0, 8) 
+      })),
+      getAllIds: () => Array.from(npcGroups.keys()),
+      getByUserId: (userId: string) => npcGroups.getByUserId(userId),
+      getByNpcGroupId: (npcGroupId: string) => npcGroups.getByNpcGroupId(npcGroupId),
+      getAllNPCGroups: () => Array.from(npcGroups.values()),
+      paths: paths,
+      getAllPathIds: () => Array.from(paths.keys()),
+      myUserId: myUser.id,
+      users: users,
+    };
+    
+    // Type assertion to avoid TypeScript warnings
+    (window as typeof window & { debugNPCGroups: typeof debugObject }).debugNPCGroups = debugObject;
+  }, [npcGroups, paths, myUser.id, users]);
+
   const handleNPCGroupCollision = useCallback(
     (capturedNPCGroup: NPCGroup, localUser: boolean) => {
       // Prevent duplicate processing of the same NPC
-      capturedNPCGroup.phase = NPCPhase.IDLE;
       setPaths((prev: Map<npcGroupId, pathData>) => {
         const newPaths = new Map(prev);
         newPaths.delete(capturedNPCGroup.id); // remove the path data for the captured NPC
@@ -510,31 +533,34 @@ export default function Scene({
       setNpcGroups((prev) => {
         const newNpcGroups = new NPCGroupsBiMap(prev);
         
-        // 1. get user's npc group from the CURRENT state (not stale closure)
+        // 1. get user's existing captured npc group from the CURRENT state (not stale closure)
         let userNpcGroup = newNpcGroups.getByUserId(myUser.id);
-        if (!userNpcGroup) {
-          userNpcGroup = new NPCGroup({
-            id: uuidv4(),
-            fileNames: [],
-            position: myUser.position,
-            phase: NPCPhase.IDLE,
-            direction: { x: 0, y: 0 },
-          });
+        let existingFileNames: string[] = [];
+        let groupId: string;
+        
+        // If user already has a captured group, merge with it
+        if (userNpcGroup) {
+          existingFileNames = userNpcGroup.fileNames;
+          groupId = userNpcGroup.id; // Keep the existing group ID
+
+        } else {
+          // First capture for this user - create new ID
+          groupId = uuidv4();
         }
 
-        // 2. create new npc group with current user's NPCs + captured NPC
+        // 2. create new merged npc group with existing NPCs + newly captured NPC
         const updatedNpcGroup = new NPCGroup({
-          id: userNpcGroup.id,
-          fileNames: [...userNpcGroup.fileNames, ...capturedNPCGroup.fileNames],
+          id: groupId, // Use existing ID or new ID for first capture
+          fileNames: [...existingFileNames, ...capturedNPCGroup.fileNames],
           position: myUser.position,
           phase: NPCPhase.CAPTURED,
           captorId: myUser.id, // Set the captorId
-          direction: userNpcGroup.direction,
+          direction: { x: 0, y: 0 },
         });
 
-        // Remove the original NPC group
+        // Remove the original captured NPC group
         newNpcGroups.deleteByNpcGroupId(capturedNPCGroup.id);
-        // Add the updated group with the correct ID
+        // Add the updated merged group
         newNpcGroups.setByNpcGroupId(updatedNpcGroup.id, updatedNpcGroup);
 
         // Emit socket event inside the state update to use the correct updatedNpcGroup
@@ -551,157 +577,6 @@ export default function Scene({
       });
     },
     [myUser.id, myUser.room, myUser.position, setNpcGroups, setPaths]
-  );
-
-  const normalizeDirection = useCallback((direction: Direction) => {
-    const length = Math.sqrt(
-      direction.x * direction.x + direction.y * direction.y
-    );
-    return { x: direction.x / length, y: direction.y / length };
-  }, []);
-
-  // Function to make an NPC flee from the player
-  const makeNPCGroupFlee = useCallback(
-    (npcGroup: NPCGroup, npcPosition: THREE.Vector3) => {
-      // Create new objects instead of mutating
-      const updatedNpcGroup = new NPCGroup({
-        id: npcGroup.id,
-        fileNames: npcGroup.fileNames,
-        captorId: npcGroup.captorId,
-        position: npcGroup.position,
-        direction: npcGroup.direction,
-        phase: NPCPhase.PATH,
-      });
-
-      // Get current path data
-      const currentPathData = paths.get(npcGroup.id);
-
-      // Calculate flee direction from all nearby users using weighted averaging
-      let totalFleeForce = { x: 0, y: 0 };
-      let totalWeight = 0;
-
-      // Check all users for flee influence
-      Array.from(users.values()).forEach((user) => {
-        const distance = Math.sqrt(
-          (npcPosition.x - user.position.x) ** 2 +
-            (npcPosition.y - user.position.y) ** 2
-        );
-
-        // Only consider users within flee range
-        // Calculate flee direction away from this user
-        const fleeDirection = {
-          x: npcPosition.x - user.position.x,
-          y: npcPosition.y - user.position.y,
-        };
-
-        // Normalize the flee direction
-        const length = Math.sqrt(fleeDirection.x ** 2 + fleeDirection.y ** 2);
-        if (length > 0) {
-          fleeDirection.x /= length;
-          fleeDirection.y /= length;
-
-          // Weight inversely by distance (closer users have more influence)
-          const weight = 1.0 / (distance * distance);
-
-          totalFleeForce.x += fleeDirection.x * weight;
-          totalFleeForce.y += fleeDirection.y * weight;
-          totalWeight += weight;
-        }
-      });
-
-      // If no flee forces, don't create a flee path
-      if (totalWeight === 0) {
-        return;
-      }
-
-      // Average the flee forces
-      const averageFleeDirection = {
-        x: totalFleeForce.x / totalWeight,
-        y: totalFleeForce.y / totalWeight,
-      };
-
-      // Normalize the final direction
-      const finalLength = Math.sqrt(
-        averageFleeDirection.x ** 2 + averageFleeDirection.y ** 2
-      );
-
-      let finalFleeDirection: { x: number; y: number };
-      if (finalLength > 0) {
-        finalFleeDirection = {
-          x: averageFleeDirection.x / finalLength,
-          y: averageFleeDirection.y / finalLength,
-        };
-      } else {
-        // Fallback to flee from primary user
-        finalFleeDirection = normalizeDirection({
-          x: npcPosition.x - myUser.position.x,
-          y: npcPosition.y - myUser.position.y,
-        });
-      }
-
-      // Add stability: if already fleeing, blend with current direction
-      if (currentPathData && currentPathData.pathPhase === PathPhase.FLEEING) {
-        const timeSinceLastUpdate = Date.now() - currentPathData.timestamp;
-        const MIN_UPDATE_INTERVAL = 300; // Update more frequently but still stable
-
-        // Only update if enough time has passed
-        if (timeSinceLastUpdate < MIN_UPDATE_INTERVAL) {
-          return;
-        }
-
-        // Blend current direction with new flee direction for stability
-        const currentDir = currentPathData.direction;
-        finalFleeDirection = normalizeDirection({
-          x: currentDir.x * 0.4 + finalFleeDirection.x * 0.6,
-          y: currentDir.y * 0.4 + finalFleeDirection.y * 0.6,
-        });
-      }
-
-      const newPathData: pathData = currentPathData
-        ? {
-            ...currentPathData,
-            startPosition: {
-              x: npcPosition.x,
-              y: npcPosition.y,
-            },
-            direction: finalFleeDirection,
-            timestamp: Date.now(),
-            pathPhase: PathPhase.FLEEING,
-            velocity: 3.0, // Consistent flee speed
-          }
-        : {
-            // create new path data
-            id: uuidv4(),
-            room: myUser.room,
-            npcGroup: updatedNpcGroup,
-            startPosition: {
-              x: npcPosition.x,
-              y: npcPosition.y,
-            },
-            pathDuration: 1500,
-            timestamp: Date.now(),
-            direction: finalFleeDirection,
-            velocity: 3.0, // Consistent flee speed
-            pathPhase: PathPhase.FLEEING,
-          };
-
-      // Socket call to create the flee path
-      const currentTypedSocket = typedSocket();
-      currentTypedSocket.emit("path-npc-group", { pathData: newPathData });
-
-      setPaths((prev: Map<npcGroupId, pathData>) => {
-        const newPaths = new Map(prev);
-        newPaths.set(npcGroup.id, newPathData);
-        return newPaths as Map<npcGroupId, pathData>;
-      });
-
-      setNpcGroups((prev: NPCGroupsBiMap) => {
-        const newNpcGroups = new NPCGroupsBiMap(prev);
-        newNpcGroups.setByNpcGroupId(npcGroup.id, updatedNpcGroup);
-        return newNpcGroups;
-      });
-    },
-    [myUser, paths, setPaths, setNpcGroups, normalizeDirection, users]
   );
 
   // Function to check for collisions with NPCs
@@ -735,13 +610,13 @@ export default function Scene({
           handleNPCGroupCollision(npcGroup, isLocalUser);
           return true;
         } else if (distance < FLEE_THRESHOLD) {
-          // Far enough to not capture, but close enough to flee
-          makeNPCGroupFlee(npcGroup, npcPos);
+          // Fleeing is now handled server-side when user positions are updated
+          // No client-side action needed
         }
       }
       return false
     },
-    [handleNPCGroupCollision, makeNPCGroupFlee, animalDimensions, myUser.animal, myUser.position.x, myUser.position.y]
+    [handleNPCGroupCollision, animalDimensions, myUser.animal, myUser.position.x, myUser.position.y]
   );
 
   // Calculate current throw charge count with real-time updates
