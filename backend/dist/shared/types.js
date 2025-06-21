@@ -4,6 +4,7 @@ exports.NPCGroupsBiMap = exports.DefaultMap = exports.NPCGroup = exports.NPCPhas
 exports.ANIMAL_SCALES = {
     DOLPHIN: 3.0,
     WOLF: 1.0,
+    PENGUIN: 2.5,
 };
 exports.DIRECTION_OFFSET = 0.1;
 // Path phases for different types of movement
@@ -11,7 +12,6 @@ var PathPhase;
 (function (PathPhase) {
     PathPhase["THROWN"] = "THROWN";
     PathPhase["FLEEING"] = "FLEEING";
-    PathPhase["BOUNCING"] = "BOUNCING";
     PathPhase["RETURNING"] = "RETURNING";
 })(PathPhase || (exports.PathPhase = PathPhase = {}));
 var NPCPhase;

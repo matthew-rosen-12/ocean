@@ -1,23 +1,22 @@
-import { Animal, UserInfo } from "shared/types";
+import { UserInfo } from "shared/types";
 import * as THREE from "three";
 
-// Define HSL type
-interface HSL {
-  h: number;
-  s: number;
-  l: number;
-}
+// Fixed palette of 8 distinct colors for up to 8 users
+export const USER_COLOR_PALETTE: string[] = [
+  "#FF6B6B", // Red
+  "#4ECDC4", // Teal
+  "#45B7D1", // Blue
+  "#96CEB4", // Green
+  "#FECA57", // Yellow
+  "#FF9FF3", // Pink
+  "#A8E6CF", // Light Green
+  "#DDA0DD", // Plum
+];
 
-// Base colors for each animal type
-export const BASE_ANIMAL_COLORS: Record<Animal, string> = {
-  WOLF: "#8A5CF6", // Purple
-  DOLPHIN: "#3498DB", // Blue
-};
-
-// Generate a hash from user object
+// Generate a hash from user ID to consistently assign colors
 export function generateUserHash(user: UserInfo): number {
-  // Combining multiple properties to minimize collisions
-  const hashInput = `${user.id}-${user.animal}-${user.room}`;
+  // Use user ID for consistent color assignment
+  const hashInput = user.id;
 
   // Simple but effective hash function
   let hash = 0;
@@ -29,29 +28,13 @@ export function generateUserHash(user: UserInfo): number {
   return Math.abs(hash);
 }
 
-// Generate a color based on the user object
+// Generate a color based on the user object using fixed palette
 export function getUserColor(user: UserInfo): THREE.Color {
-  // Get base color for the animal type
-  const baseColor = new THREE.Color(BASE_ANIMAL_COLORS[user.animal]);
-
-  // Use the hash to create slight variations while keeping the color family
+  // Use hash to get a consistent color index for this user
   const hash = generateUserHash(user);
-
-  // Adjust hue slightly (±0.1) based on hash
-  const hueShift = (hash % 20) / 100 - 0.1; // Range: -0.1 to 0.1
-
-  // Convert to HSL to modify hue
-  const hsl: HSL = { h: 0, s: 0, l: 0 };
-  baseColor.getHSL(hsl);
-
-  // Modify hue while keeping it in the same general color family
-  hsl.h = (hsl.h + hueShift + 1) % 1; // Keep in 0-1 range
-
-  // Adjust saturation slightly
-  hsl.s = Math.min(1, Math.max(0.5, hsl.s + (hash % 10) / 100 - 0.05));
-
-  // Return the modified color
-  return new THREE.Color().setHSL(hsl.h, hsl.s, hsl.l);
+  const colorIndex = hash % USER_COLOR_PALETTE.length;
+  
+  return new THREE.Color(USER_COLOR_PALETTE[colorIndex]);
 }
 
 // Get the THREE.Color object for an animal with user-specific variation
@@ -66,7 +49,7 @@ export function getAnimalBorderColor(user: UserInfo): THREE.Color {
 
 // Get a lighter version of the animal color for indicators
 export function getAnimalIndicatorColor(user: UserInfo): THREE.Color {
-  const color = getUserColor(user);
+  const color = getUserColor(user).clone(); // Clone to avoid modifying the original
   // Make it slightly lighter
   color.r = Math.min(1, color.r * 1.2);
   color.g = Math.min(1, color.g * 1.2);

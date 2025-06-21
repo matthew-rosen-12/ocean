@@ -5,6 +5,7 @@ import FloralPattern from "../components/backgrounds/FloralPattern";
 import ForestPattern from "../components/backgrounds/ForestPattern";
 import AnimalPattern from "../components/backgrounds/AnimalPattern";
 import CosmicPattern from "../components/backgrounds/CosmicPattern";
+import { Z_DEPTHS } from "shared/z-depths";
 
 // Terrain system configuration
 export class TerrainBoundaries {
@@ -223,15 +224,15 @@ export interface TerrainPlaneConfig {
 }
 
 export const TERRAIN_PLANE_CONFIG: TerrainPlaneConfig = {
-  position: [0, 0, -0.1], // Same XY plane as animals, slightly behind
+  position: [0, 0, Z_DEPTHS.TERRAIN], // Same XY plane as animals, slightly behind
   opacity: 0.9,
-  zIndex: -0.1,
+  zIndex: Z_DEPTHS.TERRAIN,
 };
 
 export const CLOUD_PLANE_CONFIG: TerrainPlaneConfig = {
-  position: [0, 0, -0.2], // Same XY plane as animals, further behind
+  position: [0, 0, Z_DEPTHS.CLOUDS], // Same XY plane as animals, further behind
   opacity: 1.0,
-  zIndex: -0.2,
+  zIndex: Z_DEPTHS.CLOUDS,
 };
 
 // Utility function to generate multiple random numbers from one seed

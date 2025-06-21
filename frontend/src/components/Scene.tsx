@@ -18,6 +18,7 @@ import {
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { typedSocket } from "../socket";
 import AnimalGraphic from "./AnimalGraphic";
+import { UI_Z_INDICES } from "shared/z-depths";
 import { throttle } from "lodash";
 import { v4 as uuidv4 } from "uuid";
 import NPCGraphicWrapper from "./npc-graphics/NPCGroupGraphicWrapper";
@@ -897,7 +898,7 @@ export default function Scene({
           fontWeight: 'bold',
           color: '#FF0000',
           textShadow: '3px 3px 6px rgba(0,0,0,0.8)',
-          zIndex: 1001,
+          zIndex: UI_Z_INDICES.TIMES_UP_TEXT,
           pointerEvents: 'none',
           animation: 'timesUpPulse 800ms ease-in-out infinite',
           fontFamily: 'system-ui, -apple-system, sans-serif'
@@ -916,7 +917,7 @@ export default function Scene({
           height: '100%',
           backgroundColor: 'white',
           opacity: 0.8,
-          zIndex: 1000,
+          zIndex: UI_Z_INDICES.FLASH_EFFECT,
           pointerEvents: 'none',
           animation: 'flash 200ms ease-out'
         }} />

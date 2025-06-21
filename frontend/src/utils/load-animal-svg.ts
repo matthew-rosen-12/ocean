@@ -6,6 +6,7 @@ import concaveman from "concaveman";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2";
+import { Z_DEPTHS, RENDER_ORDERS } from "shared/z-depths";
 
 export const animalGraphicsCache = new Map<
   string,
@@ -20,6 +21,7 @@ export const animalGraphicsCache = new Map<
 export const ANIMAL_ORIENTATION = {
   WOLF: { rotation: 0, flipY: true },
   DOLPHIN: { rotation: 0, flipY: false },
+  PENGUIN: { rotation: 0, flipY: false },
 };
 
 // Utility function to create edge geometry from a base geometry
@@ -59,8 +61,8 @@ export function createEdgeGeometry(
   });
 
   const edgeLines = new LineSegments2(lineSegmentsGeometry, edgeMaterial);
-  edgeLines.renderOrder = isLocalPlayer ? 10 : 9;
-  edgeLines.position.z = 0.09;
+  edgeLines.renderOrder = isLocalPlayer ? RENDER_ORDERS.LOCAL_ANIMAL_OUTLINE : RENDER_ORDERS.REMOTE_ANIMAL_OUTLINE;
+  edgeLines.position.z = isLocalPlayer ? Z_DEPTHS.LOCAL_ANIMAL_OUTLINE : Z_DEPTHS.REMOTE_ANIMAL_OUTLINE;
 
   edgeLines.matrixAutoUpdate = true;
 
@@ -501,8 +503,8 @@ export function loadAnimalSVG(
 
           // Create mesh
           const mesh = new THREE.Mesh(geometry, material);
-          mesh.renderOrder = isLocalPlayer ? 1 : 0;
-          mesh.position.z = 0.1; // Ensure it's in front
+          mesh.renderOrder = isLocalPlayer ? RENDER_ORDERS.LOCAL_ANIMAL : RENDER_ORDERS.REMOTE_ANIMAL;
+          mesh.position.z = isLocalPlayer ? Z_DEPTHS.LOCAL_ANIMAL_GRAPHIC : Z_DEPTHS.REMOTE_ANIMAL_GRAPHIC;
 
           // Center the geometry at origin and get the center offset
           geometry.computeBoundingBox();

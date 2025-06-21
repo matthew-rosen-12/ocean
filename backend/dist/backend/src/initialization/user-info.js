@@ -5,7 +5,7 @@ exports.generateGuestId = generateGuestId;
 exports.getInitialPosition = getInitialPosition;
 exports.getInitialDirection = getInitialDirection;
 const DIRECTION_OFFSET = 0.001;
-const ANIMALS = ["DOLPHIN", "WOLF"];
+const ANIMALS = ["WOLF", "DOLPHIN", "PENGUIN"];
 function getRandomAnimal() {
     return ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
 }

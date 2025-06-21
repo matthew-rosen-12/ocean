@@ -13,6 +13,7 @@ import {
 } from "../utils/load-animal-svg";
 import { getAnimalBorderColor } from "../utils/animal-colors";
 import { TerrainBoundaries } from "../utils/terrain";
+import { Z_DEPTHS, RENDER_ORDERS } from "shared/z-depths";
 
 // Global cache for animal graphics
 
@@ -77,7 +78,8 @@ function AnimalSprite({
 
       // Create mesh with cached geometry
       const mesh = new THREE.Mesh(cached.geometry.clone(), material);
-      mesh.renderOrder = isLocalPlayer ? 1 : 0;
+      mesh.renderOrder = isLocalPlayer ? RENDER_ORDERS.LOCAL_ANIMAL : RENDER_ORDERS.REMOTE_ANIMAL;
+      mesh.position.z = isLocalPlayer ? Z_DEPTHS.LOCAL_ANIMAL_GRAPHIC : Z_DEPTHS.REMOTE_ANIMAL_GRAPHIC;
       group.add(mesh);
 
       // Create edge geometry with user-specific color

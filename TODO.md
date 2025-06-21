@@ -1,5 +1,4 @@
 - clean up frontend code
-- test /fix with non local players
 - add more animal graphics
 - add more npcs
 - create robot players

@@ -1,13 +1,13 @@
-export type Animal = "DOLPHIN" | "WOLF";
+export type Animal = "DOLPHIN" | "WOLF" | "PENGUIN";
 export declare const ANIMAL_SCALES: {
     DOLPHIN: number;
     WOLF: number;
+    PENGUIN: number;
 };
 export declare const DIRECTION_OFFSET = 0.1;
 export declare enum PathPhase {
     THROWN = "THROWN",// NPCs thrown by players
     FLEEING = "FLEEING",// NPCs fleeing from players
-    BOUNCING = "BOUNCING",// NPCs bouncing off each other
     RETURNING = "RETURNING"
 }
 export interface pathData {

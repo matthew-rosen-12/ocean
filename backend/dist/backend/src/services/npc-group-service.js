@@ -27,19 +27,8 @@ function setPathCompleteInRoom(room, npcGroup) {
         console.log(`No path data found for NPC ${npcGroup.id} in room ${room}`);
         return;
     }
-    // Check if this is a fleeing path - calculate landing position and return to IDLE
-    if (pathDataForNPC.pathPhase === types_1.PathPhase.FLEEING) {
-        // Calculate where the NPC should land at the end of the fleeing path
-        const landingPosition = calculateLandingPosition(pathDataForNPC);
-        // Set NPC back to IDLE phase at the landing position
-        const updatedNPCGroup = new types_1.NPCGroup(Object.assign(Object.assign({}, npcGroup), { position: landingPosition, phase: types_1.NPCPhase.IDLE }));
-        updateNPCGroupInRoom(room, updatedNPCGroup);
-        // Remove this path from active paths
-        (0, paths_1.deletePathInMemory)(room, npcGroup.id);
-        return;
-    }
     // Check if this is a bouncing path that should transition to returning
-    if (pathDataForNPC.pathPhase === types_1.PathPhase.BOUNCING && npcGroup.captorId) {
+    if (pathDataForNPC.pathPhase === types_1.PathPhase.THROWN && npcGroup.captorId) {
         // Create a returning path back to the thrower
         const returningPathData = {
             id: (0, uuid_1.v4)(),
@@ -59,13 +48,13 @@ function setPathCompleteInRoom(room, npcGroup) {
         // Broadcast the new returning path
         (0, typed_socket_1.emitToRoom)(room, "path-update", { pathData: returningPathData });
     }
-    else {
+    else if (pathDataForNPC.pathPhase === types_1.PathPhase.FLEEING) {
         // Normal path completion - go to IDLE
         let landingPosition;
         // Only apply collision avoidance for emitted NPCs (bouncing NPCs that came from collisions)
         // These are NPCs without captorId that are in bouncing/path phase
         // Thrown NPCs (with captorId) should land normally and trigger capture/merge logic
-        if (!npcGroup.captorId && pathDataForNPC.pathPhase === types_1.PathPhase.BOUNCING) {
+        if (pathDataForNPC.pathPhase === types_1.PathPhase.FLEEING) {
             const collisionResult = calculateLandingPositionWithCollisionAvoidance(pathDataForNPC, room, npcGroup.id);
             // If path was extended due to collision, update clients with new path
             if (collisionResult.extendedPath) {
@@ -336,7 +325,7 @@ function handleNPCBounce(room, pathData, myPosition, otherPosition) {
         pathDuration: 1000, // Short bounce duration
         velocity: 15, // Medium bounce speed
         timestamp: Date.now(),
-        pathPhase: types_1.PathPhase.BOUNCING,
+        pathPhase: types_1.PathPhase.THROWN,
     };
     // Update the path in memory
     const paths = (0, paths_1.getpathsfromMemory)(room);
