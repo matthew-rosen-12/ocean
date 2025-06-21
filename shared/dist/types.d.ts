@@ -1,9 +1,5 @@
 export declare enum Animal {
-    DOLPHIN = "DOLPHIN",
-    WOLF = "WOLF",
-    PENGUIN = "PENGUIN",
-    SNAKE = "SNAKE",
-    TURTLE = "TURTLE"
+    TIGER = "TIGER"
 }
 export declare const ANIMAL_SCALES: {
     DOLPHIN: number;
@@ -11,6 +7,7 @@ export declare const ANIMAL_SCALES: {
     PENGUIN: number;
     SNAKE: number;
     TURTLE: number;
+    TIGER: number;
 };
 export declare const ANIMAL_ORIENTATION: {
     WOLF: {
@@ -30,6 +27,10 @@ export declare const ANIMAL_ORIENTATION: {
         flipY: boolean;
     };
     TURTLE: {
+        rotation: number;
+        flipY: boolean;
+    };
+    TIGER: {
         rotation: number;
         flipY: boolean;
     };

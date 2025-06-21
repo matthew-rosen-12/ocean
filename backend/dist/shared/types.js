@@ -3,25 +3,28 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.NPCGroupsBiMap = exports.DefaultMap = exports.NPCGroup = exports.NPCPhase = exports.PathPhase = exports.BACKEND_DIRECTION_OFFSET = exports.DIRECTION_OFFSET = exports.ANIMAL_ORIENTATION = exports.ANIMAL_SCALES = exports.Animal = void 0;
 var Animal;
 (function (Animal) {
-    Animal["DOLPHIN"] = "DOLPHIN";
-    Animal["WOLF"] = "WOLF";
-    Animal["PENGUIN"] = "PENGUIN";
-    Animal["SNAKE"] = "SNAKE";
-    Animal["TURTLE"] = "TURTLE";
+    // DOLPHIN = "DOLPHIN",
+    // WOLF = "WOLF", 
+    // PENGUIN = "PENGUIN",
+    // SNAKE = "SNAKE",
+    // TURTLE = "TURTLE",
+    Animal["TIGER"] = "TIGER";
 })(Animal || (exports.Animal = Animal = {}));
 exports.ANIMAL_SCALES = {
     DOLPHIN: 3.0,
     WOLF: 1.0,
     PENGUIN: 2.5,
     SNAKE: 2.0,
-    TURTLE: 2.0
+    TURTLE: 2.0,
+    TIGER: 1.0
 };
 exports.ANIMAL_ORIENTATION = {
     WOLF: { rotation: 0, flipY: true },
     DOLPHIN: { rotation: 0, flipY: false },
     PENGUIN: { rotation: 0, flipY: false },
     SNAKE: { rotation: 0, flipY: true },
-    TURTLE: { rotation: 0, flipY: true }
+    TURTLE: { rotation: 0, flipY: true },
+    TIGER: { rotation: 0, flipY: false }
 };
 exports.DIRECTION_OFFSET = 0.1;
 exports.BACKEND_DIRECTION_OFFSET = 0.001;
