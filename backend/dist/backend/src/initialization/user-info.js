@@ -6,7 +6,13 @@ exports.getInitialPosition = getInitialPosition;
 exports.getInitialDirection = getInitialDirection;
 const types_1 = require("shared/types");
 function getRandomAnimal() {
-    return Object.values(types_1.Animal)[Math.floor(Math.random() * Object.values(types_1.Animal).length)];
+    const animals = Object.values(types_1.Animal);
+    const randomIndex = Math.floor(Math.random() * animals.length);
+    const selectedAnimal = animals[randomIndex];
+    console.log("Available animals:", animals);
+    console.log("Random index:", randomIndex);
+    console.log("Selected animal:", selectedAnimal);
+    return selectedAnimal;
 }
 function generateGuestId() {
     return Math.random().toString(36).substring(2, 15);

@@ -1,8 +1,4 @@
 export declare enum Animal {
-    DOLPHIN = "DOLPHIN",
-    WOLF = "WOLF",
-    PENGUIN = "PENGUIN",
-    SNAKE = "SNAKE",
     TURTLE = "TURTLE"
 }
 export declare const ANIMAL_SCALES: {

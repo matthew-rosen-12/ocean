@@ -1,7 +1,11 @@
 import { Animal, Direction, Position, BACKEND_DIRECTION_OFFSET } from "shared/types";
 
 export function getRandomAnimal(): Animal {
-  return Object.values(Animal)[Math.floor(Math.random() * Object.values(Animal).length)];
+  const animals = Object.values(Animal);
+  const randomIndex = Math.floor(Math.random() * animals.length);
+  const selectedAnimal = animals[randomIndex];
+  
+  return selectedAnimal;
 }
 
 export function generateGuestId(): string {
