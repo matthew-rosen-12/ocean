@@ -1,12 +1,27 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NPCGroupsBiMap = exports.DefaultMap = exports.NPCGroup = exports.NPCPhase = exports.PathPhase = exports.DIRECTION_OFFSET = exports.ANIMAL_SCALES = void 0;
+exports.NPCGroupsBiMap = exports.DefaultMap = exports.NPCGroup = exports.NPCPhase = exports.PathPhase = exports.BACKEND_DIRECTION_OFFSET = exports.DIRECTION_OFFSET = exports.ANIMAL_ORIENTATION = exports.ANIMAL_SCALES = exports.Animal = void 0;
+var Animal;
+(function (Animal) {
+    // DOLPHIN = "DOLPHIN",
+    // WOLF = "WOLF", 
+    // PENGUIN = "PENGUIN",
+    Animal["SNAKE"] = "SNAKE";
+})(Animal || (exports.Animal = Animal = {}));
 exports.ANIMAL_SCALES = {
     DOLPHIN: 3.0,
     WOLF: 1.0,
     PENGUIN: 2.5,
+    SNAKE: 2.0,
+};
+exports.ANIMAL_ORIENTATION = {
+    WOLF: { rotation: 0, flipY: true },
+    DOLPHIN: { rotation: 0, flipY: false },
+    PENGUIN: { rotation: 0, flipY: false },
+    SNAKE: { rotation: 0, flipY: true },
 };
 exports.DIRECTION_OFFSET = 0.1;
+exports.BACKEND_DIRECTION_OFFSET = 0.001;
 // Path phases for different types of movement
 var PathPhase;
 (function (PathPhase) {

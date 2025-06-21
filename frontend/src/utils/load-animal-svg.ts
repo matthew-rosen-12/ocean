@@ -1,7 +1,7 @@
 import React from "react";
 import * as THREE from "three";
 import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader";
-import { Animal } from "shared/types";
+import { Animal, ANIMAL_ORIENTATION } from "shared/types";
 import concaveman from "concaveman";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
@@ -18,11 +18,6 @@ export const animalGraphicsCache = new Map<
   }
 >();
 
-export const ANIMAL_ORIENTATION = {
-  WOLF: { rotation: 0, flipY: true },
-  DOLPHIN: { rotation: 0, flipY: false },
-  PENGUIN: { rotation: 0, flipY: false },
-};
 
 // Utility function to create edge geometry from a base geometry
 export function createEdgeGeometry(

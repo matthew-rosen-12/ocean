@@ -1,10 +1,7 @@
-import { Animal, Direction, Position } from "shared/types";
-
-const DIRECTION_OFFSET = 0.001;
-const ANIMALS = ["WOLF", "DOLPHIN", "PENGUIN"];
+import { Animal, Direction, Position, BACKEND_DIRECTION_OFFSET } from "shared/types";
 
 export function getRandomAnimal(): Animal {
-  return ANIMALS[Math.floor(Math.random() * ANIMALS.length)] as Animal;
+  return Object.values(Animal)[Math.floor(Math.random() * Object.values(Animal).length)];
 }
 
 export function generateGuestId(): string {
@@ -18,5 +15,5 @@ export function getInitialPosition(): Position {
 }
 
 export function getInitialDirection(): Direction {
-  return { x: 1 + DIRECTION_OFFSET, y: 0 };
+  return { x: 1 + BACKEND_DIRECTION_OFFSET, y: 0 };
 }

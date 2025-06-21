@@ -1,10 +1,32 @@
-export type Animal = "DOLPHIN" | "WOLF" | "PENGUIN";
+export declare enum Animal {
+    SNAKE = "SNAKE"
+}
 export declare const ANIMAL_SCALES: {
     DOLPHIN: number;
     WOLF: number;
     PENGUIN: number;
+    SNAKE: number;
+};
+export declare const ANIMAL_ORIENTATION: {
+    WOLF: {
+        rotation: number;
+        flipY: boolean;
+    };
+    DOLPHIN: {
+        rotation: number;
+        flipY: boolean;
+    };
+    PENGUIN: {
+        rotation: number;
+        flipY: boolean;
+    };
+    SNAKE: {
+        rotation: number;
+        flipY: boolean;
+    };
 };
 export declare const DIRECTION_OFFSET = 0.1;
+export declare const BACKEND_DIRECTION_OFFSET = 0.001;
 export declare enum PathPhase {
     THROWN = "THROWN",// NPCs thrown by players
     FLEEING = "FLEEING",// NPCs fleeing from players

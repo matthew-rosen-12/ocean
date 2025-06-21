@@ -1,9 +1,24 @@
+export var Animal;
+(function (Animal) {
+    // DOLPHIN = "DOLPHIN",
+    // WOLF = "WOLF", 
+    // PENGUIN = "PENGUIN",
+    Animal["SNAKE"] = "SNAKE";
+})(Animal || (Animal = {}));
 export const ANIMAL_SCALES = {
     DOLPHIN: 3.0,
     WOLF: 1.0,
     PENGUIN: 2.5,
+    SNAKE: 2.0,
+};
+export const ANIMAL_ORIENTATION = {
+    WOLF: { rotation: 0, flipY: true },
+    DOLPHIN: { rotation: 0, flipY: false },
+    PENGUIN: { rotation: 0, flipY: false },
+    SNAKE: { rotation: 0, flipY: true },
 };
 export const DIRECTION_OFFSET = 0.1;
+export const BACKEND_DIRECTION_OFFSET = 0.001;
 // Path phases for different types of movement
 export var PathPhase;
 (function (PathPhase) {

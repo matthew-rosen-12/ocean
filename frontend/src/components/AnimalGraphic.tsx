@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useRef } from "react";
-import { UserInfo, Animal, ANIMAL_SCALES } from "shared/types";
+import { UserInfo, Animal, ANIMAL_SCALES, ANIMAL_ORIENTATION } from "shared/types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { Text } from "@react-three/drei";
@@ -8,7 +8,6 @@ import { useMount } from "../hooks/use-npc-group-base";
 import {
   loadAnimalSVG,
   animalGraphicsCache,
-  ANIMAL_ORIENTATION,
   createEdgeGeometry,
 } from "../utils/load-animal-svg";
 import { getAnimalBorderColor } from "../utils/animal-colors";

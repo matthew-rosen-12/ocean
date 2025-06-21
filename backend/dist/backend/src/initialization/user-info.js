@@ -4,10 +4,9 @@ exports.getRandomAnimal = getRandomAnimal;
 exports.generateGuestId = generateGuestId;
 exports.getInitialPosition = getInitialPosition;
 exports.getInitialDirection = getInitialDirection;
-const DIRECTION_OFFSET = 0.001;
-const ANIMALS = ["WOLF", "DOLPHIN", "PENGUIN"];
+const types_1 = require("shared/types");
 function getRandomAnimal() {
-    return ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
+    return Object.values(types_1.Animal)[Math.floor(Math.random() * Object.values(types_1.Animal).length)];
 }
 function generateGuestId() {
     return Math.random().toString(36).substring(2, 15);
@@ -18,5 +17,5 @@ function getInitialPosition() {
     return { x, y };
 }
 function getInitialDirection() {
-    return { x: 1 + DIRECTION_OFFSET, y: 0 };
+    return { x: 1 + types_1.BACKEND_DIRECTION_OFFSET, y: 0 };
 }
