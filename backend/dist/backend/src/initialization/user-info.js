@@ -9,9 +9,6 @@ function getRandomAnimal() {
     const animals = Object.values(types_1.Animal);
     const randomIndex = Math.floor(Math.random() * animals.length);
     const selectedAnimal = animals[randomIndex];
-    console.log("Available animals:", animals);
-    console.log("Random index:", randomIndex);
-    console.log("Selected animal:", selectedAnimal);
     return selectedAnimal;
 }
 function generateGuestId() {

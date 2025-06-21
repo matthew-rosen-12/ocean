@@ -1,8 +1,8 @@
 export enum Animal {
-  // DOLPHIN = "DOLPHIN",
-  // WOLF = "WOLF", 
-  // PENGUIN = "PENGUIN",
-  // SNAKE = "SNAKE",
+  DOLPHIN = "DOLPHIN",
+  WOLF = "WOLF", 
+  PENGUIN = "PENGUIN",
+  SNAKE = "SNAKE",
   TURTLE = "TURTLE"
 }
 

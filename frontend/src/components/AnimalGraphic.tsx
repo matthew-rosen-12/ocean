@@ -48,12 +48,9 @@ function AnimalSprite({
   const previousPosition = useMemo(() => new THREE.Vector3(), []);
   const previousRotation = useRef(0);
   const targetRotation = useRef(0);
-  const targetFlipY = useRef(1);
   const initialScale = useRef<THREE.Vector3 | null>(null);
   const svgLoaded = useRef(false);
-  const flipProgress = useRef(0);
-  const isFlipping = useRef(false);
-  const currentFlipState = useRef(1); // Track current flip state (1 or -1)
+  const currentYScale = useRef(1); // Current Y scale (-1 for flipped, 1 for normal)
   const initialOrientation = useRef(
     ANIMAL_ORIENTATION[animal] || { rotation: 0, flipY: false }
   );
@@ -133,15 +130,13 @@ function AnimalSprite({
         targetRotation.current = angle;
         group.rotation.z = angle;
 
-        if (direction.x < 0 && initialScale.current) {
-          if (currentFlipState.current > 0) {
-            currentFlipState.current = -1;
-            group.scale.set(
-              initialScale.current.x,
-              -initialScale.current.y,
-              initialScale.current.z
-            );
-          }
+        // Set initial Y scale based on direction
+        if (direction.x < 0) {
+          currentYScale.current = -1;
+          group.scale.y = -Math.abs(initialScale.current.y);
+        } else {
+          currentYScale.current = 1;
+          group.scale.y = Math.abs(initialScale.current.y);
         }
       }
 
@@ -161,7 +156,7 @@ function AnimalSprite({
       targetRotation,
       svgLoaded,
       previousPosition,
-      currentFlipState
+      currentYScale
     )
       .then(() => {
         // After SVG is loaded, add edge geometry with user-specific color
@@ -233,16 +228,6 @@ function AnimalSprite({
 
       // Set target rotation
       targetRotation.current = angle;
-
-      // Check if we need to flip
-      const needsFlip =
-        (direction.x < 0 && currentFlipState.current > 0) ||
-        (direction.x > 0 && currentFlipState.current < 0);
-
-      if (needsFlip) {
-        isFlipping.current = true;
-        targetFlipY.current = direction.x < 0 ? -1 : 1;
-      }
     }
   }
   useFrame(() => {
@@ -284,7 +269,7 @@ function AnimalSprite({
       if (
         Math.abs(targetRotation.current) == Math.PI / 2 &&
         Math.abs(delta) == Math.PI &&
-        currentFlipState.current == -1
+        currentYScale.current < 0
       ) {
         delta *= -1;
       }
@@ -300,67 +285,22 @@ function AnimalSprite({
       group.rotation.z = previousRotation.current;
     }
 
-    // Handle flipping animation with faster non-local flipping
-    if (isFlipping.current) {
-      // Use faster flip speed for non-local players
-      const flipSpeed = FLIP_SPEED;
-
-      // Progress the flip
-      if (targetFlipY.current < 0) {
-        // Flipping to negative (left-facing)
-        flipProgress.current = Math.min(1, flipProgress.current + flipSpeed);
-
-        // Apply scale based on flip progress
-        if (flipProgress.current < 0.5) {
-          // First half of flip - scale down y
-          const scaleY =
-            initialScale.current.y * (1 - flipProgress.current * 2);
-          group.scale.setY(Math.max(0.01, scaleY));
-        } else {
-          // Second half of flip - scale up y with negative sign
-          const scaleY =
-            initialScale.current.y * ((flipProgress.current - 0.5) * 2) * -1;
-          group.scale.setY(scaleY);
-        }
-
-        // Complete the flip
-        if (flipProgress.current >= 1) {
-          isFlipping.current = false;
-          flipProgress.current = 0;
-          group.scale.set(
-            initialScale.current.x,
-            -initialScale.current.y,
-            initialScale.current.z
-          );
-
-          // Update current flip state
-          currentFlipState.current = -1;
-        }
+    // Handle Y scale flipping based on direction
+    if (directionRef.current && directionRef.current.length() > 0.01) {
+      const direction = directionRef.current.clone().normalize();
+      const targetYScale = direction.x < 0 ? -1 : 1;
+      
+      // Smoothly animate Y scale towards target
+      if (Math.abs(currentYScale.current - targetYScale) > 0.1) {
+        const flipSpeed = FLIP_SPEED;
+        currentYScale.current += (targetYScale - currentYScale.current) * flipSpeed;
+        
+        // Apply the current Y scale
+        group.scale.y = currentYScale.current * Math.abs(initialScale.current.y);
       } else {
-        flipProgress.current = Math.min(1, flipProgress.current + flipSpeed);
-        if (flipProgress.current < 0.5) {
-          const scaleY =
-            initialScale.current.y * (1 - flipProgress.current * 2) * -1;
-          group.scale.setY(scaleY);
-        } else {
-          const scaleY =
-            initialScale.current.y * ((flipProgress.current - 0.5) * 2);
-          group.scale.setY(Math.max(0.01, scaleY));
-        }
-
-        // Complete the flip
-        if (flipProgress.current >= 1) {
-          isFlipping.current = false;
-          flipProgress.current = 0;
-          group.scale.set(
-            initialScale.current.x,
-            initialScale.current.y,
-            initialScale.current.z
-          );
-
-          // Update current flip state
-          currentFlipState.current = 1;
-        }
+        // Snap to target when close enough
+        currentYScale.current = targetYScale;
+        group.scale.y = targetYScale * Math.abs(initialScale.current.y);
       }
     }
   });

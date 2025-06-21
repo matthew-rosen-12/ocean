@@ -14,7 +14,7 @@ exports.ANIMAL_SCALES = {
     WOLF: 1.0,
     PENGUIN: 2.5,
     SNAKE: 2.0,
-    TURTLE: 1.0
+    TURTLE: 2.0
 };
 exports.ANIMAL_ORIENTATION = {
     WOLF: { rotation: 0, flipY: true },
