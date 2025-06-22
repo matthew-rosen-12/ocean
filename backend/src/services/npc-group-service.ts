@@ -2,6 +2,7 @@ import { pathData, NPCGroup, NPCPhase, PathPhase, roomId, npcGroupId } from "sha
 
 import { getInitialPosition, getInitialDirection } from "../initialization/npc-info";
 import { v4 as uuidv4 } from "uuid";
+import { getTerrainConfig } from "../state/terrain";
 
 const NUM_NPCS = 4;
 const NPC_WIDTH = 4;
@@ -13,7 +14,7 @@ import {
   setPathsInMemory,
 } from "../state/paths";
 
-import { getNPCGroupsfromMemory, updateNPCGroupInRoomInMemory } from "../state/npc-groups";
+import { getNPCGroupsfromMemory, updateNPCGroupInRoomInMemory, setNPCGroupsInMemory } from "../state/npc-groups";
 
 import { emitToRoom } from "../typed-socket";
 import { getAllUsersInRoom } from "../state/users";
@@ -684,4 +685,71 @@ function makeNPCGroupFlee(
   } catch (error) {
     console.error("Error in makeNPCGroupFlee:", error);
   }
+}
+
+// Check for fleeing NPCs that have traveled far outside terrain boundaries and delete them
+export function checkAndDeleteFleeingNPCs(room: string): void {
+  try {
+    const allNPCGroups = getNPCGroupsfromMemory(room);
+    const allPaths = getpathsfromMemory(room);
+    const terrainConfig = getTerrainConfig(room);
+    
+    // Define distance outside terrain boundaries where NPCs should be deleted
+    const DELETION_DISTANCE = 10; // Hardcoded distance outside terrain bounds
+    
+    Array.from(allNPCGroups.values()).forEach((npcGroup) => {
+      // Only check NPCs in PATH phase
+      if (npcGroup.phase !== NPCPhase.PATH) {
+        return;
+      }
+      
+      // Only check NPCs on FLEEING paths
+      const pathData = allPaths.get(npcGroup.id);
+      if (!pathData || pathData.pathPhase !== PathPhase.FLEEING) {
+        return;
+      }
+      
+      // Calculate current position of the fleeing NPC
+      const currentPosition = calculatePathPosition(pathData, Date.now());
+      
+      // Check if NPC is far outside terrain boundaries
+      const outsideDistance = calculateDistanceOutsideTerrain(currentPosition, terrainConfig);
+      
+      if (outsideDistance >= DELETION_DISTANCE) {
+        console.log(`Deleting fleeing NPC ${npcGroup.id} - distance outside terrain: ${outsideDistance}`);
+        
+        // Delete the NPC group from memory
+        allNPCGroups.deleteByNpcGroupId(npcGroup.id);
+        setNPCGroupsInMemory(room, allNPCGroups);
+        
+        // Delete the path from memory
+        allPaths.delete(npcGroup.id);
+        setPathsInMemory(room, allPaths);
+        
+        // Emit deletion event to room with current position
+        emitToRoom(room, "npc-group-deleted", { 
+          npcGroupId: npcGroup.id,
+          currentPosition: currentPosition
+        });
+      }
+    });
+  } catch (error) {
+    console.error("Error in checkAndDeleteFleeingNPCs:", error);
+  }
+}
+
+// Calculate how far outside terrain boundaries a position is (returns 0 if inside)
+function calculateDistanceOutsideTerrain(position: { x: number; y: number }, terrainConfig: any): number {
+  const { boundaries } = terrainConfig;
+  
+  // Calculate distance outside each boundary
+  const leftDistance = boundaries.minX - position.x; // positive if outside left
+  const rightDistance = position.x - boundaries.maxX; // positive if outside right
+  const bottomDistance = boundaries.minY - position.y; // positive if outside bottom
+  const topDistance = position.y - boundaries.maxY; // positive if outside top
+  
+  // Find the maximum distance outside any boundary
+  const maxDistance = Math.max(0, leftDistance, rightDistance, bottomDistance, topDistance);
+  
+  return maxDistance;
 }

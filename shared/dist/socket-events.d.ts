@@ -38,6 +38,14 @@ export interface ServerToClientEvents {
     "path-deleted": (data: {
         pathData: pathData;
     }) => void;
+    "npc-group-deleted": (data: {
+        npcGroupId: npcGroupId;
+        currentPosition: {
+            x: number;
+            y: number;
+            z: number;
+        };
+    }) => void;
     "times-up": (data: {
         finalScores: FinalScores;
     }) => void;

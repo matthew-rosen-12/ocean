@@ -58,6 +58,7 @@ interface Props {
   terrain: TerrainConfig;
   onScreenshotCapture?: (screenshot: string) => void;
   onGameOver?: (finalScores: FinalScores) => void;
+  deletingNPCs: Set<string>;
 }
 
 export default function Scene({
@@ -70,6 +71,7 @@ export default function Scene({
   terrain,
   onScreenshotCapture,
   onGameOver,
+  deletingNPCs,
 }: Props) {
   const initialPosition = new THREE.Vector3(
     myUser.position.x,
@@ -316,6 +318,7 @@ export default function Scene({
               setPaths={setPaths}
               setNpcGroups={setNpcGroups}
               throwChargeCount={npcGroup.captorId === myUser.id ? currentThrowCount : undefined}
+              deletingNPCs={deletingNPCs}
             />
           ))}
       </Canvas>

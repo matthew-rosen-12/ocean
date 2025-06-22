@@ -8,7 +8,7 @@ import authRouter from "./routes/auth";
 import { getGameTicker } from "./game-ticker";
 import { decrementRoomUsersInMemory } from "./state/rooms";
 import { addUserToRoom, removeUserFromRoom, updateUserInRoom, getAllUsersInRoom } from "./state/users";
-import { generateRoomTerrain } from "./initialization/terrain";
+import { getTerrainConfig } from "./state/terrain";
 import { getpathsfromMemory } from "./state/paths";
 import { getNPCGroupsfromMemory, removeNPCGroupInRoomInMemory, setNPCGroupsInMemory } from "./state/npc-groups";
 import { setPathsInMemory } from "./state/paths";
@@ -107,7 +107,7 @@ io.on("connection", async (socket) => {
       // Send other room state to the joining socket
       try {
         // Send terrain configuration for this room
-        const terrainConfig = generateRoomTerrain(name);
+        const terrainConfig = getTerrainConfig(name);
         typedSocket.emit("terrain-config", { terrainConfig });
 
         // Send game timing information

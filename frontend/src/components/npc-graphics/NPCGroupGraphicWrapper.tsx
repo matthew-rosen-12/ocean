@@ -5,6 +5,7 @@ import { TerrainBoundaries } from "../../utils/terrain";
 import IdleNPCGroupGraphic from "./IdleNPCGroupGraphic";
 import PathNPCGroupGraphic from "./PathNPCGroupGraphic";
 import CapturedNPCGroupGraphic from "./CapturedNPCGroupGraphic";
+import SmokeAnimation from "./SmokeAnimation";
 
 interface NPCGraphicWrapperProps {
   npcGroup: NPCGroup;
@@ -25,6 +26,7 @@ interface NPCGraphicWrapperProps {
     npcGroups: NPCGroupsBiMap | ((prev: NPCGroupsBiMap) => NPCGroupsBiMap)
   ) => void;
   throwChargeCount?: number;
+  deletingNPCs: Set<string>;
 }
 
 const NPCGraphicWrapper = ({
@@ -40,7 +42,24 @@ const NPCGraphicWrapper = ({
   setPaths,
   setNpcGroups,
   throwChargeCount,
+  deletingNPCs,
 }: NPCGraphicWrapperProps) => {
+  // Check if this NPC is being deleted (show smoke animation)
+  const isBeingDeleted = deletingNPCs.has(npcGroup.id);
+  
+  if (isBeingDeleted) {
+    // Show smoke animation at NPC's current position
+    const position = new THREE.Vector3(npcGroup.position.x, npcGroup.position.y, npcGroup.position.z || 0);
+    return (
+      <SmokeAnimation
+        position={position}
+        onComplete={() => {
+          // Animation complete - the actual NPC deletion is handled by the socket event listener
+        }}
+      />
+    );
+  }
+
   if (npcGroup.phase === NPCPhase.IDLE) {
     return (
       <IdleNPCGroupGraphic

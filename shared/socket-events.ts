@@ -17,6 +17,7 @@ export interface ServerToClientEvents {
     "path-update": (data: { pathData: pathData }) => void;
     "path-complete": (data: { npcGroup: NPCGroup }) => void;
     "path-deleted": (data: { pathData: pathData }) => void;
+    "npc-group-deleted": (data: { npcGroupId: npcGroupId; currentPosition: { x: number; y: number; z: number } }) => void;
     "times-up": (data: { finalScores: FinalScores }) => void;
   }
   

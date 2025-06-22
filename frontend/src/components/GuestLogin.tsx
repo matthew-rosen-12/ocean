@@ -47,6 +47,8 @@ interface Props {
   >;
   setGameStartTime: React.Dispatch<React.SetStateAction<number | undefined>>;
   setGameDuration: React.Dispatch<React.SetStateAction<number | undefined>>;
+  deletingNPCs: Set<string>;
+  setDeletingNPCs: React.Dispatch<React.SetStateAction<Set<string>>>;
   // Note: setGameOver, setFinalScores, and setWinnerScreenshot are now handled by Scene component
 }
 
@@ -58,6 +60,8 @@ export default function GuestLogin({
   setTerrainConfig,
   setGameStartTime,
   setGameDuration,
+  deletingNPCs,
+  setDeletingNPCs,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [nickname, setNickname] = useState("");
@@ -298,6 +302,49 @@ export default function GuestLogin({
           newpaths.delete(npcGroup.id);
           return newpaths;
         });
+      });
+
+      // Handle NPC group deletion with smoke animation
+      typedSocket.on("npc-group-deleted", ({ npcGroupId, currentPosition }: { npcGroupId: string; currentPosition: { x: number; y: number; z: number } }) => {
+        // Immediately delete the path to prevent NPC from reappearing
+        setPaths((prev) => {
+          const newPaths = new Map(prev);
+          newPaths.delete(npcGroupId);
+          return newPaths;
+        });
+        
+        // Update the NPC group's position to the current fleeing position before deletion
+        setNPCGroups((prev) => {
+          const newNpcGroups = new NPCGroupsBiMap(prev);
+          const npcGroup = newNpcGroups.getByNpcGroupId(npcGroupId);
+          if (npcGroup) {
+            const updatedNpcGroup = new NPCGroup({
+              ...npcGroup,
+              position: currentPosition
+            });
+            newNpcGroups.setByNpcGroupId(npcGroupId, updatedNpcGroup);
+          }
+          return newNpcGroups;
+        });
+        
+        // First trigger smoke animation, then delete after animation completes
+        const deletingNpcGroups = new Set(deletingNPCs);
+        deletingNpcGroups.add(npcGroupId);
+        setDeletingNPCs(deletingNpcGroups);
+        
+        // Delete NPC group after animation duration
+        setTimeout(() => {
+          setNPCGroups((prev) => {
+            const newNpcGroups = new NPCGroupsBiMap(prev);
+            newNpcGroups.deleteByNpcGroupId(npcGroupId);
+            return newNpcGroups;
+          });
+          setDeletingNPCs((prev) => {
+            const newSet = new Set(prev);
+            newSet.delete(npcGroupId);
+            return newSet;
+          });
+        }, 2000); // 2 second animation duration
       });
 
       // Handle game over event - trigger cinematic sequence

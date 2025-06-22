@@ -1,5 +1,5 @@
 import { pathData, PathPhase, NPCPhase } from "shared/types";
-import { checkAndHandleNPCCollisions, setPathCompleteInRoom, checkAndHandleNPCFleeing } from "./services/npc-group-service";
+import { checkAndHandleNPCCollisions, setPathCompleteInRoom, checkAndHandleNPCFleeing, checkAndDeleteFleeingNPCs } from "./services/npc-group-service";
 import { BotCollisionService } from "./services/bot-collision-service";
 import { BotManagementService } from "./services/bot-management-service";
 import { emitToRoom } from "./typed-socket";
@@ -42,10 +42,13 @@ class GameTicker {
         checkAndHandleNPCCollisions(roomName);
         
         // Process bot users: movement and collision detection 
-        this.processBots(roomName);
+        // this.processBots(roomName);
         
         // Check for NPC fleeing after bot movement (same as for human players)
         checkAndHandleNPCFleeing(roomName);
+        
+        // Check for fleeing NPCs that are far outside terrain boundaries and delete them
+        checkAndDeleteFleeingNPCs(roomName);
 
         // Get paths for this room
         const allPaths =  getpathsfromMemory(roomName);

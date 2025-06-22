@@ -22,7 +22,7 @@ const auth_1 = __importDefault(require("./routes/auth"));
 const game_ticker_1 = require("./game-ticker");
 const rooms_1 = require("./state/rooms");
 const users_1 = require("./state/users");
-const terrain_1 = require("./initialization/terrain");
+const terrain_1 = require("./state/terrain");
 const paths_1 = require("./state/paths");
 const npc_groups_1 = require("./state/npc-groups");
 const paths_2 = require("./state/paths");
@@ -101,7 +101,7 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
             // Send other room state to the joining socket
             try {
                 // Send terrain configuration for this room
-                const terrainConfig = (0, terrain_1.generateRoomTerrain)(name);
+                const terrainConfig = (0, terrain_1.getTerrainConfig)(name);
                 typedSocket.emit("terrain-config", { terrainConfig });
                 // Send game timing information
                 const gameStartTime = (0, game_timer_1.getGameStartTime)(name);

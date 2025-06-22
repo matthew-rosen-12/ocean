@@ -32,6 +32,7 @@ function App() {
   const [gameOver, setGameOver] = useState(false);
   const [finalScores, setFinalScores] = useState<FinalScores>({});
   const [winnerScreenshot, setWinnerScreenshot] = useState<string>("");
+  const [deletingNPCs, setDeletingNPCs] = useState<Set<string>>(new Set());
 
   // Preload fonts on app initialization
   useEffect(() => {
@@ -55,6 +56,7 @@ function App() {
     setGameOver(false);
     setFinalScores({});
     setWinnerScreenshot("");
+    setDeletingNPCs(new Set());
   };
 
   // Show game over screen if game has ended
@@ -80,6 +82,8 @@ function App() {
         setTerrainConfig={setServerTerrainConfig}
         setGameStartTime={setGameStartTime}
         setGameDuration={setGameDuration}
+        deletingNPCs={deletingNPCs}
+        setDeletingNPCs={setDeletingNPCs}
       />
     );
   }
@@ -99,6 +103,7 @@ function App() {
           setFinalScores(finalScores);
           setGameOver(true);
         }}
+        deletingNPCs={deletingNPCs}
       />
 
       {/* Leaderboard */}
