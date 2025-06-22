@@ -3,16 +3,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateNPCGroupInRoom = updateNPCGroupInRoom;
 exports.setPathCompleteInRoom = setPathCompleteInRoom;
 exports.createNPCGroups = createNPCGroups;
+exports.createSingleNPCGroup = createSingleNPCGroup;
 exports.checkAndHandleNPCCollisions = checkAndHandleNPCCollisions;
 exports.checkAndHandleNPCFleeing = checkAndHandleNPCFleeing;
 exports.checkAndDeleteFleeingNPCs = checkAndDeleteFleeingNPCs;
+exports.checkAndSpawnNPCs = checkAndSpawnNPCs;
 const types_1 = require("shared/types");
 const npc_info_1 = require("../initialization/npc-info");
 const uuid_1 = require("uuid");
 const terrain_1 = require("../state/terrain");
-const NUM_NPCS = 4;
-const NPC_WIDTH = 4;
-const NPC_HEIGHT = 4;
+const NUM_NPCS = 40;
 const paths_1 = require("../state/paths");
 const npc_groups_1 = require("../state/npc-groups");
 const typed_socket_1 = require("../typed-socket");
@@ -99,10 +99,10 @@ function calculateLandingPositionWithCollisionAvoidance(pathData, room, movingNp
         // Check for collisions with IDLE NPCs
         let hasCollision = false;
         for (const idleNPCGroup of idleNPCGroups) {
-            const collided = detectCollision(landingPosition, Object.assign(Object.assign({}, idleNPCGroup.position), { z: 0 }), NPC_WIDTH, // width1 - moving NPC
-            NPC_HEIGHT, // height1 - moving NPC
-            NPC_WIDTH, // width2 - idle NPC
-            NPC_HEIGHT // height2 - idle NPC
+            const collided = detectCollision(landingPosition, Object.assign(Object.assign({}, idleNPCGroup.position), { z: 0 }), types_1.NPC_WIDTH, // width1 - moving NPC
+            types_1.NPC_HEIGHT, // height1 - moving NPC
+            types_1.NPC_WIDTH, // width2 - idle NPC
+            types_1.NPC_HEIGHT // height2 - idle NPC
             );
             if (collided) {
                 hasCollision = true;
@@ -164,7 +164,7 @@ function calculateLandingPosition(pathData) {
     // This is the same as calculatePathPosition at progress = 1
     return calculatePathPosition(pathData, pathData.timestamp + pathData.pathDuration);
 }
-function createNPCGroups() {
+function createNPCGroups(terrainBoundaries) {
     const npcGroups = [];
     const npcFilenames = getNPCFilenames();
     const shuffledFilenames = [...npcFilenames].sort(() => Math.random() - 0.5);
@@ -174,13 +174,24 @@ function createNPCGroups() {
         const npcGroup = new types_1.NPCGroup({
             id: (0, uuid_1.v4)(),
             fileNames: [filename],
-            position: (0, npc_info_1.getInitialPosition)(),
+            position: (0, npc_info_1.getInitialPosition)(terrainBoundaries),
             direction: (0, npc_info_1.getInitialDirection)(),
             phase: types_1.NPCPhase.IDLE,
         });
         npcGroups.push(npcGroup);
     }
     return npcGroups;
+}
+function createSingleNPCGroup(terrainBoundaries) {
+    const npcFilenames = getNPCFilenames();
+    const randomFilename = npcFilenames[Math.floor(Math.random() * npcFilenames.length)];
+    return new types_1.NPCGroup({
+        id: (0, uuid_1.v4)(),
+        fileNames: [randomFilename],
+        position: (0, npc_info_1.getInitialPosition)(terrainBoundaries),
+        direction: (0, npc_info_1.getInitialDirection)(),
+        phase: types_1.NPCPhase.IDLE,
+    });
 }
 function getNPCFilenames() {
     // Hardcode the available NPC filenames from frontend
@@ -200,7 +211,7 @@ function getNPCFilenames() {
         "winston_churchill.png",
     ];
 }
-const detectCollision = (position1, position2, width1 = NPC_WIDTH, height1 = NPC_HEIGHT, width2 = NPC_WIDTH, height2 = NPC_HEIGHT) => {
+const detectCollision = (position1, position2, width1 = types_1.NPC_WIDTH, height1 = types_1.NPC_HEIGHT, width2 = types_1.NPC_WIDTH, height2 = types_1.NPC_HEIGHT) => {
     // Bounding box collision detection
     const halfWidth1 = width1 / 2;
     const halfHeight1 = height1 / 2;
@@ -233,7 +244,7 @@ function checkAndHandleNPCCollisions(room) {
                 continue;
             // Check collision with idle NPC
             for (const idleNPCGroup of idleNPCGroups) {
-                const collided = detectCollision(pathPosition, Object.assign(Object.assign({}, idleNPCGroup.position), { z: 0 }), NPC_WIDTH, NPC_HEIGHT, NPC_WIDTH, NPC_HEIGHT);
+                const collided = detectCollision(pathPosition, Object.assign(Object.assign({}, idleNPCGroup.position), { z: 0 }), types_1.NPC_WIDTH, types_1.NPC_HEIGHT, types_1.NPC_WIDTH, types_1.NPC_HEIGHT);
                 if (collided) {
                     console.log(`Path NPC ${thrownPath.npcGroupId} collided with idle NPC ${idleNPCGroup.id}`);
                     handlePathNPCMerge(room, thrownPath, pathNPCGroup, idleNPCGroup, pathPosition);
@@ -256,7 +267,7 @@ function checkAndHandleNPCCollisions(room) {
                 if (otherPathNPCGroup.captorId !== thrownPathNPCGroup.captorId // Ignore same captor
                 ) {
                     const otherPathPosition = calculatePathPosition(otherPath, Date.now());
-                    const collided = detectCollision(thrownPathPosition, otherPathPosition, NPC_WIDTH, NPC_HEIGHT, NPC_WIDTH, NPC_HEIGHT);
+                    const collided = detectCollision(thrownPathPosition, otherPathPosition, types_1.NPC_WIDTH, types_1.NPC_HEIGHT, types_1.NPC_WIDTH, types_1.NPC_HEIGHT);
                     if (collided) {
                         console.log("Path NPC collision detected");
                         const thrownPathSize = thrownPathNPCGroup.fileNames.length;
@@ -528,9 +539,10 @@ function checkAndDeleteFleeingNPCs(room) {
                 console.log(`Deleting fleeing NPC ${npcGroup.id} - distance outside terrain: ${outsideDistance}`);
                 // Delete the NPC group from memory
                 allNPCGroups.deleteByNpcGroupId(npcGroup.id);
-                (0, npc_groups_1.setNPCGroupsInMemory)(room, allNPCGroups);
                 // Delete the path from memory
                 allPaths.delete(npcGroup.id);
+                // Save updated states to memory
+                (0, npc_groups_1.setNPCGroupsInMemory)(room, allNPCGroups);
                 (0, paths_1.setPathsInMemory)(room, allPaths);
                 // Emit deletion event to room with current position
                 (0, typed_socket_1.emitToRoom)(room, "npc-group-deleted", {
@@ -555,4 +567,37 @@ function calculateDistanceOutsideTerrain(position, terrainConfig) {
     // Find the maximum distance outside any boundary
     const maxDistance = Math.max(0, leftDistance, rightDistance, bottomDistance, topDistance);
     return maxDistance;
+}
+// Check and spawn NPCs to maintain population of NUM_NPCS
+function checkAndSpawnNPCs(room) {
+    try {
+        const allNPCGroups = (0, npc_groups_1.getNPCGroupsfromMemory)(room);
+        const currentCount = allNPCGroups.size;
+        if (currentCount < NUM_NPCS) {
+            const spawnCount = NUM_NPCS - currentCount;
+            // Get terrain boundaries for proper spawning
+            const terrainConfig = (0, terrain_1.getTerrainConfig)(room);
+            const terrainBoundaries = terrainConfig.boundaries;
+            for (let i = 0; i < spawnCount; i++) {
+                const newNPCGroup = createSingleNPCGroup(terrainBoundaries);
+                console.log(`[DEBUG] Spawned new NPC ${newNPCGroup.id} at position (${newNPCGroup.position.x}, ${newNPCGroup.position.y})`);
+                // First: Broadcast spawning event with fire animation (but don't add to server memory yet)
+                console.log(`[DEBUG] Emitting fire animation for NPC ${newNPCGroup.id} at (${newNPCGroup.position.x}, ${newNPCGroup.position.y})`);
+                (0, typed_socket_1.emitToRoom)(room, "npc-group-spawned", {
+                    npcGroup: newNPCGroup,
+                    spawnPosition: { x: newNPCGroup.position.x, y: newNPCGroup.position.y, z: 0 }
+                });
+                // After a short delay: Add NPC to memory and broadcast update
+                setTimeout(() => {
+                    const currentNPCGroups = (0, npc_groups_1.getNPCGroupsfromMemory)(room);
+                    currentNPCGroups.setByNpcGroupId(newNPCGroup.id, newNPCGroup);
+                    (0, npc_groups_1.setNPCGroupsInMemory)(room, currentNPCGroups);
+                    (0, typed_socket_1.emitToRoom)(room, "npc-group-update", { npcGroup: newNPCGroup });
+                }, 500); // 0.5 second delay to let fire animation start
+            }
+        }
+    }
+    catch (error) {
+        console.error("Error in checkAndSpawnNPCs:", error);
+    }
 }

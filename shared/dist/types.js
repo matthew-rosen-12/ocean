@@ -43,6 +43,9 @@ export const ANIMAL_ORIENTATION = {
 };
 export const DIRECTION_OFFSET = 0.1;
 export const BACKEND_DIRECTION_OFFSET = 0.001;
+// NPC group dimensions
+export const NPC_WIDTH = 4;
+export const NPC_HEIGHT = 4;
 // Path phases for different types of movement
 export var PathPhase;
 (function (PathPhase) {
@@ -162,6 +165,7 @@ export class NPCGroupsBiMap {
     }
     values() { return Array.from(this.map2.values()); }
     keys() { return Array.from(this.map2.keys()); }
+    get size() { return this.map2.size; }
     getByUserId(userId) { return this.map1.get(userId); }
     getByNpcGroupId(npcGroupId) { return this.map2.get(npcGroupId); }
 }

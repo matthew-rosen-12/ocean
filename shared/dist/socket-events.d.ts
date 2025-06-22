@@ -46,6 +46,14 @@ export interface ServerToClientEvents {
             z: number;
         };
     }) => void;
+    "npc-group-spawned": (data: {
+        npcGroup: NPCGroup;
+        spawnPosition: {
+            x: number;
+            y: number;
+            z: number;
+        };
+    }) => void;
     "times-up": (data: {
         finalScores: FinalScores;
     }) => void;

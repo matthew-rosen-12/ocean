@@ -33,6 +33,7 @@ function App() {
   const [finalScores, setFinalScores] = useState<FinalScores>({});
   const [winnerScreenshot, setWinnerScreenshot] = useState<string>("");
   const [deletingNPCs, setDeletingNPCs] = useState<Set<string>>(new Set());
+  const [spawningNPCs, setSpawningNPCs] = useState<Map<string, { x: number; y: number; z: number }>>(new Map());
 
   // Preload fonts on app initialization
   useEffect(() => {
@@ -57,6 +58,7 @@ function App() {
     setFinalScores({});
     setWinnerScreenshot("");
     setDeletingNPCs(new Set());
+    setSpawningNPCs(new Map());
   };
 
   // Show game over screen if game has ended
@@ -84,6 +86,8 @@ function App() {
         setGameDuration={setGameDuration}
         deletingNPCs={deletingNPCs}
         setDeletingNPCs={setDeletingNPCs}
+        spawningNPCs={spawningNPCs}
+        setSpawningNPCs={setSpawningNPCs}
       />
     );
   }
@@ -104,6 +108,8 @@ function App() {
           setGameOver(true);
         }}
         deletingNPCs={deletingNPCs}
+        spawningNPCs={spawningNPCs}
+        setSpawningNPCs={setSpawningNPCs}
       />
 
       {/* Leaderboard */}

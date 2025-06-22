@@ -7,6 +7,7 @@ const bot_management_service_1 = require("../services/bot-management-service");
 const uuid_1 = require("uuid");
 const types_1 = require("shared/types");
 const npc_groups_1 = require("./npc-groups");
+const terrain_1 = require("./terrain");
 const rooms = new Map();
 // Room management functions
 const getRoomDataInMemory = (roomName) => {
@@ -119,7 +120,10 @@ const createRoomInMemory = (roomName) => {
 };
 const populateRoomInMemory = (roomName) => {
     try {
-        const npcGroups = (0, npc_group_service_1.createNPCGroups)();
+        // Get terrain boundaries for proper NPC spawning
+        const terrainConfig = (0, terrain_1.getTerrainConfig)(roomName);
+        const terrainBoundaries = terrainConfig.boundaries;
+        const npcGroups = (0, npc_group_service_1.createNPCGroups)(terrainBoundaries);
         const npcGroupsMap = new types_1.NPCGroupsBiMap();
         npcGroups.forEach((npcGroup) => {
             npcGroupsMap.setByNpcGroupId(npcGroup.id, npcGroup);

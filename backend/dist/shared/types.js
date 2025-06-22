@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NPCGroupsBiMap = exports.DefaultMap = exports.NPCGroup = exports.NPCPhase = exports.PathPhase = exports.BACKEND_DIRECTION_OFFSET = exports.DIRECTION_OFFSET = exports.ANIMAL_ORIENTATION = exports.ANIMAL_SCALES = exports.Animal = void 0;
+exports.NPCGroupsBiMap = exports.DefaultMap = exports.NPCGroup = exports.NPCPhase = exports.PathPhase = exports.NPC_HEIGHT = exports.NPC_WIDTH = exports.BACKEND_DIRECTION_OFFSET = exports.DIRECTION_OFFSET = exports.ANIMAL_ORIENTATION = exports.ANIMAL_SCALES = exports.Animal = void 0;
 var Animal;
 (function (Animal) {
     // DOLPHIN = "DOLPHIN",
@@ -46,6 +46,9 @@ exports.ANIMAL_ORIENTATION = {
 };
 exports.DIRECTION_OFFSET = 0.1;
 exports.BACKEND_DIRECTION_OFFSET = 0.001;
+// NPC group dimensions
+exports.NPC_WIDTH = 4;
+exports.NPC_HEIGHT = 4;
 // Path phases for different types of movement
 var PathPhase;
 (function (PathPhase) {
@@ -167,6 +170,7 @@ class NPCGroupsBiMap {
     }
     values() { return Array.from(this.map2.values()); }
     keys() { return Array.from(this.map2.keys()); }
+    get size() { return this.map2.size; }
     getByUserId(userId) { return this.map1.get(userId); }
     getByNpcGroupId(npcGroupId) { return this.map2.get(npcGroupId); }
 }

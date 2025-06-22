@@ -67,6 +67,8 @@ export declare const ANIMAL_ORIENTATION: {
 };
 export declare const DIRECTION_OFFSET = 0.1;
 export declare const BACKEND_DIRECTION_OFFSET = 0.001;
+export declare const NPC_WIDTH = 4;
+export declare const NPC_HEIGHT = 4;
 export declare enum PathPhase {
     THROWN = "THROWN",// NPCs thrown by players
     FLEEING = "FLEEING",// NPCs fleeing from players
@@ -133,6 +135,7 @@ export declare class NPCGroupsBiMap {
     deleteByNpcGroupId(npcGroupId: npcGroupId): void;
     values(): NPCGroup[];
     keys(): npcGroupId[];
+    get size(): number;
     getByUserId(userId: userId): NPCGroup | undefined;
     getByNpcGroupId(npcGroupId: npcGroupId): NPCGroup | undefined;
 }

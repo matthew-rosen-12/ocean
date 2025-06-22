@@ -47,6 +47,10 @@ export const ANIMAL_ORIENTATION = {
 export const DIRECTION_OFFSET = 0.1;
 export const BACKEND_DIRECTION_OFFSET = 0.001;
 
+// NPC group dimensions
+export const NPC_WIDTH = 4;
+export const NPC_HEIGHT = 4;
+
 // Path phases for different types of movement
 export enum PathPhase {
   THROWN = "THROWN", // NPCs thrown by players
@@ -218,6 +222,7 @@ export class NPCGroupsBiMap {
 
   values(): NPCGroup[] { return Array.from(this.map2.values()); }
   keys(): npcGroupId[] { return Array.from(this.map2.keys()); }
+  get size(): number { return this.map2.size; }
   
   getByUserId(userId: userId): NPCGroup | undefined { return this.map1.get(userId); }
   getByNpcGroupId(npcGroupId: npcGroupId): NPCGroup | undefined { return this.map2.get(npcGroupId); }

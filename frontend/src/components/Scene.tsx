@@ -2,25 +2,19 @@
 "use client";
 import { Canvas, useThree } from "@react-three/fiber";
 import {
-  Direction,
-  NPCGroup,
   npcGroupId,
-  NPCPhase,
-  PathPhase,
   pathData,
   userId,
   UserInfo,
   NPCGroupsBiMap,
   FinalScores,
   ANIMAL_SCALES,
-  DIRECTION_OFFSET,
 } from "shared/types";
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { typedSocket } from "../socket";
+import { useEffect, useState, useCallback } from "react";
 import AnimalGraphic from "./AnimalGraphic";
 import { UI_Z_INDICES } from "shared/z-depths";
-import { throttle } from "lodash";
 import NPCGraphicWrapper from "./npc-graphics/NPCGroupGraphicWrapper";
+import SparkleAnimation from "./npc-graphics/SparkleAnimation";
 import * as THREE from "three";
 import { CameraController } from "./CameraController";
 import { usePositionBroadcast } from "../hooks/usePositionBroadcast";
@@ -59,6 +53,8 @@ interface Props {
   onScreenshotCapture?: (screenshot: string) => void;
   onGameOver?: (finalScores: FinalScores) => void;
   deletingNPCs: Set<string>;
+  spawningNPCs: Map<string, { x: number; y: number; z: number }>;
+  setSpawningNPCs: React.Dispatch<React.SetStateAction<Map<string, { x: number; y: number; z: number }>>>;
 }
 
 export default function Scene({
@@ -72,6 +68,8 @@ export default function Scene({
   onScreenshotCapture,
   onGameOver,
   deletingNPCs,
+  spawningNPCs,
+  setSpawningNPCs,
 }: Props) {
   const initialPosition = new THREE.Vector3(
     myUser.position.x,
@@ -321,6 +319,23 @@ export default function Scene({
               deletingNPCs={deletingNPCs}
             />
           ))}
+
+        {/* Render sparkle animations for spawning NPCs */}
+        {Array.from(spawningNPCs.entries()).map(([npcId, position]) => (
+          <SparkleAnimation
+            key={`sparkle-${npcId}`}
+            position={new THREE.Vector3(position.x, position.y, position.z)}
+            npcId={npcId}
+            onComplete={(completedNpcId) => {
+              // Remove this sparkle animation from the spawning map
+              setSpawningNPCs((prev) => {
+                const newMap = new Map(prev);
+                newMap.delete(completedNpcId);
+                return newMap;
+              });
+            }}
+          />
+        ))}
       </Canvas>
 
       {/* TIMES UP! Text */}

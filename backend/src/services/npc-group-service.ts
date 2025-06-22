@@ -1,12 +1,10 @@
-import { pathData, NPCGroup, NPCPhase, PathPhase, roomId, npcGroupId } from "shared/types";
+import { pathData, NPCGroup, NPCPhase, PathPhase, roomId, npcGroupId, NPC_WIDTH, NPC_HEIGHT } from "shared/types";
 
 import { getInitialPosition, getInitialDirection } from "../initialization/npc-info";
 import { v4 as uuidv4 } from "uuid";
 import { getTerrainConfig } from "../state/terrain";
 
-const NUM_NPCS = 4;
-const NPC_WIDTH = 4;
-const NPC_HEIGHT = 4;
+const NUM_NPCS = 40;
 
 import {
   deletePathInMemory,
@@ -230,7 +228,7 @@ function calculateLandingPosition(pathData: pathData) {
   );
 }
 
-export function createNPCGroups(): NPCGroup[] {
+export function createNPCGroups(terrainBoundaries?: { minX: number; maxX: number; minY: number; maxY: number }): NPCGroup[] {
   const npcGroups: NPCGroup[] = [];
   const npcFilenames = getNPCFilenames();
   const shuffledFilenames = [...npcFilenames].sort(() => Math.random() - 0.5);
@@ -242,7 +240,7 @@ export function createNPCGroups(): NPCGroup[] {
     const npcGroup = new NPCGroup({
       id: uuidv4(),
       fileNames: [filename],
-      position: getInitialPosition(),
+      position: getInitialPosition(terrainBoundaries),
       direction: getInitialDirection(),
       phase: NPCPhase.IDLE,
     });
@@ -253,12 +251,33 @@ export function createNPCGroups(): NPCGroup[] {
   return npcGroups;
 }
 
+export function createSingleNPCGroup(terrainBoundaries?: { minX: number; maxX: number; minY: number; maxY: number }): NPCGroup {
+  const npcFilenames = getNPCFilenames();
+  const randomFilename = npcFilenames[Math.floor(Math.random() * npcFilenames.length)];
+
+  return new NPCGroup({
+    id: uuidv4(),
+    fileNames: [randomFilename],
+    position: getInitialPosition(terrainBoundaries),
+    direction: getInitialDirection(),
+    phase: NPCPhase.IDLE,
+  });
+}
+
 function getNPCFilenames(): string[] {
   // Hardcode the available NPC filenames from frontend
   return [
+    "akbar.png",
     "angela_merkel.png",
+    "beethoven.png",
+    "bruce_lee.png",
     "cleopatra.png",
+    "da_vinci.png",
+    "emperor_meiji.png",
     "fdr.png",
+    "florence_nightingale.png",
+    "fred_astaire.png",
+    "frederick_douglass.png",
     "hermes.png",
     "isaac_netwon.png",
     "jane_austen.png",
@@ -266,8 +285,10 @@ function getNPCFilenames(): string[] {
     "margaret_thatcher.png",
     "morgan_la_fey.png",
     "napoleon_bonaparte.png",
+    "nelson_mandela.png",
     "queen_elizabeth_I.png",
     "robinhood.png",
+    "shakespeare.png",
     "winston_churchill.png",
   ];
 }
@@ -720,10 +741,13 @@ export function checkAndDeleteFleeingNPCs(room: string): void {
         
         // Delete the NPC group from memory
         allNPCGroups.deleteByNpcGroupId(npcGroup.id);
-        setNPCGroupsInMemory(room, allNPCGroups);
         
         // Delete the path from memory
         allPaths.delete(npcGroup.id);
+        
+        
+        // Save updated states to memory
+        setNPCGroupsInMemory(room, allNPCGroups);
         setPathsInMemory(room, allPaths);
         
         // Emit deletion event to room with current position
@@ -752,4 +776,43 @@ function calculateDistanceOutsideTerrain(position: { x: number; y: number }, ter
   const maxDistance = Math.max(0, leftDistance, rightDistance, bottomDistance, topDistance);
   
   return maxDistance;
+}
+
+// Check and spawn NPCs to maintain population of NUM_NPCS
+export function checkAndSpawnNPCs(room: string): void {
+  try {
+    const allNPCGroups = getNPCGroupsfromMemory(room);
+    const currentCount = allNPCGroups.size;
+    
+    
+    if (currentCount < NUM_NPCS) {
+      const spawnCount = NUM_NPCS - currentCount;
+      
+      // Get terrain boundaries for proper spawning
+      const terrainConfig = getTerrainConfig(room);
+      const terrainBoundaries = terrainConfig.boundaries;
+      
+      for (let i = 0; i < spawnCount; i++) {
+        const newNPCGroup = createSingleNPCGroup(terrainBoundaries);
+        
+        console.log(`[DEBUG] Spawned new NPC ${newNPCGroup.id} at position (${newNPCGroup.position.x}, ${newNPCGroup.position.y})`);
+        
+        // First: Broadcast spawning event with fire animation (but don't add to server memory yet)
+        emitToRoom(room, "npc-group-spawned", { 
+          npcGroup: newNPCGroup,
+          spawnPosition: { x: newNPCGroup.position.x, y: newNPCGroup.position.y, z: 0 }
+        });
+        
+        // After a short delay: Add NPC to memory and broadcast update
+        setTimeout(() => {
+          const currentNPCGroups = getNPCGroupsfromMemory(room);
+          currentNPCGroups.setByNpcGroupId(newNPCGroup.id, newNPCGroup);
+          setNPCGroupsInMemory(room, currentNPCGroups);
+          emitToRoom(room, "npc-group-update", { npcGroup: newNPCGroup });
+        }, 500); // 0.5 second delay to let fire animation start
+      }
+    }
+  } catch (error) {
+    console.error("Error in checkAndSpawnNPCs:", error);
+  }
 }

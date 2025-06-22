@@ -31,6 +31,8 @@ class GameTicker {
         this.tickRate = 50; // ms between ticks (20 ticks per second) - faster for smoother bots
         this.tickInterval = null;
         this.botUpdateCounter = 0;
+        this.spawnCheckCounter = 0;
+        this.SPAWN_CHECK_INTERVAL = 20; // Check spawning every 20 ticks (1 second at 20 ticks/second)
         this.startTicker();
     }
     startTicker() {
@@ -41,6 +43,10 @@ class GameTicker {
             try {
                 // Get all room names
                 const roomNames = (0, rooms_1.getAllRoomsfromMemory)();
+                this.spawnCheckCounter++;
+                // console.log(`[DEBUG] Game ticker running. Rooms: ${roomNames.length}, Counter: ${this.spawnCheckCounter}/${this.SPAWN_CHECK_INTERVAL}`);
+                // Check if we should run spawn checks this tick
+                const shouldRunSpawnCheck = this.spawnCheckCounter >= this.SPAWN_CHECK_INTERVAL;
                 // Process each room
                 for (const roomName of roomNames) {
                     // Always check for collisions first (for thrown paths)
@@ -51,6 +57,10 @@ class GameTicker {
                     (0, npc_group_service_1.checkAndHandleNPCFleeing)(roomName);
                     // Check for fleeing NPCs that are far outside terrain boundaries and delete them
                     (0, npc_group_service_1.checkAndDeleteFleeingNPCs)(roomName);
+                    // Check if we need to spawn new NPCs (once per second)
+                    if (shouldRunSpawnCheck) {
+                        (0, npc_group_service_1.checkAndSpawnNPCs)(roomName);
+                    }
                     // Get paths for this room
                     const allPaths = (0, paths_1.getpathsfromMemory)(roomName);
                     // filter paths that are not thrown or returning (for completion checking)
@@ -83,8 +93,12 @@ class GameTicker {
             catch (error) {
                 console.error("Error in game ticker:", error);
             }
-            // Increment bot update counter
+            // Increment counters
             this.botUpdateCounter++;
+            // Reset spawn check counter
+            if (this.spawnCheckCounter >= this.SPAWN_CHECK_INTERVAL) {
+                this.spawnCheckCounter = 0;
+            }
             // Schedule next tick
             this.tickInterval = setTimeout(() => this.tick(), this.tickRate);
         });

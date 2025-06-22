@@ -3,6 +3,7 @@ import { BotManagementService } from "../services/bot-management-service";
 import { v4 as uuidv4 } from "uuid";
 import { NPCGroupsBiMap, roomId } from "shared/types";
 import { setNPCGroupsInMemory } from "./npc-groups";
+import { getTerrainConfig } from "./terrain";
 export interface Room {
   name: string;
   numUsers: number;
@@ -152,7 +153,11 @@ const createRoomInMemory = (roomName: string): Room => {
 
 const populateRoomInMemory = (roomName: string): void => {
   try {
-    const npcGroups = createNPCGroups();
+    // Get terrain boundaries for proper NPC spawning
+    const terrainConfig = getTerrainConfig(roomName);
+    const terrainBoundaries = terrainConfig.boundaries;
+    
+    const npcGroups = createNPCGroups(terrainBoundaries);
     const npcGroupsMap: NPCGroupsBiMap = new NPCGroupsBiMap();
 
     npcGroups.forEach((npcGroup) => {
