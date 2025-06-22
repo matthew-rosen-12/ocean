@@ -1,4 +1,4 @@
-import { UserInfo, Animal, roomId, userId, NPCPhase, pathData, PathPhase, DIRECTION_OFFSET } from "shared/types";
+import { UserInfo, Animal, roomId, userId, NPCPhase, pathData, PathPhase, DIRECTION_OFFSET, ANIMAL_SCALES } from "shared/types";
 import { addUserToRoom, getAllUsersInRoom } from "../state/users";
 import { getNPCGroupsfromMemory, setNPCGroupsInMemory } from "../state/npc-groups";
 import { getpathsfromMemory, setPathsInMemory } from "../state/paths";
@@ -209,11 +209,11 @@ export class BotManagementService {
       
       // Only move if target is far enough
       if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-        // Simulate pressing arrow keys toward target
-        if (dy > 0.1) up = true;
-        if (dy < -0.1) down = true;
-        if (dx > 0.1) right = true;
-        if (dx < -0.1) left = true;
+        // Simulate pressing arrow keys toward target with larger thresholds to prevent twitching
+        if (dy > 0.5) up = true;
+        if (dy < -0.5) down = true;
+        if (dx > 0.5) right = true;
+        if (dx < -0.5) left = true;
       }
       
       // Reset wandering state when targeting
@@ -265,7 +265,7 @@ export class BotManagementService {
     // Calculate new direction (mimicking frontend logic exactly)
     let newDirection = { x: 0, y: 0 };
     
-    // True vertical movement - both components active (matching frontend logic)
+    // Pure vertical movement - use direction offset like frontend
     if (!left && !right && up && !down) {
       newDirection = {
         x: bot.direction.x > 0 ? DIRECTION_OFFSET : -DIRECTION_OFFSET,
@@ -277,7 +277,7 @@ export class BotManagementService {
         y: -1,
       };
     } else {
-      // All other movement patterns
+      // All other movement patterns (including pure horizontal) - use += logic like frontend
       if (left && !right) {
         newDirection.x -= 1;
       } else if (right && !left) {
@@ -390,8 +390,6 @@ export class BotManagementService {
     const botNpcGroup = npcGroups.getByUserId(bot.id);
     if (!botNpcGroup || botNpcGroup.fileNames.length === 0) return false;
 
-    const THROW_RANGE = 8.0; // Distance at which bot will throw
-
     // Find nearby users with captured NPCs
     for (const [userId, user] of allUsers) {
       // Skip only the current bot itself
@@ -400,6 +398,11 @@ export class BotManagementService {
       const userNpcGroup = npcGroups.getByUserId(userId);
       if (userNpcGroup && userNpcGroup.fileNames.length > 0) {
         const distance = this.calculateDistance(bot.position, user.position);
+        
+        // Calculate dynamic throw range based on animal scales
+        const botScale = ANIMAL_SCALES[bot.animal as keyof typeof ANIMAL_SCALES] || 1.0;
+        const targetScale = ANIMAL_SCALES[user.animal as keyof typeof ANIMAL_SCALES] || 1.0;
+        const THROW_RANGE = (botScale + targetScale) * 20.0; // Combined scale factor
         
         if (distance <= THROW_RANGE) {
           // Execute throw at this user
@@ -462,6 +465,7 @@ export class BotManagementService {
 
     console.log(`Bot ${bot.nickname} threw NPCs at ${targetUser.nickname}`);
   }
+
 
   /**
    * Calculate distance between two positions

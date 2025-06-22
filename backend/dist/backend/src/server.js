@@ -174,8 +174,6 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
                 if (room) {
                     // Update user in server memory
                     (0, users_1.updateUserInRoom)(room, user);
-                    // Check for NPC fleeing behavior when any user moves
-                    (0, npc_group_service_1.checkAndHandleNPCFleeing)(room, user.id);
                     // Broadcast update to other users
                     typedSocket.broadcast(room, "user-updated", { user });
                 }

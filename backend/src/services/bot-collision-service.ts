@@ -29,15 +29,19 @@ export class BotCollisionService {
     const animalScale = ANIMAL_SCALES[botUser.animal as keyof typeof ANIMAL_SCALES] || 1.0;
     const CAPTURE_THRESHOLD = animalScale * 0.5; // Same logic as frontend
 
-    // Check collisions with all NPC groups
+    // Process captures one by one, immediately updating memory to prevent duplicates
     for (const npcGroup of npcGroups.values()) {
-      // Only check IDLE and PATH NPCs (same as frontend logic)
-      if (npcGroup.phase === NPCPhase.IDLE || npcGroup.phase === NPCPhase.PATH) {
+      // Only check IDLE and PATH NPCs, and exclude NPCs already captured by this bot
+      if ((npcGroup.phase === NPCPhase.IDLE || npcGroup.phase === NPCPhase.PATH) && 
+          npcGroup.captorId !== botUser.id) {
         const distance = this.calculateDistance(botUser.position, npcGroup.position);
         
         if (distance < CAPTURE_THRESHOLD) {
+          // Process capture immediately and refresh npcGroups from memory
           this.handleBotNPCCollision(roomName, botUser, npcGroup);
           collisionDetected = true;
+          // Break after first capture to prevent processing stale data
+          break;
         }
       }
     }
@@ -49,14 +53,20 @@ export class BotCollisionService {
    * Handle collision between bot and NPC group (similar to handleNPCGroupCollision in frontend)
    */
   private static handleBotNPCCollision(roomName: roomId, botUser: UserInfo, capturedNPCGroup: NPCGroup): void {
+    const npcGroups = getNPCGroupsfromMemory(roomName);
+    if (!npcGroups) return;
+
+    // Double-check the NPC is still capturable (prevent race conditions)
+    const currentNpcGroup = npcGroups.getByNpcGroupId(capturedNPCGroup.id);
+    if (!currentNpcGroup || (currentNpcGroup.phase !== NPCPhase.IDLE && currentNpcGroup.phase !== NPCPhase.PATH)) {
+      return; // NPC was already captured or doesn't exist
+    }
+
     // Delete any path associated with the captured NPC group
     const paths = getpathsfromMemory(roomName);
     if (paths && paths.has(capturedNPCGroup.id)) {
       deletePathInMemory(roomName, capturedNPCGroup.id);
     }
-
-    const npcGroups = getNPCGroupsfromMemory(roomName);
-    if (!npcGroups) return;
 
     // Get bot's existing captured group (if any)
     let botNpcGroup = npcGroups.getByUserId(botUser.id);
@@ -75,7 +85,7 @@ export class BotCollisionService {
     // Create new merged NPC group with existing NPCs + newly captured NPCs
     const updatedNpcGroup = new NPCGroup({
       id: groupId,
-      fileNames: [...existingFileNames, ...capturedNPCGroup.fileNames],
+      fileNames: [...existingFileNames, ...currentNpcGroup.fileNames],
       position: botUser.position,
       phase: NPCPhase.CAPTURED,
       captorId: botUser.id,

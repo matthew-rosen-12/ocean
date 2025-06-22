@@ -12,7 +12,7 @@ import { generateRoomTerrain } from "./initialization/terrain";
 import { getpathsfromMemory } from "./state/paths";
 import { getNPCGroupsfromMemory, removeNPCGroupInRoomInMemory, setNPCGroupsInMemory } from "./state/npc-groups";
 import { setPathsInMemory } from "./state/paths";
-import { updateNPCGroupInRoom, checkAndHandleNPCFleeing } from "./services/npc-group-service";
+import { updateNPCGroupInRoom } from "./services/npc-group-service";
 import { TypedSocket } from "./typed-socket";
 import { startGameTimer, cleanupGameTimer, getGameStartTime, GAME_DURATION } from "./game-timer";
 import { deletePathInRoom } from "./services/path-service";
@@ -191,8 +191,6 @@ io.on("connection", async (socket) => {
         if (room) {
           // Update user in server memory
           updateUserInRoom(room, user);
-          // Check for NPC fleeing behavior when any user moves
-          checkAndHandleNPCFleeing(room, user.id);
           // Broadcast update to other users
           typedSocket.broadcast(room, "user-updated", { user });
         }

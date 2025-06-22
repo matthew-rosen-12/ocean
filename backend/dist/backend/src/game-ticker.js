@@ -47,6 +47,8 @@ class GameTicker {
                     (0, npc_group_service_1.checkAndHandleNPCCollisions)(roomName);
                     // Process bot users: movement and collision detection 
                     this.processBots(roomName);
+                    // Check for NPC fleeing after bot movement (same as for human players)
+                    (0, npc_group_service_1.checkAndHandleNPCFleeing)(roomName);
                     // Get paths for this room
                     const allPaths = (0, paths_1.getpathsfromMemory)(roomName);
                     // filter paths that are not thrown or returning (for completion checking)
