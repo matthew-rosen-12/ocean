@@ -14,11 +14,11 @@ const types_1 = require("shared/types");
 const npc_group_service_1 = require("./services/npc-group-service");
 const bot_collision_service_1 = require("./services/bot-collision-service");
 const bot_management_service_1 = require("./services/bot-management-service");
+const typed_socket_1 = require("./typed-socket");
 const rooms_1 = require("./state/rooms");
 const paths_1 = require("./state/paths");
 const npc_groups_1 = require("./state/npc-groups");
 const users_1 = require("./state/users");
-const server_1 = require("./server");
 let gameTickerInstance = null;
 function getGameTicker() {
     if (!gameTickerInstance) {
@@ -28,8 +28,9 @@ function getGameTicker() {
 }
 class GameTicker {
     constructor() {
-        this.tickRate = 100; // ms between ticks (10 ticks per second)
+        this.tickRate = 50; // ms between ticks (20 ticks per second) - faster for smoother bots
         this.tickInterval = null;
+        this.botUpdateCounter = 0;
         this.startTicker();
     }
     startTicker() {
@@ -44,7 +45,7 @@ class GameTicker {
                 for (const roomName of roomNames) {
                     // Always check for collisions first (for thrown paths)
                     (0, npc_group_service_1.checkAndHandleNPCCollisions)(roomName);
-                    // Process bot users: movement and collision detection
+                    // Process bot users: movement and collision detection 
                     this.processBots(roomName);
                     // Get paths for this room
                     const allPaths = (0, paths_1.getpathsfromMemory)(roomName);
@@ -78,6 +79,8 @@ class GameTicker {
             catch (error) {
                 console.error("Error in game ticker:", error);
             }
+            // Increment bot update counter
+            this.botUpdateCounter++;
             // Schedule next tick
             this.tickInterval = setTimeout(() => this.tick(), this.tickRate);
         });
@@ -97,7 +100,7 @@ class GameTicker {
             // Update bot in room state
             (0, users_1.updateUserInRoom)(roomName, bot);
             // Broadcast bot position update to all clients
-            server_1.io.to(roomName).emit("user-updated", { user: bot });
+            (0, typed_socket_1.emitToRoom)(roomName, "user-updated", { user: bot });
         }
     }
     cleanup() {

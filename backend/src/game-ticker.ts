@@ -2,12 +2,12 @@ import { pathData, PathPhase, NPCPhase } from "shared/types";
 import { checkAndHandleNPCCollisions, setPathCompleteInRoom } from "./services/npc-group-service";
 import { BotCollisionService } from "./services/bot-collision-service";
 import { BotManagementService } from "./services/bot-management-service";
+import { emitToRoom } from "./typed-socket";
 
 import { getAllRoomsfromMemory } from "./state/rooms";
 import { getpathsfromMemory } from "./state/paths";
 import { getNPCGroupsfromMemory } from "./state/npc-groups";
 import { getAllUsersInRoom, updateUserInRoom } from "./state/users";
-import { io } from "./server";
 
 let gameTickerInstance: GameTicker | null = null;
 
@@ -19,8 +19,9 @@ export function getGameTicker(): GameTicker {
 }
 
 class GameTicker {
-  private tickRate = 100; // ms between ticks (10 ticks per second)
+  private tickRate = 50; // ms between ticks (20 ticks per second) - faster for smoother bots
   private tickInterval: NodeJS.Timeout | null = null;
+  private botUpdateCounter = 0;
 
   constructor() {
     this.startTicker();
@@ -40,7 +41,7 @@ class GameTicker {
         // Always check for collisions first (for thrown paths)
         checkAndHandleNPCCollisions(roomName);
         
-        // Process bot users: movement and collision detection
+        // Process bot users: movement and collision detection 
         this.processBots(roomName);
 
         // Get paths for this room
@@ -79,6 +80,9 @@ class GameTicker {
       console.error("Error in game ticker:", error);
     }
 
+    // Increment bot update counter
+    this.botUpdateCounter++;
+
     // Schedule next tick
     this.tickInterval = setTimeout(() => this.tick(), this.tickRate);
   }
@@ -103,7 +107,7 @@ class GameTicker {
       updateUserInRoom(roomName, bot);
       
       // Broadcast bot position update to all clients
-      io.to(roomName).emit("user-updated", { user: bot });
+      emitToRoom(roomName, "user-updated", { user: bot });
     }
   }
 

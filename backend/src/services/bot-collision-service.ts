@@ -2,8 +2,8 @@ import { UserInfo, NPCGroup, NPCPhase, ANIMAL_SCALES, Animal, roomId, userId } f
 import { getNPCGroupsfromMemory, setNPCGroupsInMemory } from "../state/npc-groups";
 import { deletePathInMemory, getpathsfromMemory } from "../state/paths";
 import { getAllUsersInRoom } from "../state/users";
+import { emitToRoom } from "../typed-socket";
 import { v4 as uuidv4 } from "uuid";
-import { io } from "../server";
 
 interface BotCollisionDetectionProps {
   roomName: roomId;
@@ -89,12 +89,15 @@ export class BotCollisionService {
 
     // Broadcast changes to all clients in the room
     const emptyGroup = new NPCGroup({ ...capturedNPCGroup, fileNames: [] }); // Mark as deleted
-    io.to(roomName).emit("update-npc-group", { npcGroup: emptyGroup });
-    io.to(roomName).emit("update-npc-group", { npcGroup: updatedNpcGroup });
+    emitToRoom(roomName, "npc-group-update", { npcGroup: emptyGroup });
+    emitToRoom(roomName, "npc-group-update", { npcGroup: updatedNpcGroup });
     
     // Delete path if it exists
     if (paths && paths.has(capturedNPCGroup.id)) {
-      io.to(roomName).emit("delete-path", { pathData: paths.get(capturedNPCGroup.id) });
+      const pathData = paths.get(capturedNPCGroup.id);
+      if (pathData) {
+        emitToRoom(roomName, "path-deleted", { pathData });
+      }
     }
   }
 

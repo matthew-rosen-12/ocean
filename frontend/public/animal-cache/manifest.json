@@ -1,5 +1,5 @@
 {
-  "generated": "2025-06-22T01:02:09.174Z",
+  "generated": "2025-06-22T02:15:35.548Z",
   "animals": [
     {
       "name": "BEAR",
@@ -24,6 +24,18 @@
         "maxY": 1024
       },
       "pathCount": 2378
+    },
+    {
+      "name": "CUTTLEFISH",
+      "file": "cuttlefish.svg",
+      "cacheFile": "CUTTLEFISH.json",
+      "bounds": {
+        "minX": 0,
+        "minY": 0,
+        "maxX": 500,
+        "maxY": 250
+      },
+      "pathCount": 684
     },
     {
       "name": "DOLPHIN",
@@ -60,6 +72,18 @@
         "maxY": 687.65039
       },
       "pathCount": 912
+    },
+    {
+      "name": "SALAMANDER",
+      "file": "salamander.svg",
+      "cacheFile": "SALAMANDER.json",
+      "bounds": {
+        "minX": 0,
+        "minY": 0,
+        "maxX": 1365,
+        "maxY": 768
+      },
+      "pathCount": 248
     },
     {
       "name": "SNAKE",
@@ -122,5 +146,5 @@
       "pathCount": 1134
     }
   ],
-  "count": 10
+  "count": 12
 }

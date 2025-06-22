@@ -4,8 +4,8 @@ exports.BotCollisionService = void 0;
 const types_1 = require("shared/types");
 const npc_groups_1 = require("../state/npc-groups");
 const paths_1 = require("../state/paths");
+const typed_socket_1 = require("../typed-socket");
 const uuid_1 = require("uuid");
-const server_1 = require("../server");
 /**
  * Server-side collision detection for bot users
  * Duplicates the logic from frontend useCollisionDetection.ts for bots only
@@ -75,11 +75,14 @@ class BotCollisionService {
         (0, npc_groups_1.setNPCGroupsInMemory)(roomName, npcGroups);
         // Broadcast changes to all clients in the room
         const emptyGroup = new types_1.NPCGroup(Object.assign(Object.assign({}, capturedNPCGroup), { fileNames: [] })); // Mark as deleted
-        server_1.io.to(roomName).emit("update-npc-group", { npcGroup: emptyGroup });
-        server_1.io.to(roomName).emit("update-npc-group", { npcGroup: updatedNpcGroup });
+        (0, typed_socket_1.emitToRoom)(roomName, "npc-group-update", { npcGroup: emptyGroup });
+        (0, typed_socket_1.emitToRoom)(roomName, "npc-group-update", { npcGroup: updatedNpcGroup });
         // Delete path if it exists
         if (paths && paths.has(capturedNPCGroup.id)) {
-            server_1.io.to(roomName).emit("delete-path", { pathData: paths.get(capturedNPCGroup.id) });
+            const pathData = paths.get(capturedNPCGroup.id);
+            if (pathData) {
+                (0, typed_socket_1.emitToRoom)(roomName, "path-deleted", { pathData });
+            }
         }
     }
     /**

@@ -7,8 +7,10 @@ export enum Animal {
   // TIGER = "TIGER",
   // TUNA = "TUNA",
   // EAGLE = "EAGLE",
-  BEE = "BEE",
-  BEAR = "BEAR",
+  // BEE = "BEE",
+  // BEAR = "BEAR",
+  // CUTTLEFISH = "CUTTLEFISH",
+  SALAMANDER = "SALAMANDER",
 }
 
 
@@ -23,6 +25,8 @@ export const ANIMAL_SCALES = {
   EAGLE: 2.5,
   BEE: 2.0,
   BEAR: 2.5,
+  CUTTLEFISH: 2.0,
+  SALAMANDER: 2.5,
 };
 
 export const ANIMAL_ORIENTATION = {
@@ -35,7 +39,9 @@ export const ANIMAL_ORIENTATION = {
   TUNA: { rotation: 0, flipY: false},
   EAGLE: { rotation: 0, flipY: false},
   BEE: { rotation: 0, flipY: true},
-  BEAR: { rotation: 0, flipY: false}
+  BEAR: { rotation: 0, flipY: false},
+  CUTTLEFISH: { rotation: 0, flipY: true},
+  SALAMANDER: { rotation: 0, flipY: false},
 };
 
 export const DIRECTION_OFFSET = 0.1;

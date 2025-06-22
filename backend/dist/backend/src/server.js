@@ -96,7 +96,7 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
             // Send all existing users in the room to the joining user
             const allUsers = (0, users_1.getAllUsersInRoom)(name);
             if (allUsers.size > 1) { // More than just the current user
-                typedSocket.emit("all-users", { users: existingUsers });
+                typedSocket.emit("all-users", { users: allUsers });
             }
             // Send other room state to the joining socket
             try {
