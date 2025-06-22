@@ -12,9 +12,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getGameTicker = getGameTicker;
 const types_1 = require("shared/types");
 const npc_group_service_1 = require("./services/npc-group-service");
+const bot_collision_service_1 = require("./services/bot-collision-service");
+const bot_management_service_1 = require("./services/bot-management-service");
 const rooms_1 = require("./state/rooms");
 const paths_1 = require("./state/paths");
 const npc_groups_1 = require("./state/npc-groups");
+const users_1 = require("./state/users");
+const server_1 = require("./server");
 let gameTickerInstance = null;
 function getGameTicker() {
     if (!gameTickerInstance) {
@@ -40,6 +44,8 @@ class GameTicker {
                 for (const roomName of roomNames) {
                     // Always check for collisions first (for thrown paths)
                     (0, npc_group_service_1.checkAndHandleNPCCollisions)(roomName);
+                    // Process bot users: movement and collision detection
+                    this.processBots(roomName);
                     // Get paths for this room
                     const allPaths = (0, paths_1.getpathsfromMemory)(roomName);
                     // filter paths that are not thrown or returning (for completion checking)
@@ -75,6 +81,24 @@ class GameTicker {
             // Schedule next tick
             this.tickInterval = setTimeout(() => this.tick(), this.tickRate);
         });
+    }
+    processBots(roomName) {
+        const bots = bot_management_service_1.BotManagementService.getBotsInRoom(roomName);
+        for (const bot of bots) {
+            // Check if bot should throw captured NPCs at nearby users
+            const didThrow = bot_management_service_1.BotManagementService.checkAndExecuteBotThrow(bot, roomName);
+            // Only update position if bot didn't throw (throwing stops movement briefly)
+            if (!didThrow) {
+                // Update bot position (strategic movement AI)
+                bot_management_service_1.BotManagementService.updateBotPosition(bot, roomName);
+            }
+            // Check for collisions with NPCs
+            bot_collision_service_1.BotCollisionService.checkBotCollisions(roomName, bot);
+            // Update bot in room state
+            (0, users_1.updateUserInRoom)(roomName, bot);
+            // Broadcast bot position update to all clients
+            server_1.io.to(roomName).emit("user-updated", { user: bot });
+        }
     }
     cleanup() {
         if (this.tickInterval) {

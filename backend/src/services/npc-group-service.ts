@@ -255,15 +255,19 @@ export function createNPCGroups(): NPCGroup[] {
 function getNPCFilenames(): string[] {
   // Hardcode the available NPC filenames from frontend
   return [
-    "am.png",
-    "cl.png",
+    "angela_merkel.png",
+    "cleopatra.png",
     "fdr.png",
-    "he.png",
-    "mlf.png",
-    "mt.png",
-    "nb.png",
-    "rh.png",
-    "wc.png",
+    "hermes.png",
+    "isaac_netwon.png",
+    "jane_austen.png",
+    "julius_caesar.png",
+    "margaret_thatcher.png",
+    "morgan_la_fey.png",
+    "napoleon_bonaparte.png",
+    "queen_elizabeth_I.png",
+    "robinhood.png",
+    "winston_churchill.png",
   ];
 }
 

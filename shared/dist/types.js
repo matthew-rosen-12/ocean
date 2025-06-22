@@ -5,7 +5,11 @@ export var Animal;
     // PENGUIN = "PENGUIN",
     // SNAKE = "SNAKE",
     // TURTLE = "TURTLE",
-    Animal["TIGER"] = "TIGER";
+    // TIGER = "TIGER",
+    // TUNA = "TUNA",
+    // EAGLE = "EAGLE",
+    Animal["BEE"] = "BEE";
+    Animal["BEAR"] = "BEAR";
 })(Animal || (Animal = {}));
 export const ANIMAL_SCALES = {
     DOLPHIN: 3.0,
@@ -13,7 +17,11 @@ export const ANIMAL_SCALES = {
     PENGUIN: 2.5,
     SNAKE: 2.0,
     TURTLE: 2.0,
-    TIGER: 4.0
+    TIGER: 4.0,
+    TUNA: 3.0,
+    EAGLE: 2.5,
+    BEE: 2.0,
+    BEAR: 2.5,
 };
 export const ANIMAL_ORIENTATION = {
     WOLF: { rotation: 0, flipY: true },
@@ -21,7 +29,11 @@ export const ANIMAL_ORIENTATION = {
     PENGUIN: { rotation: 0, flipY: false },
     SNAKE: { rotation: 0, flipY: true },
     TURTLE: { rotation: 0, flipY: true },
-    TIGER: { rotation: 0, flipY: false }
+    TIGER: { rotation: 0, flipY: false },
+    TUNA: { rotation: 0, flipY: false },
+    EAGLE: { rotation: 0, flipY: false },
+    BEE: { rotation: 0, flipY: true },
+    BEAR: { rotation: 0, flipY: false }
 };
 export const DIRECTION_OFFSET = 0.1;
 export const BACKEND_DIRECTION_OFFSET = 0.001;

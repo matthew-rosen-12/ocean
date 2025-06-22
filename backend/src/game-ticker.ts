@@ -1,10 +1,13 @@
 import { pathData, PathPhase, NPCPhase } from "shared/types";
 import { checkAndHandleNPCCollisions, setPathCompleteInRoom } from "./services/npc-group-service";
-
+import { BotCollisionService } from "./services/bot-collision-service";
+import { BotManagementService } from "./services/bot-management-service";
 
 import { getAllRoomsfromMemory } from "./state/rooms";
 import { getpathsfromMemory } from "./state/paths";
 import { getNPCGroupsfromMemory } from "./state/npc-groups";
+import { getAllUsersInRoom, updateUserInRoom } from "./state/users";
+import { io } from "./server";
 
 let gameTickerInstance: GameTicker | null = null;
 
@@ -36,6 +39,9 @@ class GameTicker {
       for (const roomName of roomNames) {
         // Always check for collisions first (for thrown paths)
         checkAndHandleNPCCollisions(roomName);
+        
+        // Process bot users: movement and collision detection
+        this.processBots(roomName);
 
         // Get paths for this room
         const allPaths =  getpathsfromMemory(roomName);
@@ -75,6 +81,30 @@ class GameTicker {
 
     // Schedule next tick
     this.tickInterval = setTimeout(() => this.tick(), this.tickRate);
+  }
+
+  private processBots(roomName: string) {
+    const bots = BotManagementService.getBotsInRoom(roomName);
+    
+    for (const bot of bots) {
+      // Check if bot should throw captured NPCs at nearby users
+      const didThrow = BotManagementService.checkAndExecuteBotThrow(bot, roomName);
+      
+      // Only update position if bot didn't throw (throwing stops movement briefly)
+      if (!didThrow) {
+        // Update bot position (strategic movement AI)
+        BotManagementService.updateBotPosition(bot, roomName);
+      }
+      
+      // Check for collisions with NPCs
+      BotCollisionService.checkBotCollisions(roomName, bot);
+      
+      // Update bot in room state
+      updateUserInRoom(roomName, bot);
+      
+      // Broadcast bot position update to all clients
+      io.to(roomName).emit("user-updated", { user: bot });
+    }
   }
 
   cleanup() {

@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.findRoomInMemory = exports.decrementRoomUsersInMemory = void 0;
 exports.getAllRoomsfromMemory = getAllRoomsfromMemory;
 const npc_group_service_1 = require("../services/npc-group-service");
+const bot_management_service_1 = require("../services/bot-management-service");
 const uuid_1 = require("uuid");
 const types_1 = require("shared/types");
 const npc_groups_1 = require("./npc-groups");
@@ -31,6 +32,8 @@ const decrementRoomUsersInMemory = (roomName, _userId) => {
         room.lastActive = new Date().toISOString();
         if (room.numUsers === 0) {
             console.log("Deleting room and all associated data:", roomName);
+            // Stop bot spawning for this room
+            bot_management_service_1.BotManagementService.stopBotSpawning(roomName);
             // Delete room and all associated data from dedicated stores
             deleteRoomDataInMemory(roomName);
             // Note: NPC groups and paths cleanup handled elsewhere
@@ -56,7 +59,7 @@ const findRoomInMemory = () => {
         const ROOM_JOIN_WINDOW = 30 * 1000; // 30 seconds in milliseconds
         const activeRooms = rooms
             .filter((room) => {
-            if (!room || room.isActive === false || room.numUsers >= 10) {
+            if (!room || room.isActive === false || room.numUsers >= 8) {
                 return false;
             }
             // Check if room is less than 30 seconds old
@@ -105,6 +108,8 @@ const createRoomInMemory = (roomName) => {
             createdAt: new Date().toISOString(),
         };
         setRoomDataInMemory(roomName, newRoom);
+        // Start bot spawning process for new room
+        bot_management_service_1.BotManagementService.startBotSpawning(roomName);
         return newRoom;
     }
     catch (error) {

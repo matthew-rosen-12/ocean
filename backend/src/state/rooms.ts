@@ -1,4 +1,5 @@
 import { createNPCGroups } from "../services/npc-group-service";
+import { BotManagementService } from "../services/bot-management-service";
 import { v4 as uuidv4 } from "uuid";
 import { NPCGroupsBiMap, roomId } from "shared/types";
 import { setNPCGroupsInMemory } from "./npc-groups";
@@ -50,6 +51,9 @@ export const decrementRoomUsersInMemory = (
     if (room.numUsers === 0) {
       console.log("Deleting room and all associated data:", roomName);
 
+      // Stop bot spawning for this room
+      BotManagementService.stopBotSpawning(roomName);
+      
       // Delete room and all associated data from dedicated stores
       deleteRoomDataInMemory(roomName);
       // Note: NPC groups and paths cleanup handled elsewhere
@@ -78,7 +82,7 @@ export const findRoomInMemory = (): string => {
     const activeRooms = rooms
       .filter(
         (room): room is Room & { key: string } => {
-          if (!room || room.isActive === false || room.numUsers >= 10) {
+          if (!room || room.isActive === false || room.numUsers >= 8) {
             return false;
           }
           
@@ -134,6 +138,10 @@ const createRoomInMemory = (roomName: string): Room => {
     };
 
     setRoomDataInMemory(roomName, newRoom);
+    
+    // Start bot spawning process for new room
+    BotManagementService.startBotSpawning(roomName);
+    
     return newRoom;
   } catch (error) {
     console.error("Error creating room", error);

@@ -1,0 +1,126 @@
+{
+  "generated": "2025-06-22T01:02:09.174Z",
+  "animals": [
+    {
+      "name": "BEAR",
+      "file": "bear.svg",
+      "cacheFile": "BEAR.json",
+      "bounds": {
+        "minX": 0,
+        "minY": 0,
+        "maxX": 1024,
+        "maxY": 1024
+      },
+      "pathCount": 214
+    },
+    {
+      "name": "BEE",
+      "file": "bee.svg",
+      "cacheFile": "BEE.json",
+      "bounds": {
+        "minX": 0,
+        "minY": 0,
+        "maxX": 1024,
+        "maxY": 1024
+      },
+      "pathCount": 2378
+    },
+    {
+      "name": "DOLPHIN",
+      "file": "dolphin.svg",
+      "cacheFile": "DOLPHIN.json",
+      "bounds": {
+        "minX": 25.8813,
+        "minY": 76.8076,
+        "maxX": 333.395,
+        "maxY": 311.987
+      },
+      "pathCount": 229
+    },
+    {
+      "name": "EAGLE",
+      "file": "eagle.svg",
+      "cacheFile": "EAGLE.json",
+      "bounds": {
+        "minX": 0,
+        "minY": 0,
+        "maxX": 1367,
+        "maxY": 766
+      },
+      "pathCount": 835
+    },
+    {
+      "name": "PENGUIN",
+      "file": "penguin.svg",
+      "cacheFile": "PENGUIN.json",
+      "bounds": {
+        "minX": 201.82031,
+        "minY": 51.775391,
+        "maxX": 526.56055,
+        "maxY": 687.65039
+      },
+      "pathCount": 912
+    },
+    {
+      "name": "SNAKE",
+      "file": "snake.svg",
+      "cacheFile": "SNAKE.json",
+      "bounds": {
+        "minX": 452.788116,
+        "minY": 375.99122,
+        "maxX": 2786.8675,
+        "maxY": 2402.484375
+      },
+      "pathCount": 1829
+    },
+    {
+      "name": "TIGER",
+      "file": "tiger.svg",
+      "cacheFile": "TIGER.json",
+      "bounds": {
+        "minX": 0,
+        "minY": 0,
+        "maxX": 1254,
+        "maxY": 836
+      },
+      "pathCount": 1069
+    },
+    {
+      "name": "TUNA",
+      "file": "tuna.svg",
+      "cacheFile": "TUNA.json",
+      "bounds": {
+        "minX": 0,
+        "minY": 0,
+        "maxX": 1552,
+        "maxY": 675
+      },
+      "pathCount": 638
+    },
+    {
+      "name": "TURTLE",
+      "file": "turtle.svg",
+      "cacheFile": "TURTLE.json",
+      "bounds": {
+        "minX": 548.43206,
+        "minY": 536.79967,
+        "maxX": 5608.3006,
+        "maxY": 2903.8411
+      },
+      "pathCount": 7506
+    },
+    {
+      "name": "WOLF",
+      "file": "wolf.svg",
+      "cacheFile": "WOLF.json",
+      "bounds": {
+        "minX": 47.724609,
+        "minY": 30.678093,
+        "maxX": 335.3011,
+        "maxY": 347.79937
+      },
+      "pathCount": 1134
+    }
+  ],
+  "count": 10
+}
