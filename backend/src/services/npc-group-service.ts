@@ -267,6 +267,7 @@ export function createSingleNPCGroup(terrainBoundaries?: { minX: number; maxX: n
 function getNPCFilenames(): string[] {
   // Hardcode the available NPC filenames from frontend
   return [
+    "ada_lovelace.png",
     "akbar.png",
     "angela_merkel.png",
     "beethoven.png",
@@ -278,6 +279,7 @@ function getNPCFilenames(): string[] {
     "florence_nightingale.png",
     "fred_astaire.png",
     "frederick_douglass.png",
+    "girl_with_a_pearl_earring.png",
     "hermes.png",
     "isaac_netwon.png",
     "jane_austen.png",
