@@ -25,9 +25,11 @@ export class BotCollisionService {
 
     let collisionDetected = false;
 
-    // Get animal scale for dynamic threshold (similar to frontend animalDimensions)
+    // Calculate capture threshold to match frontend logic
+    // Frontend uses: animalWidth * 0.5, where animalWidth ≈ 5 * ANIMAL_SCALES (normalized)
     const animalScale = ANIMAL_SCALES[botUser.animal as keyof typeof ANIMAL_SCALES] || 1.0;
-    const CAPTURE_THRESHOLD = animalScale * 0.5; // Same logic as frontend
+    const estimatedAnimalWidth = 5 * animalScale; // Approximate the frontend normalization + scaling
+    const CAPTURE_THRESHOLD = estimatedAnimalWidth * 0.5; // Match frontend formula
 
     // Process captures one by one, immediately updating memory to prevent duplicates
     for (const npcGroup of npcGroups.values()) {
