@@ -1,4 +1,4 @@
-import { pathData, PathPhase, NPCPhase } from "shared/types";
+import { pathData, NPCPhase } from "shared/types";
 import { checkAndHandleNPCCollisions, setPathCompleteInRoom, checkAndHandleNPCFleeing, checkAndDeleteFleeingNPCs, checkAndSpawnNPCs } from "./services/npc-group-service";
 import { BotCollisionService } from "./services/bot-collision-service";
 import { BotManagementService } from "./services/bot-management-service";
@@ -67,9 +67,8 @@ class GameTicker {
 
         // Get paths for this room
         const allPaths =  getpathsfromMemory(roomName);
-        // filter paths that are not thrown or returning (for completion checking)
-        // Include FLEEING paths for completion checking
-        const paths = Array.from(allPaths.values()).filter((path: pathData) => path.pathPhase !== PathPhase.THROWN && path.pathPhase !== PathPhase.RETURNING);
+        // Include all paths for completion checking (server handles all transitions)
+        const paths = Array.from(allPaths.values());
         if (!paths || paths.length === 0) continue;
 
         const completedpaths: pathData[] = [];
@@ -113,7 +112,7 @@ class GameTicker {
     this.tickInterval = setTimeout(() => this.tick(), this.tickRate);
   }
 
-  private processBots(roomName: string) {
+  private _processBots(roomName: string) {
     const bots = BotManagementService.getBotsInRoom(roomName);
     
     for (const bot of bots) {

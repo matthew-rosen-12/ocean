@@ -377,6 +377,29 @@ class BotManagementService {
             direction.x /= magnitude;
             direction.y /= magnitude;
         }
+        // Calculate throw velocity and duration using same formula as frontend
+        const groupSize = botNpcGroup.fileNames.length;
+        const baseVelocity = 20.0;
+        const baseDuration = 2000;
+        // Use same proportional calculation as frontend throwing
+        const calculateNPCGroupProportion = (numFileNames) => {
+            if (numFileNames === 0)
+                return 0;
+            const logProportion = Math.log(numFileNames) / Math.log(4);
+            return 1 + logProportion;
+        };
+        const calculateNPCGroupVelocityFactor = (numFileNames) => {
+            if (numFileNames === 0)
+                return 1;
+            return Math.sqrt(calculateNPCGroupProportion(numFileNames));
+        };
+        const calculateNPCGroupDistanceFactor = (numFileNames) => {
+            if (numFileNames === 0)
+                return 1;
+            return calculateNPCGroupProportion(numFileNames);
+        };
+        const throwVelocity = baseVelocity * calculateNPCGroupVelocityFactor(groupSize);
+        const throwDuration = baseDuration * calculateNPCGroupDistanceFactor(groupSize);
         // Create path data for the throw
         const throwPath = {
             id: (0, uuid_1.v4)(),
@@ -384,8 +407,8 @@ class BotManagementService {
             npcGroupId: botNpcGroup.id,
             startPosition: { x: bot.position.x, y: bot.position.y },
             direction: direction,
-            velocity: 1.0, // Throw speed
-            pathDuration: 3000, // 3 seconds flight time
+            velocity: throwVelocity, // Throw speed proportional to group size
+            pathDuration: throwDuration, // Flight time proportional to group size
             timestamp: Date.now(),
             pathPhase: types_1.PathPhase.THROWN
         };

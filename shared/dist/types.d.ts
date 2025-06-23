@@ -70,9 +70,8 @@ export declare const BACKEND_DIRECTION_OFFSET = 0.001;
 export declare const NPC_WIDTH = 4;
 export declare const NPC_HEIGHT = 4;
 export declare enum PathPhase {
-    THROWN = "THROWN",// NPCs thrown by players
-    FLEEING = "FLEEING",// NPCs fleeing from players
-    RETURNING = "RETURNING"
+    THROWN = "THROWN",// NPCs thrown by players (includes returning to thrower)
+    FLEEING = "FLEEING"
 }
 export interface pathData {
     id: string;
@@ -136,6 +135,7 @@ export declare class NPCGroupsBiMap {
     values(): NPCGroup[];
     keys(): npcGroupId[];
     get size(): number;
+    get cumulativeSize(): number;
     getByUserId(userId: userId): NPCGroup | undefined;
     getByNpcGroupId(npcGroupId: npcGroupId): NPCGroup | undefined;
 }

@@ -49,8 +49,6 @@ interface Props {
   setGameDuration: React.Dispatch<React.SetStateAction<number | undefined>>;
   deletingNPCs: Set<string>;
   setDeletingNPCs: React.Dispatch<React.SetStateAction<Set<string>>>;
-  spawningNPCs: Map<string, { x: number; y: number; z: number }>;
-  setSpawningNPCs: React.Dispatch<React.SetStateAction<Map<string, { x: number; y: number; z: number }>>>;
   // Note: setGameOver, setFinalScores, and setWinnerScreenshot are now handled by Scene component
 }
 
@@ -64,8 +62,6 @@ export default function GuestLogin({
   setGameDuration,
   deletingNPCs,
   setDeletingNPCs,
-  spawningNPCs,
-  setSpawningNPCs,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [nickname, setNickname] = useState("");
@@ -275,6 +271,20 @@ export default function GuestLogin({
         });
       });
 
+      typedSocket.on("npc-groups-bulk-update", ({ npcGroups }: { npcGroups: NPCGroup[] }) => {
+        setNPCGroups((prev) => {
+          const newNpcGroups = new NPCGroupsBiMap(prev);
+          npcGroups.forEach(npcGroup => {
+            if (npcGroup.fileNames.length == 0) {
+              newNpcGroups.deleteByNpcGroupId(npcGroup.id);
+            } else {
+              newNpcGroups.setByNpcGroupId(npcGroup.id, npcGroup);
+            }
+          });
+          return newNpcGroups;
+        });
+      });
+
 
 
       typedSocket.on("path-deleted", ({ pathData }: { pathData: pathData }) => {
@@ -351,17 +361,6 @@ export default function GuestLogin({
         }, 2000); // 2 second animation duration
       });
 
-      // Handle NPC group spawning with fire animation
-      typedSocket.on("npc-group-spawned", ({ npcGroup, spawnPosition }: { npcGroup: NPCGroup; spawnPosition: { x: number; y: number; z: number } }) => {
-        console.log(`[DEBUG Frontend] Received spawn fire event for NPC ${npcGroup.id} at (${spawnPosition.x}, ${spawnPosition.y})`);
-        
-        // Add to spawning animations map - FireAnimation will self-delete when complete
-        setSpawningNPCs((prev) => {
-          const newMap = new Map(prev);
-          newMap.set(npcGroup.id, spawnPosition);
-          return newMap;
-        });
-      });
 
       // Handle game over event - trigger cinematic sequence
       typedSocket.on("times-up", ({ finalScores }: { finalScores: FinalScores }) => {

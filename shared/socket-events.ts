@@ -13,6 +13,7 @@ export interface ServerToClientEvents {
     "game-timer-info": (data: { gameStartTime: number; gameDuration: number }) => void;
 
     "npc-group-update": (data: { npcGroup: NPCGroup }) => void;
+    "npc-groups-bulk-update": (data: { npcGroups: NPCGroup[] }) => void;
 
     "path-update": (data: { pathData: pathData }) => void;
     "path-complete": (data: { npcGroup: NPCGroup }) => void;

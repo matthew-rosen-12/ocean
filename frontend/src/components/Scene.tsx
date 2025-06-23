@@ -14,7 +14,6 @@ import { useEffect, useState, useCallback } from "react";
 import AnimalGraphic from "./AnimalGraphic";
 import { UI_Z_INDICES } from "shared/z-depths";
 import NPCGraphicWrapper from "./npc-graphics/NPCGroupGraphicWrapper";
-import SparkleAnimation from "./npc-graphics/SparkleAnimation";
 import * as THREE from "three";
 import { CameraController } from "./CameraController";
 import { usePositionBroadcast } from "../hooks/usePositionBroadcast";
@@ -53,8 +52,6 @@ interface Props {
   onScreenshotCapture?: (screenshot: string) => void;
   onGameOver?: (finalScores: FinalScores) => void;
   deletingNPCs: Set<string>;
-  spawningNPCs: Map<string, { x: number; y: number; z: number }>;
-  setSpawningNPCs: React.Dispatch<React.SetStateAction<Map<string, { x: number; y: number; z: number }>>>;
 }
 
 export default function Scene({
@@ -68,8 +65,6 @@ export default function Scene({
   onScreenshotCapture,
   onGameOver,
   deletingNPCs,
-  spawningNPCs,
-  setSpawningNPCs,
 }: Props) {
   const initialPosition = new THREE.Vector3(
     myUser.position.x,
@@ -193,8 +188,8 @@ export default function Scene({
     
     const updateChargeCount = () => {
       const chargeDuration = Date.now() - spaceStartTime;
-      const secondsHeld = Math.min(chargeDuration / 1000, 10); // Cap at 10 seconds
-      const rawThrowCount = Math.floor(Math.pow(2, secondsHeld));
+      const secondsHeld = Math.min(chargeDuration / 1000 * 4, 10); // Cap at 10 seconds
+      const rawThrowCount = Math.floor(Math.pow(2, secondsHeld)) + 1;
       
       // Cap at available NPCs in the captured group
       const availableNPCs = npcGroups.getByUserId(myUser.id)?.fileNames.length || 0;
@@ -320,22 +315,6 @@ export default function Scene({
             />
           ))}
 
-        {/* Render sparkle animations for spawning NPCs */}
-        {Array.from(spawningNPCs.entries()).map(([npcId, position]) => (
-          <SparkleAnimation
-            key={`sparkle-${npcId}`}
-            position={new THREE.Vector3(position.x, position.y, position.z)}
-            npcId={npcId}
-            onComplete={(completedNpcId) => {
-              // Remove this sparkle animation from the spawning map
-              setSpawningNPCs((prev) => {
-                const newMap = new Map(prev);
-                newMap.delete(completedNpcId);
-                return newMap;
-              });
-            }}
-          />
-        ))}
       </Canvas>
 
       {/* TIMES UP! Text */}

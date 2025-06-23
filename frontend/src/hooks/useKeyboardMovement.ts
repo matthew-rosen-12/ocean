@@ -75,10 +75,10 @@ export function useKeyboardMovement(
       npcGroups.getByUserId(myUser.id)?.fileNames.length !== 0
     ) {
       const chargeDuration = Date.now() - spaceStartTime;
-      // Calculate throw count: doubles every 1000ms (1 second)
-      // Base count is 1, then 2^(seconds)
-      const secondsHeld = Math.min(chargeDuration / 1000, 10); // Cap at 10 seconds
-      const throwCount = Math.floor(Math.pow(2, secondsHeld));
+      // Calculate throw count: doubles every 4000ms (4 seconds) due to 0.25 multiplier
+      // Base count is 1, then 2^(seconds * 0.25)
+      const secondsHeld = Math.min(chargeDuration / 1000 * 4, 10); // Cap at 10 seconds
+      const throwCount = Math.floor(Math.pow(2, secondsHeld)) + 1;
       
       pathNPCGroup(
         myUser,

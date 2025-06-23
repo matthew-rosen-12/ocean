@@ -63,9 +63,8 @@ class GameTicker {
                     }
                     // Get paths for this room
                     const allPaths = (0, paths_1.getpathsfromMemory)(roomName);
-                    // filter paths that are not thrown or returning (for completion checking)
-                    // Include FLEEING paths for completion checking
-                    const paths = Array.from(allPaths.values()).filter((path) => path.pathPhase !== types_1.PathPhase.THROWN && path.pathPhase !== types_1.PathPhase.RETURNING);
+                    // Include all paths for completion checking (server handles all transitions)
+                    const paths = Array.from(allPaths.values());
                     if (!paths || paths.length === 0)
                         continue;
                     const completedpaths = [];
@@ -103,7 +102,7 @@ class GameTicker {
             this.tickInterval = setTimeout(() => this.tick(), this.tickRate);
         });
     }
-    processBots(roomName) {
+    _processBots(roomName) {
         const bots = bot_management_service_1.BotManagementService.getBotsInRoom(roomName);
         for (const bot of bots) {
             // Check if bot should throw captured NPCs at nearby users

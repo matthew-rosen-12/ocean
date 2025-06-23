@@ -29,6 +29,9 @@ export interface ServerToClientEvents {
     "npc-group-update": (data: {
         npcGroup: NPCGroup;
     }) => void;
+    "npc-groups-bulk-update": (data: {
+        npcGroups: NPCGroup[];
+    }) => void;
     "path-update": (data: {
         pathData: pathData;
     }) => void;

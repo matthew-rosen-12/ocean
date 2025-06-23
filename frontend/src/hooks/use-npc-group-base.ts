@@ -70,15 +70,6 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
         outlineRenderOrder: RENDER_ORDERS.PATH_NPC_THROWN_OUTLINE,
         goldOutlineRenderOrder: RENDER_ORDERS.PATH_NPC_THROWN_GOLD_OUTLINE
       };
-    } else if (pathData?.pathPhase === PathPhase.RETURNING) {
-      return {
-        mesh: Z_DEPTHS.PATH_NPC_RETURNING,
-        outline: Z_DEPTHS.PATH_NPC_RETURNING_OUTLINE,
-        goldOutline: Z_DEPTHS.PATH_NPC_RETURNING_GOLD_OUTLINE,
-        renderOrder: RENDER_ORDERS.PATH_NPC_RETURNING,
-        outlineRenderOrder: RENDER_ORDERS.PATH_NPC_RETURNING_OUTLINE,
-        goldOutlineRenderOrder: RENDER_ORDERS.PATH_NPC_RETURNING_GOLD_OUTLINE
-      };
     } else if (pathData?.pathPhase === PathPhase.FLEEING) {
       return {
         mesh: Z_DEPTHS.PATH_NPC_FLEEING,
@@ -286,18 +277,8 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
     };
   };
 
-  const getThrowChargeCountTextInfo = (count: number | undefined, scale: number) => {
-    if (!count) return null;
-    if (count < 1) return null;
-
-    console.log("Throw charge count text info", count, scale);
-    return {
-      count,
-      position: [0, - scale / 2 - 2.3, 0] as [number, number, number],
-      fontSize: 2.8,
-      color: new THREE.Color('#FFD700')
-    };
-  };
+  // Memoize the gold color to prevent creating new objects on each render
+  const goldColor = useMemo(() => new THREE.Color('#FFD700'), []);
 
   // Regular useEffect for texture loading and setup
   useEffect(() => {
@@ -384,9 +365,9 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
       // Get the color for outline
       const borderColor = user ? getAnimalColor(user) : new THREE.Color('#888888');
       
-      // Create and add outline (or special shimmering outline for thrown NPCs)
+      // Create and add outline (or special shimmering outline for thrown/returning NPCs)
       if (pathData?.pathPhase === PathPhase.THROWN) {
-        // Create special shimmering outline for thrown NPCs
+        // Create special shimmering outline for thrown/returning NPCs
         goldOutline.current = createShimmeringOutline(scale, borderColor);
         if (goldOutline.current) {
           group.add(goldOutline.current);
@@ -468,9 +449,9 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
           // Get the color for outline
           const borderColor = user ? getAnimalColor(user) : new THREE.Color('#888888');
           
-          // Create and add outline (or special shimmering outline for thrown NPCs)
+          // Create and add outline (or special shimmering outline for thrown/returning NPCs)
           if (pathData?.pathPhase === PathPhase.THROWN) {
-            // Create special shimmering outline for thrown NPCs
+            // Create special shimmering outline for thrown/returning NPCs
             goldOutline.current = createShimmeringOutline(scale, borderColor);
             if (goldOutline.current) {
               group.add(goldOutline.current);
@@ -553,6 +534,19 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
     return calculateNPCGroupScale(npcGroup.fileNames.length);
   }, [npcGroup.fileNames.length]);
 
+  // Memoize throw charge count text info
+  const throwChargeCountTextInfo = useMemo(() => {
+    if (!throwChargeCount) return null;
+    if (throwChargeCount < 1) return null;
+
+    return {
+      count: throwChargeCount,
+      position: [0, - currentScale / 2 - 2.3, 0] as [number, number, number],
+      fontSize: 2.8,
+      color: goldColor
+    };
+  }, [throwChargeCount, currentScale, goldColor]);
+
   // Animate the shimmering gold outline
   useFrame((state) => {
     if (goldOutline.current && (goldOutline.current as THREE.Group & { userData: Record<string, unknown> }).userData?.isShimmeringGroup) {
@@ -597,7 +591,7 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
     previousPosition,
     meshVersion,
     textInfo: getTextInfo(npcGroup.fileNames.length, currentScale),
-    throwChargeCountTextInfo: getThrowChargeCountTextInfo(throwChargeCount, currentScale),
+    throwChargeCountTextInfo,
   };
 }
 

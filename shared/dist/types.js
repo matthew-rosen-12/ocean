@@ -51,7 +51,6 @@ export var PathPhase;
 (function (PathPhase) {
     PathPhase["THROWN"] = "THROWN";
     PathPhase["FLEEING"] = "FLEEING";
-    PathPhase["RETURNING"] = "RETURNING";
 })(PathPhase || (PathPhase = {}));
 export var NPCPhase;
 (function (NPCPhase) {
@@ -166,6 +165,10 @@ export class NPCGroupsBiMap {
     values() { return Array.from(this.map2.values()); }
     keys() { return Array.from(this.map2.keys()); }
     get size() { return this.map2.size; }
+    // Get cumulative size of all NPCs across all groups
+    get cumulativeSize() {
+        return this.values().reduce((total, npcGroup) => total + npcGroup.fileNames.length, 0);
+    }
     getByUserId(userId) { return this.map1.get(userId); }
     getByNpcGroupId(npcGroupId) { return this.map2.get(npcGroupId); }
 }

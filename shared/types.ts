@@ -53,9 +53,8 @@ export const NPC_HEIGHT = 4;
 
 // Path phases for different types of movement
 export enum PathPhase {
-  THROWN = "THROWN", // NPCs thrown by players
+  THROWN = "THROWN", // NPCs thrown by players (includes returning to thrower)
   FLEEING = "FLEEING", // NPCs fleeing from players
-  RETURNING = "RETURNING", // NPCs returning to their thrower
 }
 
 export interface pathData {
@@ -223,6 +222,11 @@ export class NPCGroupsBiMap {
   values(): NPCGroup[] { return Array.from(this.map2.values()); }
   keys(): npcGroupId[] { return Array.from(this.map2.keys()); }
   get size(): number { return this.map2.size; }
+  
+  // Get cumulative size of all NPCs across all groups
+  get cumulativeSize(): number { 
+    return this.values().reduce((total, npcGroup) => total + npcGroup.fileNames.length, 0); 
+  }
   
   getByUserId(userId: userId): NPCGroup | undefined { return this.map1.get(userId); }
   getByNpcGroupId(npcGroupId: npcGroupId): NPCGroup | undefined { return this.map2.get(npcGroupId); }

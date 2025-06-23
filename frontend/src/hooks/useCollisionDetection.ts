@@ -28,7 +28,7 @@ export function useCollisionDetection({
   
   const handleNPCGroupCollision = useCallback(
     (capturedNPCGroup: NPCGroup, localUser: boolean) => {
-      // Prevent duplicate processing of the same NPC
+      // If this NPC is currently on a path, remove the path
       if (localUser && paths.get(capturedNPCGroup.id)) {
         const currentTypedSocket = typedSocket();
         currentTypedSocket.emit("delete-path", { pathData: paths.get(capturedNPCGroup.id)! });
@@ -106,8 +106,14 @@ export function useCollisionDetection({
 
       const distance = npcPos.distanceTo(userPos);
 
-      // Only trigger actions for IDLE NPCs
-      if (npcGroup.phase === NPCPhase.IDLE || npcGroup.phase === NPCPhase.PATH) {
+      // Check if this NPC can be captured by this user
+      const canCapture = 
+        // User's own NPCs can be captured in any phase, BUT not immediately after throwing
+        (npcGroup.captorId === myUser.id && (!paths.get(npcGroup.id) || Date.now() - paths.get(npcGroup.id)!.timestamp > 500)) ||
+        // Uncaptured NPCs can be captured if they're IDLE or PATH phase
+        (!npcGroup.captorId && (npcGroup.phase === NPCPhase.IDLE || npcGroup.phase === NPCPhase.PATH));
+
+      if (canCapture) {
         if (distance < CAPTURE_THRESHOLD) {
           // Close enough to capture
           // Capturing NPC
