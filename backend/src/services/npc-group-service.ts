@@ -427,7 +427,7 @@ export function checkAndHandleNPCCollisions(room: string): void{
     const thrownPaths = allPaths.filter(path => path.pathPhase === PathPhase.THROWN || path.pathPhase === PathPhase.RETURNING);
     const idleNPCGroups = Array.from(allNPCGroups.values()).filter(npcGroup => npcGroup.phase === NPCPhase.IDLE);
     const uncapturedIdleNPCs = idleNPCGroups.filter(npcGroup => !npcGroup.captorId);
-    const capturedNPCs = Array.from(allNPCGroups.values()).filter(npcGroup => npcGroup.phase === NPCPhase.CAPTURED);
+    const capturedIdleNPCs = idleNPCGroups.filter(npcGroup => npcGroup.captorId);
 
     for (const thrownPath of thrownPaths) {
       const pathPosition = calculatePathPosition(thrownPath, Date.now());
@@ -450,7 +450,7 @@ export function checkAndHandleNPCCollisions(room: string): void{
       }
 
       // Check collision with captured idle NPCs (emit individual NPCs)
-      for (const capturedIdleNPCGroup of capturedNPCs) {
+      for (const capturedIdleNPCGroup of capturedIdleNPCs) {
         // Skip if it's the same captor (don't collide with your own captured NPCs)
         if (capturedIdleNPCGroup.captorId === pathNPCGroup.captorId) {
           continue;
