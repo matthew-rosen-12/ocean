@@ -121,6 +121,23 @@ export default function GuestLogin({
       return;
     }
     
+    // Handle Tab key to accept suggestion and move cursor to end
+    if (!userHasTyped && e.key === 'Tab') {
+      e.preventDefault(); // Prevent default tab behavior
+      setUserHasTyped(true); // Mark as user-typed to change appearance
+      // Move cursor to end of text
+      if (inputRef.current) {
+        const length = nickname.length;
+        setTimeout(() => {
+          if (inputRef.current) {
+            inputRef.current.setSelectionRange(length, length);
+            inputRef.current.focus();
+          }
+        }, 0);
+      }
+      return;
+    }
+    
     // Prevent backspace/delete from clearing suggestion when we're already in suggestion mode
     if (!userHasTyped && (e.key === 'Backspace' || e.key === 'Delete')) {
       e.preventDefault(); // Prevent the backspace from doing anything

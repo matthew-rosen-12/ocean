@@ -12,8 +12,8 @@ const types_1 = require("shared/types");
 const npc_info_1 = require("../initialization/npc-info");
 const uuid_1 = require("uuid");
 const terrain_1 = require("../state/terrain");
-const NUM_NPCS = 40;
-const MAX_CUMULATIVE_SIZE = 100;
+const NUM_NPCS = 4;
+const MAX_CUMULATIVE_SIZE = 10;
 const paths_1 = require("../state/paths");
 const npc_groups_1 = require("../state/npc-groups");
 const typed_socket_1 = require("../typed-socket");
@@ -49,7 +49,7 @@ function setPathCompleteInRoom(room, npcGroup) {
                 directionToThrower.y /= length;
             }
             // Update the existing path to return to thrower (keep same ID, velocity, and phase)
-            const returningPathData = Object.assign(Object.assign({}, pathDataForNPC), { startPosition: landingPosition, direction: directionToThrower, timestamp: Date.now(), pathPhase: types_1.PathPhase.THROWN, pathDuration: 1500 });
+            const returningPathData = Object.assign(Object.assign({}, pathDataForNPC), { startPosition: landingPosition, direction: directionToThrower, timestamp: Date.now(), pathPhase: types_1.PathPhase.THROWN, pathDuration: 500 });
             // Update paths in memory with same ID
             const paths = (0, paths_1.getpathsfromMemory)(room);
             paths.set(npcGroup.id, returningPathData);
@@ -232,21 +232,23 @@ function getNPCFilenames() {
         "isaac_netwon.png",
         "jane_austen.png",
         "jim_thorpe.png",
+        "julia_codesido.png",
         "julius_caesar.png",
         "leif_erikson.png",
         "mansa_musa.png",
         "margaret_thatcher.png",
         "marie_curie.png",
         "mary_queen_of_scots.png",
-        "mary_wollstonecraft.png",
+        "mary_wollenstonecraft.png",
         "morgan_la_fey.png",
         "napoleon_bonaparte.png",
         "nelson_mandela.png",
         "nzinga_of_ndongo_and_matamba.png",
         "queen_elizabeth_I.png",
+        "queen_lili_uokalani.png",
         "robinhood.png",
         "rumi.png",
-        "sakagawea.png",
+        "sacagawea.png",
         "shakespeare.png",
         "sukarno.png",
         "winston_churchill.png",

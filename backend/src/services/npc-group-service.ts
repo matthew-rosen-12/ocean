@@ -4,8 +4,8 @@ import { getInitialPosition, getInitialDirection } from "../initialization/npc-i
 import { v4 as uuidv4 } from "uuid";
 import { getTerrainConfig } from "../state/terrain";
 
-const NUM_NPCS = 40;
-const MAX_CUMULATIVE_SIZE = 100;
+const NUM_NPCS = 4;
+const MAX_CUMULATIVE_SIZE = 10;
 
 import {
   deletePathInMemory,
