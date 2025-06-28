@@ -339,6 +339,7 @@ async function finishLoadingAnimal(
   // After scaling AND orientation, measure width and height
   const scaledBox = new THREE.Box3().setFromObject(group);
   const scaledSize = scaledBox.getSize(new THREE.Vector3());
+  console.log(`[ANIMAL DIMENSIONS] ${animal}: width=${scaledSize.x.toFixed(3)}, height=${scaledSize.y.toFixed(3)}`);
   setAnimalDimensions(animal, {
     width: scaledSize.x,
     height: scaledSize.y,
@@ -884,6 +885,7 @@ export function loadAnimalSVG(
           // After scaling AND orientation, measure width and height
           const scaledBox = new THREE.Box3().setFromObject(group);
           const scaledSize = scaledBox.getSize(new THREE.Vector3());
+          console.log(`[ANIMAL DIMENSIONS] ${animal}: width=${scaledSize.x.toFixed(3)}, height=${scaledSize.y.toFixed(3)}`);
           setAnimalDimensions(animal, {
             width: scaledSize.x,
             height: scaledSize.y,

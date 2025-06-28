@@ -7,6 +7,9 @@ const npc_groups_1 = require("../state/npc-groups");
 const paths_1 = require("../state/paths");
 const typed_socket_1 = require("../typed-socket");
 const uuid_1 = require("uuid");
+const path_service_1 = require("./path-service");
+const timers_1 = require("timers");
+const terrain_1 = require("../state/terrain");
 /**
  * Manages bot users - creation, spawning, and lifecycle
  */
@@ -19,7 +22,7 @@ class BotManagementService {
         this.stopBotSpawning(roomName);
         const roomStartTime = Date.now();
         // Set initial spawn timer (5 seconds after room creation)
-        const initialTimer = setTimeout(() => {
+        const initialTimer = (0, timers_1.setTimeout)(() => {
             this.spawnBotIfNeeded(roomName, roomStartTime);
         }, this.INITIAL_SPAWN_DELAY);
         this.botSpawnTimers.set(roomName, {
@@ -73,7 +76,7 @@ class BotManagementService {
         const timerData = this.botSpawnTimers.get(roomName);
         if (timerData) {
             timerData.spawnCount++;
-            const nextTimer = setTimeout(() => {
+            const nextTimer = (0, timers_1.setTimeout)(() => {
                 this.spawnBotIfNeeded(roomName, roomStartTime);
             }, this.BOT_SPAWN_INTERVAL);
             timerData.timer = nextTimer;
@@ -131,7 +134,9 @@ class BotManagementService {
      */
     static updateBotPosition(bot, roomName) {
         const MOVEMENT_SPEED = 0.5; // Same as frontend
-        let targetPosition = null;
+        // Get terrain configuration for proper boundary checking
+        const terrainConfig = (0, terrain_1.getTerrainConfig)(roomName);
+        const boundaries = terrainConfig.boundaries;
         // Get or initialize bot movement state
         let movementState = this.botMovementStates.get(bot.id);
         if (!movementState) {
@@ -142,76 +147,50 @@ class BotManagementService {
             };
             this.botMovementStates.set(bot.id, movementState);
         }
-        // Get bot's current captured group status
-        const botHasCapturedGroup = this.botHasCapturedNPCs(bot.id, roomName);
-        if (!botHasCapturedGroup) {
-            // Phase 1: Hunt for IDLE or PATH NPCs
-            targetPosition = this.findNearestTargetNPC(bot, roomName);
-        }
-        else {
-            // Phase 2: Find other users with captured groups to attack
-            targetPosition = this.findNearestUserWithCapturedNPCs(bot, roomName);
-        }
-        // Determine key presses based on target or wandering
-        let up = false, down = false, left = false, right = false;
-        if (targetPosition) {
-            const dx = targetPosition.x - bot.position.x;
-            const dy = targetPosition.y - bot.position.y;
-            // Only move if target is far enough
-            if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-                // Simulate pressing arrow keys toward target with larger thresholds to prevent twitching
-                if (dy > 0.5)
-                    up = true;
-                if (dy < -0.5)
-                    down = true;
-                if (dx > 0.5)
-                    right = true;
-                if (dx < -0.5)
-                    left = true;
-            }
-            // Reset wandering state when targeting
-            movementState.keyHoldDuration = 0;
-            movementState.maxHoldDuration = 0;
-        }
-        else {
-            // Wandering logic with persistent key holds
-            if (movementState.keyHoldDuration <= 0) {
-                // Time to pick new keys to hold
-                movementState.currentKeys = { up: false, down: false, left: false, right: false };
-                // 30% chance to move in a direction (vs standing still)
-                if (Math.random() < 0.3) {
-                    const randomDirection = Math.floor(Math.random() * 4);
-                    switch (randomDirection) {
-                        case 0:
+        // Simple wandering logic with persistent key holds
+        if (movementState.keyHoldDuration <= 0) {
+            // Time to pick new keys to hold
+            movementState.currentKeys = { up: false, down: false, left: false, right: false };
+            // 40% chance to move in a direction (vs standing still)
+            if (Math.random() < 0.4) {
+                // Allow diagonal movement by randomly selecting 1-2 directions
+                const directions = ['up', 'down', 'left', 'right'];
+                const numDirections = Math.random() < 0.3 ? 2 : 1; // 30% chance for diagonal
+                // Shuffle and pick random directions
+                const shuffled = [...directions].sort(() => Math.random() - 0.5);
+                for (let i = 0; i < numDirections; i++) {
+                    const direction = shuffled[i];
+                    switch (direction) {
+                        case 'up':
                             movementState.currentKeys.up = true;
                             break;
-                        case 1:
+                        case 'down':
                             movementState.currentKeys.down = true;
                             break;
-                        case 2:
+                        case 'left':
                             movementState.currentKeys.left = true;
                             break;
-                        case 3:
+                        case 'right':
                             movementState.currentKeys.right = true;
                             break;
                     }
-                    // Hold key for 100-300 ticks (5-15 seconds at 20 ticks/sec)
-                    movementState.maxHoldDuration = Math.floor(Math.random() * 200) + 100;
                 }
-                else {
-                    // Stand still for 40-120 ticks (2-6 seconds at 20 ticks/sec)
-                    movementState.maxHoldDuration = Math.floor(Math.random() * 80) + 40;
-                }
-                movementState.keyHoldDuration = movementState.maxHoldDuration;
+                // Hold key for 100-300 ticks (5-15 seconds at 20 ticks/sec)
+                movementState.maxHoldDuration = Math.floor(Math.random() * 200) + 100;
             }
-            // Use current held keys
-            up = movementState.currentKeys.up;
-            down = movementState.currentKeys.down;
-            left = movementState.currentKeys.left;
-            right = movementState.currentKeys.right;
-            // Decrement hold duration
-            movementState.keyHoldDuration--;
+            else {
+                // Stand still for 40-120 ticks (2-6 seconds at 20 ticks/sec)
+                movementState.maxHoldDuration = Math.floor(Math.random() * 80) + 40;
+            }
+            movementState.keyHoldDuration = movementState.maxHoldDuration;
         }
+        // Use current held keys
+        const up = movementState.currentKeys.up;
+        const down = movementState.currentKeys.down;
+        const left = movementState.currentKeys.left;
+        const right = movementState.currentKeys.right;
+        // Decrement hold duration
+        movementState.keyHoldDuration--;
         // Calculate movement change (mimicking frontend logic)
         const change = { x: 0, y: 0 };
         if (up)
@@ -238,7 +217,7 @@ class BotManagementService {
             };
         }
         else {
-            // All other movement patterns (including pure horizontal) - use += logic like frontend
+            // All other movement patterns (including pure horizontal and diagonal) - use += logic like frontend
             if (left && !right) {
                 newDirection.x -= 1;
             }
@@ -262,13 +241,15 @@ class BotManagementService {
         if (change.x !== 0 || change.y !== 0) {
             bot.direction = newDirection;
         }
-        // Apply position change
+        // Apply position change with proper boundary checking
         if (change.x !== 0 || change.y !== 0) {
-            bot.position.x += change.x;
-            bot.position.y += change.y;
-            // Keep bots within reasonable bounds (simple boundary collision)
-            bot.position.x = Math.max(-100, Math.min(100, bot.position.x));
-            bot.position.y = Math.max(-100, Math.min(100, bot.position.y));
+            const newPosition = {
+                x: bot.position.x + change.x,
+                y: bot.position.y + change.y
+            };
+            // Apply boundary constraints (same as frontend)
+            bot.position.x = Math.max(boundaries.minX, Math.min(boundaries.maxX, newPosition.x));
+            bot.position.y = Math.max(boundaries.minY, Math.min(boundaries.maxY, newPosition.y));
         }
     }
     /**
@@ -293,10 +274,11 @@ class BotManagementService {
         // Find nearest IDLE or PATH NPC
         for (const npcGroup of npcGroups.values()) {
             if (npcGroup.phase === types_1.NPCPhase.IDLE || npcGroup.phase === types_1.NPCPhase.PATH) {
-                const distance = this.calculateDistance(bot.position, npcGroup.position);
+                const npcGroupPosition = npcGroup.phase == types_1.NPCPhase.IDLE ? npcGroup.position : (0, path_service_1.getPathPosition)(npcGroup, roomName);
+                const distance = this.calculateDistance(bot.position, npcGroupPosition);
                 if (distance < nearestDistance) {
                     nearestDistance = distance;
-                    nearestNPC = npcGroup.position;
+                    nearestNPC = npcGroupPosition;
                 }
             }
         }
@@ -377,8 +359,24 @@ class BotManagementService {
             direction.x /= magnitude;
             direction.y /= magnitude;
         }
-        // Calculate throw velocity and duration using same formula as frontend
+        // Calculate how many NPCs to throw (like frontend - split the group)
         const groupSize = botNpcGroup.fileNames.length;
+        const actualThrowCount = Math.min(Math.max(1, Math.floor(groupSize / 2)), groupSize);
+        // Split the group: remaining NPCs stay with bot, thrown NPCs get new group
+        const remainingFileNames = botNpcGroup.fileNames.slice(0, groupSize - actualThrowCount);
+        const thrownFileNames = botNpcGroup.fileNames.slice(-actualThrowCount);
+        // Create new thrown group with new ID (like frontend)
+        const thrownGroupId = (0, uuid_1.v4)();
+        const thrownNpcGroup = new types_1.NPCGroup({
+            id: thrownGroupId,
+            fileNames: thrownFileNames,
+            position: bot.position,
+            phase: types_1.NPCPhase.PATH,
+            captorId: bot.id, // Keep captorId
+            direction: { x: 0, y: 0 }
+        });
+        // Calculate throw velocity and duration using same formula as frontend
+        const throwCount = actualThrowCount;
         const baseVelocity = 20.0;
         const baseDuration = 2000;
         // Use same proportional calculation as frontend throwing
@@ -398,13 +396,13 @@ class BotManagementService {
                 return 1;
             return calculateNPCGroupProportion(numFileNames);
         };
-        const throwVelocity = baseVelocity * calculateNPCGroupVelocityFactor(groupSize);
-        const throwDuration = baseDuration * calculateNPCGroupDistanceFactor(groupSize);
+        const throwVelocity = baseVelocity * calculateNPCGroupVelocityFactor(throwCount);
+        const throwDuration = baseDuration * calculateNPCGroupDistanceFactor(throwCount);
         // Create path data for the throw
         const throwPath = {
             id: (0, uuid_1.v4)(),
             room: roomName,
-            npcGroupId: botNpcGroup.id,
+            npcGroupId: thrownGroupId,
             startPosition: { x: bot.position.x, y: bot.position.y },
             direction: direction,
             velocity: throwVelocity, // Throw speed proportional to group size
@@ -412,20 +410,35 @@ class BotManagementService {
             timestamp: Date.now(),
             pathPhase: types_1.PathPhase.THROWN
         };
-        // Update NPC group to PATH phase
+        // Update NPC groups in memory
         const npcGroups = (0, npc_groups_1.getNPCGroupsfromMemory)(roomName);
         if (npcGroups) {
-            botNpcGroup.phase = types_1.NPCPhase.PATH;
-            botNpcGroup.captorId = undefined; // Released from bot
-            npcGroups.setByNpcGroupId(botNpcGroup.id, botNpcGroup);
+            if (remainingFileNames.length > 0) {
+                // Update original group with remaining NPCs
+                botNpcGroup.fileNames = remainingFileNames;
+                npcGroups.setByNpcGroupId(botNpcGroup.id, botNpcGroup);
+            }
+            else {
+                // If no NPCs left, remove the original group
+                npcGroups.deleteByNpcGroupId(botNpcGroup.id);
+            }
+            // Add the new thrown group
+            npcGroups.setByNpcGroupId(thrownGroupId, thrownNpcGroup);
             (0, npc_groups_1.setNPCGroupsInMemory)(roomName, npcGroups);
         }
         // Add path to memory
         const roomPaths = (0, paths_1.getpathsfromMemory)(roomName);
         roomPaths.set(throwPath.npcGroupId, throwPath);
         (0, paths_1.setPathsInMemory)(roomName, roomPaths);
-        // Broadcast throw to all clients
-        (0, typed_socket_1.emitToRoom)(roomName, "npc-group-update", { npcGroup: botNpcGroup });
+        // Broadcast changes to all clients
+        if (remainingFileNames.length > 0) {
+            (0, typed_socket_1.emitToRoom)(roomName, "npc-group-update", { npcGroup: botNpcGroup });
+        }
+        else {
+            // Mark original group as deleted
+            (0, typed_socket_1.emitToRoom)(roomName, "npc-group-update", { npcGroup: new types_1.NPCGroup(Object.assign(Object.assign({}, botNpcGroup), { fileNames: [] })) });
+        }
+        (0, typed_socket_1.emitToRoom)(roomName, "npc-group-update", { npcGroup: thrownNpcGroup });
         (0, typed_socket_1.emitToRoom)(roomName, "path-update", { pathData: throwPath });
         console.log(`Bot ${bot.nickname} threw NPCs at ${targetUser.nickname}`);
     }

@@ -831,7 +831,6 @@ function checkAndSpawnNPCs(room) {
                 const terrainBoundaries = terrainConfig.boundaries;
                 for (let i = 0; i < spawnCount; i++) {
                     const newNPCGroup = createSingleNPCGroup(terrainBoundaries);
-                    console.log(`[DEBUG] Spawned new NPC ${newNPCGroup.id} at position (${newNPCGroup.position.x}, ${newNPCGroup.position.y}) - Groups: ${currentCount + i + 1}/${NUM_NPCS}, Cumulative: ${currentCumulativeSize + i + 1}/${MAX_CUMULATIVE_SIZE}`);
                     // Add NPC to memory and broadcast update immediately
                     const currentNPCGroups = (0, npc_groups_1.getNPCGroupsfromMemory)(room);
                     currentNPCGroups.setByNpcGroupId(newNPCGroup.id, newNPCGroup);

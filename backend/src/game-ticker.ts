@@ -7,7 +7,8 @@ import { emitToRoom } from "./typed-socket";
 import { getAllRoomsfromMemory } from "./state/rooms";
 import { getpathsfromMemory } from "./state/paths";
 import { getNPCGroupsfromMemory } from "./state/npc-groups";
-import { getAllUsersInRoom, updateUserInRoom } from "./state/users";
+import { updateUserInRoom } from "./state/users";
+import { setTimeout } from "timers";
 
 let gameTickerInstance: GameTicker | null = null;
 
@@ -20,7 +21,7 @@ export function getGameTicker(): GameTicker {
 
 class GameTicker {
   private tickRate = 50; // ms between ticks (20 ticks per second) - faster for smoother bots
-  private tickInterval: NodeJS.Timeout | null = null;
+  private tickInterval: ReturnType<typeof setTimeout> | null = null;
   private botUpdateCounter = 0;
   private spawnCheckCounter = 0;
   private readonly SPAWN_CHECK_INTERVAL = 20; // Check spawning every 20 ticks (1 second at 20 ticks/second)
@@ -52,7 +53,7 @@ class GameTicker {
         checkAndHandleNPCCollisions(roomName);
         
         // Process bot users: movement and collision detection 
-        // this.processBots(roomName);
+        this._processBots(roomName);
         
         // Check for NPC fleeing after bot movement (same as for human players)
         checkAndHandleNPCFleeing(roomName);

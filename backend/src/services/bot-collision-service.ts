@@ -1,4 +1,5 @@
-import { UserInfo, NPCGroup, NPCPhase, ANIMAL_SCALES, Animal, roomId, userId } from "shared/types";
+import { UserInfo, NPCGroup, NPCPhase, roomId, ANIMAL_SCALES } from "shared/types";
+import { getAnimalDimensions } from "shared/animal-dimensions";
 import { getNPCGroupsfromMemory, setNPCGroupsInMemory } from "../state/npc-groups";
 import { deletePathInMemory, getpathsfromMemory } from "../state/paths";
 import { getAllUsersInRoom } from "../state/users";
@@ -25,24 +26,55 @@ export class BotCollisionService {
 
     let collisionDetected = false;
 
-    // Calculate capture threshold to match frontend logic
-    // Frontend uses: animalWidth * 0.5, where animalWidth ≈ 5 * ANIMAL_SCALES (normalized)
+    // Calculate capture threshold to exactly match frontend logic
+    // Frontend uses: animalWidth * 0.5, where animalWidth comes from animalDimensions
     const animalScale = ANIMAL_SCALES[botUser.animal as keyof typeof ANIMAL_SCALES] || 1.0;
-    const estimatedAnimalWidth = 5 * animalScale; // Approximate the frontend normalization + scaling
-    const CAPTURE_THRESHOLD = estimatedAnimalWidth * 0.5; // Match frontend formula
+    const animalDimensions = getAnimalDimensions(botUser.animal, animalScale);
+    const CAPTURE_THRESHOLD = animalDimensions.width * 0.5;
 
+    // Get paths to check for recently thrown NPCs (500ms cooldown like frontend)
+    const paths = getpathsfromMemory(roomName);
+    
     // Process captures one by one, immediately updating memory to prevent duplicates
     for (const npcGroup of npcGroups.values()) {
-      // Only check IDLE and PATH NPCs, and exclude NPCs already captured by this bot
-      if ((npcGroup.phase === NPCPhase.IDLE || npcGroup.phase === NPCPhase.PATH) && 
-          npcGroup.captorId !== botUser.id) {
-        const distance = this.calculateDistance(botUser.position, npcGroup.position);
+      // Check if this NPC can be captured by this bot (match frontend logic)
+      let canCapture = false;
+      
+      if (npcGroup.captorId === botUser.id) {
+        // Bot's own NPCs can be captured, BUT not immediately after throwing (except returning NPCs)
+        const pathData = paths?.get(npcGroup.id);
+        const timeSinceThrow = pathData ? (Date.now() - pathData.timestamp) : 9999;
+        const isReturning = pathData && pathData.pathDuration <= 500; // Return paths have 500ms duration
+        if (!pathData || timeSinceThrow > 1000 || isReturning) {
+          canCapture = true;
+        }
+      } else if (!npcGroup.captorId && (npcGroup.phase === NPCPhase.IDLE || npcGroup.phase === NPCPhase.PATH)) {
+        // Uncaptured NPCs can be captured if they're IDLE or PATH phase
+        canCapture = true;
+      }
+
+      if (canCapture) {
+        // Calculate actual NPC position (for moving NPCs on paths)
+        let npcPosition = npcGroup.position;
+        const pathData = paths?.get(npcGroup.id);
+        if (pathData && npcGroup.phase === NPCPhase.PATH) {
+          // Calculate current position along path with progress clamping
+          const now = Date.now();
+          const elapsedTime = (now - pathData.timestamp); // seconds
+          const distance = pathData.velocity * elapsedTime;
+          
+          npcPosition = {
+            x: pathData.startPosition.x + pathData.direction.x * distance,
+            y: pathData.startPosition.y + pathData.direction.y * distance,
+            z: 0
+          };
+        }
+        
+        const distance = this.calculateDistance(botUser.position, npcPosition);
         
         if (distance < CAPTURE_THRESHOLD) {
-          // Process capture immediately and refresh npcGroups from memory
           this.handleBotNPCCollision(roomName, botUser, npcGroup);
           collisionDetected = true;
-          // Break after first capture to prevent processing stale data
           break;
         }
       }
@@ -60,14 +92,20 @@ export class BotCollisionService {
 
     // Double-check the NPC is still capturable (prevent race conditions)
     const currentNpcGroup = npcGroups.getByNpcGroupId(capturedNPCGroup.id);
-    if (!currentNpcGroup || (currentNpcGroup.phase !== NPCPhase.IDLE && currentNpcGroup.phase !== NPCPhase.PATH)) {
-      return; // NPC was already captured or doesn't exist
+    if (!currentNpcGroup) {
+      return; // NPC doesn't exist
+    }
+    
+    // // CRITICAL: If this NPC is already captured by this bot, don't re-capture it!
+    if (currentNpcGroup.phase == NPCPhase.CAPTURED) {
+      return;
     }
 
     // Delete any path associated with the captured NPC group
     const paths = getpathsfromMemory(roomName);
     if (paths && paths.has(capturedNPCGroup.id)) {
       deletePathInMemory(roomName, capturedNPCGroup.id);
+      console.log("deleting path of captured group")
     }
 
     // Get bot's existing captured group (if any)

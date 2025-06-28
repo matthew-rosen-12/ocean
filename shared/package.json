@@ -8,7 +8,8 @@
       "./*": "./dist/*",
       "./types": "./dist/types.js",
       "./socket-events": "./dist/socket-events.js",
-      "./constants": "./dist/constants.js"
+      "./constants": "./dist/constants.js",
+      "./animal-dimensions": "./dist/animal-dimensions.js"
     },
     "scripts": {
       "build": "tsc"

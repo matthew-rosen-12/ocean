@@ -19,6 +19,7 @@ const rooms_1 = require("./state/rooms");
 const paths_1 = require("./state/paths");
 const npc_groups_1 = require("./state/npc-groups");
 const users_1 = require("./state/users");
+const timers_1 = require("timers");
 let gameTickerInstance = null;
 function getGameTicker() {
     if (!gameTickerInstance) {
@@ -52,7 +53,7 @@ class GameTicker {
                     // Always check for collisions first (for thrown paths)
                     (0, npc_group_service_1.checkAndHandleNPCCollisions)(roomName);
                     // Process bot users: movement and collision detection 
-                    // this.processBots(roomName);
+                    this._processBots(roomName);
                     // Check for NPC fleeing after bot movement (same as for human players)
                     (0, npc_group_service_1.checkAndHandleNPCFleeing)(roomName);
                     // Check for fleeing NPCs that are far outside terrain boundaries and delete them
@@ -99,7 +100,7 @@ class GameTicker {
                 this.spawnCheckCounter = 0;
             }
             // Schedule next tick
-            this.tickInterval = setTimeout(() => this.tick(), this.tickRate);
+            this.tickInterval = (0, timers_1.setTimeout)(() => this.tick(), this.tickRate);
         });
     }
     _processBots(roomName) {
