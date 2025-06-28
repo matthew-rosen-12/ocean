@@ -366,7 +366,7 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
       const borderColor = user ? getAnimalColor(user) : new THREE.Color('#888888');
       
       // Create and add outline (or special shimmering outline for thrown/returning NPCs)
-      if (pathData?.pathPhase === PathPhase.THROWN) {
+      if (pathData?.pathPhase === PathPhase.THROWN || pathData?.pathPhase === PathPhase.RETURNING) {
         // Create special shimmering outline for thrown/returning NPCs
         goldOutline.current = createShimmeringOutline(scale, borderColor);
         if (goldOutline.current) {
@@ -450,7 +450,7 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
           const borderColor = user ? getAnimalColor(user) : new THREE.Color('#888888');
           
           // Create and add outline (or special shimmering outline for thrown/returning NPCs)
-          if (pathData?.pathPhase === PathPhase.THROWN) {
+          if (pathData?.pathPhase === PathPhase.THROWN || pathData?.pathPhase === PathPhase.RETURNING) {
             // Create special shimmering outline for thrown/returning NPCs
             goldOutline.current = createShimmeringOutline(scale, borderColor);
             if (goldOutline.current) {

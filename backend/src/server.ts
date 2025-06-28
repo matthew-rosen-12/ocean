@@ -90,21 +90,7 @@ io.on("connection", async (socket) => {
       const existingUsers = getAllUsersInRoom(name);
       const isFirstUser = existingUsers.size === 0;
 
-      // Add user to server memory for this room
-      addUserToRoom(name, user);
-
-      // Start game timer if this is the first user
-      if (isFirstUser) {
-        startGameTimer(name);
-      }
-
-      // Send all existing users in the room to the joining user
-      const allUsers = getAllUsersInRoom(name);
-      if (allUsers.size > 1) { // More than just the current user
-        typedSocket.emit("all-users", { users: allUsers });
-      }
-
-      // Send other room state to the joining socket
+      // Send room state to the joining socket BEFORE adding user to room
       try {
         // Send terrain configuration for this room
         const terrainConfig = getTerrainConfig(name);
@@ -125,13 +111,27 @@ io.on("connection", async (socket) => {
           typedSocket.emit("all-paths", { paths: pathsData });
         }
 
-        // Get existing NPC groups
+        // Get existing NPC groups - send BEFORE users
         const groupsData =  getNPCGroupsfromMemory(name);
         if (groupsData) {
           typedSocket.emit("all-npc-groups", { npcGroups: groupsData });
         }
       } catch (error) {
         console.error("Error sending room state to new user:", error);
+      }
+
+      // Add user to server memory for this room AFTER sending NPC groups
+      addUserToRoom(name, user);
+
+      // Start game timer if this is the first user
+      if (isFirstUser) {
+        startGameTimer(name);
+      }
+
+      // Send all existing users in the room to the joining user
+      const allUsers = getAllUsersInRoom(name);
+      if (allUsers.size > 1) { // More than just the current user
+        typedSocket.emit("all-users", { users: allUsers });
       }
 
       // Broadcast to room that user joined

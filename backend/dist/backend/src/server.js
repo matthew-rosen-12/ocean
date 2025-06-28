@@ -87,18 +87,7 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
             // Check if this is the first user in the room (before adding)
             const existingUsers = (0, users_1.getAllUsersInRoom)(name);
             const isFirstUser = existingUsers.size === 0;
-            // Add user to server memory for this room
-            (0, users_1.addUserToRoom)(name, user);
-            // Start game timer if this is the first user
-            if (isFirstUser) {
-                (0, game_timer_1.startGameTimer)(name);
-            }
-            // Send all existing users in the room to the joining user
-            const allUsers = (0, users_1.getAllUsersInRoom)(name);
-            if (allUsers.size > 1) { // More than just the current user
-                typedSocket.emit("all-users", { users: allUsers });
-            }
-            // Send other room state to the joining socket
+            // Send room state to the joining socket BEFORE adding user to room
             try {
                 // Send terrain configuration for this room
                 const terrainConfig = (0, terrain_1.getTerrainConfig)(name);
@@ -116,7 +105,7 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
                 if (pathsData) {
                     typedSocket.emit("all-paths", { paths: pathsData });
                 }
-                // Get existing NPC groups
+                // Get existing NPC groups - send BEFORE users
                 const groupsData = (0, npc_groups_1.getNPCGroupsfromMemory)(name);
                 if (groupsData) {
                     typedSocket.emit("all-npc-groups", { npcGroups: groupsData });
@@ -124,6 +113,17 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
             }
             catch (error) {
                 console.error("Error sending room state to new user:", error);
+            }
+            // Add user to server memory for this room AFTER sending NPC groups
+            (0, users_1.addUserToRoom)(name, user);
+            // Start game timer if this is the first user
+            if (isFirstUser) {
+                (0, game_timer_1.startGameTimer)(name);
+            }
+            // Send all existing users in the room to the joining user
+            const allUsers = (0, users_1.getAllUsersInRoom)(name);
+            if (allUsers.size > 1) { // More than just the current user
+                typedSocket.emit("all-users", { users: allUsers });
             }
             // Broadcast to room that user joined
             typedSocket.broadcast(name, "user-joined", { user });
