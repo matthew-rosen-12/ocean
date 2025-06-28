@@ -89,10 +89,14 @@ class BotManagementService {
     static createBot(roomName) {
         const botId = `bot-${(0, uuid_1.v4)()}`;
         const randomAnimal = this.BOT_ANIMALS[Math.floor(Math.random() * this.BOT_ANIMALS.length)];
-        // Generate random position within reasonable bounds
+        // Get terrain configuration for proper boundary checking
+        const terrainConfig = (0, terrain_1.getTerrainConfig)(roomName);
+        const boundaries = terrainConfig.boundaries;
+        // Generate random position within terrain boundaries with some padding
+        const padding = 5; // Stay 5 units away from edges
         const position = {
-            x: (Math.random() - 0.5) * 100, // Random position between -50 and 50
-            y: (Math.random() - 0.5) * 100
+            x: Math.random() * (boundaries.maxX - boundaries.minX - 2 * padding) + boundaries.minX + padding,
+            y: Math.random() * (boundaries.maxY - boundaries.minY - 2 * padding) + boundaries.minY + padding
         };
         const bot = {
             id: botId,

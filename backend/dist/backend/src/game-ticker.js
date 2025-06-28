@@ -106,14 +106,15 @@ class GameTicker {
     _processBots(roomName) {
         const bots = bot_management_service_1.BotManagementService.getBotsInRoom(roomName);
         for (const bot of bots) {
-            // Check if bot should throw captured NPCs at nearby users
-            const didThrow = bot_management_service_1.BotManagementService.checkAndExecuteBotThrow(bot, roomName);
+            // Check if bot should throw captured NPCs at nearby users (commented out for now)
+            // const didThrow = BotManagementService.checkAndExecuteBotThrow(bot, roomName);
+            const didThrow = false; // Disable throwing for now
             // Only update position if bot didn't throw (throwing stops movement briefly)
             if (!didThrow) {
                 // Update bot position (strategic movement AI)
                 bot_management_service_1.BotManagementService.updateBotPosition(bot, roomName);
             }
-            // Check for collisions with NPCs
+            // Check for collisions with NPCs (commented out for now)
             bot_collision_service_1.BotCollisionService.checkBotCollisions(roomName, bot);
             // Update bot in room state
             (0, users_1.updateUserInRoom)(roomName, bot);

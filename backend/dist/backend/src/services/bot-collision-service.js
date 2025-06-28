@@ -24,7 +24,6 @@ class BotCollisionService {
         // Frontend uses: animalWidth * 0.5, where animalWidth comes from animalDimensions
         const animalScale = types_1.ANIMAL_SCALES[botUser.animal] || 1.0;
         const animalDimensions = (0, animal_dimensions_1.getAnimalDimensions)(botUser.animal, animalScale);
-        const CAPTURE_THRESHOLD = animalDimensions.width * 0.5;
         // Get paths to check for recently thrown NPCs (500ms cooldown like frontend)
         const paths = (0, paths_1.getpathsfromMemory)(roomName);
         // Process captures one by one, immediately updating memory to prevent duplicates
@@ -59,8 +58,17 @@ class BotCollisionService {
                         z: 0
                     };
                 }
-                const distance = this.calculateDistance(botUser.position, npcPosition);
-                if (distance < CAPTURE_THRESHOLD) {
+                // Use rotated bounding box collision detection
+                const userRotation = Math.atan2(botUser.direction.y, botUser.direction.x);
+                const npcRotation = Math.atan2(npcGroup.direction.y, npcGroup.direction.x);
+                // Apply animal orientation adjustments
+                const userOrientation = types_1.ANIMAL_ORIENTATION[botUser.animal] || { rotation: 0, flipY: false };
+                const npcOrientation = types_1.ANIMAL_ORIENTATION[npcGroup.fileNames[0]] || { rotation: 0, flipY: false };
+                const adjustedUserRotation = userRotation + userOrientation.rotation;
+                const adjustedNpcRotation = npcRotation + npcOrientation.rotation;
+                const collided = (0, animal_dimensions_1.checkRotatedBoundingBoxCollision)({ x: botUser.position.x, y: botUser.position.y }, { x: npcPosition.x, y: npcPosition.y }, animalDimensions.width, animalDimensions.height, adjustedUserRotation, animalDimensions.width, // NPC uses same dimensions for now
+                animalDimensions.height, adjustedNpcRotation);
+                if (collided) {
                     this.handleBotNPCCollision(roomName, botUser, npcGroup);
                     collisionDetected = true;
                     break;
@@ -128,14 +136,6 @@ class BotCollisionService {
                 (0, typed_socket_1.emitToRoom)(roomName, "path-deleted", { pathData });
             }
         }
-    }
-    /**
-     * Calculate distance between two positions
-     */
-    static calculateDistance(pos1, pos2) {
-        const dx = pos1.x - pos2.x;
-        const dy = pos1.y - pos2.y;
-        return Math.sqrt(dx * dx + dy * dy);
     }
 }
 exports.BotCollisionService = BotCollisionService;

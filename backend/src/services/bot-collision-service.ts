@@ -1,15 +1,9 @@
-import { UserInfo, NPCGroup, NPCPhase, roomId, ANIMAL_SCALES } from "shared/types";
-import { getAnimalDimensions } from "shared/animal-dimensions";
+import { UserInfo, NPCGroup, NPCPhase, roomId, ANIMAL_SCALES, ANIMAL_ORIENTATION } from "shared/types";
+import { getAnimalDimensions, checkRotatedBoundingBoxCollision } from "shared/animal-dimensions";
 import { getNPCGroupsfromMemory, setNPCGroupsInMemory } from "../state/npc-groups";
 import { deletePathInMemory, getpathsfromMemory } from "../state/paths";
-import { getAllUsersInRoom } from "../state/users";
 import { emitToRoom } from "../typed-socket";
 import { v4 as uuidv4 } from "uuid";
-
-interface BotCollisionDetectionProps {
-  roomName: roomId;
-  botUser: UserInfo;
-}
 
 /**
  * Server-side collision detection for bot users
@@ -30,7 +24,6 @@ export class BotCollisionService {
     // Frontend uses: animalWidth * 0.5, where animalWidth comes from animalDimensions
     const animalScale = ANIMAL_SCALES[botUser.animal as keyof typeof ANIMAL_SCALES] || 1.0;
     const animalDimensions = getAnimalDimensions(botUser.animal, animalScale);
-    const CAPTURE_THRESHOLD = animalDimensions.width * 0.5;
 
     // Get paths to check for recently thrown NPCs (500ms cooldown like frontend)
     const paths = getpathsfromMemory(roomName);
@@ -70,9 +63,29 @@ export class BotCollisionService {
           };
         }
         
-        const distance = this.calculateDistance(botUser.position, npcPosition);
+        // Use rotated bounding box collision detection
+        const userRotation = Math.atan2(botUser.direction.y, botUser.direction.x);
+        const npcRotation = Math.atan2(npcGroup.direction.y, npcGroup.direction.x);
         
-        if (distance < CAPTURE_THRESHOLD) {
+        // Apply animal orientation adjustments
+        const userOrientation = ANIMAL_ORIENTATION[botUser.animal] || { rotation: 0, flipY: false };
+        const npcOrientation = ANIMAL_ORIENTATION[npcGroup.fileNames[0] as keyof typeof ANIMAL_ORIENTATION] || { rotation: 0, flipY: false };
+        
+        const adjustedUserRotation = userRotation + userOrientation.rotation;
+        const adjustedNpcRotation = npcRotation + npcOrientation.rotation;
+
+        const collided = checkRotatedBoundingBoxCollision(
+          { x: botUser.position.x, y: botUser.position.y },
+          { x: npcPosition.x, y: npcPosition.y },
+          animalDimensions.width,
+          animalDimensions.height,
+          adjustedUserRotation,
+          animalDimensions.width, // NPC uses same dimensions for now
+          animalDimensions.height,
+          adjustedNpcRotation
+        );
+        
+        if (collided) {
           this.handleBotNPCCollision(roomName, botUser, npcGroup);
           collisionDetected = true;
           break;
@@ -149,14 +162,5 @@ export class BotCollisionService {
         emitToRoom(roomName, "path-deleted", { pathData });
       }
     }
-  }
-
-  /**
-   * Calculate distance between two positions
-   */
-  private static calculateDistance(pos1: { x: number; y: number }, pos2: { x: number; y: number }): number {
-    const dx = pos1.x - pos2.x;
-    const dy = pos1.y - pos2.y;
-    return Math.sqrt(dx * dx + dy * dy);
   }
 }

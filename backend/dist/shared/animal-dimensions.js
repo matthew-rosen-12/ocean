@@ -8,6 +8,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ORIGINAL_SVG_BOUNDS = void 0;
 exports.getAnimalDimensions = getAnimalDimensions;
 exports.getCollisionThreshold = getCollisionThreshold;
+exports.checkRotatedBoundingBoxCollision = checkRotatedBoundingBoxCollision;
 // Base dimension ratios derived from SVG bounds
 const ANIMAL_BASE_DIMENSIONS = {
     BEAR: { width: 4.00, height: 4.00 },
@@ -40,6 +41,94 @@ function getAnimalDimensions(animal, scale = 1.0) {
 function getCollisionThreshold(animal, scale = 1.0) {
     const dimensions = getAnimalDimensions(animal, scale);
     return dimensions.width * 0.5;
+}
+/**
+ * Check if two rotated bounding boxes collide using Separating Axis Theorem (SAT)
+ * @param pos1 Position of first object
+ * @param pos2 Position of second object
+ * @param width1 Width of first object
+ * @param height1 Height of first object
+ * @param rotation1 Rotation of first object in radians
+ * @param width2 Width of second object
+ * @param height2 Height of second object
+ * @param rotation2 Rotation of second object in radians
+ * @returns true if the bounding boxes collide
+ */
+function checkRotatedBoundingBoxCollision(pos1, pos2, width1, height1, rotation1, width2, height2, rotation2) {
+    // Get the corners of both bounding boxes
+    const corners1 = getRotatedBoundingBoxCorners(pos1, width1, height1, rotation1);
+    const corners2 = getRotatedBoundingBoxCorners(pos2, width2, height2, rotation2);
+    // Get the axes to test (normals of each edge)
+    const axes1 = getBoundingBoxAxes(corners1);
+    const axes2 = getBoundingBoxAxes(corners2);
+    const allAxes = [...axes1, ...axes2];
+    // Test each axis for separation
+    for (const axis of allAxes) {
+        const projection1 = projectBoundingBox(corners1, axis);
+        const projection2 = projectBoundingBox(corners2, axis);
+        // If projections don't overlap, there's no collision
+        if (projection1.max < projection2.min || projection2.max < projection1.min) {
+            return false;
+        }
+    }
+    // If no separation found on any axis, the boxes collide
+    return true;
+}
+/**
+ * Get the corners of a rotated bounding box
+ */
+function getRotatedBoundingBoxCorners(position, width, height, rotation) {
+    const halfWidth = width / 2;
+    const halfHeight = height / 2;
+    // Define corners relative to center (before rotation)
+    const corners = [
+        { x: -halfWidth, y: -halfHeight },
+        { x: halfWidth, y: -halfHeight },
+        { x: halfWidth, y: halfHeight },
+        { x: -halfWidth, y: halfHeight }
+    ];
+    // Rotate and translate each corner
+    const cos = Math.cos(rotation);
+    const sin = Math.sin(rotation);
+    return corners.map(corner => ({
+        x: position.x + corner.x * cos - corner.y * sin,
+        y: position.y + corner.x * sin + corner.y * cos
+    }));
+}
+/**
+ * Get the axes (normals) of a bounding box for SAT testing
+ */
+function getBoundingBoxAxes(corners) {
+    const axes = [];
+    for (let i = 0; i < corners.length; i++) {
+        const current = corners[i];
+        const next = corners[(i + 1) % corners.length];
+        // Get edge vector
+        const edge = { x: next.x - current.x, y: next.y - current.y };
+        // Get normal (perpendicular) vector
+        const normal = { x: -edge.y, y: edge.x };
+        // Normalize
+        const length = Math.sqrt(normal.x * normal.x + normal.y * normal.y);
+        if (length > 0) {
+            normal.x /= length;
+            normal.y /= length;
+        }
+        axes.push(normal);
+    }
+    return axes;
+}
+/**
+ * Project a bounding box onto an axis
+ */
+function projectBoundingBox(corners, axis) {
+    let min = Infinity;
+    let max = -Infinity;
+    for (const corner of corners) {
+        const projection = corner.x * axis.x + corner.y * axis.y;
+        min = Math.min(min, projection);
+        max = Math.max(max, projection);
+    }
+    return { min, max };
 }
 // Original SVG bounds for reference
 exports.ORIGINAL_SVG_BOUNDS = {

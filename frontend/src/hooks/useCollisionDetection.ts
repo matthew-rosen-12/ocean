@@ -1,5 +1,6 @@
 import { useCallback } from "react";
-import { NPCGroup, NPCPhase, UserInfo, NPCGroupsBiMap, npcGroupId, pathData } from "shared/types";
+import { NPCGroup, NPCPhase, UserInfo, NPCGroupsBiMap, npcGroupId, pathData, ANIMAL_ORIENTATION } from "shared/types";
+import { checkRotatedBoundingBoxCollision } from "shared/animal-dimensions";
 import * as THREE from "three";
 import { v4 as uuidv4 } from "uuid";
 import { typedSocket } from "../socket";
@@ -89,41 +90,68 @@ export function useCollisionDetection({
     (npcGroup: NPCGroup, npcGroupPosition?: THREE.Vector3, isLocalUser: boolean = true) => {
       // Get the animal dimensions for dynamic thresholds
       const dimensions = animalDimensions[myUser.animal];
-      const animalWidth = dimensions?.width || 2.0; // Fallback to 2.0 if dimensions not yet measured
+      if (!dimensions) {
+        // Fallback to simple distance-based collision if dimensions not available
+        const animalWidth = 2.0;
+        const CAPTURE_THRESHOLD = animalWidth * 0.5;
+        
+        const userPos = new THREE.Vector3(myUser.position.x, myUser.position.y, 0);
+        const npcPos = npcGroupPosition || new THREE.Vector3(npcGroup.position.x, npcGroup.position.y, 0);
+        const distance = npcPos.distanceTo(userPos);
+        
+        const canCapture = 
+          (npcGroup.captorId === myUser.id && (!paths.get(npcGroup.id) || Date.now() - paths.get(npcGroup.id)!.timestamp > 500)) ||
+          (!npcGroup.captorId && (npcGroup.phase === NPCPhase.IDLE || npcGroup.phase === NPCPhase.PATH));
+        
+        if (canCapture && distance < CAPTURE_THRESHOLD) {
+          handleNPCGroupCollision(npcGroup, isLocalUser);
+          return true;
+        }
+        return false;
+      }
 
-      // Use animal width as base for thresholds
-      const CAPTURE_THRESHOLD = animalWidth * 0.5; // Slightly larger than animal width for capture
+      // Calculate rotations for both objects
+      const userRotation = Math.atan2(myUser.direction.y, myUser.direction.x);
+      const npcRotation = Math.atan2(npcGroup.direction.y, npcGroup.direction.x);
+      
+      // Apply animal orientation adjustments
+      const userOrientation = ANIMAL_ORIENTATION[myUser.animal] || { rotation: 0, flipY: false };
+      const npcOrientation = ANIMAL_ORIENTATION[npcGroup.fileNames[0] as keyof typeof ANIMAL_ORIENTATION] || { rotation: 0, flipY: false };
+      
+      const adjustedUserRotation = userRotation + userOrientation.rotation;
+      const adjustedNpcRotation = npcRotation + npcOrientation.rotation;
 
-      const userPos = new THREE.Vector3(
-        myUser.position.x,
-        myUser.position.y,
-        0
+      // Get NPC position
+      const npcPos = npcGroupPosition || { x: npcGroup.position.x, y: npcGroup.position.y };
+      const userPos = { x: myUser.position.x, y: myUser.position.y };
+
+      // Use rotated bounding box collision detection
+      const collided = checkRotatedBoundingBoxCollision(
+        userPos,
+        npcPos,
+        dimensions.width,
+        dimensions.height,
+        adjustedUserRotation,
+        dimensions.width, // NPC uses same dimensions for now
+        dimensions.height,
+        adjustedNpcRotation
       );
-
-      const npcPos = npcGroupPosition
-        ? npcGroupPosition
-        : new THREE.Vector3(npcGroup.position.x, npcGroup.position.y, 0);
-
-      const distance = npcPos.distanceTo(userPos);
 
       // Check if this NPC can be captured by this user
       const canCapture = 
-        // User's own NPCs can be captured in any phase, BUT not immediately after throwing
+        // User's own NPCs can be captured, BUT not immediately after throwing
         (npcGroup.captorId === myUser.id && (!paths.get(npcGroup.id) || Date.now() - paths.get(npcGroup.id)!.timestamp > 500)) ||
         // Uncaptured NPCs can be captured if they're IDLE or PATH phase
         (!npcGroup.captorId && (npcGroup.phase === NPCPhase.IDLE || npcGroup.phase === NPCPhase.PATH));
 
-      if (canCapture) {
-        if (distance < CAPTURE_THRESHOLD) {
-          // Close enough to capture
-          // Capturing NPC
-          handleNPCGroupCollision(npcGroup, isLocalUser);
-          return true;
-        }
+      if (canCapture && collided) {
+        // Close enough to capture
+        handleNPCGroupCollision(npcGroup, isLocalUser);
+        return true;
       }
       return false;
     },
-    [handleNPCGroupCollision, animalDimensions, myUser.animal, myUser.position.x, myUser.position.y]
+    [animalDimensions, myUser.animal, myUser.position.x, myUser.position.y, myUser.direction.x, myUser.direction.y, myUser.id, paths, handleNPCGroupCollision]
   );
 
   return {

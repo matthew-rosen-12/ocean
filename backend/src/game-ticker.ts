@@ -117,8 +117,9 @@ class GameTicker {
     const bots = BotManagementService.getBotsInRoom(roomName);
     
     for (const bot of bots) {
-      // Check if bot should throw captured NPCs at nearby users
-      const didThrow = BotManagementService.checkAndExecuteBotThrow(bot, roomName);
+      // Check if bot should throw captured NPCs at nearby users (commented out for now)
+      // const didThrow = BotManagementService.checkAndExecuteBotThrow(bot, roomName);
+      const didThrow = false; // Disable throwing for now
       
       // Only update position if bot didn't throw (throwing stops movement briefly)
       if (!didThrow) {
@@ -126,7 +127,7 @@ class GameTicker {
         BotManagementService.updateBotPosition(bot, roomName);
       }
       
-      // Check for collisions with NPCs
+      // Check for collisions with NPCs (commented out for now)
       BotCollisionService.checkBotCollisions(roomName, bot);
       
       // Update bot in room state
