@@ -70,7 +70,8 @@ export declare const BACKEND_DIRECTION_OFFSET = 0.001;
 export declare const NPC_WIDTH = 4;
 export declare const NPC_HEIGHT = 4;
 export declare enum PathPhase {
-    THROWN = "THROWN",// NPCs thrown by players (includes returning to thrower)
+    THROWN = "THROWN",// NPCs thrown by players
+    RETURNING = "RETURNING",// NPCs returning to their thrower
     FLEEING = "FLEEING"
 }
 export interface pathData {

@@ -61,7 +61,7 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
 
   // Helper function to get z-depths based on NPC state
   const getNPCZDepths = () => {
-    if (pathData?.pathPhase === PathPhase.THROWN) {
+    if (pathData?.pathPhase === PathPhase.THROWN || pathData?.pathPhase === PathPhase.RETURNING) {
       return {
         mesh: Z_DEPTHS.PATH_NPC_THROWN,
         outline: Z_DEPTHS.PATH_NPC_THROWN_OUTLINE,

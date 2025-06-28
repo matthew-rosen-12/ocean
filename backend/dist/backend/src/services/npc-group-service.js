@@ -48,8 +48,8 @@ function setPathCompleteInRoom(room, npcGroup) {
                 directionToThrower.x /= length;
                 directionToThrower.y /= length;
             }
-            // Update the existing path to return to thrower (keep same ID, velocity, and phase)
-            const returningPathData = Object.assign(Object.assign({}, pathDataForNPC), { startPosition: landingPosition, direction: directionToThrower, timestamp: Date.now(), pathPhase: types_1.PathPhase.THROWN, pathDuration: 500 });
+            // Update the existing path to return to thrower (keep same ID, velocity, but change phase)
+            const returningPathData = Object.assign(Object.assign({}, pathDataForNPC), { startPosition: landingPosition, direction: directionToThrower, timestamp: Date.now(), pathPhase: types_1.PathPhase.RETURNING, pathDuration: 500 });
             // Update paths in memory with same ID
             const paths = (0, paths_1.getpathsfromMemory)(room);
             paths.set(npcGroup.id, returningPathData);
@@ -63,6 +63,42 @@ function setPathCompleteInRoom(room, npcGroup) {
             (0, typed_socket_1.emitToRoom)(room, "path-deleted", { pathData: pathDataForNPC });
             npcGroup.phase = types_1.NPCPhase.IDLE;
             npcGroup.position = calculateLandingPosition(pathDataForNPC);
+            updateNPCGroupInRoom(room, npcGroup);
+        }
+    }
+    else if (pathDataForNPC.pathPhase === types_1.PathPhase.RETURNING) {
+        // Returning NPCs complete their path - check if thrower is still around
+        const landingPosition = calculateLandingPosition(pathDataForNPC);
+        // Get the thrower's current position to see if we should continue returning
+        const allUsers = (0, users_1.getAllUsersInRoom)(room);
+        const thrower = Array.from(allUsers.values()).find(user => user.id === npcGroup.captorId);
+        if (thrower) {
+            // Calculate direction back to thrower from landing position
+            const directionToThrower = {
+                x: thrower.position.x - landingPosition.x,
+                y: thrower.position.y - landingPosition.y,
+            };
+            // Normalize direction
+            const length = Math.sqrt(directionToThrower.x * directionToThrower.x + directionToThrower.y * directionToThrower.y);
+            if (length > 0) {
+                directionToThrower.x /= length;
+                directionToThrower.y /= length;
+            }
+            // Create a new return path
+            const newReturningPathData = Object.assign(Object.assign({}, pathDataForNPC), { startPosition: landingPosition, direction: directionToThrower, timestamp: Date.now(), pathPhase: types_1.PathPhase.RETURNING, pathDuration: 500 });
+            // Update paths in memory with same ID
+            const paths = (0, paths_1.getpathsfromMemory)(room);
+            paths.set(npcGroup.id, newReturningPathData);
+            (0, paths_1.setPathsInMemory)(room, paths);
+            // Broadcast the updated path
+            (0, typed_socket_1.emitToRoom)(room, "path-update", { pathData: newReturningPathData });
+        }
+        else {
+            // Thrower not found, go to IDLE
+            (0, paths_1.deletePathInMemory)(room, pathDataForNPC.id);
+            (0, typed_socket_1.emitToRoom)(room, "path-deleted", { pathData: pathDataForNPC });
+            npcGroup.phase = types_1.NPCPhase.IDLE;
+            npcGroup.position = landingPosition;
             updateNPCGroupInRoom(room, npcGroup);
         }
     }
@@ -277,8 +313,8 @@ function checkAndHandleNPCCollisions(room) {
         // Get all necessary data for collision detection
         const allPaths = Array.from((0, paths_1.getpathsfromMemory)(room).values());
         const allNPCGroups = (0, npc_groups_1.getNPCGroupsfromMemory)(room);
-        // Check collision between thrown PATH NPCs and idle NPCs
-        const thrownPaths = allPaths.filter(path => path.pathPhase === types_1.PathPhase.THROWN);
+        // Check collision between thrown/returning path NPCs
+        const thrownPaths = allPaths.filter(path => path.pathPhase === types_1.PathPhase.THROWN || path.pathPhase === types_1.PathPhase.RETURNING);
         const idleNPCGroups = Array.from(allNPCGroups.values()).filter(npcGroup => npcGroup.phase === types_1.NPCPhase.IDLE);
         const uncapturedIdleNPCs = idleNPCGroups.filter(npcGroup => !npcGroup.captorId);
         const capturedIdleNPCs = idleNPCGroups.filter(npcGroup => npcGroup.captorId);
@@ -341,7 +377,7 @@ function checkAndHandleNPCCollisions(room) {
                     }
                     else {
                         // Different owners: existing behavior (bounce or merge based on size)
-                        if (thrownPathSize === otherPathSize && otherPath.pathPhase === types_1.PathPhase.THROWN) {
+                        if (thrownPathSize === otherPathSize && (otherPath.pathPhase === types_1.PathPhase.THROWN || otherPath.pathPhase === types_1.PathPhase.RETURNING)) {
                             // Same size: bounce as before
                             handleNPCBounce(room, thrownPath, thrownPathPosition, otherPathPosition);
                             handleNPCBounce(room, otherPath, otherPathPosition, thrownPathPosition);

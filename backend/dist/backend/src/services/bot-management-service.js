@@ -48,6 +48,7 @@ class BotManagementService {
     static spawnBotIfNeeded(roomName, roomStartTime) {
         const currentTime = Date.now();
         const roomAge = currentTime - roomStartTime;
+        // return
         // Stop spawning if room is older than 30 seconds
         if (roomAge >= this.MAX_SPAWN_DURATION) {
             this.stopBotSpawning(roomName);
@@ -151,42 +152,107 @@ class BotManagementService {
             };
             this.botMovementStates.set(bot.id, movementState);
         }
-        // Simple wandering logic with persistent key holds
-        if (movementState.keyHoldDuration <= 0) {
-            // Time to pick new keys to hold
-            movementState.currentKeys = { up: false, down: false, left: false, right: false };
-            // 40% chance to move in a direction (vs standing still)
-            if (Math.random() < 0.4) {
-                // Allow diagonal movement by randomly selecting 1-2 directions
-                const directions = ['up', 'down', 'left', 'right'];
-                const numDirections = Math.random() < 0.3 ? 2 : 1; // 30% chance for diagonal
-                // Shuffle and pick random directions
-                const shuffled = [...directions].sort(() => Math.random() - 0.5);
-                for (let i = 0; i < numDirections; i++) {
-                    const direction = shuffled[i];
-                    switch (direction) {
-                        case 'up':
-                            movementState.currentKeys.up = true;
-                            break;
-                        case 'down':
-                            movementState.currentKeys.down = true;
-                            break;
-                        case 'left':
-                            movementState.currentKeys.left = true;
-                            break;
-                        case 'right':
-                            movementState.currentKeys.right = true;
-                            break;
-                    }
+        // Check if bot has captured NPCs to decide hunting strategy
+        const hasCapturedNPCs = this.botHasCapturedNPCs(bot.id, roomName);
+        // Check if bot just threw and should continue in throw direction
+        if (movementState.justThrew && movementState.justThrew.duration > 0) {
+            // Continue moving in the direction the bot was facing when it threw
+            const throwDirection = movementState.justThrew.direction;
+            const keys = { up: false, down: false, left: false, right: false };
+            if (throwDirection.y > 0.1)
+                keys.up = true;
+            if (throwDirection.y < -0.1)
+                keys.down = true;
+            if (throwDirection.x < -0.1)
+                keys.left = true;
+            if (throwDirection.x > 0.1)
+                keys.right = true;
+            movementState.currentKeys = keys;
+            movementState.justThrew.duration--;
+        }
+        else {
+            // Clear the justThrew state if duration is up
+            if (movementState.justThrew && movementState.justThrew.duration <= 0) {
+                movementState.justThrew = undefined;
+            }
+            // Sticky hunting state
+            if (!movementState.hunting || movementState.hunting.duration <= 0) {
+                let targetPosition = null;
+                if (hasCapturedNPCs) {
+                    targetPosition = this.findNearestUserWithCapturedNPCs(bot, roomName);
                 }
-                // Hold key for 100-300 ticks (5-15 seconds at 20 ticks/sec)
-                movementState.maxHoldDuration = Math.floor(Math.random() * 200) + 100;
+                else {
+                    targetPosition = this.findNearestTargetNPC(bot, roomName);
+                }
+                if (targetPosition) {
+                    const direction = {
+                        x: targetPosition.x - bot.position.x,
+                        y: targetPosition.y - bot.position.y
+                    };
+                    const magnitude = Math.sqrt(direction.x * direction.x + direction.y * direction.y);
+                    if (magnitude > 0) {
+                        direction.x /= magnitude;
+                        direction.y /= magnitude;
+                    }
+                    // Set movement keys based on direction
+                    const keys = { up: false, down: false, left: false, right: false };
+                    if (direction.y > 0.1)
+                        keys.up = true;
+                    if (direction.y < -0.1)
+                        keys.down = true;
+                    if (direction.x < -0.1)
+                        keys.left = true;
+                    if (direction.x > 0.1)
+                        keys.right = true;
+                    // Hold hunting direction for 1–2 seconds
+                    movementState.hunting = {
+                        keys,
+                        duration: Math.floor(Math.random() * 20) + 20 // 20–40 ticks (1–2 seconds)
+                    };
+                }
+                else {
+                    movementState.hunting = undefined;
+                }
             }
-            else {
-                // Stand still for 40-120 ticks (2-6 seconds at 20 ticks/sec)
-                movementState.maxHoldDuration = Math.floor(Math.random() * 80) + 40;
+            // Use sticky hunting keys if available
+            if (movementState.hunting && movementState.hunting.duration > 0) {
+                movementState.currentKeys = Object.assign({}, movementState.hunting.keys);
+                movementState.hunting.duration--;
             }
-            movementState.keyHoldDuration = movementState.maxHoldDuration;
+            else if (!movementState.hunting) {
+                // No target found - use wandering logic
+                if (movementState.keyHoldDuration <= 0) {
+                    // Time to pick new keys to hold
+                    movementState.currentKeys = { up: false, down: false, left: false, right: false };
+                    if (Math.random() < 0.4) {
+                        const directions = ['up', 'down', 'left', 'right'];
+                        const numDirections = Math.random() < 0.3 ? 2 : 1;
+                        const shuffled = [...directions].sort(() => Math.random() - 0.5);
+                        for (let i = 0; i < numDirections; i++) {
+                            const direction = shuffled[i];
+                            switch (direction) {
+                                case 'up':
+                                    movementState.currentKeys.up = true;
+                                    break;
+                                case 'down':
+                                    movementState.currentKeys.down = true;
+                                    break;
+                                case 'left':
+                                    movementState.currentKeys.left = true;
+                                    break;
+                                case 'right':
+                                    movementState.currentKeys.right = true;
+                                    break;
+                            }
+                        }
+                        movementState.maxHoldDuration = Math.floor(Math.random() * 200) + 100;
+                    }
+                    else {
+                        movementState.maxHoldDuration = Math.floor(Math.random() * 80) + 40;
+                    }
+                    movementState.keyHoldDuration = movementState.maxHoldDuration;
+                }
+            }
         }
         // Use current held keys
         const up = movementState.currentKeys.up;
@@ -352,17 +418,32 @@ class BotManagementService {
      * Execute bot throw at target user
      */
     static executeBotThrow(bot, targetUser, botNpcGroup, roomName) {
-        // Calculate throw direction
-        const direction = {
+        // Calculate optimal throw direction toward target
+        const optimalDirection = {
             x: targetUser.position.x - bot.position.x,
             y: targetUser.position.y - bot.position.y
         };
-        // Normalize direction
-        const magnitude = Math.sqrt(direction.x * direction.x + direction.y * direction.y);
+        // Normalize optimal direction
+        const magnitude = Math.sqrt(optimalDirection.x * optimalDirection.x + optimalDirection.y * optimalDirection.y);
         if (magnitude > 0) {
-            direction.x /= magnitude;
-            direction.y /= magnitude;
+            optimalDirection.x /= magnitude;
+            optimalDirection.y /= magnitude;
         }
+        // Update bot's direction to face the target (simulating keyboard input)
+        bot.direction = optimalDirection;
+        // Set the bot to continue moving in the throw direction for a while
+        const movementState = this.botMovementStates.get(bot.id);
+        if (movementState) {
+            movementState.justThrew = {
+                direction: { x: optimalDirection.x, y: optimalDirection.y },
+                duration: 30 // Continue in throw direction for 1.5 seconds (30 ticks at 20 ticks/sec)
+            };
+        }
+        // Use the optimal direction for the throw
+        const direction = {
+            x: optimalDirection.x,
+            y: optimalDirection.y
+        };
         // Calculate how many NPCs to throw (like frontend - split the group)
         const groupSize = botNpcGroup.fileNames.length;
         const actualThrowCount = Math.min(Math.max(1, Math.floor(groupSize / 2)), groupSize);
@@ -460,7 +541,7 @@ BotManagementService.botSpawnTimers = new Map();
 BotManagementService.botMovementStates = new Map();
 BotManagementService.MAX_USERS_PER_ROOM = 8;
 BotManagementService.BOT_SPAWN_INTERVAL = 5000; // 5 seconds
-BotManagementService.INITIAL_SPAWN_DELAY = 5000; // 5 seconds after room creation
+BotManagementService.INITIAL_SPAWN_DELAY = 5000000; // 5 seconds after room creation
 BotManagementService.MAX_SPAWN_DURATION = 30000; // 30 seconds total
 // Available animals for bots - use all animals from the enum
 BotManagementService.BOT_ANIMALS = Object.values(types_1.Animal);

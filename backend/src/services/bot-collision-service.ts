@@ -1,4 +1,4 @@
-import { UserInfo, NPCGroup, NPCPhase, roomId, ANIMAL_SCALES, ANIMAL_ORIENTATION } from "shared/types";
+import { UserInfo, NPCGroup, NPCPhase, PathPhase, pathData, roomId, ANIMAL_SCALES, ANIMAL_ORIENTATION } from "shared/types";
 import { getAnimalDimensions, checkRotatedBoundingBoxCollision } from "shared/animal-dimensions";
 import { getNPCGroupsfromMemory, setNPCGroupsInMemory } from "../state/npc-groups";
 import { deletePathInMemory, getpathsfromMemory } from "../state/paths";
@@ -37,8 +37,15 @@ export class BotCollisionService {
         // Bot's own NPCs can be captured, BUT not immediately after throwing (except returning NPCs)
         const pathData = paths?.get(npcGroup.id);
         const timeSinceThrow = pathData ? (Date.now() - pathData.timestamp) : 9999;
-        const isReturning = pathData && pathData.pathDuration <= 500; // Return paths have 500ms duration
-        if (!pathData || timeSinceThrow > 1000 || isReturning) {
+        
+        if (!pathData) {
+          // No path data - can capture
+          canCapture = true;
+        } else if (pathData.pathPhase === PathPhase.RETURNING) {
+          // Returning NPCs can always be captured
+          canCapture = true;
+        } else if (pathData.pathPhase === PathPhase.THROWN && timeSinceThrow > 1000) {
+          // Thrown NPCs can be captured after 1000ms cooldown
           canCapture = true;
         }
       } else if (!npcGroup.captorId && (npcGroup.phase === NPCPhase.IDLE || npcGroup.phase === NPCPhase.PATH)) {
@@ -51,16 +58,9 @@ export class BotCollisionService {
         let npcPosition = npcGroup.position;
         const pathData = paths?.get(npcGroup.id);
         if (pathData && npcGroup.phase === NPCPhase.PATH) {
-          // Calculate current position along path with progress clamping
-          const now = Date.now();
-          const elapsedTime = (now - pathData.timestamp); // seconds
-          const distance = pathData.velocity * elapsedTime;
-          
-          npcPosition = {
-            x: pathData.startPosition.x + pathData.direction.x * distance,
-            y: pathData.startPosition.y + pathData.direction.y * distance,
-            z: 0
-          };
+          // Use the proper path position calculation that handles completed paths
+          const calculatedPosition = this.calculatePathPosition(pathData, Date.now());
+          npcPosition = calculatedPosition;
         }
         
         // Use rotated bounding box collision detection
@@ -162,5 +162,38 @@ export class BotCollisionService {
         emitToRoom(roomName, "path-deleted", { pathData });
       }
     }
+  }
+
+  /**
+   * Calculate the current position of an NPC along its path
+   * Mirrors the logic from npc-group-service.ts
+   */
+  private static calculatePathPosition(pathData: pathData, currentTime: number) {
+    // Calculate elapsed time in seconds
+    const elapsedTime = (currentTime - pathData.timestamp) / 1000;
+    const pathDurationSec = pathData.pathDuration / 1000;
+    const progress = Math.min(elapsedTime / pathDurationSec, 1);
+
+    let position;
+
+    // If we've reached the end of the path, use exact same calculation as server
+    if (progress >= 1) {
+      const finalDistance = pathData.velocity * pathDurationSec;
+      position = {
+        x: pathData.startPosition.x + pathData.direction.x * finalDistance,
+        y: pathData.startPosition.y + pathData.direction.y * finalDistance,
+        z: 0,
+      };
+    } else {
+      // For animation, calculate intermediate position
+      const distance = pathData.velocity * elapsedTime;
+      position = {
+        x: pathData.startPosition.x + pathData.direction.x * distance,
+        y: pathData.startPosition.y + pathData.direction.y * distance,
+        z: 0,
+      };
+    }
+
+    return position;
   }
 }

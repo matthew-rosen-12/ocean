@@ -127,7 +127,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     pathData: pathData,
     currentPathPosition: THREE.Vector3
   ) => {
-    if (!setPaths || !setNpcGroups || pathData.pathPhase !== PathPhase.THROWN || !animalWidth) return;
+    if (!setPaths || !setNpcGroups || (pathData.pathPhase !== PathPhase.THROWN && pathData.pathPhase !== PathPhase.RETURNING) || !animalWidth) return;
 
 
     // Calculate reflection direction (away from the group)
@@ -264,7 +264,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
   };
 
   const checkForPathNPCCollision = (npcGroup: NPCGroup, pathData: pathData) => {
-    if (pathData.pathPhase !== PathPhase.THROWN || !animalWidth) return false;
+    if ((pathData.pathPhase !== PathPhase.THROWN && pathData.pathPhase !== PathPhase.RETURNING) || !animalWidth) return false;
 
     const calculatePathPosition = (pathData: pathData, currentTime: number) => {
       // Calculate elapsed time in seconds
@@ -387,7 +387,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
          // Get the NPC group from the groups map using the ID
          const pathNPCGroup = npcGroups.getByNpcGroupId(pathData.npcGroupId);
          if (
-           pathData.pathPhase === PathPhase.THROWN &&
+           (pathData.pathPhase === PathPhase.THROWN || pathData.pathPhase === PathPhase.RETURNING) &&
            pathNPCGroup &&
            pathNPCGroup.captorId !== group.captorId
          ) {

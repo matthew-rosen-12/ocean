@@ -60,13 +60,13 @@ export function setPathCompleteInRoom(room: string, npcGroup: NPCGroup) {
           directionToThrower.y /= length;
         }
 
-        // Update the existing path to return to thrower (keep same ID, velocity, and phase)
+        // Update the existing path to return to thrower (keep same ID, velocity, but change phase)
         const returningPathData: pathData = {
           ...pathDataForNPC,
           startPosition: landingPosition,
           direction: directionToThrower,
           timestamp: Date.now(),
-          pathPhase: PathPhase.THROWN, // Keep as THROWN phase
+          pathPhase: PathPhase.RETURNING, // Use new RETURNING phase
           pathDuration: 500, // Shorter duration for return journey
         };
 
@@ -84,6 +84,54 @@ export function setPathCompleteInRoom(room: string, npcGroup: NPCGroup) {
         
         npcGroup.phase = NPCPhase.IDLE;
         npcGroup.position = calculateLandingPosition(pathDataForNPC);
+        updateNPCGroupInRoom(room, npcGroup);
+      }
+    } else if (pathDataForNPC.pathPhase === PathPhase.RETURNING) {
+      // Returning NPCs complete their path - check if thrower is still around
+      const landingPosition = calculateLandingPosition(pathDataForNPC);
+      
+      // Get the thrower's current position to see if we should continue returning
+      const allUsers = getAllUsersInRoom(room);
+      const thrower = Array.from(allUsers.values()).find(user => user.id === npcGroup.captorId);
+      
+      if (thrower) {
+        // Calculate direction back to thrower from landing position
+        const directionToThrower = {
+          x: thrower.position.x - landingPosition.x,
+          y: thrower.position.y - landingPosition.y,
+        };
+        
+        // Normalize direction
+        const length = Math.sqrt(directionToThrower.x * directionToThrower.x + directionToThrower.y * directionToThrower.y);
+        if (length > 0) {
+          directionToThrower.x /= length;
+          directionToThrower.y /= length;
+        }
+
+        // Create a new return path
+        const newReturningPathData: pathData = {
+          ...pathDataForNPC,
+          startPosition: landingPosition,
+          direction: directionToThrower,
+          timestamp: Date.now(),
+          pathPhase: PathPhase.RETURNING,
+          pathDuration: 500, // Short duration for return journey
+        };
+
+        // Update paths in memory with same ID
+        const paths = getpathsfromMemory(room);
+        paths.set(npcGroup.id, newReturningPathData);
+        setPathsInMemory(room, paths);
+
+        // Broadcast the updated path
+        emitToRoom(room, "path-update", { pathData: newReturningPathData });
+      } else {
+        // Thrower not found, go to IDLE
+        deletePathInMemory(room, pathDataForNPC.id);
+        emitToRoom(room, "path-deleted", { pathData: pathDataForNPC });
+        
+        npcGroup.phase = NPCPhase.IDLE;
+        npcGroup.position = landingPosition;
         updateNPCGroupInRoom(room, npcGroup);
       }
     } else if (pathDataForNPC.pathPhase === PathPhase.FLEEING) {
@@ -375,8 +423,8 @@ export function checkAndHandleNPCCollisions(room: string): void{
     const allNPCGroups = getNPCGroupsfromMemory(room);
 
 
-    // Check collision between thrown PATH NPCs and idle NPCs
-    const thrownPaths = allPaths.filter(path => path.pathPhase === PathPhase.THROWN);
+    // Check collision between thrown/returning path NPCs
+    const thrownPaths = allPaths.filter(path => path.pathPhase === PathPhase.THROWN || path.pathPhase === PathPhase.RETURNING);
     const idleNPCGroups = Array.from(allNPCGroups.values()).filter(npcGroup => npcGroup.phase === NPCPhase.IDLE);
     const uncapturedIdleNPCs = idleNPCGroups.filter(npcGroup => !npcGroup.captorId);
     const capturedIdleNPCs = idleNPCGroups.filter(npcGroup => npcGroup.captorId);
@@ -459,7 +507,7 @@ export function checkAndHandleNPCCollisions(room: string): void{
             }
           } else {
             // Different owners: existing behavior (bounce or merge based on size)
-            if (thrownPathSize === otherPathSize && otherPath.pathPhase === PathPhase.THROWN) {
+            if (thrownPathSize === otherPathSize && (otherPath.pathPhase === PathPhase.THROWN || otherPath.pathPhase === PathPhase.RETURNING)) {
               // Same size: bounce as before
               handleNPCBounce(room, thrownPath, thrownPathPosition, otherPathPosition);
               handleNPCBounce(room, otherPath, otherPathPosition, thrownPathPosition);

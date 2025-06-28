@@ -58,6 +58,10 @@ export function checkRotatedBoundingBoxCollision(pos1, pos2, width1, height1, ro
     const allAxes = [...axes1, ...axes2];
     // Test each axis for separation
     for (const axis of allAxes) {
+        // Skip zero-length axes
+        const axisLength = Math.sqrt(axis.x * axis.x + axis.y * axis.y);
+        if (axisLength < 0.0001)
+            continue;
         const projection1 = projectBoundingBox(corners1, axis);
         const projection2 = projectBoundingBox(corners2, axis);
         // If projections don't overlap, there's no collision
@@ -99,14 +103,11 @@ function getBoundingBoxAxes(corners) {
         const next = corners[(i + 1) % corners.length];
         // Get edge vector
         const edge = { x: next.x - current.x, y: next.y - current.y };
-        // Get normal (perpendicular) vector
-        const normal = { x: -edge.y, y: edge.x };
-        // Normalize
-        const length = Math.sqrt(normal.x * normal.x + normal.y * normal.y);
-        if (length > 0) {
-            normal.x /= length;
-            normal.y /= length;
-        }
+        // Get normal (perpendicular) vector - normalize to unit length
+        const edgeLength = Math.sqrt(edge.x * edge.x + edge.y * edge.y);
+        if (edgeLength < 0.0001)
+            continue; // Skip very small edges
+        const normal = { x: -edge.y / edgeLength, y: edge.x / edgeLength };
         axes.push(normal);
     }
     return axes;

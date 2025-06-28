@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { NPCGroup, NPCPhase, UserInfo, NPCGroupsBiMap, npcGroupId, pathData, ANIMAL_ORIENTATION } from "shared/types";
+import { NPCGroup, NPCPhase, PathPhase, UserInfo, NPCGroupsBiMap, npcGroupId, pathData, ANIMAL_ORIENTATION } from "shared/types";
 import { checkRotatedBoundingBoxCollision } from "shared/animal-dimensions";
 import * as THREE from "three";
 import { v4 as uuidv4 } from "uuid";
@@ -89,26 +89,7 @@ export function useCollisionDetection({
   const checkForNPCGroupCollision = useCallback(
     (npcGroup: NPCGroup, npcGroupPosition?: THREE.Vector3, isLocalUser: boolean = true) => {
       // Get the animal dimensions for dynamic thresholds
-      const dimensions = animalDimensions[myUser.animal];
-      if (!dimensions) {
-        // Fallback to simple distance-based collision if dimensions not available
-        const animalWidth = 2.0;
-        const CAPTURE_THRESHOLD = animalWidth * 0.5;
-        
-        const userPos = new THREE.Vector3(myUser.position.x, myUser.position.y, 0);
-        const npcPos = npcGroupPosition || new THREE.Vector3(npcGroup.position.x, npcGroup.position.y, 0);
-        const distance = npcPos.distanceTo(userPos);
-        
-        const canCapture = 
-          (npcGroup.captorId === myUser.id && (!paths.get(npcGroup.id) || Date.now() - paths.get(npcGroup.id)!.timestamp > 500)) ||
-          (!npcGroup.captorId && (npcGroup.phase === NPCPhase.IDLE || npcGroup.phase === NPCPhase.PATH));
-        
-        if (canCapture && distance < CAPTURE_THRESHOLD) {
-          handleNPCGroupCollision(npcGroup, isLocalUser);
-          return true;
-        }
-        return false;
-      }
+      const dimensions = animalDimensions[myUser.animal]!;
 
       // Calculate rotations for both objects
       const userRotation = Math.atan2(myUser.direction.y, myUser.direction.x);
@@ -140,7 +121,20 @@ export function useCollisionDetection({
       // Check if this NPC can be captured by this user
       const canCapture = 
         // User's own NPCs can be captured, BUT not immediately after throwing
-        (npcGroup.captorId === myUser.id && (!paths.get(npcGroup.id) || Date.now() - paths.get(npcGroup.id)!.timestamp > 500)) ||
+        (npcGroup.captorId === myUser.id && (() => {
+          const pathData = paths.get(npcGroup.id);
+          if (!pathData) {
+            // No path data - can capture
+            return true;
+          } else if (pathData.pathPhase === PathPhase.RETURNING) {
+            // Returning NPCs can always be captured
+            return true;
+          } else if (pathData.pathPhase === PathPhase.THROWN && (Date.now() - pathData.timestamp > 1000)) {
+            // Thrown NPCs can be captured after 1000ms cooldown
+            return true;
+          }
+          return false;
+        })()) ||
         // Uncaptured NPCs can be captured if they're IDLE or PATH phase
         (!npcGroup.captorId && (npcGroup.phase === NPCPhase.IDLE || npcGroup.phase === NPCPhase.PATH));
 

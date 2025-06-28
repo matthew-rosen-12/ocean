@@ -53,6 +53,7 @@ exports.NPC_HEIGHT = 4;
 var PathPhase;
 (function (PathPhase) {
     PathPhase["THROWN"] = "THROWN";
+    PathPhase["RETURNING"] = "RETURNING";
     PathPhase["FLEEING"] = "FLEEING";
 })(PathPhase || (exports.PathPhase = PathPhase = {}));
 var NPCPhase;

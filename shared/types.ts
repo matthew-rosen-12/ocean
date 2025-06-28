@@ -53,7 +53,8 @@ export const NPC_HEIGHT = 4;
 
 // Path phases for different types of movement
 export enum PathPhase {
-  THROWN = "THROWN", // NPCs thrown by players (includes returning to thrower)
+  THROWN = "THROWN", // NPCs thrown by players
+  RETURNING = "RETURNING", // NPCs returning to their thrower
   FLEEING = "FLEEING", // NPCs fleeing from players
 }
 

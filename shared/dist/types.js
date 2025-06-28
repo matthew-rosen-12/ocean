@@ -50,6 +50,7 @@ export const NPC_HEIGHT = 4;
 export var PathPhase;
 (function (PathPhase) {
     PathPhase["THROWN"] = "THROWN";
+    PathPhase["RETURNING"] = "RETURNING";
     PathPhase["FLEEING"] = "FLEEING";
 })(PathPhase || (PathPhase = {}));
 export var NPCPhase;
