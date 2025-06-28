@@ -40,7 +40,7 @@ function getAnimalDimensions(animal, scale = 1.0) {
  */
 function getCollisionThreshold(animal, scale = 1.0) {
     const dimensions = getAnimalDimensions(animal, scale);
-    return dimensions.width * 0.5;
+    return dimensions.width * 0.1; // Reduced from 0.25 to 0.1 to prevent immediate recapture
 }
 /**
  * Check if two rotated bounding boxes collide using Separating Axis Theorem (SAT)

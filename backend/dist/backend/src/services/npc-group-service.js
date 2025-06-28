@@ -520,51 +520,94 @@ function handleNPCBounce(room, pathData, myPosition, otherPosition) {
 function handleCapturedNPCEmission(room, _thrownPathData, thrownNPCGroup, capturedNPCGroup, collisionPosition) {
     const emissionCount = thrownNPCGroup.fileNames.length;
     console.log(`Emitting ${emissionCount} individual NPCs from captured group ${capturedNPCGroup.id}`);
+    // Calculate impact direction (where the thrown NPC hit from)
+    const impactDirection = {
+        x: collisionPosition.x - capturedNPCGroup.position.x,
+        y: collisionPosition.y - capturedNPCGroup.position.y,
+    };
+    // Normalize impact direction
+    const impactLength = Math.sqrt(impactDirection.x ** 2 + impactDirection.y ** 2);
+    const normalizedImpact = impactLength > 0 ? {
+        x: impactDirection.x / impactLength,
+        y: impactDirection.y / impactLength,
+    } : { x: 1, y: 0 }; // fallback direction
+    // Create emission spread around the impact direction (like a spray pattern)
+    const spreadAngle = Math.PI * 0.6; // 108° spread
+    const startAngle = Math.atan2(normalizedImpact.y, normalizedImpact.x) - spreadAngle / 2;
     // Create individual NPC groups from the captured group
     const emittedNPCs = [];
-    const angleStep = (Math.PI * 2) / emissionCount;
-    const emissionRadius = types_1.NPC_WIDTH * 2; // Distance from collision point
     for (let i = 0; i < emissionCount; i++) {
         if (i >= capturedNPCGroup.fileNames.length)
             break; // Safety check
-        const angle = i * angleStep;
-        const emissionPosition = {
-            x: collisionPosition.x + Math.cos(angle) * emissionRadius,
-            y: collisionPosition.y + Math.sin(angle) * emissionRadius,
-            z: 0,
+        // Distribute NPCs within the spread angle
+        const angle = startAngle + (i / Math.max(1, emissionCount - 1)) * spreadAngle;
+        const emissionDirection = {
+            x: Math.cos(angle),
+            y: Math.sin(angle),
         };
         const singleNPC = new types_1.NPCGroup({
             id: (0, uuid_1.v4)(),
             fileNames: [capturedNPCGroup.fileNames[i]],
-            position: emissionPosition,
-            direction: (0, npc_info_1.getInitialDirection)(),
-            phase: types_1.NPCPhase.IDLE,
+            position: collisionPosition, // Start at collision point
+            direction: emissionDirection, // Impact-based direction
+            phase: types_1.NPCPhase.PATH, // Set to PATH phase for movement
             captorId: undefined, // Emitted NPCs are no longer captured
         });
         emittedNPCs.push(singleNPC);
     }
+    // Create FLEEING paths for each emitted NPC
+    const paths = (0, paths_1.getpathsfromMemory)(room);
+    const emittedPaths = [];
+    emittedNPCs.forEach((npc) => {
+        const emittedPath = {
+            id: (0, uuid_1.v4)(),
+            room: room,
+            npcGroupId: npc.id,
+            startPosition: collisionPosition,
+            direction: npc.direction, // Use the impact-based direction from the NPC
+            velocity: 3.0, // Moderate emission speed
+            pathDuration: 2000, // Longer duration to prevent immediate recapture
+            timestamp: Date.now(),
+            pathPhase: types_1.PathPhase.FLEEING,
+        };
+        paths.set(npc.id, emittedPath);
+        emittedPaths.push(emittedPath);
+    });
+    // Remove the thrown NPC's path
+    paths.delete(thrownNPCGroup.id);
+    (0, paths_1.setPathsInMemory)(room, paths);
     // Update memory with all the new NPCs
     const allNPCGroups = (0, npc_groups_1.getNPCGroupsfromMemory)(room);
-    // Remove the original captured NPC group
-    allNPCGroups.deleteByNpcGroupId(capturedNPCGroup.id);
+    // Create remaining group with NPCs that weren't emitted
+    const remainingNPCs = capturedNPCGroup.fileNames.slice(emissionCount);
+    const updatedNPCs = [...emittedNPCs];
+    if (remainingNPCs.length > 0) {
+        // Update the captured group with remaining NPCs
+        const restOfNPCsGroup = new types_1.NPCGroup(Object.assign(Object.assign({}, capturedNPCGroup), { fileNames: remainingNPCs }));
+        allNPCGroups.setByNpcGroupId(restOfNPCsGroup.id, restOfNPCsGroup);
+        updatedNPCs.push(restOfNPCsGroup);
+    }
+    else {
+        // If no NPCs remain, delete the original group
+        allNPCGroups.deleteByNpcGroupId(capturedNPCGroup.id);
+        // Include empty group to trigger deletion on frontend
+        updatedNPCs.push(new types_1.NPCGroup(Object.assign(Object.assign({}, capturedNPCGroup), { fileNames: [] })));
+    }
     // Add all emitted NPCs
     emittedNPCs.forEach(npc => {
         allNPCGroups.setByNpcGroupId(npc.id, npc);
     });
     // Also remove the thrown NPC that caused the collision
     allNPCGroups.deleteByNpcGroupId(thrownNPCGroup.id);
-    // Update paths - remove the thrown NPC's path
-    const paths = (0, paths_1.getpathsfromMemory)(room);
-    paths.delete(thrownNPCGroup.id);
-    (0, paths_1.setPathsInMemory)(room, paths);
+    updatedNPCs.push(new types_1.NPCGroup(Object.assign(Object.assign({}, thrownNPCGroup), { fileNames: [] })));
     // Save updated NPC groups
     (0, npc_groups_1.setNPCGroupsInMemory)(room, allNPCGroups);
     // Broadcast all updates at once using bulk update
-    const updatedNPCs = [...emittedNPCs];
-    // Also include the removed NPCs with empty fileNames to trigger deletion on frontend
-    updatedNPCs.push(new types_1.NPCGroup(Object.assign(Object.assign({}, capturedNPCGroup), { fileNames: [] })));
-    updatedNPCs.push(new types_1.NPCGroup(Object.assign(Object.assign({}, thrownNPCGroup), { fileNames: [] })));
     (0, typed_socket_1.emitToRoom)(room, "npc-groups-bulk-update", { npcGroups: updatedNPCs });
+    // Broadcast the emitted paths
+    emittedPaths.forEach(pathData => {
+        (0, typed_socket_1.emitToRoom)(room, "path-update", { pathData });
+    });
 }
 // Handle merging between fleeing NPC and idle NPC
 function handleFleeingIdleMerge(room, fleeingPath, fleeingNPCGroup, idleNPCGroup, collisionPosition) {
@@ -668,7 +711,7 @@ function checkAndHandleNPCFleeing(room, _updatedUserId) {
                     (npcPosition.y - user.position.y) ** 2);
                 // Calculate thresholds based on user's animal scale
                 const animalScale = types_2.ANIMAL_SCALES[user.animal] || 1.0;
-                const CAPTURE_THRESHOLD = animalScale * 0.5;
+                const CAPTURE_THRESHOLD = animalScale * 0.1; // Reduced from 0.25 to 0.1 to prevent immediate recapture
                 const FLEE_THRESHOLD = animalScale * 50.0;
                 if (distance < CAPTURE_THRESHOLD) {
                     withinCaptureRange = true;

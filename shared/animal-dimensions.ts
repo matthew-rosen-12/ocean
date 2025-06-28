@@ -42,7 +42,7 @@ export function getAnimalDimensions(animal: string, scale: number = 1.0): Animal
  */
 export function getCollisionThreshold(animal: string, scale: number = 1.0): number {
   const dimensions = getAnimalDimensions(animal, scale);
-  return dimensions.width * 0.5;
+  return dimensions.width * 0.1; // Reduced from 0.25 to 0.1 to prevent immediate recapture
 }
 
 /**

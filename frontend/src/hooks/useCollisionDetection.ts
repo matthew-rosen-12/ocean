@@ -106,15 +106,17 @@ export function useCollisionDetection({
       const npcPos = npcGroupPosition || { x: npcGroup.position.x, y: npcGroup.position.y };
       const userPos = { x: myUser.position.x, y: myUser.position.y };
 
-      // Use rotated bounding box collision detection
+      // Use rotated bounding box collision detection with reduced capture dimensions
+      const captureWidth = dimensions.width * 0.8; // Much smaller capture width
+      const captureHeight = dimensions.height * 0.8; // Much smaller capture height
       const collided = checkRotatedBoundingBoxCollision(
         userPos,
         npcPos,
-        dimensions.width,
-        dimensions.height,
+        captureWidth,
+        captureHeight,
         adjustedUserRotation,
-        dimensions.width, // NPC uses same dimensions for now
-        dimensions.height,
+        captureWidth, // NPC uses same reduced dimensions
+        captureHeight,
         adjustedNpcRotation
       );
 
@@ -129,8 +131,8 @@ export function useCollisionDetection({
           } else if (pathData.pathPhase === PathPhase.RETURNING) {
             // Returning NPCs can always be captured
             return true;
-          } else if (pathData.pathPhase === PathPhase.THROWN && (Date.now() - pathData.timestamp > 1000)) {
-            // Thrown NPCs can be captured after 1000ms cooldown
+          } else if (pathData.pathPhase === PathPhase.THROWN && (Date.now() - pathData.timestamp > 1500)) {
+            // Thrown NPCs can be captured after 1500ms cooldown
             return true;
           }
           return false;

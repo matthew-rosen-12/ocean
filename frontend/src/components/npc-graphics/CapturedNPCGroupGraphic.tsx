@@ -203,28 +203,61 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     }
 
 
-      // split npc group into 2 groups - one with no captor Id and just the face npc, and the other with the captor id and the rest of the filenames
-       const faceFileName = group.faceFileName;
-       if (!faceFileName) return;
+      // Get the number of NPCs to emit based on thrown NPC group size
+       const emittedNPCs: NPCGroup[] = [];
+       const emissionCount = Math.min(npcGroup.fileNames.length, group.fileNames.length);
        
-       const emittedNPCGroup = new NPCGroup({
-        ...group,
-         id: uuidv4(),
-         fileNames: [faceFileName],
-         captorId: undefined,
-         phase: NPCPhase.PATH,
-         direction: normalizedDirection,
-         position: group.position,
-       });
+       // Calculate impact direction (where the thrown NPC hit from)
+       const capturedGroupPosition = calculateNPCGroupPosition(user, animalWidth, scaleFactor);
+       if (!capturedGroupPosition) return;
+       
+       const impactDirection = {
+         x: currentPathPosition.x - capturedGroupPosition.x,
+         y: currentPathPosition.y - capturedGroupPosition.y,
+       };
+       
+       // Normalize impact direction
+       const impactLength = Math.sqrt(impactDirection.x ** 2 + impactDirection.y ** 2);
+       const normalizedImpact = impactLength > 0 ? {
+         x: impactDirection.x / impactLength,
+         y: impactDirection.y / impactLength,
+       } : { x: 1, y: 0 }; // fallback direction
+       
+       // Create emission spread around the impact direction (like a spray pattern)
+       const spreadAngle = Math.PI * 0.6; // 108° spread
+       const startAngle = Math.atan2(normalizedImpact.y, normalizedImpact.x) - spreadAngle / 2;
+       
+       for (let i = 0; i < emissionCount; i++) {
+         if (i >= group.fileNames.length) break;
+         
+         // Distribute NPCs within the spread angle
+         const angle = startAngle + (i / Math.max(1, emissionCount - 1)) * spreadAngle;
+         const emissionDirection = {
+           x: Math.cos(angle),
+           y: Math.sin(angle),
+         };
+         
+         const emittedNPCGroup = new NPCGroup({
+           id: uuidv4(),
+           fileNames: [group.fileNames[i]],
+           captorId: undefined, // Emitted NPCs are no longer captured
+           phase: NPCPhase.PATH,
+           direction: emissionDirection,
+           position: group.position,
+         });
+         
+         emittedNPCs.push(emittedNPCGroup);
+       }
 
-       const restOfNPCs = group.fileNames.filter((fileName) => fileName !== faceFileName);
-       const restOfNPCsGroup = new NPCGroup({
+       // Create remaining group with NPCs that weren't emitted
+       const remainingNPCs = group.fileNames.slice(emissionCount);
+       const restOfNPCsGroup = remainingNPCs.length > 0 ? new NPCGroup({
          ...group,
-         fileNames: restOfNPCs,
-       });
+         fileNames: remainingNPCs,
+       }) : null;
 
 
-      if (emittedNPCGroup) {
+      if (emittedNPCs.length > 0) {
         // Calculate current position of the captured group (not the stored position)
         const currentNPCGroupPosition = calculateNPCGroupPosition(user, animalWidth, scaleFactor);
         const emissionStartPosition = currentNPCGroupPosition ? {
@@ -232,34 +265,53 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
           y: currentNPCGroupPosition.y,
         } : group.position;
         
-        // Update local state
-        const emissionPathData: pathData = {
-          id: uuidv4(),
-          room: pathData.room,
-          npcGroupId: emittedNPCGroup.id,
-          startPosition: emissionStartPosition,
-          direction: normalizedDirection,
-          pathDuration: 1500, // Longer emission duration
-          velocity: 5, // Very fast emission speed
-          timestamp: Date.now(),
-          pathPhase: PathPhase.FLEEING,
-        };
+        // Update local state with all emitted NPCs and their paths
         setPaths((prev: Map<string, pathData>) => {
           const newPaths = new Map(prev);
-          newPaths.set(emittedNPCGroup.id, emissionPathData);
+          
+          emittedNPCs.forEach((emittedNPC) => {
+            // Use the same direction as assigned to the NPC group
+            const emissionPathData: pathData = {
+              id: uuidv4(),
+              room: pathData.room,
+              npcGroupId: emittedNPC.id,
+              startPosition: emissionStartPosition,
+              direction: emittedNPC.direction, // Use the reflection-based direction
+              pathDuration: 2000, // Longer duration to prevent immediate recapture
+              velocity: 3.0, // Moderate emission speed
+              timestamp: Date.now(),
+              pathPhase: PathPhase.FLEEING,
+            };
+            newPaths.set(emittedNPC.id, emissionPathData);
+            
+            // Emit individual updates to server
+            currentTypedSocket.emit("update-npc-group", { npcGroup: emittedNPC });
+            currentTypedSocket.emit("update-path", { pathData: emissionPathData });
+          });
+          
           return newPaths;
         });
+        
         setNpcGroups((prev: NPCGroupsBiMap) => {
           const newNpcGroups = new NPCGroupsBiMap(prev);
-          newNpcGroups.setByNpcGroupId(emittedNPCGroup.id, emittedNPCGroup);
-          newNpcGroups.setByNpcGroupId(restOfNPCsGroup.id, restOfNPCsGroup);
+          
+          // Add all emitted NPCs
+          emittedNPCs.forEach(emittedNPC => {
+            newNpcGroups.setByNpcGroupId(emittedNPC.id, emittedNPC);
+          });
+          
+          // Update or remove the original captured group
+          if (restOfNPCsGroup) {
+            newNpcGroups.setByNpcGroupId(restOfNPCsGroup.id, restOfNPCsGroup);
+            currentTypedSocket.emit("update-npc-group", { npcGroup: restOfNPCsGroup });
+          } else {
+            // If no NPCs remain, delete the original group
+            newNpcGroups.deleteByNpcGroupId(group.id);
+            currentTypedSocket.emit("update-npc-group", { npcGroup: new NPCGroup({ ...group, fileNames: [] }) });
+          }
+          
           return newNpcGroups;
         });
-        currentTypedSocket.emit("update-npc-group", { npcGroup: restOfNPCsGroup });
-        currentTypedSocket.emit("update-npc-group", { npcGroup: emittedNPCGroup });
-        currentTypedSocket.emit("update-path", { pathData: emissionPathData });
-        
-        // Always send the update - server will handle deletion if empty
     }
   };
 

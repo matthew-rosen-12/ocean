@@ -44,8 +44,8 @@ export class BotCollisionService {
         } else if (pathData.pathPhase === PathPhase.RETURNING) {
           // Returning NPCs can always be captured
           canCapture = true;
-        } else if (pathData.pathPhase === PathPhase.THROWN && timeSinceThrow > 1000) {
-          // Thrown NPCs can be captured after 1000ms cooldown
+        } else if (pathData.pathPhase === PathPhase.THROWN && timeSinceThrow > 1500) {
+          // Thrown NPCs can be captured after 1500ms cooldown
           canCapture = true;
         }
       } else if (!npcGroup.captorId && (npcGroup.phase === NPCPhase.IDLE || npcGroup.phase === NPCPhase.PATH)) {

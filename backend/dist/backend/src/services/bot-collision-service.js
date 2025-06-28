@@ -42,8 +42,8 @@ class BotCollisionService {
                     // Returning NPCs can always be captured
                     canCapture = true;
                 }
-                else if (pathData.pathPhase === types_1.PathPhase.THROWN && timeSinceThrow > 1000) {
-                    // Thrown NPCs can be captured after 1000ms cooldown
+                else if (pathData.pathPhase === types_1.PathPhase.THROWN && timeSinceThrow > 1500) {
+                    // Thrown NPCs can be captured after 1500ms cooldown
                     canCapture = true;
                 }
             }
