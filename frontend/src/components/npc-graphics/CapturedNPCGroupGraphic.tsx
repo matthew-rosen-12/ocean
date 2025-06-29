@@ -118,7 +118,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     if (isLocalUser && animalWidth) {
       return calculateNPCGroupPosition(user, animalWidth, scaleFactor);
     }
-    return memoizedTargetPosition || new THREE.Vector3();
+    return memoizedTargetPosition || new THREE.Vector3(0, 0, 100);
   };
 
 

@@ -3,14 +3,14 @@ import * as THREE from "three";
 
 // Fixed palette of 8 distinct colors for up to 8 users
 export const USER_COLOR_PALETTE: string[] = [
-  "#FF6B6B", // Red
-  "#4ECDC4", // Teal
-  "#45B7D1", // Blue
-  "#96CEB4", // Green
-  "#FECA57", // Yellow
-  "#FF9FF3", // Pink
-  "#A8E6CF", // Light Green
-  "#DDA0DD", // Plum
+  "#FF0000", // Red
+  "#00FF00", // Teal
+  "#0000FF", // Blue
+  "#FF00FF", // Green
+  "#00FFFF", // Yellow
+  "#800080", // Pink
+  "#FFA500", // Light Green
+  "#008000", // Plum
 ];
 
 // Generate a hash from user ID to consistently assign colors

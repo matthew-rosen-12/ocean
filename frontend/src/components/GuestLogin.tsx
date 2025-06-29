@@ -68,7 +68,6 @@ export default function GuestLogin({
   const [suggestedNickname, setSuggestedNickname] = useState("");
   const [userHasTyped, setUserHasTyped] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [pendingNPCGroups, setPendingNPCGroups] = useState<NPCGroupsBiMap | null>(null);
 
   // Load saved nickname and generate random suggestion
   useEffect(() => {
@@ -200,12 +199,7 @@ export default function GuestLogin({
 
       typedSocket.on("all-users", ({ users }: { users: Map<userId, UserInfo> }) => {
         setUsers(users);
-        
-        // If we have pending NPC groups, process them now that users are loaded
-        if (pendingNPCGroups) {
-          setNPCGroups(pendingNPCGroups);
-          setPendingNPCGroups(null);
-        }
+      
       });
 
       typedSocket.on("terrain-config", ({ terrainConfig }: { terrainConfig: TerrainConfig }) => {
@@ -228,18 +222,8 @@ export default function GuestLogin({
           // Check if it's already a proper NPCGroupsBiMap
           if (npcGroups instanceof NPCGroupsBiMap) {
             const processedNPCGroups = new NPCGroupsBiMap(npcGroups);
-            
-            // Check current users state - if empty, store as pending
-            setUsers((currentUsers) => {
-              if (currentUsers.size === 0) {
-                // No users loaded yet, store NPCs as pending
-                setPendingNPCGroups(processedNPCGroups);
-              } else {
-                // Users are loaded, set NPCs immediately
-                setNPCGroups(processedNPCGroups);
-              }
-              return currentUsers; // Don't modify users state
-            });
+            setNPCGroups(processedNPCGroups);
+
           } else {
             // Handle case where it's deserialized as a plain object
             // Access the internal maps directly if they exist
@@ -258,29 +242,11 @@ export default function GuestLogin({
             }
             
             // Check current users state - if empty, store as pending
-            setUsers((currentUsers) => {
-              if (currentUsers.size === 0) {
-                // No users loaded yet, store NPCs as pending
-                setPendingNPCGroups(newNpcGroups);
-              } else {
-                // Users are loaded, set NPCs immediately
-                setNPCGroups(newNpcGroups);
-              }
-              return currentUsers; // Don't modify users state
-            });
+              setNPCGroups(newNpcGroups);
           }
         } else {
           // Check current users state - if empty, store as pending
-          setUsers((currentUsers) => {
-            if (currentUsers.size === 0) {
-              // No users loaded yet, store NPCs as pending
-              setPendingNPCGroups(newNpcGroups);
-            } else {
-              // Users are loaded, set NPCs immediately
-              setNPCGroups(newNpcGroups);
-            }
-            return currentUsers; // Don't modify users state
-          });
+           setNPCGroups(newNpcGroups);
         }
       });
 
