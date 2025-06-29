@@ -15,15 +15,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const user_info_1 = require("../initialization/user-info");
 const rooms_1 = require("../state/rooms");
+const users_1 = require("../state/users");
 const router = express_1.default.Router();
 router.post("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const guestId = (0, user_info_1.generateGuestId)();
         const room = yield (0, rooms_1.findRoomInMemory)();
-        // Create guest user
+        // Get animals already used in this room
+        const existingUsers = (0, users_1.getAllUsersInRoom)(room);
+        const usedAnimals = Array.from(existingUsers.values()).map(user => user.animal);
+        // Create guest user with unique animal
         const guestUser = {
             id: guestId,
-            animal: (0, user_info_1.getRandomAnimal)(),
+            animal: (0, user_info_1.getUniqueAnimalForRoom)(usedAnimals),
             room: room,
             position: (0, user_info_1.getInitialPosition)(),
             direction: (0, user_info_1.getInitialDirection)(),

@@ -3,11 +3,13 @@ import { UserInfo } from "shared/types";
 import {
   generateGuestId,
   getRandomAnimal,
+  getUniqueAnimalForRoom,
   getInitialPosition,
   getInitialDirection,
 } from "../initialization/user-info";
 
 import { findRoomInMemory } from "../state/rooms";
+import { getAllUsersInRoom } from "../state/users";
 
 const router = express.Router();
 
@@ -16,10 +18,14 @@ router.post("/", async (req, res) => {
     const guestId = generateGuestId();
     const room = await findRoomInMemory();
 
-    // Create guest user
+    // Get animals already used in this room
+    const existingUsers = getAllUsersInRoom(room);
+    const usedAnimals = Array.from(existingUsers.values()).map(user => user.animal);
+
+    // Create guest user with unique animal
     const guestUser: UserInfo = {
       id: guestId,
-      animal: getRandomAnimal(),
+      animal: getUniqueAnimalForRoom(usedAnimals),
       room: room,
       position: getInitialPosition(),
       direction: getInitialDirection(),

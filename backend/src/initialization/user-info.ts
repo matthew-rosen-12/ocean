@@ -8,6 +8,20 @@ export function getRandomAnimal(): Animal {
   return selectedAnimal;
 }
 
+export function getUniqueAnimalForRoom(usedAnimals: Animal[]): Animal {
+  const allAnimals = Object.values(Animal);
+  const availableAnimals = allAnimals.filter(animal => !usedAnimals.includes(animal));
+  
+  // If all animals are taken, allow duplicates (fallback)
+  if (availableAnimals.length === 0) {
+    return getRandomAnimal();
+  }
+  
+  // Pick randomly from available animals
+  const randomIndex = Math.floor(Math.random() * availableAnimals.length);
+  return availableAnimals[randomIndex];
+}
+
 export function generateGuestId(): string {
   return Math.random().toString(36).substring(2, 15);
 }

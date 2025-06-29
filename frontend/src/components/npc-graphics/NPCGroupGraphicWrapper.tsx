@@ -40,7 +40,7 @@ const NPCGraphicWrapper = ({
   myUserId,
   animalDimensions,
   setPaths,
-  setNpcGroups,
+  setNpcGroups: _setNpcGroups,
   throwChargeCount,
   deletingNPCs,
 }: NPCGraphicWrapperProps) => {
@@ -96,7 +96,7 @@ const NPCGraphicWrapper = ({
 
   else if (npcGroup.phase === NPCPhase.CAPTURED) {
     const captorUser = users.get(npcGroup.captorId!);
-    if (!captorUser || !setPaths || !allPaths) {
+    if (!captorUser) {
       return null;
     }
 
@@ -107,9 +107,6 @@ const NPCGraphicWrapper = ({
         group={npcGroup}
         user={captorUser}
         npcGroups={npcGroups}
-        allPaths={allPaths}
-        setPaths={setPaths}
-        setNpcGroups={setNpcGroups}
         animalWidth={animalWidth}
         isLocalUser={captorUser.id === myUserId}
         terrainBoundaries={terrainBoundaries}

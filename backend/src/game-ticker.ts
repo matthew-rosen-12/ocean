@@ -1,5 +1,5 @@
 import { pathData, NPCPhase } from "shared/types";
-import { checkAndHandleNPCCollisions, setPathCompleteInRoom, checkAndHandleNPCFleeing, checkAndDeleteFleeingNPCs, checkAndSpawnNPCs } from "./services/npc-group-service";
+import { checkAndHandleNPCCollisions, checkAndHandleCapturedNPCGroupCollisions, setPathCompleteInRoom, checkAndHandleNPCFleeing, checkAndDeleteFleeingNPCs, checkAndSpawnNPCs } from "./services/npc-group-service";
 import { BotCollisionService } from "./services/bot-collision-service";
 import { BotManagementService } from "./services/bot-management-service";
 import { emitToRoom } from "./typed-socket";
@@ -51,6 +51,9 @@ class GameTicker {
       for (const roomName of roomNames) {
         // Always check for collisions first (for thrown paths)
         checkAndHandleNPCCollisions(roomName);
+        
+        // Check for collisions between captured NPC groups and path NPCs
+        checkAndHandleCapturedNPCGroupCollisions(roomName);
         
         // Process bot users: movement and collision detection 
         this._processBots(roomName);
