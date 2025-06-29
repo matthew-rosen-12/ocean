@@ -107,8 +107,8 @@ export function useCollisionDetection({
       const userPos = { x: myUser.position.x, y: myUser.position.y };
 
       // Use rotated bounding box collision detection with reduced capture dimensions
-      const captureWidth = dimensions.width * 0.8; // Much smaller capture width
-      const captureHeight = dimensions.height * 0.8; // Much smaller capture height
+      const captureWidth = dimensions.width * 0.6; // Much smaller capture width
+      const captureHeight = dimensions.height * 0.6; // Much smaller capture height
       const collided = checkRotatedBoundingBoxCollision(
         userPos,
         npcPos,

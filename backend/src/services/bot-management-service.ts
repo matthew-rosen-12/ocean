@@ -31,7 +31,7 @@ export class BotManagementService {
   private static botMovementStates: Map<userId, BotMovementState> = new Map();
   private static readonly MAX_USERS_PER_ROOM = 8;
   private static readonly BOT_SPAWN_INTERVAL = 5000; // 5 seconds
-  private static readonly INITIAL_SPAWN_DELAY = 5000; // 5 seconds after room creation
+  private static readonly INITIAL_SPAWN_DELAY = 500000; // 5 seconds after room creation
   private static readonly MAX_SPAWN_DURATION = 15000; // 30 seconds total
   
   // Available animals for bots - use all animals from the enum

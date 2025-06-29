@@ -541,7 +541,7 @@ BotManagementService.botSpawnTimers = new Map();
 BotManagementService.botMovementStates = new Map();
 BotManagementService.MAX_USERS_PER_ROOM = 8;
 BotManagementService.BOT_SPAWN_INTERVAL = 5000; // 5 seconds
-BotManagementService.INITIAL_SPAWN_DELAY = 5000000; // 5 seconds after room creation
-BotManagementService.MAX_SPAWN_DURATION = 30000; // 30 seconds total
+BotManagementService.INITIAL_SPAWN_DELAY = 500000; // 5 seconds after room creation
+BotManagementService.MAX_SPAWN_DURATION = 15000; // 30 seconds total
 // Available animals for bots - use all animals from the enum
 BotManagementService.BOT_ANIMALS = Object.values(types_1.Animal);
