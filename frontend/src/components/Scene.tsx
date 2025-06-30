@@ -21,6 +21,7 @@ import { useCollisionDetection } from "../hooks/useCollisionDetection";
 import { useKeyboardMovement } from "../hooks/useKeyboardMovement";
 import { CinematicScreenshot } from "./CinematicScreenshot";
 import { TerrainConfig } from "../utils/terrain";
+import BotCollisionManager from "./BotCollisionManager";
 // Extend Performance interface for Chrome's memory API
 declare global {
   interface Performance {
@@ -148,6 +149,7 @@ export default function Scene({
     myUser,
     users,
   });
+
 
   // Expose NPC groups for debugging in browser developer tools (throttled for performance)
   useEffect(() => {
@@ -314,6 +316,17 @@ export default function Scene({
               deletingNPCs={deletingNPCs}
             />
           ))}
+
+        {/* Bot collision detection manager */}
+        <BotCollisionManager
+          myUser={myUser}
+          users={users}
+          npcGroups={npcGroups}
+          allPaths={paths}
+          setPaths={setPaths}
+          setNpcGroups={setNpcGroups}
+          animalDimensions={animalDimensions}
+        />
 
       </Canvas>
 

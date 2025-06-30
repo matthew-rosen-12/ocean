@@ -17,6 +17,7 @@ import { getNPCGroupsfromMemory, updateNPCGroupInRoomInMemory, setNPCGroupsInMem
 
 import { emitToRoom } from "../typed-socket";
 import { getAllUsersInRoom } from "../state/users";
+import { BotManagementService } from "./bot-management-service";
 import { ANIMAL_SCALES } from "shared/types";
 
 export function updateNPCGroupInRoom(
@@ -450,9 +451,15 @@ export function checkAndHandleNPCCollisions(room: string): void{
       }
 
       // Check collision with captured idle NPCs (emit individual NPCs)
+      // Skip collision detection for bots - frontend will handle this
       for (const capturedIdleNPCGroup of capturedIdleNPCs) {
         // Skip if it's the same captor (don't collide with your own captured NPCs)
         if (capturedIdleNPCGroup.captorId === pathNPCGroup.captorId) {
+          continue;
+        }
+
+        // Skip collision detection for bot-owned captured NPCs - frontend clients will handle this
+        if (capturedIdleNPCGroup.captorId && BotManagementService.isBot(capturedIdleNPCGroup.captorId)) {
           continue;
         }
 

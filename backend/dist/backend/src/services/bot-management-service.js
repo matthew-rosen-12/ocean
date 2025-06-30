@@ -105,7 +105,8 @@ class BotManagementService {
             room: roomName,
             position: position,
             direction: { x: 0, y: 0 },
-            nickname: this.generateBotNickname()
+            nickname: this.generateBotNickname(),
+            isBot: true
         };
         return bot;
     }

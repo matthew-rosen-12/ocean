@@ -77,6 +77,7 @@ export interface UserInfo {
   position: Position;
   direction: Direction;
   nickname: string;
+  isBot?: boolean;
 }
 
 export enum NPCPhase {

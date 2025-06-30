@@ -18,6 +18,7 @@ const paths_1 = require("../state/paths");
 const npc_groups_1 = require("../state/npc-groups");
 const typed_socket_1 = require("../typed-socket");
 const users_1 = require("../state/users");
+const bot_management_service_1 = require("./bot-management-service");
 const types_2 = require("shared/types");
 function updateNPCGroupInRoom(roomName, npcGroup) {
     (0, npc_groups_1.updateNPCGroupInRoomInMemory)(roomName, npcGroup);
@@ -333,9 +334,14 @@ function checkAndHandleNPCCollisions(room) {
                 }
             }
             // Check collision with captured idle NPCs (emit individual NPCs)
+            // Skip collision detection for bots - frontend will handle this
             for (const capturedIdleNPCGroup of capturedIdleNPCs) {
                 // Skip if it's the same captor (don't collide with your own captured NPCs)
                 if (capturedIdleNPCGroup.captorId === pathNPCGroup.captorId) {
+                    continue;
+                }
+                // Skip collision detection for bot-owned captured NPCs - frontend clients will handle this
+                if (capturedIdleNPCGroup.captorId && bot_management_service_1.BotManagementService.isBot(capturedIdleNPCGroup.captorId)) {
                     continue;
                 }
                 const collided = detectCollision(pathPosition, Object.assign(Object.assign({}, capturedIdleNPCGroup.position), { z: 0 }), types_1.NPC_WIDTH, types_1.NPC_HEIGHT, types_1.NPC_WIDTH, types_1.NPC_HEIGHT);

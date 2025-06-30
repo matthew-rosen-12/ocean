@@ -3,17 +3,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.NPCGroupsBiMap = exports.DefaultMap = exports.NPCGroup = exports.NPCPhase = exports.PathPhase = exports.NPC_HEIGHT = exports.NPC_WIDTH = exports.BACKEND_DIRECTION_OFFSET = exports.DIRECTION_OFFSET = exports.ANIMAL_ORIENTATION = exports.ANIMAL_SCALES = exports.Animal = void 0;
 var Animal;
 (function (Animal) {
-    // DOLPHIN = "DOLPHIN",
-    // WOLF = "WOLF", 
-    // PENGUIN = "PENGUIN",
-    // SNAKE = "SNAKE",
-    // TURTLE = "TURTLE",
-    // TIGER = "TIGER",
-    // TUNA = "TUNA",
-    // EAGLE = "EAGLE",
-    // BEE = "BEE",
-    // BEAR = "BEAR",
-    // CUTTLEFISH = "CUTTLEFISH",
+    Animal["DOLPHIN"] = "DOLPHIN";
+    Animal["WOLF"] = "WOLF";
+    Animal["PENGUIN"] = "PENGUIN";
+    Animal["SNAKE"] = "SNAKE";
+    Animal["TURTLE"] = "TURTLE";
+    Animal["TIGER"] = "TIGER";
+    Animal["TUNA"] = "TUNA";
+    Animal["EAGLE"] = "EAGLE";
+    Animal["BEE"] = "BEE";
+    Animal["BEAR"] = "BEAR";
+    Animal["CUTTLEFISH"] = "CUTTLEFISH";
     Animal["SALAMANDER"] = "SALAMANDER";
 })(Animal || (exports.Animal = Animal = {}));
 exports.ANIMAL_SCALES = {
