@@ -71,3 +71,14 @@ export function getAnimalGlowColor(
     color.g * 255
   )}, ${Math.floor(color.b * 255)}, ${opacity})`;
 }
+
+// Get the appropriate outline color (white or black) based on animal color brightness
+export function getNicknameOutlineColor(user: UserInfo): THREE.Color {
+  const animalColor = getUserColor(user);
+  
+  // Calculate luminance using the relative luminance formula
+  const luminance = 0.299 * animalColor.r + 0.587 * animalColor.g + 0.114 * animalColor.b;
+  
+  // Use white outline for dark colors, black outline for light colors
+  return luminance < 0.5 ? new THREE.Color('#FFFFFF') : new THREE.Color('#000000');
+}

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { UserInfo, userId, NPCGroupsBiMap } from 'shared/types';
+import { getNicknameOutlineColor, getUserColor } from '../utils/animal-colors';
 
 interface LeaderboardProps {
   users: Map<userId, UserInfo>;
@@ -22,6 +23,26 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
   const [initialPositionSet, setInitialPositionSet] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
   const leaderboardRef = useRef<HTMLDivElement>(null);
+
+  // Helper function to create text outline style for a user
+  const getNicknameStyle = (user: UserInfo) => {
+    const animalColor = getUserColor(user);
+    const outlineColor = getNicknameOutlineColor(user);
+    
+    // Convert THREE.Color to CSS color
+    const animalColorCSS = `rgb(${Math.floor(animalColor.r * 255)}, ${Math.floor(animalColor.g * 255)}, ${Math.floor(animalColor.b * 255)})`;
+    const outlineColorCSS = `rgb(${Math.floor(outlineColor.r * 255)}, ${Math.floor(outlineColor.g * 255)}, ${Math.floor(outlineColor.b * 255)})`;
+    
+    return {
+      color: animalColorCSS,
+      textShadow: `
+        -1px -1px 0 ${outlineColorCSS},
+        1px -1px 0 ${outlineColorCSS},
+        -1px 1px 0 ${outlineColorCSS},
+        1px 1px 0 ${outlineColorCSS}
+      `
+    };
+  };
 
   // Update current time every second for timer display
   useEffect(() => {
@@ -182,7 +203,10 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
                       {index === 0 && user.npcCount > 0 ? '🏆' : `#${index + 1}`}
                     </span>
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium text-gray-800">
+                      <span 
+                        className="text-sm font-medium"
+                        style={getNicknameStyle(user)}
+                      >
                         {user.nickname || ''}
                       </span>
                       <span className="text-xs text-gray-500">

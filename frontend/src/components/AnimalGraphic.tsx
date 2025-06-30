@@ -10,7 +10,7 @@ import {
   animalGraphicsCache,
   createEdgeGeometry,
 } from "../utils/load-animal-svg";
-import { getAnimalBorderColor } from "../utils/animal-colors";
+import { getAnimalBorderColor, getNicknameOutlineColor } from "../utils/animal-colors";
 import { TerrainBoundaries } from "../utils/terrain";
 import { Z_DEPTHS, RENDER_ORDERS } from "shared/z-depths";
 
@@ -78,7 +78,7 @@ function AnimalSprite({
       mesh.position.z = isLocalPlayer ? Z_DEPTHS.LOCAL_ANIMAL_GRAPHIC : Z_DEPTHS.REMOTE_ANIMAL_GRAPHIC;
       group.add(mesh);
 
-      // Create edge geometry with user-specific color
+      // Create edge geometry with user-specific color (before scaling so it scales with the group)
       const borderColor = getAnimalBorderColor(user);
       const edgeLines = createEdgeGeometry(
         borderColor,
@@ -381,8 +381,8 @@ export default function AnimalGraphic({
 
   // Get text info for nickname
   const getNicknameTextInfo = () => {
-    const baseColor = new THREE.Color('#FFFFFF'); // White for nickname
-    const outlineColor = getAnimalBorderColor(user); // Player's color for outline
+    const baseColor = getAnimalBorderColor(user); // Use animal color for nickname
+    const outlineColor = getNicknameOutlineColor(user); // White or black based on animal color
     
     // Calculate position based on the actual highest point of the rotated animal
     const yOffset = calculateHighestPoint();

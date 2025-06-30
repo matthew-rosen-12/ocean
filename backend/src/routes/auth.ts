@@ -2,7 +2,6 @@ import express from "express";
 import { UserInfo } from "shared/types";
 import {
   generateGuestId,
-  getRandomAnimal,
   getUniqueAnimalForRoom,
   getInitialPosition,
   getInitialDirection,

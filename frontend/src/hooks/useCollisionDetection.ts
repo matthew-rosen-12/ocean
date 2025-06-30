@@ -131,8 +131,8 @@ export function useCollisionDetection({
           } else if (pathData.pathPhase === PathPhase.RETURNING) {
             // Returning NPCs can always be captured
             return true;
-          } else if (pathData.pathPhase === PathPhase.THROWN && (Date.now() - pathData.timestamp > 1500)) {
-            // Thrown NPCs can be captured after 1500ms cooldown
+          } else if (pathData.pathPhase === PathPhase.THROWN && (Date.now() - pathData.timestamp > 1000)) {
+            // Thrown NPCs can be captured after 1000ms cooldown
             return true;
           }
           return false;

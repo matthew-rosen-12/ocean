@@ -421,7 +421,7 @@ class BotManagementService {
         // Check throw cooldown - bots must wait after capturing before throwing
         const movementState = this.botMovementStates.get(bot.id);
         const currentTime = Date.now();
-        const THROW_COOLDOWN = 3000; // 3 seconds cooldown
+        const THROW_COOLDOWN = 9000; // 3 seconds cooldown
         if ((movementState === null || movementState === void 0 ? void 0 : movementState.lastThrowTime) && (currentTime - movementState.lastThrowTime) < THROW_COOLDOWN) {
             return false; // Still in cooldown
         }
