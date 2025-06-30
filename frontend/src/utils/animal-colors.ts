@@ -1,38 +1,41 @@
-import { UserInfo } from "shared/types";
+import { UserInfo, Animal } from "shared/types";
 import * as THREE from "three";
 
-// Fixed palette of 8 distinct colors for up to 8 users
+// Fixed palette of distinct colors
 export const USER_COLOR_PALETTE: string[] = [
   "#FF0000", // Red
-  "#00FF00", // Teal
+  "#00FF00", // Green
   "#0000FF", // Blue
-  "#FF00FF", // Green
-  "#00FFFF", // Yellow
-  "#800080", // Pink
-  "#FFA500", // Light Green
-  "#008000", // Plum
+  "#00FFFF", // Cyan
+  "#FF00FF", // Magenta
+  "#000000",
+  "#FFFFFF",
+  "#800080", // Purple
 ];
 
-// Generate a hash from user ID to consistently assign colors
-export function generateUserHash(user: UserInfo): number {
-  // Use user ID for consistent color assignment
-  const hashInput = user.id;
-
-  // Simple but effective hash function
+// Generate a hash from a string
+function generateStringHash(input: string): number {
   let hash = 0;
-  for (let i = 0; i < hashInput.length; i++) {
-    const char = hashInput.charCodeAt(i);
+  for (let i = 0; i < input.length; i++) {
+    const char = input.charCodeAt(i);
     hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32bit integer
   }
   return Math.abs(hash);
 }
 
-// Generate a color based on the user object using fixed palette
+const ALL_ANIMALS = Object.values(Animal)
+
+// Generate a color based on animal type and room, ensuring no collisions within a room
 export function getUserColor(user: UserInfo): THREE.Color {
-  // Use hash to get a consistent color index for this user
-  const hash = generateUserHash(user);
-  const colorIndex = hash % USER_COLOR_PALETTE.length;
+  // Get the index of this animal in the sorted list
+  const animalIndex = ALL_ANIMALS.indexOf(user.animal);
+  
+  // Generate a room-specific offset based on room name hash
+  const roomOffset = generateStringHash(user.room);
+  
+  // Calculate the color index: animal index + room offset, wrapped around palette size
+  const colorIndex = (animalIndex + roomOffset) % USER_COLOR_PALETTE.length;
   
   return new THREE.Color(USER_COLOR_PALETTE[colorIndex]);
 }

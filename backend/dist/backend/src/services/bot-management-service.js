@@ -154,6 +154,30 @@ class BotManagementService {
         }
         // Check if bot has captured NPCs to decide hunting strategy
         const hasCapturedNPCs = this.botHasCapturedNPCs(bot.id, roomName);
+        // Handle gradual rotation towards target if needed
+        if (movementState.targetRotation) {
+            const currentAngle = Math.atan2(bot.direction.y, bot.direction.x);
+            const targetAngle = movementState.targetRotation.angle;
+            let angleDiff = targetAngle - currentAngle;
+            // Normalize angle difference to [-π, π]
+            while (angleDiff > Math.PI)
+                angleDiff -= 2 * Math.PI;
+            while (angleDiff < -Math.PI)
+                angleDiff += 2 * Math.PI;
+            // Rotate towards target
+            if (Math.abs(angleDiff) > 0.1) { // Small threshold to prevent jittering
+                const rotationStep = Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), movementState.targetRotation.speed);
+                const newAngle = currentAngle + rotationStep;
+                bot.direction = {
+                    x: Math.cos(newAngle),
+                    y: Math.sin(newAngle)
+                };
+            }
+            else {
+                // Rotation complete
+                movementState.targetRotation = undefined;
+            }
+        }
         // Check if bot just threw and should continue in throw direction
         if (movementState.justThrew && movementState.justThrew.duration > 0) {
             // Continue moving in the direction the bot was facing when it threw
@@ -393,6 +417,13 @@ class BotManagementService {
         const botNpcGroup = npcGroups.getByUserId(bot.id);
         if (!botNpcGroup || botNpcGroup.fileNames.length === 0)
             return false;
+        // Check throw cooldown - bots must wait after capturing before throwing
+        const movementState = this.botMovementStates.get(bot.id);
+        const currentTime = Date.now();
+        const THROW_COOLDOWN = 3000; // 3 seconds cooldown
+        if ((movementState === null || movementState === void 0 ? void 0 : movementState.lastThrowTime) && (currentTime - movementState.lastThrowTime) < THROW_COOLDOWN) {
+            return false; // Still in cooldown
+        }
         // Find nearby users with captured NPCs
         for (const [userId, user] of allUsers) {
             // Skip only the current bot itself
@@ -406,9 +437,41 @@ class BotManagementService {
                 const targetScale = types_1.ANIMAL_SCALES[user.animal] || 1.0;
                 const THROW_RANGE = (botScale + targetScale) * 20.0; // Combined scale factor
                 if (distance <= THROW_RANGE) {
-                    // Execute throw at this user
-                    this.executeBotThrow(bot, user, botNpcGroup, roomName);
-                    return true;
+                    // Check if bot needs to rotate to face target before throwing
+                    const targetDirection = {
+                        x: user.position.x - bot.position.x,
+                        y: user.position.y - bot.position.y
+                    };
+                    const targetMagnitude = Math.sqrt(targetDirection.x * targetDirection.x + targetDirection.y * targetDirection.y);
+                    if (targetMagnitude > 0) {
+                        targetDirection.x /= targetMagnitude;
+                        targetDirection.y /= targetMagnitude;
+                    }
+                    // Calculate angle difference between current direction and target
+                    const currentAngle = Math.atan2(bot.direction.y, bot.direction.x);
+                    const targetAngle = Math.atan2(targetDirection.y, targetDirection.x);
+                    let angleDiff = targetAngle - currentAngle;
+                    // Normalize angle difference to [-π, π]
+                    while (angleDiff > Math.PI)
+                        angleDiff -= 2 * Math.PI;
+                    while (angleDiff < -Math.PI)
+                        angleDiff += 2 * Math.PI;
+                    // Only throw if bot is facing roughly the right direction (within 30 degrees)
+                    const THROW_ANGLE_TOLERANCE = Math.PI / 6; // 30 degrees
+                    if (Math.abs(angleDiff) <= THROW_ANGLE_TOLERANCE) {
+                        // Execute throw at this user
+                        this.executeBotThrow(bot, user, botNpcGroup, roomName);
+                        return true;
+                    }
+                    else {
+                        // Set target rotation for gradual turning
+                        if (movementState) {
+                            movementState.targetRotation = {
+                                angle: targetAngle,
+                                speed: Math.PI / 15 // Rotate at π/15 radians per tick (12 degrees per tick)
+                            };
+                        }
+                    }
                 }
             }
         }
@@ -438,6 +501,10 @@ class BotManagementService {
                 direction: { x: optimalDirection.x, y: optimalDirection.y },
                 duration: 30 // Continue in throw direction for 1.5 seconds (30 ticks at 20 ticks/sec)
             };
+            // Record throw time for cooldown
+            movementState.lastThrowTime = Date.now();
+            // Clear any rotation target since we just threw
+            movementState.targetRotation = undefined;
         }
         // Use the optimal direction for the throw
         const direction = {
@@ -541,7 +608,7 @@ BotManagementService.botSpawnTimers = new Map();
 BotManagementService.botMovementStates = new Map();
 BotManagementService.MAX_USERS_PER_ROOM = 8;
 BotManagementService.BOT_SPAWN_INTERVAL = 5000; // 5 seconds
-BotManagementService.INITIAL_SPAWN_DELAY = 500000; // 5 seconds after room creation
+BotManagementService.INITIAL_SPAWN_DELAY = 5000; // 5 seconds after room creation
 BotManagementService.MAX_SPAWN_DURATION = 15000; // 30 seconds total
 // Available animals for bots - use all animals from the enum
 BotManagementService.BOT_ANIMALS = Object.values(types_1.Animal);

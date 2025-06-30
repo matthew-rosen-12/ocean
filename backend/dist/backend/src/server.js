@@ -87,6 +87,10 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
             // Check if this is the first user in the room (before adding)
             const existingUsers = (0, users_1.getAllUsersInRoom)(name);
             const isFirstUser = existingUsers.size === 0;
+            // Start game timer if this is the first user (before sending room state)
+            if (isFirstUser) {
+                (0, game_timer_1.startGameTimer)(name);
+            }
             // Send room state to the joining socket BEFORE adding user to room
             try {
                 // Send terrain configuration for this room
@@ -116,10 +120,6 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
             }
             // Add user to server memory for this room AFTER sending NPC groups
             (0, users_1.addUserToRoom)(name, user);
-            // Start game timer if this is the first user
-            if (isFirstUser) {
-                (0, game_timer_1.startGameTimer)(name);
-            }
             // Send all existing users in the room to the joining user
             const allUsers = (0, users_1.getAllUsersInRoom)(name);
             if (allUsers.size > 1) { // More than just the current user
