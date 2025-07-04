@@ -34,19 +34,24 @@ export class BotCollisionService {
       let canCapture = false;
       
       if (npcGroup.captorId === botUser.id) {
-        // Bot's own NPCs can be captured, BUT not immediately after throwing (except returning NPCs)
-        const pathData = paths?.get(npcGroup.id);
-        const timeSinceThrow = pathData ? (Date.now() - pathData.timestamp) : 9999;
-        
-        if (!pathData) {
-          // No path data - can capture
-          canCapture = true;
-        } else if (pathData.pathPhase === PathPhase.RETURNING) {
-          // Returning NPCs can always be captured
-          canCapture = true;
-        } else if (pathData.pathPhase === PathPhase.THROWN && timeSinceThrow > 1000) {
-          // Thrown NPCs can be captured after 1000ms cooldown
-          canCapture = true;
+        // Check if bot has already captured this NPC group (prevent re-capture)
+        if (npcGroup.phase === NPCPhase.CAPTURED) {
+          canCapture = false; // Already captured by this bot
+        } else {
+          // Bot's own NPCs can be captured, BUT not immediately after throwing (except returning NPCs)
+          const pathData = paths?.get(npcGroup.id);
+          const timeSinceThrow = pathData ? (Date.now() - pathData.timestamp) : 9999;
+          
+          if (!pathData) {
+            // No path data - can capture
+            canCapture = true;
+          } else if (pathData.pathPhase === PathPhase.RETURNING) {
+            // Returning NPCs can always be captured
+            canCapture = true;
+          } else if (pathData.pathPhase === PathPhase.THROWN && timeSinceThrow > 1000) {
+            // Thrown NPCs can be captured after 1000ms cooldown
+            canCapture = true;
+          }
         }
       } else if (!npcGroup.captorId && (npcGroup.phase === NPCPhase.IDLE || npcGroup.phase === NPCPhase.PATH)) {
         // Uncaptured NPCs can be captured if they're IDLE or PATH phase
@@ -74,18 +79,22 @@ export class BotCollisionService {
         const adjustedUserRotation = userRotation + userOrientation.rotation;
         const adjustedNpcRotation = npcRotation + npcOrientation.rotation;
 
+        // Use rotated bounding box collision detection with reduced capture dimensions (match frontend)
+        const captureWidth = animalDimensions.width * 0.6; // Much smaller capture width
+        const captureHeight = animalDimensions.height * 0.6; // Much smaller capture height
         const collided = checkRotatedBoundingBoxCollision(
           { x: botUser.position.x, y: botUser.position.y },
           { x: npcPosition.x, y: npcPosition.y },
-          animalDimensions.width,
-          animalDimensions.height,
+          captureWidth,
+          captureHeight,
           adjustedUserRotation,
-          animalDimensions.width, // NPC uses same dimensions for now
-          animalDimensions.height,
+          captureWidth, // NPC uses same reduced dimensions
+          captureHeight,
           adjustedNpcRotation
         );
         
         if (collided) {
+          console.log("collision detected with bot: ", botUser.nickname, " and npc: ", npcGroup.id)
           this.handleBotNPCCollision(roomName, botUser, npcGroup);
           collisionDetected = true;
           break;

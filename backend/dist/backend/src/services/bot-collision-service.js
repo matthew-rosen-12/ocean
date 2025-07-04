@@ -68,8 +68,17 @@ class BotCollisionService {
                 const npcOrientation = types_1.ANIMAL_ORIENTATION[npcGroup.fileNames[0]] || { rotation: 0, flipY: false };
                 const adjustedUserRotation = userRotation + userOrientation.rotation;
                 const adjustedNpcRotation = npcRotation + npcOrientation.rotation;
-                const collided = (0, animal_dimensions_1.checkRotatedBoundingBoxCollision)({ x: botUser.position.x, y: botUser.position.y }, { x: npcPosition.x, y: npcPosition.y }, animalDimensions.width, animalDimensions.height, adjustedUserRotation, animalDimensions.width, // NPC uses same dimensions for now
-                animalDimensions.height, adjustedNpcRotation);
+                // Use rotated bounding box collision detection with reduced capture dimensions
+                const captureWidth = animalDimensions.width * 0.6; // Much smaller capture width
+                const captureHeight = animalDimensions.height * 0.6; // Much smaller capture height
+                const boundingBoxCollided = (0, animal_dimensions_1.checkRotatedBoundingBoxCollision)({ x: botUser.position.x, y: botUser.position.y }, { x: npcPosition.x, y: npcPosition.y }, captureWidth, captureHeight, adjustedUserRotation, captureWidth, // NPC uses same reduced dimensions
+                captureHeight, adjustedNpcRotation);
+                // Also check simple distance to center for more reliable capture
+                const centerDistance = Math.sqrt(Math.pow(botUser.position.x - npcPosition.x, 2) +
+                    Math.pow(botUser.position.y - npcPosition.y, 2));
+                const smallCaptureRadius = Math.min(captureWidth, captureHeight) * 0.5; // Small radius for center capture
+                const centerCollided = centerDistance <= smallCaptureRadius;
+                const collided = boundingBoxCollided || centerCollided;
                 if (collided) {
                     this.handleBotNPCCollision(roomName, botUser, npcGroup);
                     collisionDetected = true;
