@@ -22,6 +22,7 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
   const [dragOffset, setDragOffset] = useState<Position>({ x: 0, y: 0 });
   const [initialPositionSet, setInitialPositionSet] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [showHi, setShowHi] = useState(true);
   const leaderboardRef = useRef<HTMLDivElement>(null);
 
   // Helper function to create text outline style for a user
@@ -49,6 +50,15 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
     const interval = setInterval(() => {
       setCurrentTime(Date.now());
     }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Alternate Hi/Bye every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setShowHi(prev => !prev);
+    }, 10000);
 
     return () => clearInterval(interval);
   }, []);
@@ -94,6 +104,12 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
 
   const remainingSeconds = calculateRemainingTime();
   const isLowTime = remainingSeconds !== null && remainingSeconds <= 10;
+
+  // Get local player's captured NPC group
+  const myNpcGroup = npcGroups.getByUserId(myUserId);
+  const hasCapturedNpc = myNpcGroup && myNpcGroup.fileNames.length > 0;
+  const myUser = users.get(myUserId);
+
 
   // Format time as MM:SS
   const formatTime = (seconds: number) => {
@@ -228,6 +244,27 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Current NPC Face Display - only show if not collapsed and has captured NPC */}
+      {!isCollapsed && hasCapturedNpc && myNpcGroup && (
+        <div className="border-t border-gray-200 p-3">
+          <div className="flex items-center space-x-3">
+            <img 
+              src={`/npcs/${myNpcGroup.faceFileName}`}
+              alt="Captured NPC"
+              className="w-12 h-12 rounded-full border-2 border-gray-300 object-cover"
+            />
+            <div className="flex flex-col">
+              <div className="text-lg font-bold text-gray-800">
+                {showHi ? 'Hi' : 'Bye'} {myUser?.animal || 'Unknown'}
+              </div>
+              <div className="text-sm text-gray-600">
+                {myNpcGroup.faceFileName?.replace('.png', '') || 'Unknown'}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

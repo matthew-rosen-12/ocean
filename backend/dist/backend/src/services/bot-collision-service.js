@@ -31,20 +31,26 @@ class BotCollisionService {
             // Check if this NPC can be captured by this bot (match frontend logic)
             let canCapture = false;
             if (npcGroup.captorId === botUser.id) {
-                // Bot's own NPCs can be captured, BUT not immediately after throwing (except returning NPCs)
-                const pathData = paths === null || paths === void 0 ? void 0 : paths.get(npcGroup.id);
-                const timeSinceThrow = pathData ? (Date.now() - pathData.timestamp) : 9999;
-                if (!pathData) {
-                    // No path data - can capture
-                    canCapture = true;
+                // Check if bot has already captured this NPC group (prevent re-capture)
+                if (npcGroup.phase === types_1.NPCPhase.CAPTURED) {
+                    canCapture = false; // Already captured by this bot
                 }
-                else if (pathData.pathPhase === types_1.PathPhase.RETURNING) {
-                    // Returning NPCs can always be captured
-                    canCapture = true;
-                }
-                else if (pathData.pathPhase === types_1.PathPhase.THROWN && timeSinceThrow > 1000) {
-                    // Thrown NPCs can be captured after 1000ms cooldown
-                    canCapture = true;
+                else {
+                    // Bot's own NPCs can be captured, BUT not immediately after throwing (except returning NPCs)
+                    const pathData = paths === null || paths === void 0 ? void 0 : paths.get(npcGroup.id);
+                    const timeSinceThrow = pathData ? (Date.now() - pathData.timestamp) : 9999;
+                    if (!pathData) {
+                        // No path data - can capture
+                        canCapture = true;
+                    }
+                    else if (pathData.pathPhase === types_1.PathPhase.RETURNING) {
+                        // Returning NPCs can always be captured
+                        canCapture = true;
+                    }
+                    else if (pathData.pathPhase === types_1.PathPhase.THROWN && timeSinceThrow > 1000) {
+                        // Thrown NPCs can be captured after 1000ms cooldown
+                        canCapture = true;
+                    }
                 }
             }
             else if (!npcGroup.captorId && (npcGroup.phase === types_1.NPCPhase.IDLE || npcGroup.phase === types_1.NPCPhase.PATH)) {
@@ -68,18 +74,13 @@ class BotCollisionService {
                 const npcOrientation = types_1.ANIMAL_ORIENTATION[npcGroup.fileNames[0]] || { rotation: 0, flipY: false };
                 const adjustedUserRotation = userRotation + userOrientation.rotation;
                 const adjustedNpcRotation = npcRotation + npcOrientation.rotation;
-                // Use rotated bounding box collision detection with reduced capture dimensions
+                // Use rotated bounding box collision detection with reduced capture dimensions (match frontend)
                 const captureWidth = animalDimensions.width * 0.6; // Much smaller capture width
                 const captureHeight = animalDimensions.height * 0.6; // Much smaller capture height
-                const boundingBoxCollided = (0, animal_dimensions_1.checkRotatedBoundingBoxCollision)({ x: botUser.position.x, y: botUser.position.y }, { x: npcPosition.x, y: npcPosition.y }, captureWidth, captureHeight, adjustedUserRotation, captureWidth, // NPC uses same reduced dimensions
+                const collided = (0, animal_dimensions_1.checkRotatedBoundingBoxCollision)({ x: botUser.position.x, y: botUser.position.y }, { x: npcPosition.x, y: npcPosition.y }, captureWidth, captureHeight, adjustedUserRotation, captureWidth, // NPC uses same reduced dimensions
                 captureHeight, adjustedNpcRotation);
-                // Also check simple distance to center for more reliable capture
-                const centerDistance = Math.sqrt(Math.pow(botUser.position.x - npcPosition.x, 2) +
-                    Math.pow(botUser.position.y - npcPosition.y, 2));
-                const smallCaptureRadius = Math.min(captureWidth, captureHeight) * 0.5; // Small radius for center capture
-                const centerCollided = centerDistance <= smallCaptureRadius;
-                const collided = boundingBoxCollided || centerCollided;
                 if (collided) {
+                    console.log("collision detected with bot: ", botUser.nickname, " and npc: ", npcGroup.id);
                     this.handleBotNPCCollision(roomName, botUser, npcGroup);
                     collisionDetected = true;
                     break;

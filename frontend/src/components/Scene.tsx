@@ -191,7 +191,7 @@ export default function Scene({
     const updateChargeCount = () => {
       const chargeDuration = Date.now() - spaceStartTime;
       const secondsHeld = Math.min(chargeDuration / 1000 * 4, 10); // Cap at 10 seconds
-      const rawThrowCount = Math.floor(Math.pow(2, secondsHeld)) + 1;
+      const rawThrowCount = Math.floor(Math.pow(2, secondsHeld));
       
       // Cap at available NPCs in the captured group
       const availableNPCs = npcGroups.getByUserId(myUser.id)?.fileNames.length || 0;

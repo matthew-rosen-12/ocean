@@ -176,6 +176,7 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
     return outlineGroup;
   };
 
+
   // Helper function to create outline with swirling gold/user color effect
   const createOutline = (scale: number, borderColor: THREE.Color, isGold: boolean = false) => {
     
@@ -546,6 +547,7 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
       color: goldColor
     };
   }, [throwChargeCount, currentScale, goldColor]);
+
 
   // Animate the shimmering gold outline
   useFrame((state) => {

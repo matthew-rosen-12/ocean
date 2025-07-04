@@ -77,7 +77,7 @@ export function useKeyboardMovement(
       // Calculate throw count: doubles every 4000ms (4 seconds) due to 0.25 multiplier
       // Base count is 1, then 2^(seconds * 0.25)
       const secondsHeld = Math.min(chargeDuration / 1000 * 4, 10); // Cap at 10 seconds
-      const throwCount = Math.floor(Math.pow(2, secondsHeld)) + 1;
+      const throwCount = Math.floor(Math.pow(2, secondsHeld));
       
       pathNPCGroup(
         myUser,

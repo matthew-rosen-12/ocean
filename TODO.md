@@ -1,9 +1,7 @@
-- display the npc count and throw better
-- (emit number of npcs based on size of collided group)
 - fix some animal rendering
-- fix the npc group detection not working (oscillating)
 
 - create llm calls for npc speech
+- make sure animal colors are dark
 - clean up game play logic (when to emit npcs) and quality assurance
 - polish / fix bugs and glitches
 - make publicly available
