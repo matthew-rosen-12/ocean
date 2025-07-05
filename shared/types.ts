@@ -1,16 +1,16 @@
 export enum Animal {
   DOLPHIN = "DOLPHIN",
-  // WOLF = "WOLF", 
-  // PENGUIN = "PENGUIN",
-  // SNAKE = "SNAKE",
-  // TURTLE = "TURTLE",
-  // TIGER = "TIGER",
-  // TUNA = "TUNA",
-  // EAGLE = "EAGLE",
-  // BEE = "BEE",
-  // BEAR = "BEAR",
-  // CUTTLEFISH = "CUTTLEFISH",
-  // SALAMANDER = "SALAMANDER",
+  WOLF = "WOLF", 
+  PENGUIN = "PENGUIN",
+  SNAKE = "SNAKE",
+  TURTLE = "TURTLE",
+  TIGER = "TIGER",
+  TUNA = "TUNA",
+  EAGLE = "EAGLE",
+  BEE = "BEE",
+  BEAR = "BEAR",
+  CUTTLEFISH = "CUTTLEFISH",
+  SALAMANDER = "SALAMANDER",
 }
 
 

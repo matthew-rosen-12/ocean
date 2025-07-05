@@ -4,17 +4,17 @@ exports.NPCGroupsBiMap = exports.DefaultMap = exports.NPCGroup = exports.NPCPhas
 var Animal;
 (function (Animal) {
     Animal["DOLPHIN"] = "DOLPHIN";
-    // WOLF = "WOLF", 
-    // PENGUIN = "PENGUIN",
-    // SNAKE = "SNAKE",
-    // TURTLE = "TURTLE",
-    // TIGER = "TIGER",
-    // TUNA = "TUNA",
-    // EAGLE = "EAGLE",
-    // BEE = "BEE",
-    // BEAR = "BEAR",
-    // CUTTLEFISH = "CUTTLEFISH",
-    // SALAMANDER = "SALAMANDER",
+    Animal["WOLF"] = "WOLF";
+    Animal["PENGUIN"] = "PENGUIN";
+    Animal["SNAKE"] = "SNAKE";
+    Animal["TURTLE"] = "TURTLE";
+    Animal["TIGER"] = "TIGER";
+    Animal["TUNA"] = "TUNA";
+    Animal["EAGLE"] = "EAGLE";
+    Animal["BEE"] = "BEE";
+    Animal["BEAR"] = "BEAR";
+    Animal["CUTTLEFISH"] = "CUTTLEFISH";
+    Animal["SALAMANDER"] = "SALAMANDER";
 })(Animal || (exports.Animal = Animal = {}));
 exports.ANIMAL_SCALES = {
     DOLPHIN: 3.0,
