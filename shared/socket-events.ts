@@ -1,4 +1,4 @@
-import { UserInfo, TerrainConfig, NPCGroup, pathData, Position, npcGroupId, NPCGroupsBiMap, userId, FinalScores } from "./types";
+import { UserInfo, TerrainConfig, NPCGroup, pathData, Position, npcGroupId, NPCGroupsBiMap, userId, FinalScores, PathPhase, fileName } from "./types";
 
 export interface ServerToClientEvents {
     "user-joined": (data: { user: UserInfo }) => void;
@@ -18,7 +18,7 @@ export interface ServerToClientEvents {
     "path-update": (data: { pathData: pathData }) => void;
     "path-complete": (data: { npcGroup: NPCGroup }) => void;
     "path-deleted": (data: { pathData: pathData }) => void;
-    "npc-group-deleted": (data: { npcGroupId: npcGroupId; currentPosition: { x: number; y: number; z: number } }) => void;
+    "npc-group-deleted": (data: { npcGroupId: npcGroupId; currentPosition: { x: number; y: number; z: number }; captorId?: userId; pathPhase: PathPhase; faceFileName?: fileName }) => void;
     "npc-group-spawned": (data: { npcGroup: NPCGroup; spawnPosition: { x: number; y: number; z: number } }) => void;
     "times-up": (data: { finalScores: FinalScores }) => void;
   }

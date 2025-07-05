@@ -857,17 +857,17 @@ function checkAndDeleteFleeingNPCs(room) {
             if (npcGroup.phase !== types_1.NPCPhase.PATH) {
                 return;
             }
-            // Only check NPCs on FLEEING paths
+            // Check ALL NPCs on paths (fleeing, thrown, returning)
             const pathData = allPaths.get(npcGroup.id);
-            if (!pathData || pathData.pathPhase !== types_1.PathPhase.FLEEING) {
+            if (!pathData) {
                 return;
             }
-            // Calculate current position of the fleeing NPC
+            // Calculate current position of the NPC
             const currentPosition = calculatePathPosition(pathData, Date.now());
             // Check if NPC is far outside terrain boundaries
             const outsideDistance = calculateDistanceOutsideTerrain(currentPosition, terrainConfig);
             if (outsideDistance >= DELETION_DISTANCE) {
-                console.log(`Deleting fleeing NPC ${npcGroup.id} - distance outside terrain: ${outsideDistance}`);
+                console.log(`Deleting NPC ${npcGroup.id} (${pathData.pathPhase}) - distance outside terrain: ${outsideDistance}`);
                 // Delete the NPC group from memory
                 allNPCGroups.deleteByNpcGroupId(npcGroup.id);
                 // Delete the path from memory
@@ -875,10 +875,13 @@ function checkAndDeleteFleeingNPCs(room) {
                 // Save updated states to memory
                 (0, npc_groups_1.setNPCGroupsInMemory)(room, allNPCGroups);
                 (0, paths_1.setPathsInMemory)(room, allPaths);
-                // Emit deletion event to room with current position
+                // Emit deletion event to room with current position, ownership, and path phase
                 (0, typed_socket_1.emitToRoom)(room, "npc-group-deleted", {
                     npcGroupId: npcGroup.id,
-                    currentPosition: currentPosition
+                    currentPosition: currentPosition,
+                    captorId: npcGroup.captorId,
+                    pathPhase: pathData.pathPhase,
+                    faceFileName: npcGroup.faceFileName
                 });
             }
         });

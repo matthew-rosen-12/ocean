@@ -1,4 +1,4 @@
-import { UserInfo, TerrainConfig, NPCGroup, pathData, Position, npcGroupId, NPCGroupsBiMap, userId, FinalScores } from "./types";
+import { UserInfo, TerrainConfig, NPCGroup, pathData, Position, npcGroupId, NPCGroupsBiMap, userId, FinalScores, PathPhase, fileName } from "./types";
 export interface ServerToClientEvents {
     "user-joined": (data: {
         user: UserInfo;
@@ -48,6 +48,9 @@ export interface ServerToClientEvents {
             y: number;
             z: number;
         };
+        captorId?: userId;
+        pathPhase: PathPhase;
+        faceFileName?: fileName;
     }) => void;
     "npc-group-spawned": (data: {
         npcGroup: NPCGroup;

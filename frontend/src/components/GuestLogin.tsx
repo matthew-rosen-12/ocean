@@ -404,7 +404,14 @@ export default function GuestLogin({
       });
 
       // Handle NPC group deletion with smoke animation
-      typedSocket.on("npc-group-deleted", ({ npcGroupId, currentPosition }: { npcGroupId: string; currentPosition: { x: number; y: number; z: number } }) => {
+      typedSocket.on("npc-group-deleted", ({ npcGroupId, currentPosition, captorId, pathPhase, faceFileName }: { npcGroupId: string; currentPosition: { x: number; y: number; z: number }; captorId?: string; pathPhase: PathPhase; faceFileName?: string }) => {
+        // Check if this NPC belonged to the current user and was thrown/returning
+        const myUser = myUserRef.current;
+        if (myUser && interactionSetter && captorId === myUser.id && faceFileName && (pathPhase === PathPhase.THROWN || pathPhase === PathPhase.RETURNING)) {
+          // Show face interaction for the user's destroyed thrown/returning NPC
+          interactionSetter(faceFileName, `${pathPhase} npc group destroyed`);
+        }
+        
         // Immediately delete the path to prevent NPC from reappearing
         setPaths((prev) => {
           const newPaths = new Map(prev);
