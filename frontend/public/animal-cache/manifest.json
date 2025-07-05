@@ -1,41 +1,41 @@
 {
-  "generated": "2025-07-05T08:31:37.348Z",
+  "generated": "2025-07-05T19:07:51.039Z",
   "animals": [
     {
       "name": "BEAR",
       "file": "bear.svg",
       "cacheFile": "BEAR.json",
       "bounds": {
-        "minX": 0,
-        "minY": 0,
-        "maxX": 1024,
-        "maxY": 1024
+        "minX": 46.734375,
+        "minY": 31.810547,
+        "maxX": 994.84961,
+        "maxY": 980.94
       },
-      "pathCount": 214
+      "pathCount": 213
     },
     {
       "name": "BEE",
       "file": "bee.svg",
       "cacheFile": "BEE.json",
       "bounds": {
-        "minX": 0,
-        "minY": 0,
-        "maxX": 1024,
-        "maxY": 1024
+        "minX": 68.658329,
+        "minY": 121.46386,
+        "maxX": 975.58,
+        "maxY": 935.89
       },
-      "pathCount": 2378
+      "pathCount": 2377
     },
     {
       "name": "CUTTLEFISH",
       "file": "cuttlefish.svg",
       "cacheFile": "CUTTLEFISH.json",
       "bounds": {
-        "minX": 0,
-        "minY": 0,
-        "maxX": 500,
-        "maxY": 250
+        "minX": 30.279785,
+        "minY": 0.63427734,
+        "maxX": 461.17,
+        "maxY": 249.45264
       },
-      "pathCount": 684
+      "pathCount": 683
     },
     {
       "name": "DOLPHIN",
@@ -54,12 +54,12 @@
       "file": "eagle.svg",
       "cacheFile": "EAGLE.json",
       "bounds": {
-        "minX": 0,
-        "minY": 0,
-        "maxX": 1367,
-        "maxY": 766
+        "minX": 40.18,
+        "minY": 4.43,
+        "maxX": 1328.1577,
+        "maxY": 670.94531
       },
-      "pathCount": 835
+      "pathCount": 834
     },
     {
       "name": "PENGUIN",
@@ -78,12 +78,12 @@
       "file": "salamander.svg",
       "cacheFile": "SALAMANDER.json",
       "bounds": {
-        "minX": 0,
-        "minY": 0,
-        "maxX": 1365,
-        "maxY": 768
+        "minX": 14.056641,
+        "minY": 22.394531,
+        "maxX": 1351.63,
+        "maxY": 742.23
       },
-      "pathCount": 248
+      "pathCount": 247
     },
     {
       "name": "SNAKE",
@@ -102,24 +102,24 @@
       "file": "tiger.svg",
       "cacheFile": "TIGER.json",
       "bounds": {
-        "minX": 0,
-        "minY": 0,
-        "maxX": 1254,
-        "maxY": 836
+        "minX": 52.08,
+        "minY": 90.86,
+        "maxX": 1165.6621,
+        "maxY": 776.37755
       },
-      "pathCount": 1069
+      "pathCount": 1068
     },
     {
       "name": "TUNA",
       "file": "tuna.svg",
       "cacheFile": "TUNA.json",
       "bounds": {
-        "minX": 0,
-        "minY": 0,
-        "maxX": 1552,
-        "maxY": 675
+        "minX": 65.87,
+        "minY": 58.54248,
+        "maxX": 1508.0625,
+        "maxY": 607.39
       },
-      "pathCount": 638
+      "pathCount": 637
     },
     {
       "name": "TURTLE",

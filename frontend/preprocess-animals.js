@@ -196,6 +196,13 @@ function processSVGFile(filePath, animalName) {
     const id = path.getAttribute('id');
     
     if (d) {
+      // Check if this is a background rectangle path that covers the entire canvas
+      const isBackgroundRect = d.match(/^M\s*0\.?0*\s*0\.?0*\s*L\s*\d+\.?0*\s*0\.?0*\s*L\s*\d+\.?0*\s*\d+\.?0*\s*L\s*0\.?0*\s*\d+\.?0*\s*L\s*0\.?0*\s*0\.?0*\s*Z/);
+      
+      if (isBackgroundRect) {
+        continue; // Skip this path as it's a background rectangle
+      }
+      
       const commands = parseSVGPath(d);
       const points = extractPoints(commands);
       
@@ -228,6 +235,59 @@ function processSVGFile(filePath, animalName) {
   // Find outline path specifically
   const outlinePath = pathData.find(p => p.id === 'outline');
   
+  // Create a cleaned SVG and fix viewBox for proper scaling
+  let cleanedSvg = svgContent;
+  let needsViewBoxFix = false;
+  
+  // Parse the SVG to check and fix issues
+  const svgParser = new DOMParser();
+  const cleanSvgDoc = svgParser.parseFromString(svgContent, 'image/svg+xml');
+  const svgRoot = cleanSvgDoc.documentElement;
+  const svgPaths = cleanSvgDoc.getElementsByTagName('path');
+  
+  // Remove background rectangle paths if they exist
+  if (pathData.length < paths.length) {
+    needsViewBoxFix = true;
+    
+    for (let i = svgPaths.length - 1; i >= 0; i--) {
+      const path = svgPaths[i];
+      const d = path.getAttribute('d');
+      if (d) {
+        const isBackgroundRect = d.match(/^M\s*0\.?0*\s*0\.?0*\s*L\s*\d+\.?0*\s*0\.?0*\s*L\s*\d+\.?0*\s*\d+\.?0*\s*L\s*0\.?0*\s*\d+\.?0*\s*L\s*0\.?0*\s*0\.?0*\s*Z/);
+        if (isBackgroundRect) {
+          path.parentNode.removeChild(path);
+        }
+      }
+    }
+  }
+  
+  // Check if viewBox needs fixing (content doesn't properly fill the viewBox)
+  const currentViewBox = svgRoot.getAttribute('viewBox');
+  if (currentViewBox) {
+    const [vbX, vbY, vbW, vbH] = currentViewBox.split(/\s+/).map(Number);
+    const contentW = bounds.maxX - bounds.minX;
+    const contentH = bounds.maxY - bounds.minY;
+    
+    // If content bounds don't match viewBox bounds, we need to fix it
+    const tolerance = 5; // Allow small differences
+    if (Math.abs(vbX - bounds.minX) > tolerance || 
+        Math.abs(vbY - bounds.minY) > tolerance ||
+        Math.abs(vbW - contentW) > tolerance || 
+        Math.abs(vbH - contentH) > tolerance) {
+      needsViewBoxFix = true;
+    }
+  }
+  
+  // Apply viewBox fix if needed
+  if (needsViewBoxFix) {
+    const newViewBox = `${bounds.minX} ${bounds.minY} ${bounds.maxX - bounds.minX} ${bounds.maxY - bounds.minY}`;
+    svgRoot.setAttribute('viewBox', newViewBox);
+    
+    // Serialize the cleaned SVG
+    const serializer = new XMLSerializer();
+    cleanedSvg = serializer.serializeToString(cleanSvgDoc);
+  }
+  
   const cacheData = {
     animalName,
     bounds,
@@ -236,7 +296,7 @@ function processSVGFile(filePath, animalName) {
     paths: pathData,
     outline: outline,
     outlinePath: outlinePath || null,
-    originalSvg: svgContent,
+    originalSvg: cleanedSvg,
     timestamp: Date.now()
   };
   
