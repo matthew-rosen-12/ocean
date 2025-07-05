@@ -2,9 +2,14 @@ import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import cors from "cors";
+import dotenv from "dotenv";
+
+// Load environment variables
+dotenv.config();
 
 import { NPCPhase, NPCGroup } from "shared/types";
 import authRouter from "./routes/auth";
+import aiChatRouter from "./routes/ai-chat";
 import { getGameTicker } from "./game-ticker";
 import { decrementRoomUsersInMemory } from "./state/rooms";
 import { addUserToRoom, removeUserFromRoom, updateUserInRoom, getAllUsersInRoom } from "./state/users";
@@ -32,6 +37,8 @@ app.use(express.json());
 
 // Add auth route
 app.use("/api/auth", authRouter);
+// Add AI chat route
+app.use("/api/ai-chat", aiChatRouter);
 
 const httpServer = createServer(app);
 export const io = new Server(httpServer, {

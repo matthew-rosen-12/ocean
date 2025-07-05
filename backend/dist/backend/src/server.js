@@ -17,8 +17,12 @@ const express_1 = __importDefault(require("express"));
 const http_1 = require("http");
 const socket_io_1 = require("socket.io");
 const cors_1 = __importDefault(require("cors"));
+const dotenv_1 = __importDefault(require("dotenv"));
+// Load environment variables
+dotenv_1.default.config();
 const types_1 = require("shared/types");
 const auth_1 = __importDefault(require("./routes/auth"));
+const ai_chat_1 = __importDefault(require("./routes/ai-chat"));
 const game_ticker_1 = require("./game-ticker");
 const rooms_1 = require("./state/rooms");
 const users_1 = require("./state/users");
@@ -41,6 +45,8 @@ app.use((0, cors_1.default)({
 app.use(express_1.default.json());
 // Add auth route
 app.use("/api/auth", auth_1.default);
+// Add AI chat route
+app.use("/api/ai-chat", ai_chat_1.default);
 const httpServer = (0, http_1.createServer)(app);
 exports.io = new socket_io_1.Server(httpServer, {
     cors: {

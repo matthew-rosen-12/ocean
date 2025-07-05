@@ -25,7 +25,44 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
   const [initialPositionSet, setInitialPositionSet] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [showHi, setShowHi] = useState(true);
+  const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const leaderboardRef = useRef<HTMLDivElement>(null);
+
+  // Function to call AI API
+  const callAIAPI = async (interaction: string) => {
+    setIsLoading(true);
+    setAiResponse(null);
+    
+    try {
+      const response = await fetch('http://localhost:3001/api/ai-chat/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ interaction }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to get AI response');
+      }
+      
+      const data = await response.json();
+      setAiResponse(data.response);
+    } catch (error) {
+      console.error('Error calling AI API:', error);
+      setAiResponse('Error generating response');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Call AI API when latestInteraction changes
+  useEffect(() => {
+    if (latestInteraction) {
+      callAIAPI(latestInteraction.message);
+    }
+  }, [latestInteraction]);
 
   // Helper function to create text outline style for a user
   const getNicknameStyle = (user: UserInfo) => {
@@ -263,7 +300,7 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
             <div className="flex flex-col">
               <div className="text-lg font-bold text-gray-800">
                 {latestInteraction ? 
-                  `${latestInteraction.message} - ${myUser?.animal || 'Unknown'}` : 
+                  (isLoading ? 'Thinking...' : aiResponse || latestInteraction.message) : 
                   `${showHi ? 'Hi' : 'Bye'} ${myUser?.animal || 'Unknown'}`
                 }
               </div>
