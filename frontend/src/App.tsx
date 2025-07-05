@@ -17,6 +17,7 @@ import {
   ServerTerrainConfig,
 } from "./utils/terrain";
 import { preloadFonts } from "./utils/font-preloader";
+import { throttle } from "lodash";
 
 function App() {
   const [myUser, setMyUser] = useState<UserInfo | null>(null);
@@ -35,10 +36,16 @@ function App() {
   const [deletingNPCs, setDeletingNPCs] = useState<Set<string>>(new Set());
   const [latestInteraction, setLatestInteraction] = useState<{filename: string; message: string} | null>(null);
   
-  // Create a stable interaction setter function
-  const interactionSetter = useCallback((filename: string, message: string) => {
-    setLatestInteraction({ filename, message });
-  }, []);
+  // Create a stable interaction setter function (throttled to 30 seconds)
+  const interactionSetter = useCallback(
+    throttle((filename: string, message: string) => {
+      setLatestInteraction({ filename, message });
+    }, 30000, { 
+      leading: true, 
+      trailing: false 
+    }),
+    []
+  );
   
   // Create a stable callback for passing to Leaderboard
   const handleInteractionUpdate = useCallback((setter: (filename: string, message: string) => void) => {
