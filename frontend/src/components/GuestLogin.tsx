@@ -8,6 +8,7 @@ import {
   npcGroupId,
   userId,
   NPCPhase,
+  PathPhase,
   NPCGroupsBiMap,
   Position,
   TerrainConfig,
@@ -49,6 +50,7 @@ interface Props {
   setGameDuration: React.Dispatch<React.SetStateAction<number | undefined>>;
   deletingNPCs: Set<string>;
   setDeletingNPCs: React.Dispatch<React.SetStateAction<Set<string>>>;
+  interactionSetter: ((filename: string, message: string) => void) | null;
   // Note: setGameOver, setFinalScores, and setWinnerScreenshot are now handled by Scene component
 }
 
@@ -62,12 +64,15 @@ export default function GuestLogin({
   setGameDuration,
   deletingNPCs,
   setDeletingNPCs,
+  interactionSetter,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [nickname, setNickname] = useState("");
   const [suggestedNickname, setSuggestedNickname] = useState("");
   const [userHasTyped, setUserHasTyped] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const myUserRef = useRef<UserInfo | null>(null);
+  const pathsRef = useRef<Map<npcGroupId, pathData>>(new Map());
 
   // Load saved nickname and generate random suggestion
   useEffect(() => {
@@ -278,11 +283,66 @@ export default function GuestLogin({
 
       typedSocket.on("all-paths", ({ paths }) => {
         setPaths(paths);
+        pathsRef.current = paths;
       });
 
       typedSocket.on("npc-group-update", ({ npcGroup }: { npcGroup: NPCGroup }) => {
         setNPCGroups((prev) => {
           const newNpcGroups = new NPCGroupsBiMap(prev);
+          
+          // Check if this update is for a thrown/returning NPC group being captured by local user
+          const myUser = myUserRef.current;
+          
+          // Only log when it's my group with files (reduce spam)
+          if (npcGroup.captorId === myUser?.id && npcGroup.fileNames.length > 0) {
+            console.log('My NPC group update:', {
+              npcGroupId: npcGroup.id.slice(0, 8),
+              fileNamesLength: npcGroup.fileNames.length,
+              hasPath: !!pathsRef.current.get(npcGroup.id),
+              pathPhase: pathsRef.current.get(npcGroup.id)?.pathPhase
+            });
+          }
+          
+          if (myUser && interactionSetter && npcGroup.captorId === myUser.id && npcGroup.fileNames.length > 0) {
+            // Check if this NPC group has a thrown/returning path
+            const pathData = pathsRef.current.get(npcGroup.id);
+            if (pathData && (pathData.pathPhase === PathPhase.THROWN || pathData.pathPhase === PathPhase.RETURNING)) {
+              // Get the existing NPC group from the current state to compare
+              const existingUserGroup = prev.getByUserId(myUser.id);
+              const existingFileNames = existingUserGroup ? existingUserGroup.fileNames : [];
+              
+              // Find what NPCs were actually captured (new ones not in existing group)
+              const newNPCs = npcGroup.fileNames.filter(name => !existingFileNames.includes(name));
+              
+              console.log('Thrown/returning capture detected:', {
+                pathPhase: pathData.pathPhase,
+                newNPCsCount: newNPCs.length,
+                newNPCs: newNPCs.slice(0, 3), // First 3 for debugging
+                existingCount: existingFileNames.length
+              });
+              
+              if (newNPCs.length > 0) {
+                // Show the first captured NPC
+                const capturedNPC = newNPCs[0]?.replace('.png', '');
+                let message;
+                
+                if (pathData.pathPhase === PathPhase.RETURNING) {
+                  message = `returning npc group captured ${capturedNPC}`;
+                } else if (pathData.pathPhase === PathPhase.THROWN) {
+                  message = `thrown npc group captured ${capturedNPC}`;
+                } else {
+                  message = `npc group captured ${capturedNPC}`;
+                }
+                
+                if (newNPCs.length > 1) {
+                  message += ` (+${newNPCs.length - 1} more)`;
+                }
+                console.log('Setting thrown/returning interaction:', { filename: npcGroup.faceFileName, message, pathPhase: pathData.pathPhase });
+                interactionSetter(npcGroup.faceFileName!, message);
+              }
+            }
+          }
+          
           if (npcGroup.fileNames.length == 0) {
             newNpcGroups.deleteByNpcGroupId(npcGroup.id);
           }
@@ -313,6 +373,7 @@ export default function GuestLogin({
         setPaths((prev) => {
           const newPaths = new Map(prev);
           newPaths.delete(pathData.npcGroupId);
+          pathsRef.current = newPaths; // Update ref too
           return newPaths;
         });
       });
@@ -321,6 +382,7 @@ export default function GuestLogin({
         setPaths((prev) => {
           const newPaths = new Map(prev);
           newPaths.set(pathData.npcGroupId, pathData);
+          pathsRef.current = newPaths; // Update ref too
           return newPaths;
         });
         // Note: NPC group data should be sent separately via npc-group-update events
@@ -336,6 +398,7 @@ export default function GuestLogin({
         setPaths((prev) => {
           const newpaths = new Map(prev);
           newpaths.delete(npcGroup.id);
+          pathsRef.current = newpaths; // Update ref too
           return newpaths;
         });
       });
@@ -346,6 +409,7 @@ export default function GuestLogin({
         setPaths((prev) => {
           const newPaths = new Map(prev);
           newPaths.delete(npcGroupId);
+          pathsRef.current = newPaths; // Update ref too
           return newPaths;
         });
         
@@ -417,6 +481,7 @@ export default function GuestLogin({
       setCookie('lastNickname', finalNickname);
       
       setMyUser(userWithNickname);
+      myUserRef.current = userWithNickname;
       setUsers(new Map([[user.id, userWithNickname]]));
     } catch {
       // Login failed

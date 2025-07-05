@@ -16,6 +16,7 @@ interface UseCollisionDetectionProps {
     value: NPCGroupsBiMap | ((prev: NPCGroupsBiMap) => NPCGroupsBiMap)
   ) => void;
   animalDimensions: { [animal: string]: { width: number; height: number } };
+  interactionSetter?: ((filename: string, message: string) => void) | null;
 }
 
 export function useCollisionDetection({
@@ -25,10 +26,21 @@ export function useCollisionDetection({
   setPaths,
   setNpcGroups,
   animalDimensions,
+  interactionSetter,
 }: UseCollisionDetectionProps) {
   
   const handleNPCGroupCollision = useCallback(
     (capturedNPCGroup: NPCGroup, localUser: boolean) => {
+      // Get existing user NPCs before merging
+      let userNpcGroup = npcGroups.getByUserId(myUser.id);
+      
+      // Track interaction for local user (only for idle NPCs, thrown/returning handled in GuestLogin)
+      if (localUser && interactionSetter && !capturedNPCGroup.captorId) {
+        // Captured NPC group without captor
+        const message = `captured npc group without captor`;
+        interactionSetter(capturedNPCGroup.faceFileName!, message);
+      }
+
       // If this NPC is currently on a path, remove the path
       if (localUser && paths.get(capturedNPCGroup.id)) {
         const currentTypedSocket = typedSocket();
@@ -40,19 +52,18 @@ export function useCollisionDetection({
         return newPaths as Map<npcGroupId, pathData>;
       });
 
-      let userNpcGroup = npcGroups.getByUserId(myUser.id);
-      let existingFileNames: string[] = [];
       let groupId: string;
       
       // If user already has a captured group, merge with it
       if (userNpcGroup) {
-        existingFileNames = userNpcGroup.fileNames;
         groupId = userNpcGroup.id; // Keep the existing group ID
       } else {
         // First capture for this user - create new ID
         groupId = uuidv4();
       }
 
+      const existingFileNames = userNpcGroup ? userNpcGroup.fileNames : [];
+      
       // 2. create new merged npc group with existing NPCs + newly captured NPC
       const updatedNpcGroup = new NPCGroup({
         id: groupId, // Use existing ID or new ID for first capture
@@ -82,7 +93,7 @@ export function useCollisionDetection({
         return newNpcGroups;
       });
     },
-    [paths, setPaths, npcGroups, myUser.id, myUser.position, setNpcGroups]
+    [paths, setPaths, npcGroups, myUser.id, myUser.position, setNpcGroups, interactionSetter]
   );
 
   // Function to check for collisions with NPCs

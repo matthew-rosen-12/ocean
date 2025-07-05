@@ -8,6 +8,8 @@ interface LeaderboardProps {
   npcGroups: NPCGroupsBiMap;
   gameStartTime?: number;
   gameDuration?: number;
+  onInteractionUpdate?: (setter: (filename: string, message: string) => void) => void;
+  latestInteraction: {filename: string; message: string} | null;
 }
 
 interface Position {
@@ -15,7 +17,7 @@ interface Position {
   y: number;
 }
 
-export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime, gameDuration }: LeaderboardProps) {
+export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime, gameDuration, onInteractionUpdate, latestInteraction }: LeaderboardProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [position, setPosition] = useState<Position>({ x: 0, y: 20 });
   const [isDragging, setIsDragging] = useState(false);
@@ -63,6 +65,7 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
     return () => clearInterval(interval);
   }, []);
 
+
   // Set initial position in top right after component mounts
   useEffect(() => {
     if (!initialPositionSet && leaderboardRef.current) {
@@ -109,6 +112,7 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
   const myNpcGroup = npcGroups.getByUserId(myUserId);
   const hasCapturedNpc = myNpcGroup && myNpcGroup.fileNames.length > 0;
   const myUser = users.get(myUserId);
+  
 
 
   // Format time as MM:SS
@@ -247,21 +251,24 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
         </div>
       )}
 
-      {/* Current NPC Face Display - only show if not collapsed and has captured NPC */}
-      {!isCollapsed && hasCapturedNpc && myNpcGroup && (
+      {/* Current NPC Face Display - show if not collapsed and (has captured NPC OR has recent interaction) */}
+      {!isCollapsed && (hasCapturedNpc || latestInteraction) && (
         <div className="border-t border-gray-200 p-3">
           <div className="flex items-center space-x-3">
             <img 
-              src={`/npcs/${myNpcGroup.faceFileName}`}
-              alt="Captured NPC"
+              src={`/npcs/${latestInteraction?.filename || myNpcGroup?.faceFileName || 'default.png'}`}
+              alt="NPC"
               className="w-12 h-12 rounded-full border-2 border-gray-300 object-cover"
             />
             <div className="flex flex-col">
               <div className="text-lg font-bold text-gray-800">
-                {showHi ? 'Hi' : 'Bye'} {myUser?.animal || 'Unknown'}
+                {latestInteraction ? 
+                  `${latestInteraction.message} - ${myUser?.animal || 'Unknown'}` : 
+                  `${showHi ? 'Hi' : 'Bye'} ${myUser?.animal || 'Unknown'}`
+                }
               </div>
               <div className="text-sm text-gray-600">
-                {myNpcGroup.faceFileName?.replace('.png', '') || 'Unknown'}
+                {(latestInteraction?.filename || myNpcGroup?.faceFileName)?.replace('.png', '') || 'Unknown'}
               </div>
             </div>
           </div>

@@ -27,6 +27,7 @@ interface NPCGraphicWrapperProps {
   ) => void;
   throwChargeCount?: number;
   deletingNPCs: Set<string>;
+  interactionSetter?: ((filename: string, message: string) => void) | null;
 }
 
 const NPCGraphicWrapper = ({
@@ -43,6 +44,7 @@ const NPCGraphicWrapper = ({
   setNpcGroups: _setNpcGroups,
   throwChargeCount,
   deletingNPCs,
+  interactionSetter,
 }: NPCGraphicWrapperProps) => {
   // Check if this NPC is being deleted (show smoke animation)
   const isBeingDeleted = deletingNPCs.has(npcGroup.id);
@@ -115,6 +117,7 @@ const NPCGraphicWrapper = ({
         terrainBoundaries={terrainBoundaries}
         users={users}
         throwChargeCount={throwChargeCount}
+        interactionSetter={interactionSetter}
       />
     );
   }

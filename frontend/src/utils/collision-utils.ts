@@ -93,7 +93,8 @@ export function handleNPCGroupReflectionForUser(
   targetUser: UserInfo,
   animalWidth: number,
   setPaths: (paths: any) => void,
-  setNpcGroups: (npcGroups: any) => void
+  setNpcGroups: (npcGroups: any) => void,
+  interactionSetter?: ((filename: string, message: string) => void) | null
 ) {
   if ((pathData.pathPhase !== PathPhase.THROWN && pathData.pathPhase !== PathPhase.RETURNING)) return;
 
@@ -224,6 +225,14 @@ export function handleNPCGroupReflectionForUser(
   }) : null;
 
   if (emittedNPCs.length > 0) {
+    // Track emission interaction
+    if (interactionSetter) {
+      const emittedNPC = capturedGroup.faceFileName?.replace('.png', '');
+      const thrownNPC = npcGroup.faceFileName?.replace('.png', '');
+      const message = `npc group emitted ${emittedNPC} from ${thrownNPC} collision`;
+      interactionSetter(capturedGroup.faceFileName!, message);
+    }
+
     // Calculate current position of the captured group (not the stored position)
     const currentNPCGroupPosition = calculateNPCGroupPosition(targetUser, animalWidth, capturedGroupScale);
     const emissionStartPosition = currentNPCGroupPosition ? {

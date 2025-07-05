@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   pathData,
   UserInfo,
@@ -33,6 +33,17 @@ function App() {
   const [finalScores, setFinalScores] = useState<FinalScores>({});
   const [winnerScreenshot, setWinnerScreenshot] = useState<string>("");
   const [deletingNPCs, setDeletingNPCs] = useState<Set<string>>(new Set());
+  const [latestInteraction, setLatestInteraction] = useState<{filename: string; message: string} | null>(null);
+  
+  // Create a stable interaction setter function
+  const interactionSetter = useCallback((filename: string, message: string) => {
+    setLatestInteraction({ filename, message });
+  }, []);
+  
+  // Create a stable callback for passing to Leaderboard
+  const handleInteractionUpdate = useCallback((setter: (filename: string, message: string) => void) => {
+    // This callback is for future extensibility
+  }, []);
 
   // Preload fonts on app initialization
   useEffect(() => {
@@ -57,6 +68,7 @@ function App() {
     setFinalScores({});
     setWinnerScreenshot("");
     setDeletingNPCs(new Set());
+    setLatestInteraction(null);
   };
 
   // Show game over screen if game has ended
@@ -84,6 +96,7 @@ function App() {
         setGameDuration={setGameDuration}
         deletingNPCs={deletingNPCs}
         setDeletingNPCs={setDeletingNPCs}
+        interactionSetter={interactionSetter}
       />
     );
   }
@@ -104,6 +117,7 @@ function App() {
           setGameOver(true);
         }}
         deletingNPCs={deletingNPCs}
+        interactionSetter={interactionSetter}
       />
 
       {/* Leaderboard */}
@@ -113,6 +127,8 @@ function App() {
         npcGroups={npcGroups}
         gameStartTime={gameStartTime}
         gameDuration={gameDuration}
+        onInteractionUpdate={handleInteractionUpdate}
+        latestInteraction={latestInteraction}
       />
     </div>
   );
