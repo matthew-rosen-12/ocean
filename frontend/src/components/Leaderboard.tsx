@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { UserInfo, userId, NPCGroupsBiMap } from 'shared/types';
+import { NPCInteraction } from 'shared/interaction-types';
 import { getNicknameOutlineColor, getUserColor } from '../utils/animal-colors';
 
 interface LeaderboardProps {
@@ -8,8 +9,8 @@ interface LeaderboardProps {
   npcGroups: NPCGroupsBiMap;
   gameStartTime?: number;
   gameDuration?: number;
-  onInteractionUpdate?: (setter: (filename: string, message: string) => void) => void;
-  latestInteraction: {filename: string; message: string} | null;
+  onInteractionUpdate?: (setter: (interaction: NPCInteraction) => void) => void;
+  latestInteraction: NPCInteraction | null;
 }
 
 interface Position {
@@ -30,12 +31,12 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
   const leaderboardRef = useRef<HTMLDivElement>(null);
 
   // Function to call AI API
-  const callAIAPI = async (interaction: string) => {
+  const callAIAPI = async (interaction: NPCInteraction) => {
     setIsLoading(true);
     setAiResponse(null);
     
     try {
-      const response = await fetch('http://localhost:3001/api/ai-chat/generate', {
+      const response = await fetch('http://localhost:3001/api/ai-chat/generate-from-interaction', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -60,7 +61,7 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
   // Call AI API when latestInteraction changes
   useEffect(() => {
     if (latestInteraction) {
-      callAIAPI(latestInteraction.message);
+      callAIAPI(latestInteraction);
     }
   }, [latestInteraction]);
 
@@ -209,6 +210,8 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
         left: `${position.x}px`,
         top: `${position.y}px`,
         minWidth: '200px',
+        maxWidth: '300px',
+        width: '250px',
       }}
       onMouseDown={handleMouseDown}
     >
@@ -291,21 +294,21 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
       {/* Current NPC Face Display - show if not collapsed and (has captured NPC OR has recent interaction) */}
       {!isCollapsed && (hasCapturedNpc || latestInteraction) && (
         <div className="border-t border-gray-200 p-3">
-          <div className="flex items-center space-x-3">
+          <div className="flex items-start space-x-3">
             <img 
-              src={`/npcs/${latestInteraction?.filename || myNpcGroup?.faceFileName || 'default.png'}`}
+              src={`/npcs/${latestInteraction?.npcFaceFileName || myNpcGroup?.faceFileName || 'default.png'}`}
               alt="NPC"
               className="w-12 h-12 rounded-full border-2 border-gray-300 object-cover"
             />
-            <div className="flex flex-col">
-              <div className="text-lg font-bold text-gray-800">
+            <div className="flex flex-col flex-1 min-w-0">
+              <div className="text-sm font-bold text-gray-800 break-words">
                 {latestInteraction ? 
-                  (isLoading ? 'Thinking...' : aiResponse || latestInteraction.message) : 
+                  (isLoading ? 'Thinking...' : aiResponse || 'Processing...') : 
                   `${showHi ? 'Hi' : 'Bye'} ${myUser?.animal || 'Unknown'}`
                 }
               </div>
-              <div className="text-sm text-gray-600">
-                {(latestInteraction?.filename || myNpcGroup?.faceFileName)?.replace('.png', '') || 'Unknown'}
+              <div className="text-xs text-gray-600 truncate">
+                {(latestInteraction?.npcFaceFileName || myNpcGroup?.faceFileName)?.replace('.png', '') || 'Unknown'}
               </div>
             </div>
           </div>

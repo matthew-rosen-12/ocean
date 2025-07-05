@@ -9,7 +9,9 @@
       "./types": "./dist/types.js",
       "./socket-events": "./dist/socket-events.js",
       "./constants": "./dist/constants.js",
-      "./animal-dimensions": "./dist/animal-dimensions.js"
+      "./animal-dimensions": "./dist/animal-dimensions.js",
+      "./interaction-types": "./dist/interaction-types.js",
+      "./interaction-prompts": "./dist/interaction-prompts.js"
     },
     "scripts": {
       "build": "tsc"

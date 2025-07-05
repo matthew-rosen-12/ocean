@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { NPCGroup, pathData, PathPhase, NPCPhase, UserInfo } from "shared/types";
+import { NPCInteraction, createInteraction } from "shared/interaction-prompts";
 import { calculateNPCGroupPosition, calculateNPCGroupScale } from "./npc-group-utils";
 import { typedSocket } from "../socket";
 import { v4 as uuidv4 } from "uuid";
@@ -94,7 +95,7 @@ export function handleNPCGroupReflectionForUser(
   animalWidth: number,
   setPaths: (paths: any) => void,
   setNpcGroups: (npcGroups: any) => void,
-  interactionSetter?: ((filename: string, message: string) => void) | null
+  interactionSetter?: ((interaction: NPCInteraction) => void) | null
 ) {
   if ((pathData.pathPhase !== PathPhase.THROWN && pathData.pathPhase !== PathPhase.RETURNING)) return;
 
@@ -227,10 +228,12 @@ export function handleNPCGroupReflectionForUser(
   if (emittedNPCs.length > 0) {
     // Track emission interaction
     if (interactionSetter) {
-      const emittedNPC = capturedGroup.faceFileName?.replace('.png', '');
-      const thrownNPC = npcGroup.faceFileName?.replace('.png', '');
-      const message = `npc group emitted ${emittedNPC} from ${thrownNPC} collision`;
-      interactionSetter(capturedGroup.faceFileName!, message);
+      const interaction = createInteraction.emitted(
+        capturedGroup.faceFileName!, 
+        npcGroup.faceFileName!,
+        targetUser.animal
+      );
+      interactionSetter(interaction);
     }
 
     // Calculate current position of the captured group (not the stored position)

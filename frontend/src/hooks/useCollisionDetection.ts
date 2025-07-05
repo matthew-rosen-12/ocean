@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { NPCGroup, NPCPhase, PathPhase, UserInfo, NPCGroupsBiMap, npcGroupId, pathData, ANIMAL_ORIENTATION } from "shared/types";
+import { NPCInteraction, createInteraction } from "shared/interaction-prompts";
 import { checkRotatedBoundingBoxCollision } from "shared/animal-dimensions";
 import * as THREE from "three";
 import { v4 as uuidv4 } from "uuid";
@@ -16,7 +17,7 @@ interface UseCollisionDetectionProps {
     value: NPCGroupsBiMap | ((prev: NPCGroupsBiMap) => NPCGroupsBiMap)
   ) => void;
   animalDimensions: { [animal: string]: { width: number; height: number } };
-  interactionSetter?: ((filename: string, message: string) => void) | null;
+  interactionSetter?: ((interaction: NPCInteraction) => void) | null;
 }
 
 export function useCollisionDetection({
@@ -37,8 +38,8 @@ export function useCollisionDetection({
       // Track interaction for local user (only for idle NPCs, thrown/returning handled in GuestLogin)
       if (localUser && interactionSetter && !capturedNPCGroup.captorId) {
         // Captured NPC group without captor
-        const message = `captured npc group without captor`;
-        interactionSetter(capturedNPCGroup.faceFileName!, message);
+        const interaction = createInteraction.captured(capturedNPCGroup.faceFileName!, myUser.animal);
+        interactionSetter(interaction);
       }
 
       // If this NPC is currently on a path, remove the path

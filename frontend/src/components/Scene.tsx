@@ -10,6 +10,7 @@ import {
   FinalScores,
   ANIMAL_SCALES,
 } from "shared/types";
+import { NPCInteraction } from "shared/interaction-types";
 import { useEffect, useState, useCallback } from "react";
 import AnimalGraphic from "./AnimalGraphic";
 import { UI_Z_INDICES } from "shared/z-depths";
@@ -53,7 +54,7 @@ interface Props {
   onScreenshotCapture?: (screenshot: string) => void;
   onGameOver?: (finalScores: FinalScores) => void;
   deletingNPCs: Set<string>;
-  interactionSetter: ((filename: string, message: string) => void) | null;
+  interactionSetter: ((interaction: NPCInteraction) => void) | null;
 }
 
 export default function Scene({

@@ -7,6 +7,7 @@ import {
   userId,
   FinalScores,
 } from "shared/types";
+import { NPCInteraction } from "shared/interaction-types";
 import Scene from "./components/Scene";
 import GuestLogin from "./components/GuestLogin";
 import Leaderboard from "./components/Leaderboard";
@@ -34,13 +35,13 @@ function App() {
   const [finalScores, setFinalScores] = useState<FinalScores>({});
   const [winnerScreenshot, setWinnerScreenshot] = useState<string>("");
   const [deletingNPCs, setDeletingNPCs] = useState<Set<string>>(new Set());
-  const [latestInteraction, setLatestInteraction] = useState<{filename: string; message: string} | null>(null);
+  const [latestInteraction, setLatestInteraction] = useState<NPCInteraction | null>(null);
   
   // Create a stable interaction setter function (throttled to 30 seconds)
   const interactionSetter = useCallback(
-    throttle((filename: string, message: string) => {
-      setLatestInteraction({ filename, message });
-    }, 30000, { 
+    throttle((interaction: NPCInteraction) => {
+      setLatestInteraction(interaction);
+    }, 10000, { 
       leading: true, 
       trailing: false 
     }),
@@ -48,7 +49,7 @@ function App() {
   );
   
   // Create a stable callback for passing to Leaderboard
-  const handleInteractionUpdate = useCallback((setter: (filename: string, message: string) => void) => {
+  const handleInteractionUpdate = useCallback((setter: (interaction: NPCInteraction) => void) => {
     // This callback is for future extensibility
   }, []);
 

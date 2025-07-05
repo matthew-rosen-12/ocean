@@ -1,5 +1,6 @@
 import React from "react";
 import { NPCPhase, pathData, UserInfo, NPCGroup, NPCGroupsBiMap } from "shared/types";
+import { NPCInteraction } from "shared/interaction-types";
 import * as THREE from "three";
 import { TerrainBoundaries } from "../../utils/terrain";
 import IdleNPCGroupGraphic from "./IdleNPCGroupGraphic";
@@ -27,7 +28,7 @@ interface NPCGraphicWrapperProps {
   ) => void;
   throwChargeCount?: number;
   deletingNPCs: Set<string>;
-  interactionSetter?: ((filename: string, message: string) => void) | null;
+  interactionSetter?: ((interaction: NPCInteraction) => void) | null;
 }
 
 const NPCGraphicWrapper = ({

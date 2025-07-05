@@ -11,11 +11,20 @@ if (!apiKey) {
 const genAI = new GoogleGenerativeAI(apiKey);
 
 export class AIChatService {
-  private model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+  // Use the most generous free tier model - Gemini 2.0 Flash (1M TPM, 15 RPM, 200 RPD)
+  private model = genAI.getGenerativeModel({ 
+    model: 'gemini-2.0-flash',
+    generationConfig: {
+      maxOutputTokens: 100, // Limit response length (~75 words)
+      temperature: 0.7,     // Balanced creativity
+      topP: 0.9,
+      topK: 40
+    }
+  });
 
-  async generateResponse(interaction: string): Promise<string> {
+  async generateResponse(prompt: string): Promise<string> {
     try {
-      const result = await this.model.generateContent(interaction);
+      const result = await this.model.generateContent(prompt);
       const response = await result.response;
       return response.text();
     } catch (error) {

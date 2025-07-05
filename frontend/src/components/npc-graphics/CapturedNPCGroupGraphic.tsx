@@ -7,6 +7,7 @@ import {
   PathPhase,
   NPCGroupsBiMap,
 } from "shared/types";
+import { NPCInteraction } from "shared/interaction-types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { smoothMove } from "../../utils/movement";
@@ -42,7 +43,7 @@ interface CapturedNPCGroupGraphicProps {
   terrainBoundaries?: TerrainBoundaries; // Add terrain boundaries for wrapping
   users: Map<string, UserInfo>; // All users for getting group positions
   throwChargeCount: number | undefined;
-  interactionSetter?: ((filename: string, message: string) => void) | null;
+  interactionSetter?: ((interaction: NPCInteraction) => void) | null;
 }
 
 const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({

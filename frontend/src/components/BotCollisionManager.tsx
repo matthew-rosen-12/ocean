@@ -1,5 +1,6 @@
 import React from "react";
 import { UserInfo, NPCGroupsBiMap, pathData } from "shared/types";
+import { NPCInteraction } from "shared/interaction-types";
 import { useBotCollisionDetection } from "../hooks/useBotCollisionDetection";
 
 interface BotCollisionManagerProps {
@@ -14,7 +15,7 @@ interface BotCollisionManagerProps {
     npcGroups: NPCGroupsBiMap | ((prev: NPCGroupsBiMap) => NPCGroupsBiMap)
   ) => void;
   animalDimensions: { [animal: string]: { width: number; height: number } };
-  interactionSetter?: ((filename: string, message: string) => void) | null;
+  interactionSetter?: ((interaction: NPCInteraction) => void) | null;
 }
 
 // This component needs to be inside the Canvas to use useFrame

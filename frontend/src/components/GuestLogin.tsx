@@ -14,6 +14,7 @@ import {
   TerrainConfig,
   FinalScores,
 } from "shared/types";
+import { NPCInteraction, createInteraction } from "shared/interaction-prompts";
 import { getSocket } from "../socket";
 import { ServerTerrainConfig } from "../utils/terrain";
 import { TypedSocket } from "../utils/typed-socket";
@@ -50,7 +51,7 @@ interface Props {
   setGameDuration: React.Dispatch<React.SetStateAction<number | undefined>>;
   deletingNPCs: Set<string>;
   setDeletingNPCs: React.Dispatch<React.SetStateAction<Set<string>>>;
-  interactionSetter: ((filename: string, message: string) => void) | null;
+  interactionSetter: ((interaction: NPCInteraction) => void) | null;
   // Note: setGameOver, setFinalScores, and setWinnerScreenshot are now handled by Scene component
 }
 
@@ -323,22 +324,19 @@ export default function GuestLogin({
               
               if (newNPCs.length > 0) {
                 // Show the first captured NPC
-                const capturedNPC = newNPCs[0]?.replace('.png', '');
-                let message;
+                const capturedNPCFileName = newNPCs[0]; // Keep full filename with .png
+                const myUser = myUserRef.current;
+                let interaction: NPCInteraction;
                 
-                if (pathData.pathPhase === PathPhase.RETURNING) {
-                  message = `returning npc group captured ${capturedNPC}`;
-                } else if (pathData.pathPhase === PathPhase.THROWN) {
-                  message = `thrown npc group captured ${capturedNPC}`;
-                } else {
-                  message = `npc group captured ${capturedNPC}`;
-                }
+                interaction = createInteraction.recaptured(npcGroup.faceFileName!, capturedNPCFileName!, myUser?.animal);
                 
-                if (newNPCs.length > 1) {
-                  message += ` (+${newNPCs.length - 1} more)`;
-                }
-                console.log('Setting thrown/returning interaction:', { filename: npcGroup.faceFileName, message, pathPhase: pathData.pathPhase });
-                interactionSetter(npcGroup.faceFileName!, message);
+                console.log('Setting thrown/returning interaction:', { 
+                  filename: npcGroup.faceFileName, 
+                  type: interaction.type, 
+                  pathPhase: pathData.pathPhase,
+                  animal: myUser?.animal
+                });
+                interactionSetter(interaction);
               }
             }
           }
@@ -409,7 +407,8 @@ export default function GuestLogin({
         const myUser = myUserRef.current;
         if (myUser && interactionSetter && captorId === myUser.id && faceFileName && (pathPhase === PathPhase.THROWN || pathPhase === PathPhase.RETURNING)) {
           // Show face interaction for the user's destroyed thrown/returning NPC
-          interactionSetter(faceFileName, `${pathPhase} npc group destroyed`);
+          const interaction = createInteraction.deleted(faceFileName, myUser.animal);
+          interactionSetter(interaction);
         }
         
         // Immediately delete the path to prevent NPC from reappearing
