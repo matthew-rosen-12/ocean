@@ -18,10 +18,17 @@ interface Position {
   y: number;
 }
 
+interface Size {
+  width: number;
+  height: number;
+}
+
 export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime, gameDuration, onInteractionUpdate, latestInteraction }: LeaderboardProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [position, setPosition] = useState<Position>({ x: 0, y: 20 });
+  const [size, setSize] = useState<Size>({ width: 250, height: 400 });
   const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
   const [dragOffset, setDragOffset] = useState<Position>({ x: 0, y: 0 });
   const [initialPositionSet, setInitialPositionSet] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
@@ -184,7 +191,14 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
     }
   };
 
-  // Handle drag
+  // Handle resize start
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+  };
+
+  // Handle drag and resize
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (isDragging) {
@@ -192,14 +206,25 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
           x: e.clientX - dragOffset.x,
           y: e.clientY - dragOffset.y
         });
+      } else if (isResizing) {
+        const rect = leaderboardRef.current?.getBoundingClientRect();
+        if (rect) {
+          const newWidth = Math.max(200, e.clientX - rect.left);
+          const newHeight = Math.max(100, e.clientY - rect.top);
+          setSize({
+            width: newWidth,
+            height: newHeight
+          });
+        }
       }
     };
 
     const handleMouseUp = () => {
       setIsDragging(false);
+      setIsResizing(false);
     };
 
-    if (isDragging) {
+    if (isDragging || isResizing) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
     }
@@ -208,20 +233,25 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, dragOffset]);
+  }, [isDragging, isResizing, dragOffset]);
 
   return (
     <div
       ref={leaderboardRef}
       className={`fixed bg-white bg-opacity-90 border border-gray-300 rounded-lg shadow-lg backdrop-blur-sm z-50 select-none ${
-        isDragging ? 'cursor-grabbing' : 'cursor-grab'
+        isDragging ? 'cursor-grabbing' : isResizing ? 'cursor-nw-resize' : 'cursor-grab'
       }`}
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
+        width: `${size.width}px`,
+        height: `${size.height}px`,
         minWidth: '200px',
-        maxWidth: '300px',
-        width: '250px',
+        maxWidth: '500px',
+        minHeight: '100px',
+        maxHeight: '600px',
+        resize: 'none',
+        overflow: 'hidden'
       }}
       onMouseDown={handleMouseDown}
     >
@@ -252,7 +282,7 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
 
       {/* Content */}
       {!isCollapsed && (
-        <div className="p-3">
+        <div className="p-3 overflow-y-auto" style={{ maxHeight: `${size.height - 120}px` }}>
           {sortedUsers.length === 0 ? (
             <div className="text-gray-500 text-sm">No players</div>
           ) : (
@@ -324,6 +354,15 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
           </div>
         </div>
       )}
+      
+      {/* Resize handle */}
+      <div
+        className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize bg-gray-300 hover:bg-gray-400 opacity-50 hover:opacity-100 transition-opacity"
+        style={{
+          clipPath: 'polygon(100% 0%, 0% 100%, 100% 100%)'
+        }}
+        onMouseDown={handleResizeStart}
+      />
     </div>
   );
 }
