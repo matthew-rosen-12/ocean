@@ -204,7 +204,6 @@ export function useKeyboardMovement(
 
     const animate = () => {
       updatePositionWrapper();
-      // Store the ID so we can cancel it properly
       animationFrameRef.current = requestAnimationFrame(animate);
     };
 

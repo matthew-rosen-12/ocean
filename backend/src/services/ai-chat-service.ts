@@ -15,7 +15,7 @@ const genAI = new GoogleGenerativeAI(apiKey);
 export class AIChatService {
   // Use Gemini 1.0 Pro for maximum concurrent users (15 RPM vs 2 RPM)
   private model = genAI.getGenerativeModel({ 
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.0-flash-lite',
     generationConfig: {
       maxOutputTokens: 100, // Limit response length (~75 words)
       temperature: 0.7,     // Balanced creativity

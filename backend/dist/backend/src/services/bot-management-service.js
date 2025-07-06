@@ -70,7 +70,6 @@ class BotManagementService {
             maxHoldDuration: 0
         });
         // Broadcast bot join to all clients in room
-        console.log(`Broadcasting bot join for ${bot.nickname} to room ${roomName}`);
         (0, typed_socket_1.emitToRoom)(roomName, "user-joined", { user: bot });
         // Schedule next spawn
         const timerData = this.botSpawnTimers.get(roomName);
@@ -592,7 +591,6 @@ class BotManagementService {
         }
         (0, typed_socket_1.emitToRoom)(roomName, "npc-group-update", { npcGroup: thrownNpcGroup });
         (0, typed_socket_1.emitToRoom)(roomName, "path-update", { pathData: throwPath });
-        console.log(`Bot ${bot.nickname} threw NPCs at ${targetUser.nickname}`);
     }
     /**
      * Calculate distance between two positions

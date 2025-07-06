@@ -15,7 +15,6 @@ router.post('/generate-from-interaction', async (req, res) => {
 
     const prompt = interactionToPrompt(interaction);
     const response = await aiChatService.generateResponse(prompt);
-    console.log("response: ", response);
     res.json({ response, prompt, provider: 'google' });
   } catch (error) {
     console.error('AI chat error:', error);

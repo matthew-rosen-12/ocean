@@ -20,6 +20,7 @@ import { CameraController } from "./CameraController";
 import { usePositionBroadcast } from "../hooks/usePositionBroadcast";
 import { useCollisionDetection } from "../hooks/useCollisionDetection";
 import { useKeyboardMovement } from "../hooks/useKeyboardMovement";
+import { useVisibilityControl } from "../hooks/useVisibilityControl";
 import { CinematicScreenshot } from "./CinematicScreenshot";
 import { TerrainConfig } from "../utils/terrain";
 import BotCollisionManager from "./BotCollisionManager";
@@ -55,6 +56,7 @@ interface Props {
   onGameOver?: (finalScores: FinalScores) => void;
   deletingNPCs: Set<string>;
   interactionSetter: ((interaction: NPCInteraction) => void) | null;
+  onInactivityKick?: () => void;
 }
 
 export default function Scene({
@@ -69,6 +71,7 @@ export default function Scene({
   onGameOver,
   deletingNPCs,
   interactionSetter,
+  onInactivityKick,
 }: Props) {
   const initialPosition = new THREE.Vector3(
     myUser.position.x,
@@ -153,6 +156,9 @@ export default function Scene({
     myUser,
     users,
   });
+
+  // Prevent game from pausing when tab is hidden
+  useVisibilityControl(onInactivityKick);
 
 
   // Expose NPC groups for debugging in browser developer tools (throttled for performance)

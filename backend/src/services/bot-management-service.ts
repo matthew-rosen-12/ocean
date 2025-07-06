@@ -104,7 +104,6 @@ export class BotManagementService {
     });
     
     // Broadcast bot join to all clients in room
-    console.log(`Broadcasting bot join for ${bot.nickname} to room ${roomName}`);
     emitToRoom(roomName, "user-joined", { user: bot });
     
     // Schedule next spawn
@@ -654,7 +653,6 @@ export class BotManagementService {
     emitToRoom(roomName, "npc-group-update", { npcGroup: thrownNpcGroup });
     emitToRoom(roomName, "path-update", { pathData: throwPath });
 
-    console.log(`Bot ${bot.nickname} threw NPCs at ${targetUser.nickname}`);
   }
 
   /**

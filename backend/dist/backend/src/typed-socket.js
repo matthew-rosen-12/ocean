@@ -7,6 +7,7 @@ exports.TypedSocket = void 0;
 exports.serialize = serialize;
 exports.deserialize = deserialize;
 exports.emitToRoom = emitToRoom;
+exports.emitToUser = emitToUser;
 const server_1 = require("./server");
 const superjson_1 = __importDefault(require("superjson"));
 const types_1 = require("shared/types");
@@ -24,6 +25,20 @@ function deserialize(serialized) {
 }
 function emitToRoom(room, event, data) {
     server_1.io.to(room).emit(event, serialize(data));
+}
+function emitToUser(room, userId, event, data) {
+    var _a, _b;
+    // Get all sockets in the room and find the one belonging to the user
+    const sockets = server_1.io.sockets.adapter.rooms.get(room);
+    if (sockets) {
+        for (const socketId of sockets) {
+            const socket = server_1.io.sockets.sockets.get(socketId);
+            if (((_b = (_a = socket === null || socket === void 0 ? void 0 : socket.data) === null || _a === void 0 ? void 0 : _a.user) === null || _b === void 0 ? void 0 : _b.id) === userId) {
+                socket.emit(event, serialize(data));
+                break;
+            }
+        }
+    }
 }
 class TypedSocket {
     constructor(socket) {

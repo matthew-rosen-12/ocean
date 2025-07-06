@@ -20,6 +20,7 @@ const typed_socket_1 = require("../typed-socket");
 const users_1 = require("../state/users");
 const bot_management_service_1 = require("./bot-management-service");
 const types_2 = require("shared/types");
+const interaction_service_1 = require("./interaction-service");
 function updateNPCGroupInRoom(roomName, npcGroup) {
     (0, npc_groups_1.updateNPCGroupInRoomInMemory)(roomName, npcGroup);
     (0, typed_socket_1.emitToRoom)(roomName, "npc-group-update", { npcGroup });
@@ -468,6 +469,14 @@ function checkAndHandleNPCCollisions(room) {
 }
 // Handle merging between two path NPCs or path NPC with idle NPC
 function handlePathNPCMerge(room, winnerPathData, winnerNPCGroup, loser, collisionPosition) {
+    // Send interaction for returning/thrown NPC capture if applicable
+    if (winnerNPCGroup.captorId && (winnerPathData.pathPhase === types_1.PathPhase.THROWN || winnerPathData.pathPhase === types_1.PathPhase.RETURNING)) {
+        // Get the first captured NPC for the interaction
+        const capturedNPCFileName = loser.fileNames[0];
+        if (capturedNPCFileName) {
+            interaction_service_1.InteractionService.handleReturningNPCRecaptured(room, winnerNPCGroup.captorId, winnerNPCGroup, loser, winnerPathData.pathPhase);
+        }
+    }
     // Create merged group with winner's captor ID
     const mergedGroup = new types_1.NPCGroup(Object.assign(Object.assign({}, winnerNPCGroup), { fileNames: [...loser.fileNames, ...winnerNPCGroup.fileNames], position: collisionPosition, phase: types_1.NPCPhase.PATH }));
     // update the groups in memory
@@ -526,6 +535,18 @@ function handleNPCBounce(room, pathData, myPosition, otherPosition) {
 function handleCapturedNPCEmission(room, _thrownPathData, thrownNPCGroup, capturedNPCGroup, collisionPosition) {
     const emissionCount = thrownNPCGroup.fileNames.length;
     console.log(`Emitting ${emissionCount} individual NPCs from captured group ${capturedNPCGroup.id}`);
+    // Send interactions for both involved users
+    if (capturedNPCGroup.fileNames.length > 0) {
+        const emittedNPCFileName = capturedNPCGroup.fileNames[0];
+        // Send THROWN_NPC_GROUP_COLLISION interaction to the thrower
+        if (thrownNPCGroup.captorId && emittedNPCFileName) {
+            interaction_service_1.InteractionService.handleThrownNPCCollision(room, thrownNPCGroup.captorId, thrownNPCGroup, new types_1.NPCGroup(Object.assign(Object.assign({}, capturedNPCGroup), { fileNames: [emittedNPCFileName] })));
+        }
+        // Send NPC_GROUP_EMITTED interaction to the captured group owner
+        if (capturedNPCGroup.captorId && thrownNPCGroup.faceFileName && emittedNPCFileName) {
+            interaction_service_1.InteractionService.handleNPCGroupEmitted(room, capturedNPCGroup.captorId, new types_1.NPCGroup(Object.assign(Object.assign({}, capturedNPCGroup), { fileNames: [emittedNPCFileName] })), thrownNPCGroup);
+        }
+    }
     // Calculate impact direction (where the thrown NPC hit from)
     const impactDirection = {
         x: collisionPosition.x - capturedNPCGroup.position.x,
@@ -867,6 +888,10 @@ function checkAndDeleteFleeingNPCs(room) {
             // Check if NPC is far outside terrain boundaries
             const outsideDistance = calculateDistanceOutsideTerrain(currentPosition, terrainConfig);
             if (outsideDistance >= DELETION_DISTANCE) {
+                // Send interaction for deleted thrown/returning NPC if applicable
+                if (npcGroup.captorId && (pathData.pathPhase === types_1.PathPhase.THROWN || pathData.pathPhase === types_1.PathPhase.RETURNING)) {
+                    interaction_service_1.InteractionService.handleNPCGroupDeleted(room, npcGroup.captorId, npcGroup, pathData.pathPhase);
+                }
                 // Delete the NPC group from memory
                 allNPCGroups.deleteByNpcGroupId(npcGroup.id);
                 // Delete the path from memory

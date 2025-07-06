@@ -304,42 +304,7 @@ export default function GuestLogin({
             });
           }
           
-          if (myUser && interactionSetter && npcGroup.captorId === myUser.id && npcGroup.fileNames.length > 0) {
-            // Check if this NPC group has a thrown/returning path
-            const pathData = pathsRef.current.get(npcGroup.id);
-            if (pathData && (pathData.pathPhase === PathPhase.THROWN || pathData.pathPhase === PathPhase.RETURNING)) {
-              // Get the existing NPC group from the current state to compare
-              const existingUserGroup = prev.getByUserId(myUser.id);
-              const existingFileNames = existingUserGroup ? existingUserGroup.fileNames : [];
-              
-              // Find what NPCs were actually captured (new ones not in existing group)
-              const newNPCs = npcGroup.fileNames.filter(name => !existingFileNames.includes(name));
-              
-              console.log('Thrown/returning capture detected:', {
-                pathPhase: pathData.pathPhase,
-                newNPCsCount: newNPCs.length,
-                newNPCs: newNPCs.slice(0, 3), // First 3 for debugging
-                existingCount: existingFileNames.length
-              });
-              
-              if (newNPCs.length > 0) {
-                // Show the first captured NPC
-                const capturedNPCFileName = newNPCs[0]; // Keep full filename with .png
-                const myUser = myUserRef.current;
-                let interaction: NPCInteraction;
-                
-                interaction = createInteraction.recaptured(npcGroup.faceFileName!, capturedNPCFileName!, myUser?.animal);
-                
-                console.log('Setting thrown/returning interaction:', { 
-                  filename: npcGroup.faceFileName, 
-                  type: interaction.type, 
-                  pathPhase: pathData.pathPhase,
-                  animal: myUser?.animal
-                });
-                interactionSetter(interaction);
-              }
-            }
-          }
+          // Interaction detection is now handled server-side
           
           if (npcGroup.fileNames.length == 0) {
             newNpcGroups.deleteByNpcGroupId(npcGroup.id);
@@ -403,13 +368,7 @@ export default function GuestLogin({
 
       // Handle NPC group deletion with smoke animation
       typedSocket.on("npc-group-deleted", ({ npcGroupId, currentPosition, captorId, pathPhase, faceFileName }: { npcGroupId: string; currentPosition: { x: number; y: number; z: number }; captorId?: string; pathPhase: PathPhase; faceFileName?: string }) => {
-        // Check if this NPC belonged to the current user and was thrown/returning
-        const myUser = myUserRef.current;
-        if (myUser && interactionSetter && captorId === myUser.id && faceFileName && (pathPhase === PathPhase.THROWN || pathPhase === PathPhase.RETURNING)) {
-          // Show face interaction for the user's destroyed thrown/returning NPC
-          const interaction = createInteraction.deleted(faceFileName, myUser.animal);
-          interactionSetter(interaction);
-        }
+        // Interaction detection is now handled server-side
         
         // Immediately delete the path to prevent NPC from reappearing
         setPaths((prev) => {
@@ -453,6 +412,13 @@ export default function GuestLogin({
         }, 2000); // 2 second animation duration
       });
 
+      // Handle NPC interactions from server
+      typedSocket.on("npc-interaction", ({ interaction }: { interaction: NPCInteraction }) => {
+        if (interactionSetter) {
+          console.log('Received server-side interaction:', interaction);
+          interactionSetter(interaction);
+        }
+      });
 
       // Handle game over event - trigger cinematic sequence
       typedSocket.on("times-up", ({ finalScores }: { finalScores: FinalScores }) => {

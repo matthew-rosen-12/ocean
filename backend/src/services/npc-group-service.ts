@@ -19,6 +19,7 @@ import { emitToRoom } from "../typed-socket";
 import { getAllUsersInRoom } from "../state/users";
 import { BotManagementService } from "./bot-management-service";
 import { ANIMAL_SCALES } from "shared/types";
+import { InteractionService } from "./interaction-service";
 
 export function updateNPCGroupInRoom(
   roomName: roomId,
@@ -626,6 +627,21 @@ function handlePathNPCMerge(
   loser: NPCGroup,
   collisionPosition: { x: number; y: number; z: number }
 ): void {
+  // Send interaction for returning/thrown NPC capture if applicable
+  if (winnerNPCGroup.captorId && (winnerPathData.pathPhase === PathPhase.THROWN || winnerPathData.pathPhase === PathPhase.RETURNING)) {
+    // Get the first captured NPC for the interaction
+    const capturedNPCFileName = loser.fileNames[0];
+    if (capturedNPCFileName) {
+      InteractionService.handleReturningNPCRecaptured(
+        room,
+        winnerNPCGroup.captorId,
+        winnerNPCGroup,
+        loser,
+        winnerPathData.pathPhase
+      );
+    }
+  }
+
   // Create merged group with winner's captor ID
   const mergedGroup = new NPCGroup({
     ...winnerNPCGroup,
@@ -717,6 +733,31 @@ function handleCapturedNPCEmission(
 ): void {
   const emissionCount = thrownNPCGroup.fileNames.length;
   console.log(`Emitting ${emissionCount} individual NPCs from captured group ${capturedNPCGroup.id}`);
+  
+  // Send interactions for both involved users
+  if (capturedNPCGroup.fileNames.length > 0) {
+    const emittedNPCFileName = capturedNPCGroup.fileNames[0];
+    
+    // Send THROWN_NPC_GROUP_COLLISION interaction to the thrower
+    if (thrownNPCGroup.captorId && emittedNPCFileName) {
+      InteractionService.handleThrownNPCCollision(
+        room,
+        thrownNPCGroup.captorId,
+        thrownNPCGroup,
+        new NPCGroup({ ...capturedNPCGroup, fileNames: [emittedNPCFileName] })
+      );
+    }
+    
+    // Send NPC_GROUP_EMITTED interaction to the captured group owner
+    if (capturedNPCGroup.captorId && thrownNPCGroup.faceFileName && emittedNPCFileName) {
+      InteractionService.handleNPCGroupEmitted(
+        room,
+        capturedNPCGroup.captorId,
+        new NPCGroup({ ...capturedNPCGroup, fileNames: [emittedNPCFileName] }),
+        thrownNPCGroup
+      );
+    }
+  }
   
   // Calculate impact direction (where the thrown NPC hit from)
   const impactDirection = {
@@ -1193,6 +1234,16 @@ export function checkAndDeleteFleeingNPCs(room: string): void {
       const outsideDistance = calculateDistanceOutsideTerrain(currentPosition, terrainConfig);
       
       if (outsideDistance >= DELETION_DISTANCE) {        
+        // Send interaction for deleted thrown/returning NPC if applicable
+        if (npcGroup.captorId && (pathData.pathPhase === PathPhase.THROWN || pathData.pathPhase === PathPhase.RETURNING)) {
+          InteractionService.handleNPCGroupDeleted(
+            room,
+            npcGroup.captorId,
+            npcGroup,
+            pathData.pathPhase
+          );
+        }
+        
         // Delete the NPC group from memory
         allNPCGroups.deleteByNpcGroupId(npcGroup.id);
         

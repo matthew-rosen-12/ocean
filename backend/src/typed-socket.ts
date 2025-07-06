@@ -28,6 +28,25 @@ export function emitToRoom<K extends keyof ServerToClientEvents>(
   io.to(room).emit(event, serialize(data));
 }
 
+export function emitToUser<K extends keyof ServerToClientEvents>(
+  room: string,
+  userId: string,
+  event: K,
+  data: Parameters<ServerToClientEvents[K]>[0]
+) {
+  // Get all sockets in the room and find the one belonging to the user
+  const sockets = io.sockets.adapter.rooms.get(room);
+  if (sockets) {
+    for (const socketId of sockets) {
+      const socket = io.sockets.sockets.get(socketId);
+      if (socket?.data?.user?.id === userId) {
+        socket.emit(event, serialize(data));
+        break;
+      }
+    }
+  }
+}
+
 
 export class TypedSocket {
   constructor(private socket: Socket) {}

@@ -12,6 +12,7 @@ import Scene from "./components/Scene";
 import GuestLogin from "./components/GuestLogin";
 import Leaderboard from "./components/Leaderboard";
 import GameOverScreen from "./components/GameOverScreen";
+import InactivityKick from "./components/InactivityKick";
 import {
   createTerrain,
   createTerrainFromServer,
@@ -36,6 +37,7 @@ function App() {
   const [winnerScreenshot, setWinnerScreenshot] = useState<string>("");
   const [deletingNPCs, setDeletingNPCs] = useState<Set<string>>(new Set());
   const [latestInteraction, setLatestInteraction] = useState<NPCInteraction | null>(null);
+  const [kickedForInactivity, setKickedForInactivity] = useState(false);
   
   // Create a stable interaction setter function (throttled to 30 seconds)
   const interactionSetter = useCallback(
@@ -51,6 +53,27 @@ function App() {
   // Create a stable callback for passing to Leaderboard
   const handleInteractionUpdate = useCallback((setter: (interaction: NPCInteraction) => void) => {
     // This callback is for future extensibility
+  }, []);
+
+  // Handle inactivity kick
+  const handleInactivityKick = useCallback(() => {
+    console.log('Player kicked for inactivity');
+    setKickedForInactivity(true);
+    setMyUser(null); // Clear user state
+  }, []);
+
+  // Handle return to login from inactivity kick
+  const handleReturnToLoginFromInactivity = useCallback(() => {
+    setKickedForInactivity(false);
+    setMyUser(null);
+    setUsers(new Map());
+    setPaths(new Map());
+    setNPCGroups(new NPCGroupsBiMap());
+    setGameOver(false);
+    setFinalScores({});
+    setWinnerScreenshot("");
+    setDeletingNPCs(new Set());
+    setLatestInteraction(null);
   }, []);
 
   // Preload fonts on app initialization
@@ -78,6 +101,15 @@ function App() {
     setDeletingNPCs(new Set());
     setLatestInteraction(null);
   };
+
+  // Show inactivity kick screen if player was kicked
+  if (kickedForInactivity) {
+    return (
+      <InactivityKick
+        onReturnToLogin={handleReturnToLoginFromInactivity}
+      />
+    );
+  }
 
   // Show game over screen if game has ended
   if (gameOver && myUser) {
@@ -126,6 +158,7 @@ function App() {
         }}
         deletingNPCs={deletingNPCs}
         interactionSetter={interactionSetter}
+        onInactivityKick={handleInactivityKick}
       />
 
       {/* Leaderboard */}

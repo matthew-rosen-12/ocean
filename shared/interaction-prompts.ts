@@ -23,13 +23,16 @@ const PROMPTS = {
     `You are ${npcName}, a historical figure who has just been captured by a ${animal?.toLowerCase() || 'wild animal'} in a nature game. React to being captured by this ${animal?.toLowerCase() || 'creature'} in character. Keep your response under ${PROMPT_CONFIG.MAX_RESPONSE_LENGTH} words and be ${PROMPT_CONFIG.RESPONSE_STYLE}.`,
 
   [InteractionType.NPC_GROUP_DELETED]: (npcName: string, animal?: string) => 
-    `You are ${npcName}, a historical figure who is about to disappear from a nature game after being caught by a ${animal?.toLowerCase() || 'wild animal'}. Give a brief farewell or final statement in character. Keep your response under ${PROMPT_CONFIG.MAX_RESPONSE_LENGTH} words and be ${PROMPT_CONFIG.RESPONSE_STYLE}.`,
+    `You are ${npcName}, a historical figure who just went up in smoke and been deleted. Give a brief farewell or final statement in character. Keep your response under ${PROMPT_CONFIG.MAX_RESPONSE_LENGTH} words and be ${PROMPT_CONFIG.RESPONSE_STYLE}.`,
 
   [InteractionType.RETURNING_NPC_GROUP_RECAPTURED]: (primaryNpcName: string, secondaryNpcName: string, animal?: string) => 
-    `You are ${primaryNpcName}, a historical figure who just recaptured ${secondaryNpcName} in a nature game. React to this capture in character, addressing or mentioning ${secondaryNpcName}. Keep your response under ${PROMPT_CONFIG.MAX_RESPONSE_LENGTH} words and be ${PROMPT_CONFIG.RESPONSE_STYLE}.`,
+    `You are ${primaryNpcName}, a historical figure who just captured ${secondaryNpcName} in a nature game. React to this capture in character, addressing or mentioning ${secondaryNpcName}. Keep your response under ${PROMPT_CONFIG.MAX_RESPONSE_LENGTH} words and be ${PROMPT_CONFIG.RESPONSE_STYLE}.`,
 
   [InteractionType.NPC_GROUP_EMITTED]: (primaryNpcName: string, secondaryNpcName: string, animal?: string) => 
-    `You are ${primaryNpcName}, a historical figure who just got liberated from prison by ${secondaryNpcName} in a nature game. React in character. Keep your response under ${PROMPT_CONFIG.MAX_RESPONSE_LENGTH} words and be ${PROMPT_CONFIG.RESPONSE_STYLE}.`
+    `You are ${primaryNpcName}, a historical figure who just got liberated by ${secondaryNpcName} in a nature game. React in character. Keep your response under ${PROMPT_CONFIG.MAX_RESPONSE_LENGTH} words and be ${PROMPT_CONFIG.RESPONSE_STYLE}.`,
+
+  [InteractionType.THROWN_NPC_GROUP_COLLISION]: (primaryNpcName: string, secondaryNpcName: string, animal?: string) => 
+    `You are ${primaryNpcName}, a historical figure whose just collided with ${secondaryNpcName}. React to this collision and emission in character. Keep your response under ${PROMPT_CONFIG.MAX_RESPONSE_LENGTH} words and be ${PROMPT_CONFIG.RESPONSE_STYLE}.`
 } as const;
 
 // Main function to convert interaction to prompt
@@ -51,6 +54,10 @@ export function interactionToPrompt(interaction: NPCInteraction): string {
     case InteractionType.NPC_GROUP_EMITTED:
       const emittedNpcName = getNPCName(interaction.secondaryNpcFaceFileName);
       return PROMPTS[InteractionType.NPC_GROUP_EMITTED](primaryNpcName, emittedNpcName, animal);
+    
+    case InteractionType.THROWN_NPC_GROUP_COLLISION:
+      const collisionEmittedNpcName = getNPCName(interaction.secondaryNpcFaceFileName);
+      return PROMPTS[InteractionType.THROWN_NPC_GROUP_COLLISION](primaryNpcName, collisionEmittedNpcName, animal);
     
     default:
       // TypeScript exhaustiveness check
@@ -85,6 +92,14 @@ export const createInteraction = {
 
   emitted: (primaryNpcFaceFileName: string, secondaryNpcFaceFileName: string, capturingAnimal?: string): NPCInteraction => ({
     type: InteractionType.NPC_GROUP_EMITTED,
+    timestamp: Date.now(),
+    npcFaceFileName: primaryNpcFaceFileName,
+    secondaryNpcFaceFileName,
+    capturingAnimal
+  }),
+
+  thrownCollision: (primaryNpcFaceFileName: string, secondaryNpcFaceFileName: string, capturingAnimal?: string): NPCInteraction => ({
+    type: InteractionType.THROWN_NPC_GROUP_COLLISION,
     timestamp: Date.now(),
     npcFaceFileName: primaryNpcFaceFileName,
     secondaryNpcFaceFileName,
