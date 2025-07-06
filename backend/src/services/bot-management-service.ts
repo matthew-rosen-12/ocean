@@ -1,4 +1,4 @@
-import { UserInfo, Animal, roomId, userId, NPCPhase, pathData, PathPhase, DIRECTION_OFFSET, ANIMAL_SCALES, NPCGroup } from "shared/types";
+import { UserInfo, roomId, userId, NPCPhase, pathData, PathPhase, DIRECTION_OFFSET, ANIMAL_SCALES, NPCGroup } from "shared/types";
 import { addUserToRoom, getAllUsersInRoom } from "../state/users";
 import { getNPCGroupsfromMemory, setNPCGroupsInMemory } from "../state/npc-groups";
 import { getpathsfromMemory, setPathsInMemory } from "../state/paths";
@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from "uuid";
 import { getPathPosition } from "./path-service";
 import { setTimeout } from "timers";
 import { getTerrainConfig } from "../state/terrain";
+import { getUniqueAnimalForRoom } from "../initialization/user-info";
 
 interface BotSpawnTimer {
   roomName: roomId;
@@ -35,9 +36,6 @@ export class BotManagementService {
   private static readonly BOT_SPAWN_INTERVAL = 5000; // 5 seconds
   private static readonly INITIAL_SPAWN_DELAY = 5000; // 5 seconds after room creation
   private static readonly MAX_SPAWN_DURATION = 15000; // 30 seconds total
-  
-  // Available animals for bots - use all animals from the enum
-  private static readonly BOT_ANIMALS = Object.values(Animal);
 
   /**
    * Start bot spawning process for a room
@@ -125,7 +123,13 @@ export class BotManagementService {
    */
   private static createBot(roomName: roomId): UserInfo {
     const botId = `bot-${uuidv4()}`;
-    const randomAnimal = this.BOT_ANIMALS[Math.floor(Math.random() * this.BOT_ANIMALS.length)];
+    
+    // Get all animals already used in the room (both users and bots)
+    const existingUsers = getAllUsersInRoom(roomName);
+    const usedAnimals = Array.from(existingUsers.values()).map(user => user.animal);
+    
+    // Get unique animal that doesn't conflict with existing users/bots
+    const uniqueAnimal = getUniqueAnimalForRoom(usedAnimals);
     
     // Get terrain configuration for proper boundary checking
     const terrainConfig = getTerrainConfig(roomName);
@@ -140,7 +144,7 @@ export class BotManagementService {
 
     const bot: UserInfo = {
       id: botId as userId,
-      animal: randomAnimal,
+      animal: uniqueAnimal,
       room: roomName,
       position: position,
       direction: { x: 0, y: 0 },

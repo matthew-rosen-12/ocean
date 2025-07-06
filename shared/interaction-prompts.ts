@@ -7,7 +7,7 @@ export { InteractionType } from './interaction-types.js';
 // Configuration for prompt settings
 export const PROMPT_CONFIG = {
   MAX_RESPONSE_LENGTH: 50, // Maximum words in response
-   RESPONSE_STYLE: 'conversational and brief'
+   RESPONSE_STYLE: 'witty, conversational and brief'
 } as const;
 
 // Helper function to get NPC name from filename

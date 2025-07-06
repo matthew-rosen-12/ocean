@@ -10,6 +10,7 @@ const uuid_1 = require("uuid");
 const path_service_1 = require("./path-service");
 const timers_1 = require("timers");
 const terrain_1 = require("../state/terrain");
+const user_info_1 = require("../initialization/user-info");
 /**
  * Manages bot users - creation, spawning, and lifecycle
  */
@@ -87,7 +88,11 @@ class BotManagementService {
      */
     static createBot(roomName) {
         const botId = `bot-${(0, uuid_1.v4)()}`;
-        const randomAnimal = this.BOT_ANIMALS[Math.floor(Math.random() * this.BOT_ANIMALS.length)];
+        // Get all animals already used in the room (both users and bots)
+        const existingUsers = (0, users_1.getAllUsersInRoom)(roomName);
+        const usedAnimals = Array.from(existingUsers.values()).map(user => user.animal);
+        // Get unique animal that doesn't conflict with existing users/bots
+        const uniqueAnimal = (0, user_info_1.getUniqueAnimalForRoom)(usedAnimals);
         // Get terrain configuration for proper boundary checking
         const terrainConfig = (0, terrain_1.getTerrainConfig)(roomName);
         const boundaries = terrainConfig.boundaries;
@@ -99,7 +104,7 @@ class BotManagementService {
         };
         const bot = {
             id: botId,
-            animal: randomAnimal,
+            animal: uniqueAnimal,
             room: roomName,
             position: position,
             direction: { x: 0, y: 0 },
@@ -608,5 +613,3 @@ BotManagementService.MAX_USERS_PER_ROOM = 8;
 BotManagementService.BOT_SPAWN_INTERVAL = 5000; // 5 seconds
 BotManagementService.INITIAL_SPAWN_DELAY = 5000; // 5 seconds after room creation
 BotManagementService.MAX_SPAWN_DURATION = 15000; // 30 seconds total
-// Available animals for bots - use all animals from the enum
-BotManagementService.BOT_ANIMALS = Object.values(types_1.Animal);
