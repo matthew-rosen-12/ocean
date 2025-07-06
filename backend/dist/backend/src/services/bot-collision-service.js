@@ -80,7 +80,6 @@ class BotCollisionService {
                 const collided = (0, animal_dimensions_1.checkRotatedBoundingBoxCollision)({ x: botUser.position.x, y: botUser.position.y }, { x: npcPosition.x, y: npcPosition.y }, captureWidth, captureHeight, adjustedUserRotation, captureWidth, // NPC uses same reduced dimensions
                 captureHeight, adjustedNpcRotation);
                 if (collided) {
-                    console.log("collision detected with bot: ", botUser.nickname, " and npc: ", npcGroup.id);
                     this.handleBotNPCCollision(roomName, botUser, npcGroup);
                     collisionDetected = true;
                     break;
@@ -109,7 +108,6 @@ class BotCollisionService {
         const paths = (0, paths_1.getpathsfromMemory)(roomName);
         if (paths && paths.has(capturedNPCGroup.id)) {
             (0, paths_1.deletePathInMemory)(roomName, capturedNPCGroup.id);
-            console.log("deleting path of captured group");
         }
         // Get bot's existing captured group (if any)
         let botNpcGroup = npcGroups.getByUserId(botUser.id);

@@ -72,7 +72,6 @@ class BotManagementService {
         // Broadcast bot join to all clients in room
         console.log(`Broadcasting bot join for ${bot.nickname} to room ${roomName}`);
         (0, typed_socket_1.emitToRoom)(roomName, "user-joined", { user: bot });
-        console.log(`Bot ${bot.nickname} spawned in room ${roomName}. Total users: ${currentUsers.size + 1}`);
         // Schedule next spawn
         const timerData = this.botSpawnTimers.get(roomName);
         if (timerData) {

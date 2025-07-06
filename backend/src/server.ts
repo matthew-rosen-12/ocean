@@ -161,7 +161,6 @@ io.on("connection", async (socket) => {
         // if pathData already exists, update it
         const existingPath = activepaths.get(pathData.npcGroupId);
         if (existingPath) {
-          console.log(`Replacing existing path for ${pathData.npcGroupId.slice(0,8)}: ${existingPath.pathPhase} -> ${pathData.pathPhase}`);
           activepaths.delete(pathData.npcGroupId);
         }
         activepaths.set(pathData.npcGroupId, pathData);

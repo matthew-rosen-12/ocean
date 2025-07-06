@@ -94,7 +94,6 @@ export class BotCollisionService {
         );
         
         if (collided) {
-          console.log("collision detected with bot: ", botUser.nickname, " and npc: ", npcGroup.id)
           this.handleBotNPCCollision(roomName, botUser, npcGroup);
           collisionDetected = true;
           break;
@@ -127,7 +126,6 @@ export class BotCollisionService {
     const paths = getpathsfromMemory(roomName);
     if (paths && paths.has(capturedNPCGroup.id)) {
       deletePathInMemory(roomName, capturedNPCGroup.id);
-      console.log("deleting path of captured group")
     }
 
     // Get bot's existing captured group (if any)

@@ -30,32 +30,42 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
   const [isLoading, setIsLoading] = useState(false);
   const leaderboardRef = useRef<HTMLDivElement>(null);
 
-  // Function to call AI API
-  const callAIAPI = async (interaction: NPCInteraction) => {
+  // Function to call AI API - non-blocking
+  const callAIAPI = (interaction: NPCInteraction) => {
     setIsLoading(true);
     setAiResponse(null);
     
-    try {
-      const response = await fetch('http://localhost:3001/api/ai-chat/generate-from-interaction', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ interaction }),
-      });
-      
+    console.log('Sending interaction:', interaction);
+    
+    // Make API call without blocking the UI
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+    
+    fetch('http://localhost:3001/api/ai-chat/generate-from-interaction', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ interaction }),
+      signal: controller.signal,
+    })
+    .then(response => {
       if (!response.ok) {
         throw new Error('Failed to get AI response');
       }
-      
-      const data = await response.json();
+      return response.json();
+    })
+    .then(data => {
       setAiResponse(data.response);
-    } catch (error) {
+    })
+    .catch(error => {
       console.error('Error calling AI API:', error);
       setAiResponse('Error generating response');
-    } finally {
+    })
+    .finally(() => {
+      clearTimeout(timeoutId);
       setIsLoading(false);
-    }
+    });
   };
 
   // Call AI API when latestInteraction changes

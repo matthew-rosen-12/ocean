@@ -1192,9 +1192,7 @@ export function checkAndDeleteFleeingNPCs(room: string): void {
       // Check if NPC is far outside terrain boundaries
       const outsideDistance = calculateDistanceOutsideTerrain(currentPosition, terrainConfig);
       
-      if (outsideDistance >= DELETION_DISTANCE) {
-        console.log(`Deleting NPC ${npcGroup.id} (${pathData.pathPhase}) - distance outside terrain: ${outsideDistance}`);
-        
+      if (outsideDistance >= DELETION_DISTANCE) {        
         // Delete the NPC group from memory
         allNPCGroups.deleteByNpcGroupId(npcGroup.id);
         

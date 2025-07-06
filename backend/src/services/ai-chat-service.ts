@@ -5,15 +5,17 @@ dotenv.config();
 
 const apiKey = process.env.GOOGLE_AI_API_KEY;
 if (!apiKey) {
+  console.error('GOOGLE_AI_API_KEY is not set in environment variables');
   throw new Error('GOOGLE_AI_API_KEY is not set in environment variables');
+  // Don't throw error to prevent server crash - handle gracefully in generateResponse
 }
 
 const genAI = new GoogleGenerativeAI(apiKey);
 
 export class AIChatService {
-  // Use the most generous free tier model - Gemini 2.0 Flash (1M TPM, 15 RPM, 200 RPD)
+  // Use Gemini 1.0 Pro for maximum concurrent users (15 RPM vs 2 RPM)
   private model = genAI.getGenerativeModel({ 
-    model: 'gemini-2.0-flash',
+    model: 'gemini-1.5-flash',
     generationConfig: {
       maxOutputTokens: 100, // Limit response length (~75 words)
       temperature: 0.7,     // Balanced creativity
@@ -23,9 +25,12 @@ export class AIChatService {
   });
 
   async generateResponse(prompt: string): Promise<string> {
+    if (!apiKey) {
+      throw new Error('GOOGLE_AI_API_KEY is not set in environment variables');
+    }    
     try {
       const result = await this.model.generateContent(prompt);
-      const response = await result.response;
+      const response = result.response;
       return response.text();
     } catch (error) {
       console.error('Error generating AI response:', error);
