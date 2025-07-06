@@ -34,6 +34,7 @@ const npc_group_service_1 = require("./services/npc-group-service");
 const typed_socket_1 = require("./typed-socket");
 const game_timer_1 = require("./game-timer");
 const path_service_1 = require("./services/path-service");
+const interaction_service_1 = require("./services/interaction-service");
 // Initialize game ticker
 (0, game_ticker_1.getGameTicker)();
 const app = (0, express_1.default)();
@@ -185,6 +186,19 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
             }
             catch (error) {
                 console.error("Error handling user update:", error);
+            }
+        }));
+        // Handle client-detected interactions
+        typedSocket.on("interaction-detected", (_a) => __awaiter(void 0, [_a], void 0, function* ({ interaction }) {
+            try {
+                const room = typedSocket.data.room;
+                if (room) {
+                    // Process the interaction and send it to all users with AI response
+                    yield interaction_service_1.InteractionService.processClientDetectedInteraction(room, interaction);
+                }
+            }
+            catch (error) {
+                console.error("Error handling client-detected interaction:", error);
             }
         }));
         // Handle disconnection

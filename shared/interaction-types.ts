@@ -4,7 +4,9 @@ export enum InteractionType {
   RETURNING_NPC_GROUP_RECAPTURED = 'RETURNING_NPC_GROUP_RECAPTURED', 
   NPC_GROUP_EMITTED = 'NPC_GROUP_EMITTED',
   NPC_GROUP_DELETED = 'NPC_GROUP_DELETED',
-  THROWN_NPC_GROUP_COLLISION = 'THROWN_NPC_GROUP_COLLISION'
+  THROWN_NPC_GROUP_COLLISION = 'THROWN_NPC_GROUP_COLLISION',
+  NPC_GROUPS_BOUNCED = 'NPC_GROUPS_BOUNCED',
+  IDLE_NPC_CAPTURED_THROWN = 'IDLE_NPC_CAPTURED_THROWN'
 }
 
 // Base interaction interface
@@ -40,10 +42,22 @@ export interface ThrownNPCGroupCollisionInteraction extends BaseInteraction {
   secondaryNpcFaceFileName: string; // The face file of the NPC group that gets emitted
 }
 
+export interface NPCGroupsBouncedInteraction extends BaseInteraction {
+  type: InteractionType.NPC_GROUPS_BOUNCED;
+  secondaryNpcFaceFileName: string; // The NPC that bounced off
+}
+
+export interface IdleNPCCapturedThrownInteraction extends BaseInteraction {
+  type: InteractionType.IDLE_NPC_CAPTURED_THROWN;
+  secondaryNpcFaceFileName: string; // The thrown/returning NPC that was captured
+}
+
 // Union type for all interactions
 export type NPCInteraction = 
   | CapturedNPCGroupInteraction
   | NPCGroupDeletedInteraction
   | ReturningNPCGroupRecapturedInteraction
   | NPCGroupEmittedInteraction
-  | ThrownNPCGroupCollisionInteraction;
+  | ThrownNPCGroupCollisionInteraction
+  | NPCGroupsBouncedInteraction
+  | IdleNPCCapturedThrownInteraction;

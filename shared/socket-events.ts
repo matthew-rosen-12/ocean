@@ -22,6 +22,7 @@ export interface ServerToClientEvents {
     "npc-group-deleted": (data: { npcGroupId: npcGroupId; currentPosition: { x: number; y: number; z: number }; captorId?: userId; pathPhase: PathPhase; faceFileName?: fileName }) => void;
     "npc-group-spawned": (data: { npcGroup: NPCGroup; spawnPosition: { x: number; y: number; z: number } }) => void;
     "npc-interaction": (data: { interaction: NPCInteraction }) => void;
+    "npc-interaction-with-response": (data: { interaction: NPCInteraction; aiResponse: string }) => void;
     "times-up": (data: { finalScores: FinalScores }) => void;
   }
   
@@ -31,4 +32,5 @@ export interface ServerToClientEvents {
     "delete-path": (data: { pathData: pathData }) => void;
     "update-user": (data: { user: UserInfo }) => void;
     "update-npc-group": (data: { npcGroup: NPCGroup }) => void;
+    "interaction-detected": (data: { interaction: NPCInteraction }) => void;
   }

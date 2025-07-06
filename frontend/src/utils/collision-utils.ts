@@ -94,8 +94,7 @@ export function handleNPCGroupReflectionForUser(
   targetUser: UserInfo,
   animalWidth: number,
   setPaths: (paths: any) => void,
-  setNpcGroups: (npcGroups: any) => void,
-  interactionSetter?: ((interaction: NPCInteraction) => void) | null
+  setNpcGroups: (npcGroups: any) => void
 ) {
   if ((pathData.pathPhase !== PathPhase.THROWN && pathData.pathPhase !== PathPhase.RETURNING)) return;
 
@@ -226,15 +225,18 @@ export function handleNPCGroupReflectionForUser(
   }) : null;
 
   if (emittedNPCs.length > 0) {
-    // Track emission interaction
-    if (interactionSetter) {
-      const interaction = createInteraction.emitted(
-        capturedGroup.faceFileName!, 
-        npcGroup.faceFileName!,
-        targetUser.animal
-      );
-      interactionSetter(interaction);
+    // Send emission interaction to backend
+    const interaction = createInteraction.emitted(
+      capturedGroup.faceFileName!, 
+      npcGroup.faceFileName!,
+      targetUser.animal
+    );
+    
+    const currentTypedSocket = typedSocket();
+    if (currentTypedSocket) {
+      currentTypedSocket.emit("interaction-detected", { interaction });
     }
+  } else {
 
     // Calculate current position of the captured group (not the stored position)
     const currentNPCGroupPosition = calculateNPCGroupPosition(targetUser, animalWidth, capturedGroupScale);

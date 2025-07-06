@@ -64,6 +64,10 @@ export interface ServerToClientEvents {
     "npc-interaction": (data: {
         interaction: NPCInteraction;
     }) => void;
+    "npc-interaction-with-response": (data: {
+        interaction: NPCInteraction;
+        aiResponse: string;
+    }) => void;
     "times-up": (data: {
         finalScores: FinalScores;
     }) => void;
@@ -83,5 +87,8 @@ export interface ClientToServerEvents {
     }) => void;
     "update-npc-group": (data: {
         npcGroup: NPCGroup;
+    }) => void;
+    "interaction-detected": (data: {
+        interaction: NPCInteraction;
     }) => void;
 }

@@ -15,7 +15,6 @@ interface BotCollisionManagerProps {
     npcGroups: NPCGroupsBiMap | ((prev: NPCGroupsBiMap) => NPCGroupsBiMap)
   ) => void;
   animalDimensions: { [animal: string]: { width: number; height: number } };
-  interactionSetter?: ((interaction: NPCInteraction) => void) | null;
 }
 
 // This component needs to be inside the Canvas to use useFrame
@@ -27,7 +26,6 @@ const BotCollisionManager: React.FC<BotCollisionManagerProps> = ({
   setPaths,
   setNpcGroups,
   animalDimensions,
-  interactionSetter,
 }) => {
   // Use bot collision detection hook
   useBotCollisionDetection({

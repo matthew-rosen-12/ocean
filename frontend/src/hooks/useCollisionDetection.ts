@@ -17,7 +17,6 @@ interface UseCollisionDetectionProps {
     value: NPCGroupsBiMap | ((prev: NPCGroupsBiMap) => NPCGroupsBiMap)
   ) => void;
   animalDimensions: { [animal: string]: { width: number; height: number } };
-  interactionSetter?: ((interaction: NPCInteraction) => void) | null;
 }
 
 export function useCollisionDetection({
@@ -27,7 +26,6 @@ export function useCollisionDetection({
   setPaths,
   setNpcGroups,
   animalDimensions,
-  interactionSetter,
 }: UseCollisionDetectionProps) {
   
   const handleNPCGroupCollision = useCallback(
@@ -35,11 +33,14 @@ export function useCollisionDetection({
       // Get existing user NPCs before merging
       let userNpcGroup = npcGroups.getByUserId(myUser.id);
       
-      // Track interaction for local user (only for idle NPCs, thrown/returning handled in GuestLogin)
-      if (localUser && interactionSetter && !capturedNPCGroup.captorId) {
-        // Captured NPC group without captor
+      // Send interaction to backend for local user (only for idle NPCs, thrown/returning handled server-side)
+      if (localUser && !capturedNPCGroup.captorId) {
+        // Captured NPC group without captor (idle/fleeing NPC)
         const interaction = createInteraction.captured(capturedNPCGroup.faceFileName!, myUser.animal);
-        interactionSetter(interaction);
+        const currentTypedSocket = typedSocket();
+        if (currentTypedSocket) {
+          currentTypedSocket.emit("interaction-detected", { interaction });
+        }
       }
 
       // If this NPC is currently on a path, remove the path
@@ -94,7 +95,7 @@ export function useCollisionDetection({
         return newNpcGroups;
       });
     },
-    [paths, setPaths, npcGroups, myUser.id, myUser.position, setNpcGroups, interactionSetter]
+    [paths, setPaths, npcGroups, myUser.id, myUser.position, setNpcGroups]
   );
 
   // Function to check for collisions with NPCs

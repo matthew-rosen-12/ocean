@@ -37,12 +37,14 @@ function App() {
   const [winnerScreenshot, setWinnerScreenshot] = useState<string>("");
   const [deletingNPCs, setDeletingNPCs] = useState<Set<string>>(new Set());
   const [latestInteraction, setLatestInteraction] = useState<NPCInteraction | null>(null);
+  const [latestAiResponse, setLatestAiResponse] = useState<string | null>(null);
   const [kickedForInactivity, setKickedForInactivity] = useState(false);
   
   // Create a stable interaction setter function (throttled to 30 seconds)
   const interactionSetter = useCallback(
-    throttle((interaction: NPCInteraction) => {
+    throttle((interaction: NPCInteraction, aiResponse: string) => {
       setLatestInteraction(interaction);
+      setLatestAiResponse(aiResponse);
     }, 10000, { 
       leading: true, 
       trailing: false 
@@ -74,6 +76,7 @@ function App() {
     setWinnerScreenshot("");
     setDeletingNPCs(new Set());
     setLatestInteraction(null);
+    setLatestAiResponse(null);
   }, []);
 
   // Preload fonts on app initialization
@@ -100,6 +103,7 @@ function App() {
     setWinnerScreenshot("");
     setDeletingNPCs(new Set());
     setLatestInteraction(null);
+    setLatestAiResponse(null);
   };
 
   // Show inactivity kick screen if player was kicked
@@ -157,7 +161,6 @@ function App() {
           setGameOver(true);
         }}
         deletingNPCs={deletingNPCs}
-        interactionSetter={interactionSetter}
         onInactivityKick={handleInactivityKick}
       />
 
@@ -170,6 +173,7 @@ function App() {
         gameDuration={gameDuration}
         onInteractionUpdate={handleInteractionUpdate}
         latestInteraction={latestInteraction}
+        latestAiResponse={latestAiResponse}
       />
     </div>
   );

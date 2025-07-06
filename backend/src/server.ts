@@ -21,6 +21,7 @@ import { updateNPCGroupInRoom } from "./services/npc-group-service";
 import { TypedSocket } from "./typed-socket";
 import { startGameTimer, cleanupGameTimer, getGameStartTime, GAME_DURATION } from "./game-timer";
 import { deletePathInRoom } from "./services/path-service";
+import { InteractionService } from "./services/interaction-service";
 
 // Initialize game ticker
 getGameTicker();
@@ -202,6 +203,19 @@ io.on("connection", async (socket) => {
         }
       } catch (error) {
         console.error("Error handling user update:", error);
+      }
+    });
+
+    // Handle client-detected interactions
+    typedSocket.on("interaction-detected", async ({ interaction }) => {
+      try {
+        const room = typedSocket.data.room;
+        if (room) {
+          // Process the interaction and send it to all users with AI response
+          await InteractionService.processClientDetectedInteraction(room, interaction);
+        }
+      } catch (error) {
+        console.error("Error handling client-detected interaction:", error);
       }
     });
 

@@ -51,7 +51,7 @@ interface Props {
   setGameDuration: React.Dispatch<React.SetStateAction<number | undefined>>;
   deletingNPCs: Set<string>;
   setDeletingNPCs: React.Dispatch<React.SetStateAction<Set<string>>>;
-  interactionSetter: ((interaction: NPCInteraction) => void) | null;
+  interactionSetter: ((interaction: NPCInteraction, aiResponse: string) => void) | null;
   // Note: setGameOver, setFinalScores, and setWinnerScreenshot are now handled by Scene component
 }
 
@@ -412,11 +412,11 @@ export default function GuestLogin({
         }, 2000); // 2 second animation duration
       });
 
-      // Handle NPC interactions from server
-      typedSocket.on("npc-interaction", ({ interaction }: { interaction: NPCInteraction }) => {
+      // Handle NPC interactions with AI responses from server
+      typedSocket.on("npc-interaction-with-response", ({ interaction, aiResponse }: { interaction: NPCInteraction; aiResponse: string }) => {
         if (interactionSetter) {
-          console.log('Received server-side interaction:', interaction);
-          interactionSetter(interaction);
+          console.log('Received server-side interaction with AI response:', interaction, aiResponse);
+          interactionSetter(interaction, aiResponse);
         }
       });
 

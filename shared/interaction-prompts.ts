@@ -32,7 +32,13 @@ const PROMPTS = {
     `You are ${primaryNpcName}, a historical figure who just got liberated by ${secondaryNpcName} in a nature game. React in character. Keep your response under ${PROMPT_CONFIG.MAX_RESPONSE_LENGTH} words and be ${PROMPT_CONFIG.RESPONSE_STYLE}.`,
 
   [InteractionType.THROWN_NPC_GROUP_COLLISION]: (primaryNpcName: string, secondaryNpcName: string, animal?: string) => 
-    `You are ${primaryNpcName}, a historical figure whose just collided with ${secondaryNpcName}. React to this collision and emission in character. Keep your response under ${PROMPT_CONFIG.MAX_RESPONSE_LENGTH} words and be ${PROMPT_CONFIG.RESPONSE_STYLE}.`
+    `You are ${primaryNpcName}, a historical figure whose just collided with ${secondaryNpcName}. React to this collision and emission in character. Keep your response under ${PROMPT_CONFIG.MAX_RESPONSE_LENGTH} words and be ${PROMPT_CONFIG.RESPONSE_STYLE}.`,
+
+  [InteractionType.NPC_GROUPS_BOUNCED]: (primaryNpcName: string, secondaryNpcName: string, animal?: string) => 
+    `You are ${primaryNpcName}, a historical figure who just bounced off ${secondaryNpcName} without either of you being captured. React to this brief collision in character. Keep your response under ${PROMPT_CONFIG.MAX_RESPONSE_LENGTH} words and be ${PROMPT_CONFIG.RESPONSE_STYLE}.`,
+
+  [InteractionType.IDLE_NPC_CAPTURED_THROWN]: (primaryNpcName: string, secondaryNpcName: string, animal?: string) => 
+    `You are ${primaryNpcName}, a historical figure who just intercepted and captured ${secondaryNpcName} while they were flying through the air. React to this unexpected catch in character. Keep your response under ${PROMPT_CONFIG.MAX_RESPONSE_LENGTH} words and be ${PROMPT_CONFIG.RESPONSE_STYLE}.`
 } as const;
 
 // Main function to convert interaction to prompt
@@ -58,6 +64,14 @@ export function interactionToPrompt(interaction: NPCInteraction): string {
     case InteractionType.THROWN_NPC_GROUP_COLLISION:
       const collisionEmittedNpcName = getNPCName(interaction.secondaryNpcFaceFileName);
       return PROMPTS[InteractionType.THROWN_NPC_GROUP_COLLISION](primaryNpcName, collisionEmittedNpcName, animal);
+    
+    case InteractionType.NPC_GROUPS_BOUNCED:
+      const bouncedNpcName = getNPCName(interaction.secondaryNpcFaceFileName);
+      return PROMPTS[InteractionType.NPC_GROUPS_BOUNCED](primaryNpcName, bouncedNpcName, animal);
+    
+    case InteractionType.IDLE_NPC_CAPTURED_THROWN:
+      const capturedThrownNpcName = getNPCName(interaction.secondaryNpcFaceFileName);
+      return PROMPTS[InteractionType.IDLE_NPC_CAPTURED_THROWN](primaryNpcName, capturedThrownNpcName, animal);
     
     default:
       // TypeScript exhaustiveness check
@@ -100,6 +114,22 @@ export const createInteraction = {
 
   thrownCollision: (primaryNpcFaceFileName: string, secondaryNpcFaceFileName: string, capturingAnimal?: string): NPCInteraction => ({
     type: InteractionType.THROWN_NPC_GROUP_COLLISION,
+    timestamp: Date.now(),
+    npcFaceFileName: primaryNpcFaceFileName,
+    secondaryNpcFaceFileName,
+    capturingAnimal
+  }),
+
+  bounced: (primaryNpcFaceFileName: string, secondaryNpcFaceFileName: string, capturingAnimal?: string): NPCInteraction => ({
+    type: InteractionType.NPC_GROUPS_BOUNCED,
+    timestamp: Date.now(),
+    npcFaceFileName: primaryNpcFaceFileName,
+    secondaryNpcFaceFileName,
+    capturingAnimal
+  }),
+
+  idleCapturedThrown: (primaryNpcFaceFileName: string, secondaryNpcFaceFileName: string, capturingAnimal?: string): NPCInteraction => ({
+    type: InteractionType.IDLE_NPC_CAPTURED_THROWN,
     timestamp: Date.now(),
     npcFaceFileName: primaryNpcFaceFileName,
     secondaryNpcFaceFileName,

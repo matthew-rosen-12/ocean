@@ -43,7 +43,6 @@ interface CapturedNPCGroupGraphicProps {
   terrainBoundaries?: TerrainBoundaries; // Add terrain boundaries for wrapping
   users: Map<string, UserInfo>; // All users for getting group positions
   throwChargeCount: number | undefined;
-  interactionSetter?: ((interaction: NPCInteraction) => void) | null;
 }
 
 const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
@@ -57,7 +56,6 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
   isLocalUser = false, // Default to false for non-local users
   users: _users, // Not used in this component anymore (handled by BotCollisionManager)
   throwChargeCount,
-  interactionSetter,
 }) => {
   
   // Calculate logarithmic scale factor based on number of NPCs
@@ -123,7 +121,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     const npcGroupRadius = scaleFactor;
     const distance = npcGroupPosition ? npcGroupPosition.distanceTo(currentPathPosition) : Infinity;
     if (distance < npcGroupRadius && group.fileNames.length > 0) {
-      handleNPCGroupReflectionForUser(npcGroup, pathData, currentPathPosition, group, user, animalWidth, setPaths, setNpcGroups, isLocalUser ? interactionSetter : null);
+      handleNPCGroupReflectionForUser(npcGroup, pathData, currentPathPosition, group, user, animalWidth, setPaths, setNpcGroups);
       return true;
     }
 

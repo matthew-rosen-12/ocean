@@ -55,7 +55,6 @@ interface Props {
   onScreenshotCapture?: (screenshot: string) => void;
   onGameOver?: (finalScores: FinalScores) => void;
   deletingNPCs: Set<string>;
-  interactionSetter: ((interaction: NPCInteraction) => void) | null;
   onInactivityKick?: () => void;
 }
 
@@ -70,7 +69,6 @@ export default function Scene({
   onScreenshotCapture,
   onGameOver,
   deletingNPCs,
-  interactionSetter,
   onInactivityKick,
 }: Props) {
   const initialPosition = new THREE.Vector3(
@@ -146,7 +144,6 @@ export default function Scene({
     setPaths,
     setNpcGroups,
     animalDimensions,
-    interactionSetter,
   });
 
   // Use position broadcast hook
@@ -324,7 +321,6 @@ export default function Scene({
               setNpcGroups={setNpcGroups}
               throwChargeCount={npcGroup.captorId === myUser.id ? currentThrowCount : undefined}
               deletingNPCs={deletingNPCs}
-              interactionSetter={interactionSetter}
             />
           ))}
 
@@ -337,7 +333,6 @@ export default function Scene({
           setPaths={setPaths}
           setNpcGroups={setNpcGroups}
           animalDimensions={animalDimensions}
-          interactionSetter={interactionSetter}
         />
 
       </Canvas>

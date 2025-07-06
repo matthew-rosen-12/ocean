@@ -11,6 +11,7 @@ interface LeaderboardProps {
   gameDuration?: number;
   onInteractionUpdate?: (setter: (interaction: NPCInteraction) => void) => void;
   latestInteraction: NPCInteraction | null;
+  latestAiResponse: string | null;
 }
 
 interface Position {
@@ -23,7 +24,7 @@ interface Size {
   height: number;
 }
 
-export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime, gameDuration, onInteractionUpdate, latestInteraction }: LeaderboardProps) {
+export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime, gameDuration, onInteractionUpdate, latestInteraction, latestAiResponse }: LeaderboardProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [position, setPosition] = useState<Position>({ x: 0, y: 20 });
   const [size, setSize] = useState<Size>({ width: 250, height: 400 });
@@ -33,76 +34,36 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
   const [initialPositionSet, setInitialPositionSet] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [showHi, setShowHi] = useState(true);
-  const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [messageHistory, setMessageHistory] = useState<{interaction: NPCInteraction, response: string}[]>([]);
   const [hasNewMessage, setHasNewMessage] = useState(false);
   const leaderboardRef = useRef<HTMLDivElement>(null);
   const messageContainerRef = useRef<HTMLDivElement>(null);
 
-  // Function to call AI API - non-blocking
-  const callAIAPI = (interaction: NPCInteraction, previousInteraction?: NPCInteraction, previousResponse?: string) => {
+  // Function to handle new interaction with AI response
+  const handleNewInteraction = (interaction: NPCInteraction, aiResponse: string, previousInteraction?: NPCInteraction, previousResponse?: string) => {
     // Save previous interaction and response to history
     if (previousInteraction && previousResponse) {
       setMessageHistory(prev => [...prev, { interaction: previousInteraction, response: previousResponse }]);
     }
     
-    setIsLoading(true);
-    setAiResponse(null);
-    
-    console.log('Sending interaction:', interaction);
-    
-    // Make API call without blocking the UI
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
-    
-    fetch('http://localhost:3001/api/ai-chat/generate-from-interaction', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ interaction }),
-      signal: controller.signal,
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Failed to get AI response');
-      }
-      return response.json();
-    })
-    .then(data => {
-      setAiResponse(data.response);
-    })
-    .catch(error => {
-      console.error('Error calling AI API:', error);
-      setAiResponse('Error generating response');
-    })
-    .finally(() => {
-      clearTimeout(timeoutId);
-      setIsLoading(false);
-    });
+    console.log('Received interaction with AI response:', interaction, aiResponse);
   };
 
   // Track previous interaction and response
   const [previousInteraction, setPreviousInteraction] = useState<NPCInteraction | null>(null);
   const [previousResponse, setPreviousResponse] = useState<string | null>(null);
 
-  // Call AI API when latestInteraction changes
+  // Handle new interaction when latestInteraction changes
   useEffect(() => {
-    if (latestInteraction) {
-      callAIAPI(latestInteraction, previousInteraction || undefined, previousResponse || undefined);
+    if (latestInteraction && latestAiResponse) {
+      handleNewInteraction(latestInteraction, latestAiResponse, previousInteraction || undefined, previousResponse || undefined);
       
       // Update previous interaction tracking
       setPreviousInteraction(latestInteraction);
+      setPreviousResponse(latestAiResponse);
     }
-  }, [latestInteraction]);
-
-  // Update previous response when AI response changes
-  useEffect(() => {
-    if (aiResponse && !isLoading) {
-      setPreviousResponse(aiResponse);
-    }
-  }, [aiResponse, isLoading]);
+  }, [latestInteraction, latestAiResponse]);
 
   // Check if user is scrolled to bottom (within 5px tolerance)
   const isScrolledToBottom = () => {
@@ -132,7 +93,7 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
         setHasNewMessage(true);
       }
     }
-  }, [latestInteraction, aiResponse]);
+  }, [latestInteraction, latestAiResponse]);
 
   // Scroll to bottom function for the new message indicator
   const scrollToBottom = () => {
@@ -470,7 +431,7 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
                     )}
                     <div className="text-sm font-bold text-gray-800 break-words">
                       {latestInteraction ? 
-                        (isLoading ? 'Thinking...' : aiResponse || 'Processing...') : 
+                        (latestAiResponse || 'Processing...') : 
                         `${showHi ? 'Hi' : 'Bye'} ${myUser?.animal || 'Unknown'}`
                       }
                     </div>
