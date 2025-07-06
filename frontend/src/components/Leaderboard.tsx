@@ -36,6 +36,7 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [messageHistory, setMessageHistory] = useState<{interaction: NPCInteraction, response: string}[]>([]);
+  const [hasNewMessage, setHasNewMessage] = useState(false);
   const leaderboardRef = useRef<HTMLDivElement>(null);
   const messageContainerRef = useRef<HTMLDivElement>(null);
 
@@ -103,12 +104,43 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
     }
   }, [aiResponse, isLoading]);
 
-  // Auto-scroll to bottom when new messages arrive or current message updates
+  // Check if user is scrolled to bottom (within 5px tolerance)
+  const isScrolledToBottom = () => {
+    if (!messageContainerRef.current) return true;
+    const container = messageContainerRef.current;
+    return container.scrollHeight - container.scrollTop - container.clientHeight < 5;
+  };
+
+  // Handle scroll events to update new message indicator
+  const handleScroll = () => {
+    if (isScrolledToBottom()) {
+      setHasNewMessage(false);
+    }
+  };
+
+  // Smart auto-scroll: only scroll if user was already at bottom, otherwise show indicator
   useEffect(() => {
     if (messageContainerRef.current) {
-      messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
+      const wasAtBottom = isScrolledToBottom();
+      
+      if (wasAtBottom) {
+        // User was at bottom, auto-scroll to new message
+        messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
+        setHasNewMessage(false);
+      } else {
+        // User was scrolled up, show new message indicator
+        setHasNewMessage(true);
+      }
     }
-  }, [latestInteraction, aiResponse, isLoading]);
+  }, [latestInteraction, aiResponse]);
+
+  // Scroll to bottom function for the new message indicator
+  const scrollToBottom = () => {
+    if (messageContainerRef.current) {
+      messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
+      setHasNewMessage(false);
+    }
+  };
 
   // Helper function to create text outline style for a user
   const getNicknameStyle = (user: UserInfo) => {
@@ -375,11 +407,13 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
       {/* Messages - show if not collapsed and (has captured NPC OR has interactions) */}
       {!isCollapsed && (hasCapturedNpc || latestInteraction || messageHistory.length > 0) && (
         <div className="border-t border-gray-200">
-          <div 
-            ref={messageContainerRef}
-            className="max-h-40 overflow-y-auto"
-            style={{ maxHeight: `${Math.min(160, size.height - 200)}px` }}
-          >
+          <div className="relative">
+            <div 
+              ref={messageContainerRef}
+              className="max-h-40 overflow-y-auto"
+              style={{ maxHeight: `${Math.min(160, size.height - 200)}px` }}
+              onScroll={handleScroll}
+            >
             {/* Message History */}
             {messageHistory.map((entry, index) => (
               <div key={`${entry.interaction.timestamp}-${index}`} className="border-b border-gray-100 p-3">
@@ -442,6 +476,20 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+            </div>
+            
+            {/* New Message Indicator */}
+            {hasNewMessage && (
+              <div className="absolute bottom-2 right-2">
+                <button
+                  onClick={scrollToBottom}
+                  className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded-full shadow-lg transition-colors flex items-center space-x-1"
+                >
+                  <span>New</span>
+                  <span>↓</span>
+                </button>
               </div>
             )}
           </div>
