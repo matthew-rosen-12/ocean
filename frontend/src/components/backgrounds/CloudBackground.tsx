@@ -17,20 +17,24 @@ export default function CloudBackground() {
               canvas.height = 256;
               const ctx = canvas.getContext("2d")!;
 
-              // Add much smaller cloud shapes
-              ctx.fillStyle = "rgba(255, 0, 255, 0.4)";
-              for (let i = 0; i < 300; i++) {
+              // Blue sky background
+              ctx.fillStyle = "#4682B4"; // Darker steel blue
+              ctx.fillRect(0, 0, 256, 256);
+
+              // Add white cloud shapes
+              ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; // White clouds
+              for (let i = 0; i < 200; i++) {
                 const x = Math.random() * 256;
                 const y = Math.random() * 256;
-                const size = 3 + Math.random() * 6; // Very small clouds
+                const size = 4 + Math.random() * 8; // Slightly larger clouds
 
-                // Draw cloud as 2 overlapping circles
-                for (let j = 0; j < 2; j++) {
+                // Draw cloud as 3-4 overlapping circles for more realistic shape
+                for (let j = 0; j < 3 + Math.random() * 2; j++) {
                   ctx.beginPath();
                   ctx.arc(
-                    x + (Math.random() - 0.5) * size * 0.6,
-                    y + (Math.random() - 0.5) * size * 0.2,
-                    size * (0.3 + Math.random() * 0.4),
+                    x + (Math.random() - 0.5) * size * 0.8,
+                    y + (Math.random() - 0.5) * size * 0.4,
+                    size * (0.4 + Math.random() * 0.6),
                     0,
                     Math.PI * 2
                   );

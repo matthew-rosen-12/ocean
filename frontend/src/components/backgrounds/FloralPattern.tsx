@@ -25,166 +25,223 @@ export default function FloralPattern({
 
   // Configure PNG texture if loaded
   if (pngTexture) {
-    pngTexture.wrapS = THREE.RepeatWrapping;
-    pngTexture.wrapT = THREE.RepeatWrapping;
-    const desiredTileSize = 20;
-    const repeatX = Math.max(1, Math.ceil(boundaries.width / desiredTileSize));
-    const repeatY = Math.max(1, Math.ceil(boundaries.height / desiredTileSize));
-    pngTexture.repeat.set(repeatX, repeatY);
+    pngTexture.wrapS = THREE.ClampToEdgeWrapping;
+    pngTexture.wrapT = THREE.ClampToEdgeWrapping;
+    pngTexture.repeat.set(1, 1);
   }
 
   const createFloralTexture = () => {
     const canvas = document.createElement("canvas");
-    canvas.width = 256;
-    canvas.height = 256;
+    canvas.width = 1024;
+    canvas.height = 1024;
     const ctx = canvas.getContext("2d")!;
 
-    // Base color - mid-century modern cream
-    ctx.fillStyle = "#F5F2E8";
-    ctx.fillRect(0, 0, 256, 256);
+    // Base color - soft pastel cream
+    ctx.fillStyle = "#FAF8F5";
+    ctx.fillRect(0, 0, 1024, 1024);
 
-    // Mid-century modern color palette
-    const flowerColors = [
-      "#E67E22", // Burnt orange
-      "#F39C12", // Mustard yellow
-      "#27AE60", // Retro green
-      "#2C3E50", // Deep blue-gray
-      "#8E44AD", // Retro purple
-      "#E74C3C", // Coral red
+    // Ultra-vibrant colors with high transparency
+    const tulipColors = [
+      "rgba(255, 20, 147, 0.6)", // Deep pink with high transparency
+      "rgba(255, 69, 0, 0.6)", // Red orange with high transparency
+      "rgba(220, 20, 60, 0.6)", // Crimson with high transparency
+      "rgba(138, 43, 226, 0.6)", // Blue violet with high transparency
+      "rgba(0, 0, 255, 0.6)", // Pure blue with high transparency
+      "rgba(255, 215, 0, 0.6)", // Pure gold with high transparency
+    ];
+
+    const daisyColors = [
+      "rgba(255, 255, 0, 0.6)", // Pure yellow with high transparency
+      "rgba(255, 140, 0, 0.6)", // Dark orange with high transparency
+      "rgba(255, 20, 147, 0.6)", // Deep pink with high transparency
+      "rgba(139, 0, 255, 0.6)", // Electric violet with high transparency
+      "rgba(0, 191, 255, 0.6)", // Deep sky blue with high transparency
+      "rgba(50, 205, 50, 0.6)", // Lime green with high transparency
+    ];
+
+    const roseColors = [
+      "rgba(255, 105, 180, 0.6)", // Hot pink with high transparency
+      "rgba(255, 0, 0, 0.6)", // Pure red with high transparency
+      "rgba(255, 69, 0, 0.6)", // Orange red with high transparency
+      "rgba(153, 50, 204, 0.6)", // Dark orchid with high transparency
+      "rgba(75, 0, 130, 0.6)", // Indigo with high transparency
+      "rgba(30, 144, 255, 0.6)", // Dodger blue with high transparency
     ];
 
     const accentColors = [
-      "#D35400", // Dark orange
-      "#F1C40F", // Bright yellow
-      "#16A085", // Teal
-      "#34495E", // Slate
+      "rgba(255, 255, 0, 0.7)", // Pure yellow with transparency
+      "rgba(255, 99, 71, 0.7)", // Tomato with transparency
+      "rgba(127, 255, 0, 0.7)", // Chartreuse with transparency
+      "rgba(0, 255, 255, 0.7)", // Cyan with transparency
+      "rgba(139, 69, 19, 0.7)", // Saddle brown with transparency
+      "rgba(70, 130, 180, 0.7)", // Steel blue with transparency
     ];
 
-    const spacing = 40; // Distance between flower centers
+    const stemColor = "#228B22";
 
-    // Create a tileable grid that wraps at edges
-    for (let x = 0; x < 256 + spacing; x += spacing) {
-      for (let y = 0; y < 256 + spacing; y += spacing) {
-        // Generate one seed per flower position
-        const flowerSeed = seed + (x / spacing) * 1000 + y / spacing;
-        const random = multiRandom(flowerSeed);
+    // Create large, non-repeating arrangement
+    const random = multiRandom(seed);
+    
 
-        // Random offset for natural look (but deterministic for tiling)
-        const offsetX = (random.x - 0.5) * spacing * 0.5;
-        const offsetY = (random.y - 0.5) * spacing * 0.5;
+    // Large tulip flowers - very widely spaced
+    const tulipPositions = [
+      { x: 150, y: 150 }, { x: 700, y: 300 }, { x: 300, y: 700 },
+    ];
 
-        const centerX = (x + offsetX) % 256;
-        const centerY = (y + offsetY) % 256;
+    tulipPositions.forEach((pos, i) => {
+      const tulipSeed = seed + i * 1000;
+      const tulipRandom = multiRandom(tulipSeed);
+      
+      const mainColor = tulipColors[Math.floor(tulipRandom.color * tulipColors.length)];
+      const accentColor = accentColors[Math.floor(tulipRandom.size * accentColors.length)];
+      const scale = 2.5 + tulipRandom.extra * 1.5; // Much larger
+      
+      // Tulip stem - longer and thicker
+      ctx.strokeStyle = stemColor;
+      ctx.lineWidth = 8 * scale;
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y + 60 * scale);
+      ctx.lineTo(pos.x + 8 * scale, pos.y + 200 * scale);
+      ctx.stroke();
+      
+      // Tulip petals - classic tulip shape, much larger
+      ctx.fillStyle = mainColor;
+      ctx.beginPath();
+      
+      // Left petal
+      ctx.ellipse(pos.x - 25 * scale, pos.y, 20 * scale, 40 * scale, -0.7, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Right petal
+      ctx.beginPath();
+      ctx.ellipse(pos.x + 25 * scale, pos.y, 20 * scale, 40 * scale, 0.7, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Center petal
+      ctx.beginPath();
+      ctx.ellipse(pos.x, pos.y, 22 * scale, 45 * scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Inner tulip accent
+      ctx.fillStyle = accentColor;
+      ctx.beginPath();
+      ctx.ellipse(pos.x, pos.y + 8 * scale, 15 * scale, 25 * scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Tulip leaves - larger
+      ctx.fillStyle = stemColor;
+      ctx.beginPath();
+      ctx.ellipse(pos.x - 40 * scale, pos.y + 50 * scale, 15 * scale, 60 * scale, -0.6, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.beginPath();
+      ctx.ellipse(pos.x + 40 * scale, pos.y + 60 * scale, 15 * scale, 50 * scale, 0.6, 0, Math.PI * 2);
+      ctx.fill();
+    });
 
-        // Choose flower type based on random value
-        const flowerType = Math.floor(random.extra * 3);
-        const mainColor =
-          flowerColors[Math.floor(random.color * flowerColors.length)];
-        const accentColor =
-          accentColors[Math.floor(random.size * accentColors.length)];
+    // Daisy flowers - very widely spaced
+    const daisyPositions = [
+      { x: 500, y: 200 }, { x: 200, y: 500 }, { x: 800, y: 700 },
+    ];
 
-        switch (flowerType) {
-          case 0: // Atomic starburst flower
-            // Outer starburst petals
-            ctx.fillStyle = mainColor;
-            for (let i = 0; i < 8; i++) {
-              const angle = (i * Math.PI * 2) / 8;
-              const petalX = centerX + Math.cos(angle) * 12;
-              const petalY = centerY + Math.sin(angle) * 12;
-
-              ctx.beginPath();
-              ctx.ellipse(petalX, petalY, 3, 8, angle, 0, Math.PI * 2);
-              ctx.fill();
-            }
-
-            // Inner circle
-            ctx.fillStyle = accentColor;
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, 6, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Center dot
-            ctx.fillStyle = "#2C3E50";
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, 2, 0, Math.PI * 2);
-            ctx.fill();
-            break;
-
-          case 1: // Geometric daisy
-            // Triangular petals in a circle
-            ctx.fillStyle = mainColor;
-            for (let i = 0; i < 6; i++) {
-              const angle = (i * Math.PI * 2) / 6;
-              const petalX = centerX + Math.cos(angle) * 10;
-              const petalY = centerY + Math.sin(angle) * 10;
-
-              ctx.beginPath();
-              ctx.moveTo(centerX, centerY);
-              ctx.lineTo(petalX - 3, petalY);
-              ctx.lineTo(petalX + 3, petalY);
-              ctx.closePath();
-              ctx.fill();
-            }
-
-            // Center circle
-            ctx.fillStyle = accentColor;
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
-            ctx.fill();
-            break;
-
-          case 2: // Mod circles flower
-            // Three overlapping circles
-            const circleSize = 6;
-            const positions = [
-              { x: centerX - 4, y: centerY - 2 },
-              { x: centerX + 4, y: centerY - 2 },
-              { x: centerX, y: centerY + 4 },
-            ];
-
-            ctx.fillStyle = mainColor;
-            positions.forEach((pos) => {
-              ctx.beginPath();
-              ctx.arc(pos.x, pos.y, circleSize, 0, Math.PI * 2);
-              ctx.fill();
-            });
-
-            // Center accent
-            ctx.fillStyle = accentColor;
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, 3, 0, Math.PI * 2);
-            ctx.fill();
-            break;
-        }
-
-        // Add small geometric leaves
-        if (random.extra > 0.6) {
-          ctx.fillStyle = "#27AE60";
-          const leafAngle = random.color * Math.PI * 2;
-          const leafX = centerX + Math.cos(leafAngle) * 16;
-          const leafY = centerY + Math.sin(leafAngle) * 16;
-
-          // Diamond-shaped leaf
-          ctx.beginPath();
-          ctx.moveTo(leafX, leafY - 4);
-          ctx.lineTo(leafX + 2, leafY);
-          ctx.lineTo(leafX, leafY + 4);
-          ctx.lineTo(leafX - 2, leafY);
-          ctx.closePath();
-          ctx.fill();
-        }
+    daisyPositions.forEach((pos, i) => {
+      const daisySeed = seed + i * 1500 + 50000;
+      const daisyRandom = multiRandom(daisySeed);
+      
+      const mainColor = daisyColors[Math.floor(daisyRandom.color * daisyColors.length)];
+      const centerColor = accentColors[Math.floor(daisyRandom.size * accentColors.length)];
+      const scale = 2.0 + daisyRandom.extra * 1.0; // Much larger
+      
+      // Daisy stem
+      ctx.strokeStyle = stemColor;
+      ctx.lineWidth = 6 * scale;
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y + 40 * scale);
+      ctx.lineTo(pos.x + 5 * scale, pos.y + 150 * scale);
+      ctx.stroke();
+      
+      // Daisy petals - larger
+      ctx.fillStyle = mainColor;
+      for (let j = 0; j < 10; j++) {
+        const angle = (j * Math.PI * 2) / 10;
+        const petalX = pos.x + Math.cos(angle) * 30 * scale;
+        const petalY = pos.y + Math.sin(angle) * 30 * scale;
+        
+        ctx.beginPath();
+        ctx.ellipse(petalX, petalY, 8 * scale, 25 * scale, angle, 0, Math.PI * 2);
+        ctx.fill();
       }
-    }
+      
+      // Daisy center - larger
+      ctx.fillStyle = centerColor;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, 15 * scale, 0, Math.PI * 2);
+      ctx.fill();
+    });
 
-    // Add some atomic age background dots
-    ctx.fillStyle = "rgba(52, 73, 94, 0.1)";
-    for (let i = 0; i < 20; i++) {
-      const dotSeed = seed + i * 500 + 10000;
-      const random = multiRandom(dotSeed);
+    // Rose flowers - very widely spaced
+    const rosePositions = [
+      { x: 850, y: 150 }, { x: 100, y: 350 }, { x: 600, y: 600 },
+    ];
 
-      const x = random.x * 256;
-      const y = random.y * 256;
-      const size = 1 + random.size * 3;
+    rosePositions.forEach((pos, i) => {
+      const roseSeed = seed + i * 2000 + 100000;
+      const roseRandom = multiRandom(roseSeed);
+      
+      const mainColor = roseColors[Math.floor(roseRandom.color * roseColors.length)];
+      const accentColor = accentColors[Math.floor(roseRandom.size * accentColors.length)];
+      const scale = 2.2 + roseRandom.extra * 1.3; // Much larger
+      
+      // Rose stem
+      ctx.strokeStyle = stemColor;
+      ctx.lineWidth = 7 * scale;
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y + 50 * scale);
+      ctx.lineTo(pos.x + 6 * scale, pos.y + 180 * scale);
+      ctx.stroke();
+      
+      // Rose outer petals - larger
+      ctx.fillStyle = mainColor;
+      for (let j = 0; j < 8; j++) {
+        const angle = (j * Math.PI * 2) / 8;
+        const petalX = pos.x + Math.cos(angle) * 25 * scale;
+        const petalY = pos.y + Math.sin(angle) * 25 * scale;
+        
+        ctx.beginPath();
+        ctx.ellipse(petalX, petalY, 15 * scale, 30 * scale, angle + 0.7, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      // Rose inner petals - larger
+      ctx.fillStyle = accentColor;
+      for (let j = 0; j < 6; j++) {
+        const angle = (j * Math.PI * 2) / 6 + 0.6;
+        const petalX = pos.x + Math.cos(angle) * 12 * scale;
+        const petalY = pos.y + Math.sin(angle) * 12 * scale;
+        
+        ctx.beginPath();
+        ctx.ellipse(petalX, petalY, 10 * scale, 20 * scale, angle, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      // Rose center - larger
+      ctx.fillStyle = stemColor;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, 8 * scale, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+
+
+    // Subtle texture dots
+    ctx.fillStyle = "rgba(168, 196, 162, 0.1)";
+    for (let i = 0; i < 30; i++) {
+      const dotSeed = seed + i * 300 + 5000;
+      const dotRandom = multiRandom(dotSeed);
+
+      const x = dotRandom.x * 1024;
+      const y = dotRandom.y * 1024;
+      const size = 1 + dotRandom.size * 2;
 
       ctx.beginPath();
       ctx.arc(x, y, size, 0, Math.PI * 2);
@@ -208,10 +265,9 @@ export default function FloralPattern({
     (window as any).downloadFloralPattern = downloadPattern;
   }
 
-  // Calculate repeat based on desired tile size and boundary dimensions
-  const desiredTileSize = 20; // World units per tile
-  const repeatX = Math.max(1, Math.ceil(boundaries.width / desiredTileSize));
-  const repeatY = Math.max(1, Math.ceil(boundaries.height / desiredTileSize));
+  // Use single large texture without repeating
+  const repeatX = 1;
+  const repeatY = 1;
 
   return (
     <mesh position={TERRAIN_PLANE_CONFIG.position}>
@@ -225,8 +281,8 @@ export default function FloralPattern({
           <canvasTexture
             attach="map"
             image={createFloralTexture()}
-            wrapS={THREE.RepeatWrapping}
-            wrapT={THREE.RepeatWrapping}
+            wrapS={THREE.ClampToEdgeWrapping}
+            wrapT={THREE.ClampToEdgeWrapping}
             repeat={new THREE.Vector2(repeatX, repeatY)}
           />
         )}
