@@ -1,189 +1,313 @@
 import React from "react";
 import * as THREE from "three";
-import { TerrainBoundaries, TERRAIN_PLANE_CONFIG } from "../../utils/terrain";
+import { useLoader } from "@react-three/fiber";
+import {
+  TerrainBoundaries,
+  TERRAIN_PLANE_CONFIG,
+  multiRandom,
+} from "../../utils/terrain";
 
 interface CosmicPatternProps {
   boundaries: TerrainBoundaries;
   seed: number;
+  usePngFile?: string; // Optional: use static PNG instead of generated pattern
 }
 
 export default function CosmicPattern({
   boundaries,
   seed,
+  usePngFile,
 }: CosmicPatternProps) {
+  // Load PNG texture if specified
+  const pngTexture = usePngFile
+    ? useLoader(THREE.TextureLoader, usePngFile)
+    : null;
+
+  // Configure PNG texture if loaded
+  if (pngTexture) {
+    pngTexture.wrapS = THREE.ClampToEdgeWrapping;
+    pngTexture.wrapT = THREE.ClampToEdgeWrapping;
+    pngTexture.repeat.set(1, 1);
+  }
   const createCosmicTexture = () => {
     const canvas = document.createElement("canvas");
-    canvas.width = 256;
-    canvas.height = 256;
+    canvas.width = 1024;
+    canvas.height = 1024;
     const ctx = canvas.getContext("2d")!;
 
-    // Base color - deep space
-    const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
-    gradient.addColorStop(0, "#1a1a2e");
-    gradient.addColorStop(0.5, "#16213e");
-    gradient.addColorStop(1, "#0f0f1a");
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 256, 256);
+    // Deep space background
+    ctx.fillStyle = "#0B0D1E";
+    ctx.fillRect(0, 0, 1024, 1024);
 
-    // Function to generate multiple random numbers from one seed
-    const multiRandom = (seed: number) => {
-      const rand1 = (Math.sin(seed * 12.9898) * 43758.5453123) % 1;
-      const rand2 = (Math.sin(seed * 78.233) * 43758.5453123) % 1;
-      const rand3 = (Math.sin(seed * 37.719) * 43758.5453123) % 1;
-      const rand4 = (Math.sin(seed * 93.989) * 43758.5453123) % 1;
-      const rand5 = (Math.sin(seed * 17.951) * 43758.5453123) % 1;
-
-      return {
-        x: Math.abs(rand1),
-        y: Math.abs(rand2),
-        size: Math.abs(rand3),
-        color: Math.abs(rand4),
-        extra: Math.abs(rand5),
-      };
-    };
-
-    // Add tileable stars
-    ctx.fillStyle = "#ffffff";
-    for (let i = 0; i < 120; i++) {
-      const starSeed = seed + i * 1000;
-      const random = multiRandom(starSeed);
-
-      const x = random.x * 256;
-      const y = random.y * 256;
-      const size = random.size * 2;
-
-      ctx.beginPath();
-      ctx.arc(x, y, size, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Add star twinkle effect
-      if (random.extra > 0.8) {
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x - size * 2, y);
-        ctx.lineTo(x + size * 2, y);
-        ctx.moveTo(x, y - size * 2);
-        ctx.lineTo(x, y + size * 2);
-        ctx.stroke();
-      }
-    }
-
-    // Draw tileable planets
+    // Realistic planet colors with transparency (0.5-0.8)
     const planetColors = [
-      ["#ff6b6b", "#ff4757"], // Red planet
-      ["#4dabf7", "#339af0"], // Blue planet
-      ["#69db7c", "#51cf66"], // Green planet
-      ["#ffd93d", "#fcc419"], // Yellow planet
-      ["#da77f2", "#be4bdb"], // Purple planet
+      "rgba(139, 69, 19, 0.7)", // Mars-like red/brown
+      "rgba(255, 228, 181, 0.6)", // Venus-like pale yellow
+      "rgba(70, 130, 180, 0.7)", // Neptune-like blue
+      "rgba(218, 165, 32, 0.6)", // Jupiter-like golden brown
+      "rgba(128, 128, 128, 0.7)", // Mercury-like gray
+      "rgba(205, 133, 63, 0.6)", // Desert planet tan
+      "rgba(47, 79, 79, 0.8)", // Dark slate gray
+      "rgba(210, 180, 140, 0.7)", // Sandy brown
     ];
 
-    for (let i = 0; i < 4; i++) {
-      const seed = i * 2000;
-      // Ensure planets are not too close to edges for better tiling
-      const x = 40 + multiRandom(seed).x * 176; // 40px margin from edges
-      const y = 40 + multiRandom(seed).y * 176;
-      const size = 15 + multiRandom(seed).size * 25;
-      const colorIndex = Math.floor(
-        multiRandom(seed).color * planetColors.length
-      );
-      const colorPair = planetColors[colorIndex];
+    const planetAccentColors = [
+      "rgba(255, 255, 255, 0.5)", // White highlights
+      "rgba(255, 255, 0, 0.6)", // Yellow
+      "rgba(0, 255, 255, 0.5)", // Cyan
+      "rgba(255, 105, 180, 0.6)", // Hot pink
+    ];
 
-      // Planet body with gradient
-      const planetGradient = ctx.createRadialGradient(
-        x - size * 0.3,
-        y - size * 0.3,
-        0,
-        x,
-        y,
-        size
-      );
-      planetGradient.addColorStop(0, colorPair[0]);
-      planetGradient.addColorStop(1, colorPair[1]);
+    // Create random but deterministic arrangement
+    const random = multiRandom(seed);
+    
+    // Determine number of planets (1-3)
+    const numPlanets = 1 + Math.floor(random.extra * 3);
+    
+    // Planet positions - non-overlapping
+    const planetPositions: { x: number; y: number }[] = [];
+    for (let i = 0; i < numPlanets; i++) {
+      const planetSeed = seed + i * 10000;
+      const planetRandom = multiRandom(planetSeed);
+      
+      let x: number, y: number;
+      let attempts = 0;
+      do {
+        x = 200 + planetRandom.x * 624; // Keep away from edges
+        y = 200 + planetRandom.y * 624;
+        attempts++;
+      } while (attempts < 10 && planetPositions.some(p => 
+        Math.sqrt((p.x - x) ** 2 + (p.y - y) ** 2) < 300
+      ));
+      
+      planetPositions.push({ x, y });
+    }
 
-      ctx.fillStyle = planetGradient;
+    // Draw big planets
+    planetPositions.forEach((pos, i) => {
+      const planetSeed = seed + i * 10000;
+      const planetRandom = multiRandom(planetSeed);
+      
+      const mainColor = planetColors[Math.floor(planetRandom.color * planetColors.length)];
+      const accentColor = planetAccentColors[Math.floor(planetRandom.size * planetAccentColors.length)];
+      const radius = 80 + planetRandom.extra * 60; // Large planets (80-140px radius)
+      
+      // Planet main body
+      ctx.fillStyle = mainColor;
       ctx.beginPath();
-      ctx.arc(x, y, size, 0, Math.PI * 2);
+      ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
       ctx.fill();
-
-      // Add planet features
-      ctx.fillStyle = colorPair[1];
-      ctx.globalAlpha = 0.6;
-
-      // Craters or surface features
-      for (let j = 0; j < 3; j++) {
-        const featureSeed = seed + 100 + j * 10;
-        const featureX = x + (multiRandom(featureSeed).x - 0.5) * size;
-        const featureY = y + (multiRandom(featureSeed).y - 0.5) * size;
-        const featureSize =
-          size * 0.1 + multiRandom(featureSeed).size * size * 0.2;
-
+      
+      // Planet surface features (craters/spots)
+      for (let j = 0; j < 5; j++) {
+        const featureSeed = planetSeed + j * 1000;
+        const featureRandom = multiRandom(featureSeed);
+        
+        const featureX = pos.x + (featureRandom.x - 0.5) * radius * 1.2;
+        const featureY = pos.y + (featureRandom.y - 0.5) * radius * 1.2;
+        const featureRadius = 8 + featureRandom.size * 15;
+        
+        // Only draw if within planet
+        if (Math.sqrt((featureX - pos.x) ** 2 + (featureY - pos.y) ** 2) < radius - featureRadius) {
+          ctx.fillStyle = accentColor;
+          ctx.beginPath();
+          ctx.arc(featureX, featureY, featureRadius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      
+      // Planet rings (for some planets) - actual ring shapes
+      if (planetRandom.extra > 0.4) { // 60% chance instead of 40%
+        const ringColors = [
+          "rgba(255, 255, 255, 0.4)", // Bright white rings
+          "rgba(255, 228, 181, 0.3)", // Golden rings
+          "rgba(176, 196, 222, 0.4)", // Light steel blue
+          "rgba(255, 192, 203, 0.3)", // Light pink
+        ];
+        
+        const ringColor = ringColors[Math.floor(planetRandom.size * ringColors.length)];
+        const ringAngle = planetRandom.color * Math.PI * 0.3; // Moderate tilt
+        
+        ctx.save();
+        ctx.translate(pos.x, pos.y);
+        ctx.rotate(ringAngle);
+        
+        // Create actual ring shapes (filled ellipses with holes)
+        ctx.fillStyle = ringColor;
+        
+        // Inner ring
         ctx.beginPath();
-        ctx.arc(featureX, featureY, featureSize, 0, Math.PI * 2);
+        ctx.ellipse(0, 0, radius * 1.4, radius * 0.3, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, 0, radius * 1.15, radius * 0.2, 0, 0, Math.PI * 2);
+        ctx.fill('evenodd');
+        
+        // Middle ring (with gap)
+        ctx.beginPath();
+        ctx.ellipse(0, 0, radius * 1.8, radius * 0.4, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, 0, radius * 1.55, radius * 0.32, 0, 0, Math.PI * 2);
+        ctx.fill('evenodd');
+        
+        // Outer ring (thinner)
+        ctx.beginPath();
+        ctx.ellipse(0, 0, radius * 2.1, radius * 0.45, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, 0, radius * 1.95, radius * 0.38, 0, 0, Math.PI * 2);
+        ctx.fill('evenodd');
+        
+        // Optional additional faint rings for gas giants
+        if (planetRandom.extra > 0.8) {
+          ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
+          ctx.beginPath();
+          ctx.ellipse(0, 0, radius * 2.4, radius * 0.5, 0, 0, Math.PI * 2);
+          ctx.ellipse(0, 0, radius * 2.25, radius * 0.43, 0, 0, Math.PI * 2);
+          ctx.fill('evenodd');
+        }
+        
+        ctx.restore();
+      }
+    });
+
+    // Background stars
+    ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+    for (let i = 0; i < 200; i++) {
+      const starSeed = seed + i * 100 + 50000;
+      const starRandom = multiRandom(starSeed);
+
+      const x = starRandom.x * 1024;
+      const y = starRandom.y * 1024;
+      const size = 0.5 + starRandom.size * 2;
+
+      // Don't draw stars on planets
+      const onPlanet = planetPositions.some(planet => 
+        Math.sqrt((planet.x - x) ** 2 + (planet.y - y) ** 2) < 100
+      );
+      
+      if (!onPlanet) {
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 2);
         ctx.fill();
       }
+    }
 
-      ctx.globalAlpha = 1;
+    // Bright stars with glow
+    for (let i = 0; i < 15; i++) {
+      const brightStarSeed = seed + i * 500 + 100000;
+      const brightStarRandom = multiRandom(brightStarSeed);
 
-      // Rings for some planets
-      if (multiRandom(seed).extra > 0.6) {
-        ctx.strokeStyle = colorPair[0];
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.7;
-
+      const x = brightStarRandom.x * 1024;
+      const y = brightStarRandom.y * 1024;
+      
+      // Don't draw on planets
+      const onPlanet = planetPositions.some(planet => 
+        Math.sqrt((planet.x - x) ** 2 + (planet.y - y) ** 2) < 120
+      );
+      
+      if (!onPlanet) {
+        // Glow
+        ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
         ctx.beginPath();
-        ctx.ellipse(x, y, size * 1.5, size * 0.3, Math.PI / 6, 0, Math.PI * 2);
-        ctx.stroke();
-
+        ctx.arc(x, y, 8, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Bright center
+        ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
         ctx.beginPath();
-        ctx.ellipse(x, y, size * 1.8, size * 0.4, Math.PI / 6, 0, Math.PI * 2);
-        ctx.stroke();
-
-        ctx.globalAlpha = 1;
+        ctx.arc(x, y, 2, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
 
-    // Add tileable nebula effects
-    ctx.globalAlpha = 0.3;
-    for (let i = 0; i < 3; i++) {
-      const seed = i * 3000;
-      const x = multiRandom(seed).x * 256;
-      const y = multiRandom(seed).y * 256;
-      const size = 30 + multiRandom(seed).size * 50;
-      const colors = ["#ff6b6b", "#4dabf7", "#da77f2", "#69db7c"];
-      const colorIndex = Math.floor(multiRandom(seed).color * colors.length);
-      const color = colors[colorIndex];
+    // Asteroids/rocks
+    for (let i = 0; i < 25; i++) {
+      const asteroidSeed = seed + i * 750 + 200000;
+      const asteroidRandom = multiRandom(asteroidSeed);
 
-      const nebulaGradient = ctx.createRadialGradient(x, y, 0, x, y, size);
-      nebulaGradient.addColorStop(0, color);
-      nebulaGradient.addColorStop(1, "transparent");
+      const x = asteroidRandom.x * 1024;
+      const y = asteroidRandom.y * 1024;
+      const size = 2 + asteroidRandom.size * 8;
+      
+      // Don't draw on planets
+      const onPlanet = planetPositions.some(planet => 
+        Math.sqrt((planet.x - x) ** 2 + (planet.y - y) ** 2) < 140
+      );
+      
+      if (!onPlanet) {
+        ctx.fillStyle = "rgba(139, 69, 19, 0.6)"; // Brown asteroids
+        ctx.beginPath();
+        
+        // Irregular asteroid shape
+        ctx.moveTo(x + size, y);
+        for (let j = 0; j < 6; j++) {
+          const angle = (j * Math.PI * 2) / 6;
+          const variance = 0.7 + asteroidRandom.extra * 0.6;
+          const px = x + Math.cos(angle) * size * variance;
+          const py = y + Math.sin(angle) * size * variance;
+          ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
 
-      ctx.fillStyle = nebulaGradient;
+    // Distant nebula clouds
+    for (let i = 0; i < 8; i++) {
+      const nebulaSeed = seed + i * 1500 + 300000;
+      const nebulaRandom = multiRandom(nebulaSeed);
+
+      const x = nebulaRandom.x * 1024;
+      const y = nebulaRandom.y * 1024;
+      const size = 40 + nebulaRandom.size * 80;
+      
+      const nebulaColors = [
+        "rgba(138, 43, 226, 0.2)", // Purple
+        "rgba(255, 20, 147, 0.15)", // Pink
+        "rgba(0, 191, 255, 0.2)", // Blue
+        "rgba(50, 205, 50, 0.15)", // Green
+      ];
+      
+      ctx.fillStyle = nebulaColors[Math.floor(nebulaRandom.color * nebulaColors.length)];
       ctx.beginPath();
       ctx.arc(x, y, size, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.globalAlpha = 1;
 
     return canvas;
   };
 
-  // Calculate repeat based on desired tile size and boundary dimensions
-  const desiredTileSize = 25; // World units per tile (larger for cosmic scale)
-  const repeatX = Math.max(1, Math.ceil(boundaries.width / desiredTileSize));
-  const repeatY = Math.max(1, Math.ceil(boundaries.height / desiredTileSize));
+  // Utility function to download current pattern as PNG
+  const downloadPattern = () => {
+    const canvas = createCosmicTexture();
+    const link = document.createElement("a");
+    link.download = `cosmic-pattern-${seed}.png`;
+    link.href = canvas.toDataURL();
+    link.click();
+  };
+
+  // Add to window for debugging (remove in production)
+  if (typeof window !== "undefined") {
+    (window as any).downloadCosmicPattern = downloadPattern;
+  }
+
+  // Use single large texture without repeating
+  const repeatX = 1;
+  const repeatY = 1;
 
   return (
     <mesh position={TERRAIN_PLANE_CONFIG.position}>
       <planeGeometry args={[boundaries.width, boundaries.height]} />
-      <meshBasicMaterial transparent opacity={TERRAIN_PLANE_CONFIG.opacity}>
-        <canvasTexture
-          attach="map"
-          image={createCosmicTexture()}
-          wrapS={THREE.RepeatWrapping}
-          wrapT={THREE.RepeatWrapping}
-          repeat={new THREE.Vector2(repeatX, repeatY)}
-        />
+      <meshBasicMaterial
+        transparent
+        opacity={TERRAIN_PLANE_CONFIG.opacity}
+        map={pngTexture || undefined}
+      >
+        {!usePngFile && (
+          <canvasTexture
+            attach="map"
+            image={createCosmicTexture()}
+            wrapS={THREE.ClampToEdgeWrapping}
+            wrapT={THREE.ClampToEdgeWrapping}
+            repeat={new THREE.Vector2(repeatX, repeatY)}
+          />
+        )}
       </meshBasicMaterial>
     </mesh>
   );
