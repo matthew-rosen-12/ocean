@@ -236,7 +236,6 @@ export function handleNPCGroupReflectionForUser(
     if (currentTypedSocket) {
       currentTypedSocket.emit("interaction-detected", { interaction });
     }
-  } else {
 
     // Calculate current position of the captured group (not the stored position)
     const currentNPCGroupPosition = calculateNPCGroupPosition(targetUser, animalWidth, capturedGroupScale);

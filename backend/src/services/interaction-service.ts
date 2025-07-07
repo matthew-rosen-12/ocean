@@ -45,12 +45,6 @@ export class InteractionService {
         pathPhase
       });
       
-      // Check rate limiting before creating interaction
-      if (!this.canCreateInteraction(room)) {
-        console.log(`Rate limiting: Skipping RETURNING_NPC_GROUP_RECAPTURED interaction for room ${room}`);
-        return;
-      }
-      
       this.sendInteractionToRoom(room, interaction);
     }
   }
@@ -81,12 +75,6 @@ export class InteractionService {
         thrownNpc: thrownNPCGroup.faceFileName,
         emittedNpc: emittedNPCGroup.faceFileName
       });
-      
-      // Check rate limiting before creating interaction
-      if (!this.canCreateInteraction(room)) {
-        console.log(`Rate limiting: Skipping THROWN_NPC_GROUP_COLLISION interaction for room ${room}`);
-        return;
-      }
       
       this.sendInteractionToRoom(room, interaction);
     }
@@ -119,12 +107,6 @@ export class InteractionService {
         liberatorNpc: liberatorNPCGroup.faceFileName
       });
       
-      // Check rate limiting before creating interaction
-      if (!this.canCreateInteraction(room)) {
-        console.log(`Rate limiting: Skipping NPC_GROUP_EMITTED interaction for room ${room}`);
-        return;
-      }
-      
       this.sendInteractionToRoom(room, interaction);
     }
   }
@@ -154,12 +136,6 @@ export class InteractionService {
       pathPhase
     });
     
-    // Check rate limiting before creating interaction
-    if (!this.canCreateInteraction(room)) {
-      console.log(`Rate limiting: Skipping NPC_GROUP_DELETED interaction for room ${room}`);
-      return;
-    }
-    
     this.sendInteractionToRoom(room, interaction);
   }
 
@@ -168,6 +144,20 @@ export class InteractionService {
    */
   private static async sendInteractionToRoom(room: roomId, interaction: NPCInteraction): Promise<void> {
     try {
+      // Check rate limiting before making AI API call
+      if (!this.canCreateInteraction(room)) {
+        console.log(`Rate limiting: Skipping AI response for ${interaction.type} interaction in room ${room}`);
+        // Send interaction without AI response due to rate limiting
+        const allUsers = getAllUsersInRoom(room);
+        for (const user of allUsers.values()) {
+          emitToUser(room, user.id, "npc-interaction-with-response", { 
+            interaction, 
+            aiResponse: "Rate limited - try again later" 
+          });
+        }
+        return;
+      }
+
       // Generate AI response
       const prompt = interactionToPrompt(interaction);
       const aiResponse = await aiChatService.generateResponse(prompt);
@@ -230,12 +220,6 @@ export class InteractionService {
         secondaryNpc: secondaryNPCGroup.faceFileName
       });
       
-      // Check rate limiting before creating interaction
-      if (!this.canCreateInteraction(room)) {
-        console.log(`Rate limiting: Skipping NPC_GROUPS_BOUNCED interaction for room ${room}`);
-        return;
-      }
-      
       this.sendInteractionToRoom(room, interaction);
     }
   }
@@ -270,12 +254,6 @@ export class InteractionService {
         pathPhase
       });
       
-      // Check rate limiting before creating interaction
-      if (!this.canCreateInteraction(room)) {
-        console.log(`Rate limiting: Skipping IDLE_NPC_CAPTURED_THROWN interaction for room ${room}`);
-        return;
-      }
-      
       this.sendInteractionToRoom(room, interaction);
     }
   }
@@ -286,12 +264,7 @@ export class InteractionService {
   static async processClientDetectedInteraction(room: roomId, interaction: NPCInteraction): Promise<void> {
     console.log(`Processing client-detected interaction in room ${room}:`, interaction.type);
     
-    // Check rate limiting before creating interaction
-    if (!this.canCreateInteraction(room)) {
-      console.log(`Rate limiting: Skipping client-detected ${interaction.type} interaction for room ${room}`);
-      return;
-    }
-    
+    // No rate limiting for client-detected interactions - rate limiting happens in sendInteractionToRoom for AI API calls
     await this.sendInteractionToRoom(room, interaction);
   }
 }
