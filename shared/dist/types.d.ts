@@ -1,3 +1,4 @@
+import { BackgroundString } from './background-types';
 export declare enum Animal {
     DOLPHIN = "DOLPHIN",
     WOLF = "WOLF",
@@ -171,7 +172,7 @@ export interface TerrainConfig {
     };
     gridSize: number;
     walls: null;
-    backgroundType: string;
+    backgroundType: BackgroundString;
     seed: number;
     width: number;
     height: number;

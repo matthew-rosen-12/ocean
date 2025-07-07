@@ -1,6 +1,7 @@
 // Server-side terrain configuration generation
 
 import { TerrainConfig } from "shared/types";
+import { getPrimaryBackgroundTypes } from "shared/background-types";
 
 
 export function generateRoomTerrain(roomId: string): TerrainConfig {
@@ -13,7 +14,7 @@ export function generateRoomTerrain(roomId: string): TerrainConfig {
   const halfSize = gridSize / 2;
 
   // Different background types that match our frontend patterns
-  const backgroundTypes = ["floral"];
+  const backgroundTypes = getPrimaryBackgroundTypes();
   const backgroundType =
     backgroundTypes[Math.floor(roomHash / 4) % backgroundTypes.length];
 

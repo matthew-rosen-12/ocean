@@ -1,3 +1,5 @@
+import { BackgroundString } from './background-types';
+
 export enum Animal {
   DOLPHIN = "DOLPHIN",
   WOLF = "WOLF", 
@@ -255,7 +257,7 @@ export interface TerrainConfig {
     };
     gridSize: number;
     walls: null; // Future: room-specific walls
-    backgroundType: string; // 'floral' | 'forest' | 'animals' | 'cosmic' etc.
+    backgroundType: BackgroundString;
     seed: number; // Seed for consistent pattern generation
     width: number;
     height: number;

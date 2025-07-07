@@ -2,6 +2,7 @@
 // Server-side terrain configuration generation
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateRoomTerrain = generateRoomTerrain;
+const background_types_1 = require("shared/background-types");
 function generateRoomTerrain(roomId) {
     // Use room ID to seed consistent terrain per room
     const roomHash = simpleHash(roomId);
@@ -10,7 +11,7 @@ function generateRoomTerrain(roomId) {
     const gridSize = terrainSizes[roomHash % terrainSizes.length];
     const halfSize = gridSize / 2;
     // Different background types that match our frontend patterns
-    const backgroundTypes = ["floral"];
+    const backgroundTypes = (0, background_types_1.getPrimaryBackgroundTypes)();
     const backgroundType = backgroundTypes[Math.floor(roomHash / 4) % backgroundTypes.length];
     // Generate a seed for pattern randomness (different from roomHash to avoid correlation)
     const patternSeed = simpleHash(roomId + "_pattern");

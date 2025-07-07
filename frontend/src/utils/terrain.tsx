@@ -6,6 +6,7 @@ import ForestPattern from "../components/backgrounds/ForestPattern";
 import AnimalPattern from "../components/backgrounds/AnimalPattern";
 import CosmicPattern from "../components/backgrounds/CosmicPattern";
 import { Z_DEPTHS } from "shared/z-depths";
+import { BackgroundString, BackgroundType, normalizeBackgroundType } from "shared/background-types";
 
 // Terrain system configuration
 export class TerrainBoundaries {
@@ -117,14 +118,14 @@ export interface ServerTerrainConfig {
   };
   gridSize: number;
   walls: null;
-  backgroundType: string;
+  backgroundType: BackgroundString;
   seed: number;
 }
 
 export interface TerrainConfig {
   boundaries: TerrainBoundaries;
   walls: THREE.Mesh[] | null;
-  backgroundType: string;
+  backgroundType: BackgroundString;
   seed: number;
   renderBackground(): React.JSX.Element;
 }
@@ -173,10 +174,10 @@ export function createTerrain(): TerrainConfig {
   return {
     boundaries: boundaries,
     walls: null,
-    backgroundType: "floral",
+    backgroundType: BackgroundType.FLORAL,
     seed: fallbackSeed,
     renderBackground(): React.JSX.Element {
-      return renderTerrainBackground(boundaries, "floral", fallbackSeed);
+      return renderTerrainBackground(boundaries, BackgroundType.FLORAL, fallbackSeed);
     },
   };
 }
@@ -184,24 +185,23 @@ export function createTerrain(): TerrainConfig {
 // Create background pattern based on type
 function renderTerrainBackground(
   boundaries: TerrainBoundaries,
-  backgroundType: string,
+  backgroundType: BackgroundString,
   seed: number
 ): React.JSX.Element {
   const renderPattern = () => {
-    switch (backgroundType) {
-      case "floral":
-      case "grass":
+    const normalizedType = normalizeBackgroundType(backgroundType);
+    
+    switch (normalizedType) {
+      case BackgroundType.FLORAL:
         return <FloralPattern boundaries={boundaries} seed={seed} />;
 
-      case "forest":
+      case BackgroundType.FOREST:
         return <ForestPattern boundaries={boundaries} seed={seed} />;
 
-      case "animals":
-      case "sand":
+      case BackgroundType.ANIMALS:
         return <AnimalPattern boundaries={boundaries} seed={seed} />;
 
-      case "cosmic":
-      case "rock":
+      case BackgroundType.COSMIC:
         return <CosmicPattern boundaries={boundaries} seed={seed} />;
 
       default:

@@ -11,7 +11,8 @@
       "./constants": "./dist/constants.js",
       "./animal-dimensions": "./dist/animal-dimensions.js",
       "./interaction-types": "./dist/interaction-types.js",
-      "./interaction-prompts": "./dist/interaction-prompts.js"
+      "./interaction-prompts": "./dist/interaction-prompts.js",
+      "./background-types": "./dist/background-types.js"
     },
     "scripts": {
       "build": "tsc"
