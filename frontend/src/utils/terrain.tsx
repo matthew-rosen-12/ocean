@@ -2,9 +2,8 @@ import * as THREE from "three";
 import React from "react";
 import CloudBackground from "../components/backgrounds/CloudBackground";
 import FloralPattern from "../components/backgrounds/FloralPattern";
-import ForestPattern from "../components/backgrounds/ForestPattern";
-import AnimalPattern from "../components/backgrounds/AnimalPattern";
 import CosmicPattern from "../components/backgrounds/CosmicPattern";
+import MosaicPattern from "../components/backgrounds/MosaicPattern";
 import { Z_DEPTHS } from "shared/z-depths";
 import { BackgroundString, BackgroundType, normalizeBackgroundType } from "shared/background-types";
 
@@ -195,14 +194,11 @@ function renderTerrainBackground(
       case BackgroundType.FLORAL:
         return <FloralPattern boundaries={boundaries} seed={seed} />;
 
-      case BackgroundType.FOREST:
-        return <ForestPattern boundaries={boundaries} seed={seed} />;
-
-      case BackgroundType.ANIMALS:
-        return <AnimalPattern boundaries={boundaries} seed={seed} />;
-
       case BackgroundType.COSMIC:
         return <CosmicPattern boundaries={boundaries} seed={seed} />;
+
+      case BackgroundType.MOSAIC:
+        return <MosaicPattern boundaries={boundaries} seed={seed} />;
 
       default:
         return <FloralPattern boundaries={boundaries} seed={seed} />;

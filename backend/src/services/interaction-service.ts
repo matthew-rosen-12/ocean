@@ -39,12 +39,6 @@ export class InteractionService {
         user.animal
       );
       
-      console.log(`Sending RETURNING_NPC_GROUP_RECAPTURED interaction to room ${room}:`, {
-        userNpc: userNPCGroup.faceFileName,
-        capturedNpc: capturedNPCGroup.faceFileName,
-        pathPhase
-      });
-      
       this.sendInteractionToRoom(room, interaction);
     }
   }

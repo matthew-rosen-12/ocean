@@ -51,12 +51,6 @@ export default function CosmicPattern({
       "rgba(210, 180, 140, 0.7)", // Sandy brown
     ];
 
-    const planetAccentColors = [
-      "rgba(255, 255, 255, 0.5)", // White highlights
-      "rgba(255, 255, 0, 0.6)", // Yellow
-      "rgba(0, 255, 255, 0.5)", // Cyan
-      "rgba(255, 105, 180, 0.6)", // Hot pink
-    ];
 
     // Create random but deterministic arrangement
     const random = multiRandom(seed);
@@ -89,7 +83,6 @@ export default function CosmicPattern({
       const planetRandom = multiRandom(planetSeed);
       
       const mainColor = planetColors[Math.floor(planetRandom.color * planetColors.length)];
-      const accentColor = planetAccentColors[Math.floor(planetRandom.size * planetAccentColors.length)];
       const radius = 80 + planetRandom.extra * 60; // Large planets (80-140px radius)
       
       // Planet main body
@@ -98,23 +91,6 @@ export default function CosmicPattern({
       ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
       ctx.fill();
       
-      // Planet surface features (craters/spots)
-      for (let j = 0; j < 5; j++) {
-        const featureSeed = planetSeed + j * 1000;
-        const featureRandom = multiRandom(featureSeed);
-        
-        const featureX = pos.x + (featureRandom.x - 0.5) * radius * 1.2;
-        const featureY = pos.y + (featureRandom.y - 0.5) * radius * 1.2;
-        const featureRadius = 8 + featureRandom.size * 15;
-        
-        // Only draw if within planet
-        if (Math.sqrt((featureX - pos.x) ** 2 + (featureY - pos.y) ** 2) < radius - featureRadius) {
-          ctx.fillStyle = accentColor;
-          ctx.beginPath();
-          ctx.arc(featureX, featureY, featureRadius, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
       
       // Planet rings (for some planets) - actual ring shapes
       if (planetRandom.extra > 0.4) { // 60% chance instead of 40%

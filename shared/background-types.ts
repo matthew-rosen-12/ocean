@@ -5,15 +5,14 @@
 // Primary background types
 export enum BackgroundType {
   FLORAL = "floral",
-  FOREST = "forest", 
-  ANIMALS = "animals",
-  COSMIC = "cosmic"
+  COSMIC = "cosmic",
+  MOSAIC = "mosaic",
 }
 
 // Background aliases that map to primary types
 export const BACKGROUND_ALIASES = {
   grass: BackgroundType.FLORAL,
-  sand: BackgroundType.ANIMALS,
+  sand: BackgroundType.MOSAIC,
   rock: BackgroundType.COSMIC
 } as const;
 

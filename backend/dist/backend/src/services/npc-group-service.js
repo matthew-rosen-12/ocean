@@ -368,7 +368,6 @@ function checkAndHandleNPCCollisions(room) {
                 const otherPathPosition = calculatePathPosition(otherPath, Date.now());
                 const collided = detectCollision(thrownPathPosition, otherPathPosition, types_1.NPC_WIDTH, types_1.NPC_HEIGHT, types_1.NPC_WIDTH, types_1.NPC_HEIGHT);
                 if (collided) {
-                    console.log("Path NPC collision detected");
                     const thrownPathSize = thrownPathNPCGroup.fileNames.length;
                     const otherPathSize = otherPathNPCGroup.fileNames.length;
                     const sameOwner = otherPathNPCGroup.captorId === thrownPathNPCGroup.captorId;

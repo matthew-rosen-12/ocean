@@ -500,7 +500,6 @@ export function checkAndHandleNPCCollisions(room: string): void{
         );
 
         if (collided) {
-          console.log("Path NPC collision detected");
           const thrownPathSize = thrownPathNPCGroup.fileNames.length;
           const otherPathSize = otherPathNPCGroup.fileNames.length;
           const sameOwner = otherPathNPCGroup.captorId === thrownPathNPCGroup.captorId;
