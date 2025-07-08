@@ -39,16 +39,20 @@ export default function CosmicPattern({
     ctx.fillStyle = "#0B0D1E";
     ctx.fillRect(0, 0, 1024, 1024);
 
-    // Realistic planet colors with transparency (0.5-0.8)
+    // Regular planet colors with transparency (0.5-0.8)
     const planetColors = [
-      "rgba(139, 69, 19, 0.7)", // Mars-like red/brown
-      "rgba(255, 228, 181, 0.6)", // Venus-like pale yellow
-      "rgba(70, 130, 180, 0.7)", // Neptune-like blue
-      "rgba(218, 165, 32, 0.6)", // Jupiter-like golden brown
-      "rgba(128, 128, 128, 0.7)", // Mercury-like gray
-      "rgba(205, 133, 63, 0.6)", // Desert planet tan
-      "rgba(47, 79, 79, 0.8)", // Dark slate gray
-      "rgba(210, 180, 140, 0.7)", // Sandy brown
+      "rgba(70, 130, 180, 0.7)", // Blue
+      "rgba(255, 140, 0, 0.6)", // Orange
+      "rgba(220, 20, 60, 0.7)", // Red
+      "rgba(128, 128, 128, 0.7)", // Gray
+      "rgba(0, 128, 128, 0.6)", // Teal
+      "rgba(100, 149, 237, 0.7)", // Cornflower blue
+      "rgba(255, 69, 0, 0.6)", // Red-orange
+      "rgba(169, 169, 169, 0.7)", // Dark gray
+      "rgba(218, 165, 32, 0.6)", // Sandy Jupiter-like golden brown
+      "rgba(222, 184, 135, 0.7)", // Burlywood sandy
+      "rgba(210, 180, 140, 0.6)", // Tan sandy
+      "rgba(205, 133, 63, 0.7)", // Peru sandy brown
     ];
 
 
@@ -234,16 +238,234 @@ export default function CosmicPattern({
       const size = 40 + nebulaRandom.size * 80;
       
       const nebulaColors = [
-        "rgba(138, 43, 226, 0.2)", // Purple
-        "rgba(255, 20, 147, 0.15)", // Pink
         "rgba(0, 191, 255, 0.2)", // Blue
-        "rgba(50, 205, 50, 0.15)", // Green
+        "rgba(255, 20, 147, 0.15)", // Pink
+        "rgba(255, 140, 0, 0.18)", // Orange
+        "rgba(220, 20, 60, 0.15)", // Red
       ];
       
       ctx.fillStyle = nebulaColors[Math.floor(nebulaRandom.color * nebulaColors.length)];
       ctx.beginPath();
       ctx.arc(x, y, size, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    // Add large flaming shooting stars
+    for (let i = 0; i < 3; i++) {
+      const cometSeed = seed + i * 2000 + 400000;
+      const cometRandom = multiRandom(cometSeed);
+
+      const x = cometRandom.x * 1024;
+      const y = cometRandom.y * 1024;
+      const length = 80 + cometRandom.size * 150; // Much larger: 80-230px
+      const angle = cometRandom.extra * Math.PI * 2;
+      const headSize = 8 + cometRandom.color * 12; // Larger head: 8-20px
+      
+      // Don't draw on planets
+      const onPlanet = planetPositions.some(planet => 
+        Math.sqrt((planet.x - x) ** 2 + (planet.y - y) ** 2) < 160
+      );
+      
+      if (!onPlanet) {
+        // Multi-layered flaming tail
+        const tailX = x + Math.cos(angle) * length;
+        const tailY = y + Math.sin(angle) * length;
+        
+        // Outer flame layer (orange-red)
+        ctx.strokeStyle = "rgba(255, 69, 0, 0.4)";
+        ctx.lineWidth = 12;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(tailX, tailY);
+        ctx.stroke();
+        
+        // Middle flame layer (yellow-orange)
+        ctx.strokeStyle = "rgba(255, 140, 0, 0.6)";
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + Math.cos(angle) * length * 0.8, y + Math.sin(angle) * length * 0.8);
+        ctx.stroke();
+        
+        // Inner flame layer (bright yellow)
+        ctx.strokeStyle = "rgba(255, 255, 0, 0.7)";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + Math.cos(angle) * length * 0.6, y + Math.sin(angle) * length * 0.6);
+        ctx.stroke();
+        
+        // Core white-hot trail
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + Math.cos(angle) * length * 0.4, y + Math.sin(angle) * length * 0.4);
+        ctx.stroke();
+        
+        // Flaming head with glow
+        // Outer glow (red-orange)
+        ctx.fillStyle = "rgba(255, 69, 0, 0.3)";
+        ctx.beginPath();
+        ctx.arc(x, y, headSize * 1.8, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Middle glow (orange)
+        ctx.fillStyle = "rgba(255, 140, 0, 0.5)";
+        ctx.beginPath();
+        ctx.arc(x, y, headSize * 1.3, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Inner core (bright yellow-white)
+        ctx.fillStyle = "rgba(255, 255, 200, 0.9)";
+        ctx.beginPath();
+        ctx.arc(x, y, headSize * 0.8, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // White-hot center
+        ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+        ctx.beginPath();
+        ctx.arc(x, y, headSize * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Add gas giant moons
+    planetPositions.forEach((pos, i) => {
+      const planetSeed = seed + i * 10000;
+      const planetRandom = multiRandom(planetSeed);
+      const radius = 80 + planetRandom.extra * 60;
+      
+      // Only add moons to larger planets (gas giants)
+      if (radius > 110 && planetRandom.color > 0.3) {
+        const numMoons = 1 + Math.floor(planetRandom.size * 2); // 1-2 moons
+        
+        for (let j = 0; j < numMoons; j++) {
+          const moonSeed = seed + i * 10000 + j * 1000;
+          const moonRandom = multiRandom(moonSeed);
+          
+          const orbitRadius = radius + 50 + moonRandom.x * 40;
+          const angle = moonRandom.y * Math.PI * 2;
+          const moonX = pos.x + Math.cos(angle) * orbitRadius;
+          const moonY = pos.y + Math.sin(angle) * orbitRadius;
+          const moonSize = 8 + moonRandom.size * 12;
+          
+          // Ensure moon is within canvas bounds
+          if (moonX > 0 && moonX < 1024 && moonY > 0 && moonY < 1024) {
+            ctx.fillStyle = "rgba(200, 200, 200, 0.6)";
+            ctx.beginPath();
+            ctx.arc(moonX, moonY, moonSize, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+    });
+
+    // Add asteroid belt
+    const beltCenterX = 512;
+    const beltCenterY = 512;
+    const beltInnerRadius = 350;
+    const beltOuterRadius = 450;
+    
+    for (let i = 0; i < 40; i++) {
+      const beltSeed = seed + i * 300 + 500000;
+      const beltRandom = multiRandom(beltSeed);
+      
+      const angle = beltRandom.x * Math.PI * 2;
+      const radius = beltInnerRadius + beltRandom.y * (beltOuterRadius - beltInnerRadius);
+      const x = beltCenterX + Math.cos(angle) * radius;
+      const y = beltCenterY + Math.sin(angle) * radius;
+      const size = 1 + beltRandom.size * 3;
+      
+      // Don't draw on planets
+      const onPlanet = planetPositions.some(planet => 
+        Math.sqrt((planet.x - x) ** 2 + (planet.y - y) ** 2) < 120
+      );
+      
+      if (!onPlanet && x > 0 && x < 1024 && y > 0 && y < 1024) {
+        ctx.fillStyle = "rgba(139, 69, 19, 0.5)";
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Add pulsars (rotating neutron stars with beams)
+    for (let i = 0; i < 2; i++) {
+      const pulsarSeed = seed + i * 3000 + 600000;
+      const pulsarRandom = multiRandom(pulsarSeed);
+
+      const x = pulsarRandom.x * 1024;
+      const y = pulsarRandom.y * 1024;
+      const coreSize = 4 + pulsarRandom.size * 3; // Small dense core
+      const beamLength = 80 + pulsarRandom.extra * 120; // 80-200px beam length
+      const rotationAngle = pulsarRandom.color * Math.PI * 2;
+      
+      // Don't draw on planets
+      const onPlanet = planetPositions.some(planet => 
+        Math.sqrt((planet.x - x) ** 2 + (planet.y - y) ** 2) < 160
+      );
+      
+      if (!onPlanet) {
+        // Pulsar beam 1
+        const beam1X = x + Math.cos(rotationAngle) * beamLength;
+        const beam1Y = y + Math.sin(rotationAngle) * beamLength;
+        
+        // Outer beam glow
+        ctx.strokeStyle = "rgba(0, 255, 255, 0.3)";
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(beam1X, beam1Y);
+        ctx.stroke();
+        
+        // Inner beam core
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(beam1X, beam1Y);
+        ctx.stroke();
+        
+        // Pulsar beam 2 (opposite direction)
+        const beam2X = x + Math.cos(rotationAngle + Math.PI) * beamLength;
+        const beam2Y = y + Math.sin(rotationAngle + Math.PI) * beamLength;
+        
+        // Outer beam glow
+        ctx.strokeStyle = "rgba(0, 255, 255, 0.3)";
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(beam2X, beam2Y);
+        ctx.stroke();
+        
+        // Inner beam core
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(beam2X, beam2Y);
+        ctx.stroke();
+        
+        // Pulsar core with intense glow
+        // Outer glow (cyan)
+        ctx.fillStyle = "rgba(0, 255, 255, 0.4)";
+        ctx.beginPath();
+        ctx.arc(x, y, coreSize * 3, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Middle glow (white-cyan)
+        ctx.fillStyle = "rgba(128, 255, 255, 0.6)";
+        ctx.beginPath();
+        ctx.arc(x, y, coreSize * 2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Dense core (bright white)
+        ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+        ctx.beginPath();
+        ctx.arc(x, y, coreSize, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     return canvas;

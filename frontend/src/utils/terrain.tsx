@@ -3,7 +3,7 @@ import React from "react";
 import CloudBackground from "../components/backgrounds/CloudBackground";
 import FloralPattern from "../components/backgrounds/FloralPattern";
 import CosmicPattern from "../components/backgrounds/CosmicPattern";
-import MosaicPattern from "../components/backgrounds/MosaicPattern";
+import CityPattern from "../components/backgrounds/CityPattern";
 import { Z_DEPTHS } from "shared/z-depths";
 import { BackgroundString, BackgroundType, normalizeBackgroundType } from "shared/background-types";
 
@@ -198,7 +198,7 @@ function renderTerrainBackground(
         return <CosmicPattern boundaries={boundaries} seed={seed} />;
 
       case BackgroundType.MOSAIC:
-        return <MosaicPattern boundaries={boundaries} seed={seed} />;
+        return <CityPattern boundaries={boundaries} seed={seed} />;
 
       default:
         return <FloralPattern boundaries={boundaries} seed={seed} />;

@@ -1,3 +1,5 @@
+- fix leaderboard message rendering (auto expand, scroll to bottom)
+- change mosaic to city scape, add one more background
 - create llm calls for npc speech - upgrade tier?
 - make sure animal colors are dark
 - quality assurance
