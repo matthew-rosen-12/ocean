@@ -7,22 +7,15 @@ export enum BackgroundType {
   FLORAL = "floral",
   COSMIC = "cosmic",
   MOSAIC = "mosaic",
+  SNOWFLAKE = "snowflake"
 }
 
-// Background aliases that map to primary types
-export const BACKGROUND_ALIASES = {
-  grass: BackgroundType.FLORAL,
-  sand: BackgroundType.MOSAIC,
-  rock: BackgroundType.COSMIC
-} as const;
-
 // Union type for all valid background strings (primary + aliases)
-export type BackgroundString = BackgroundType | keyof typeof BACKGROUND_ALIASES;
+export type BackgroundString = BackgroundType;
 
 // Array of all valid background strings for validation
 export const ALL_BACKGROUND_STRINGS: BackgroundString[] = [
   ...Object.values(BackgroundType),
-  ...Object.keys(BACKGROUND_ALIASES)
 ] as BackgroundString[];
 
 /**
@@ -33,11 +26,6 @@ export const ALL_BACKGROUND_STRINGS: BackgroundString[] = [
 export function normalizeBackgroundType(background: BackgroundString): BackgroundType {
   if (Object.values(BackgroundType).includes(background as BackgroundType)) {
     return background as BackgroundType;
-  }
-  
-  const alias = BACKGROUND_ALIASES[background as keyof typeof BACKGROUND_ALIASES];
-  if (alias) {
-    return alias;
   }
   
   // Fallback to floral if invalid

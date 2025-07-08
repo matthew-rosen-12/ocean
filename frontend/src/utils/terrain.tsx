@@ -4,6 +4,7 @@ import CloudBackground from "../components/backgrounds/CloudBackground";
 import FloralPattern from "../components/backgrounds/FloralPattern";
 import CosmicPattern from "../components/backgrounds/CosmicPattern";
 import CityPattern from "../components/backgrounds/CityPattern";
+import SnowflakePattern from "../components/backgrounds/SnowflakePattern";
 import { Z_DEPTHS } from "shared/z-depths";
 import { BackgroundString, BackgroundType, normalizeBackgroundType } from "shared/background-types";
 
@@ -199,6 +200,9 @@ function renderTerrainBackground(
 
       case BackgroundType.MOSAIC:
         return <CityPattern boundaries={boundaries} seed={seed} />;
+
+      case BackgroundType.SNOWFLAKE:
+        return <SnowflakePattern boundaries={boundaries} seed={seed} />;
 
       default:
         return <FloralPattern boundaries={boundaries} seed={seed} />;
