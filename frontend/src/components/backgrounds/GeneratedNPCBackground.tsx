@@ -1,18 +1,16 @@
 import React from 'react';
-import { npcBackgroundStyles, NPCBackgroundVariant } from '../../styles/npc-backgrounds';
+import { npcBackgroundStyles } from '../../styles/npc-backgrounds';
 
 interface GeneratedNPCBackgroundProps {
-  variant?: NPCBackgroundVariant;
   className?: string;
   opacity?: number;
 }
 
 export default function GeneratedNPCBackground({ 
-  variant = 'default', 
   className = '',
   opacity = 0.7 
 }: GeneratedNPCBackgroundProps) {
-  const backgroundStyle = npcBackgroundStyles[variant];
+  const backgroundStyle = npcBackgroundStyles;
   
   return (
     <div 

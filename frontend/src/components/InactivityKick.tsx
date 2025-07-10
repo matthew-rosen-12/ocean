@@ -18,7 +18,7 @@ export default function InactivityKick({ onReturnToLogin }: Props) {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen relative">
-      <GeneratedNPCBackground variant="alt2" />
+      <GeneratedNPCBackground />
       <div className="p-8 bg-white rounded-lg shadow-md max-w-md w-full mx-4 relative z-10">
         <div className="text-center mb-6">
           <div className="text-6xl mb-4">🚪</div>

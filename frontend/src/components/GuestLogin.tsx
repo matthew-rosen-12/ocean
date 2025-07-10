@@ -465,7 +465,7 @@ export default function GuestLogin({
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen relative">
-      <GeneratedNPCBackground variant="default" />
+      <GeneratedNPCBackground />
       <div className="p-8 bg-white rounded-lg shadow-md relative z-10">
         <h1 className="text-2xl font-bold mb-4 text-center text-black">
           Welcome to Dolphin and Wolf

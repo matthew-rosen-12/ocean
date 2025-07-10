@@ -54,7 +54,7 @@ export default function GameOverScreen({ finalScores, users, onReturnToLogin, wi
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
-      <GeneratedNPCBackground variant="alt1" />
+      <GeneratedNPCBackground />
       <div className="bg-white rounded-lg shadow-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto relative z-10">
         {/* Header */}
         <div className="text-center mb-8">

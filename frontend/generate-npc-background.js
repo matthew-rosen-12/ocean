@@ -178,11 +178,9 @@ async function generateNPCBackgroundPNG(seed = 42) {
 
 async function main() {
   try {
-    // Generate different background PNG patterns with different seeds
+    // Generate single background PNG pattern
     const backgrounds = [
-      { seed: 42, name: 'npc-background-default.png' },
-      { seed: 123, name: 'npc-background-alt1.png' },
-      { seed: 789, name: 'npc-background-alt2.png' }
+      { seed: 42, name: 'npc-background.png' }
     ];
     
     for (const bg of backgrounds) {
@@ -205,24 +203,10 @@ async function main() {
     // Also generate a TypeScript file with background styles for React components
     const backgroundStyles = `// Generated NPC background styles - Auto-generated, do not edit manually
 export const npcBackgroundStyles = {
-  default: {
-    backgroundImage: 'url("/npc-background-default.png")',
-    backgroundRepeat: 'repeat' as const,
-    backgroundSize: 'auto' as const,
-  },
-  alt1: {
-    backgroundImage: 'url("/npc-background-alt1.png")',
-    backgroundRepeat: 'repeat' as const,
-    backgroundSize: 'auto' as const,
-  },
-  alt2: {
-    backgroundImage: 'url("/npc-background-alt2.png")',
-    backgroundRepeat: 'repeat' as const,
-    backgroundSize: 'auto' as const,
-  },
+  backgroundImage: 'url("/npc-background.png")',
+  backgroundRepeat: 'repeat' as const,
+  backgroundSize: 'auto' as const,
 };
-
-export type NPCBackgroundVariant = keyof typeof npcBackgroundStyles;
 `;
     
     const stylesPath = path.join(__dirname, 'src', 'styles', 'npc-backgrounds.ts');
