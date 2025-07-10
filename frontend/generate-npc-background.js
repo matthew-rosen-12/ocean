@@ -50,6 +50,22 @@ const NPC_FILES = [
   "winston_churchill.png",
 ];
 
+// All animal SVG files from the public/animals directory
+const ANIMAL_FILES = [
+  "bear.svg",
+  "bee.svg",
+  "cuttlefish.svg",
+  "dolphin.svg",
+  "eagle.svg",
+  "penguin.svg",
+  "salamander.svg",
+  "snake.svg",
+  "tiger.svg",
+  "tuna.svg",
+  "turtle.svg",
+  "wolf.svg",
+];
+
 // Shuffle function for deterministic randomization
 function deterministicShuffle(array, seed) {
   const shuffled = [...array];
@@ -176,16 +192,130 @@ async function generateNPCBackgroundPNG(seed = 42) {
   return canvas;
 }
 
+async function generateAnimalBackgroundPNG(seed = 42) {
+  console.log(`Generating animal background PNG with seed ${seed}...`);
+  
+  // Configuration for animal arrangement
+  const animalSize = 80; // Size of each animal image
+  const spacing = 120; // Space between animals
+  const rowOffset = 60; // Offset for alternating rows
+  
+  // Create a larger tileable pattern to show more animals
+  const patternWidth = 1080; // 9 columns * 120px spacing
+  const patternHeight = 720; // 6 rows * 120px spacing
+  
+  const canvas = createCanvas(patternWidth, patternHeight);
+  const ctx = canvas.getContext('2d');
+  
+  // Subtle background color
+  ctx.fillStyle = '#f0f9ff';
+  ctx.fillRect(0, 0, patternWidth, patternHeight);
+  
+  // Use all animals for maximum variety
+  const selectedAnimals = deterministicShuffle(ANIMAL_FILES, seed);
+  
+  const cols = Math.ceil(patternWidth / spacing);
+  const rows = Math.ceil(patternHeight / spacing);
+  
+  let animalIndex = 0;
+  let imagesLoaded = 0;
+  let imagesFailed = 0;
+  
+  // Load and draw animals
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const isEvenRow = row % 2 === 0;
+      const xOffset = isEvenRow ? 0 : rowOffset;
+      
+      const x = col * spacing + xOffset + spacing / 2;
+      const y = row * spacing + spacing / 2;
+      
+      // Skip if position is outside canvas
+      if (x < animalSize/2 || x > patternWidth - animalSize/2 || 
+          y < animalSize/2 || y > patternHeight - animalSize/2) continue;
+      
+      // Get animal file (cycle through the list)
+      const animalFile = selectedAnimals[animalIndex % selectedAnimals.length];
+      animalIndex++;
+      
+      const imagePath = path.join(__dirname, 'public', 'animals', animalFile);
+      
+      try {
+        // Load and draw the animal image
+        const image = await loadImage(imagePath);
+        
+        // Calculate size while maintaining aspect ratio
+        const imageAspect = image.width / image.height;
+        let drawWidth, drawHeight;
+        
+        if (imageAspect > 1) {
+          // Wider than tall
+          drawWidth = animalSize;
+          drawHeight = animalSize / imageAspect;
+        } else {
+          // Taller than wide
+          drawHeight = animalSize;
+          drawWidth = animalSize * imageAspect;
+        }
+        
+        // Draw with slight transparency for better blending
+        ctx.globalAlpha = 0.8;
+        ctx.drawImage(
+          image,
+          x - drawWidth / 2,
+          y - drawHeight / 2,
+          drawWidth,
+          drawHeight
+        );
+        ctx.globalAlpha = 1.0;
+        
+        imagesLoaded++;
+      } catch (error) {
+        console.warn(`Failed to load ${animalFile} at position (${x}, ${y}):`, error.message);
+        // Fallback: draw a circle with the animal's initial
+        const animalName = animalFile.replace('.svg', '').replace(/_/g, ' ');
+        const initial = animalName.charAt(0).toUpperCase();
+        
+        // Draw background circle
+        ctx.fillStyle = `hsl(${(animalIndex * 137.5) % 360}, 50%, 85%)`;
+        ctx.beginPath();
+        ctx.arc(x, y, animalSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw border
+        ctx.strokeStyle = `hsl(${(animalIndex * 137.5) % 360}, 50%, 70%)`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Draw initial
+        ctx.fillStyle = `hsl(${(animalIndex * 137.5) % 360}, 50%, 30%)`;
+        ctx.font = `bold ${animalSize / 3}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(initial, x, y);
+        
+        imagesFailed++;
+        console.warn(`Failed to load ${animalFile}, using fallback`);
+      }
+    }
+  }
+  
+  console.log(`Animal PNG generation complete: ${imagesLoaded} images loaded, ${imagesFailed} fallbacks used`);
+  
+  return canvas;
+}
+
 async function main() {
   try {
-    // Generate single background PNG pattern
+    // Generate both NPC and animal background patterns
     const backgrounds = [
-      { seed: 42, name: 'npc-background.png' }
+      { type: 'npc', seed: 42, name: 'npc-background.png', generator: generateNPCBackgroundPNG },
+      { type: 'animal', seed: 123, name: 'animal-background.png', generator: generateAnimalBackgroundPNG }
     ];
     
     for (const bg of backgrounds) {
       console.log(`\nGenerating ${bg.name}...`);
-      const canvas = await generateNPCBackgroundPNG(bg.seed);
+      const canvas = await bg.generator(bg.seed);
       
       // Save PNG to public directory
       const publicDir = path.join(__dirname, 'public');
@@ -202,18 +332,29 @@ async function main() {
     
     // Also generate a TypeScript file with background styles for React components
     const backgroundStyles = `// Generated NPC background styles - Auto-generated, do not edit manually
-export const npcBackgroundStyles = {
-  backgroundImage: 'url("/npc-background.png")',
-  backgroundRepeat: 'repeat' as const,
-  backgroundSize: 'auto' as const,
-};
+const backgrounds = [
+  {
+    backgroundImage: 'url("/npc-background.png")',
+    backgroundRepeat: 'repeat' as const,
+    backgroundSize: 'auto' as const,
+  },
+  {
+    backgroundImage: 'url("/animal-background.png")',
+    backgroundRepeat: 'repeat' as const,
+    backgroundSize: 'auto' as const,
+  },
+];
+
+// Randomly choose a background each time the app loads
+const randomIndex = Math.floor(Math.random() * backgrounds.length);
+export const npcBackgroundStyles = backgrounds[randomIndex];
 `;
     
     const stylesPath = path.join(__dirname, 'src', 'styles', 'npc-backgrounds.ts');
     fs.writeFileSync(stylesPath, backgroundStyles);
     console.log(`✓ Saved npc-backgrounds.ts (${(backgroundStyles.length / 1024).toFixed(1)}KB)`);
     
-    console.log('\n🎉 All NPC background PNGs generated successfully!');
+    console.log('\n🎉 All background PNGs generated successfully!');
   } catch (error) {
     console.error('Error generating NPC backgrounds:', error);
     process.exit(1);
