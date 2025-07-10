@@ -11,6 +11,7 @@ import { NPCInteraction } from "shared/interaction-types";
 import Scene from "./components/Scene";
 import GuestLogin from "./components/GuestLogin";
 import Leaderboard from "./components/Leaderboard";
+import Messages from "./components/Messages";
 import GameOverScreen from "./components/GameOverScreen";
 import InactivityKick from "./components/InactivityKick";
 import {
@@ -162,6 +163,15 @@ function App() {
         }}
         deletingNPCs={deletingNPCs}
         onInactivityKick={handleInactivityKick}
+      />
+
+      {/* Messages */}
+      <Messages
+        myUserId={myUser.id}
+        users={users}
+        npcGroups={npcGroups}
+        latestInteraction={latestInteraction}
+        latestAiResponse={latestAiResponse}
       />
 
       {/* Leaderboard */}
