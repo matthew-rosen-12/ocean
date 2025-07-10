@@ -4,8 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "cd ../shared && npm run build && cd ../frontend && node preprocess-animals.js && tsc && vite build",
+    "build": "cd ../shared && npm run build && cd ../frontend && node preprocess-animals.js && node generate-npc-background.js && tsc && vite build",
     "preprocess": "node preprocess-animals.js",
+    "generate-backgrounds": "node generate-npc-background.js",
     "lint": "eslint src/**/*.{ts,tsx}",
     "lint:fix": "eslint src/**/*.{ts,tsx} --fix",
     "preview": "vite preview"
@@ -23,6 +24,7 @@
     "@types/react": "^18.3.22",
     "@types/react-dom": "^18.3.7",
     "@xmldom/xmldom": "^0.9.8",
+    "canvas": "^3.1.2",
     "concaveman": "^1.2.1",
     "lodash": "^4.17.21",
     "react": "^18.3.1",

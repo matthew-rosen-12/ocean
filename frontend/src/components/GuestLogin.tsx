@@ -18,6 +18,7 @@ import { NPCInteraction, createInteraction } from "shared/interaction-prompts";
 import { getSocket } from "../socket";
 import { ServerTerrainConfig } from "../utils/terrain";
 import { TypedSocket } from "../utils/typed-socket";
+import GeneratedNPCBackground from "./backgrounds/GeneratedNPCBackground";
 
 // Cookie utility functions
 const setCookie = (name: string, value: string, days: number = 365) => {
@@ -463,8 +464,9 @@ export default function GuestLogin({
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <div className="p-8 bg-white rounded-lg shadow-md">
+    <div className="flex flex-col items-center justify-center min-h-screen relative">
+      <GeneratedNPCBackground variant="default" />
+      <div className="p-8 bg-white rounded-lg shadow-md relative z-10">
         <h1 className="text-2xl font-bold mb-4 text-center text-black">
           Welcome to Dolphin and Wolf
         </h1>
