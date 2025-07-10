@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { useLoader } from "@react-three/fiber";
+import { useMemo } from "react";
 import {
   TerrainBoundaries,
   TERRAIN_PLANE_CONFIG,
@@ -24,55 +25,58 @@ export default function SnowflakePattern({
     pngTexture.wrapT = THREE.RepeatWrapping;
   }
 
-  const createSnowflakeTexture = () => {
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1024, boundaries.width * 20);
-    canvas.height = Math.max(1024, boundaries.height * 20);
-    const ctx = canvas.getContext("2d")!;
-
-    // Winter background with subtle gradient
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    gradient.addColorStop(0, "#E8F4FF");
-    gradient.addColorStop(0.5, "#F0F8FF");
-    gradient.addColorStop(1, "#F8FCFF");
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Generate fewer but much larger snowflakes
-    const flakeRandom = multiRandom(seed);
-    const numSnowflakes = 20 + Math.floor(flakeRandom.x * 30); // 20-49 snowflakes (fewer for bigger size)
+  // Helper function for recursive dendritic branching
+  const drawDendriticBranch = (
+    ctx: CanvasRenderingContext2D,
+    startX: number,
+    startY: number,
+    angle: number,
+    length: number,
+    level: number,
+    randomSeed: number
+  ) => {
+    if (length < 5 || level > 4) return; // Stop recursion
     
-    // Create grid-based distribution with space for large snowflakes
-    const gridCols = Math.ceil(Math.sqrt(numSnowflakes * 0.8));
-    const gridRows = Math.ceil(numSnowflakes / gridCols);
-    const cellWidth = canvas.width / gridCols;
-    const cellHeight = canvas.height / gridRows;
-
-    for (let i = 0; i < numSnowflakes; i++) {
-      const snowflakeRandom = multiRandom(seed + i * 1000);
-      
-      // Grid-based positioning with controlled offset within cell
-      const gridCol = i % gridCols;
-      const gridRow = Math.floor(i / gridCols);
-      
-      const baseX = gridCol * cellWidth;
-      const baseY = gridRow * cellHeight;
-      
-      // Small random offset to stay within grid cell
-      const offsetX = (snowflakeRandom.x - 0.5) * cellWidth * 0.4;
-      const offsetY = (snowflakeRandom.y - 0.5) * cellHeight * 0.4;
-      
-      const centerX = baseX + cellWidth/2 + offsetX;
-      const centerY = baseY + cellHeight/2 + offsetY;
-      
-      // Much larger snowflakes - up to 80% of cell size
-      const maxRadius = Math.min(cellWidth, cellHeight) * 0.8; // Max 80% of cell size
-      const radius = maxRadius * 0.6 + snowflakeRandom.size * maxRadius * 0.4; // 60-100% of max
-      
-      drawComplexSnowflake(ctx, centerX, centerY, radius, snowflakeRandom);
+    const endX = startX + Math.cos(angle) * length;
+    const endY = startY + Math.sin(angle) * length;
+    
+    ctx.lineWidth = Math.max(0.5, 3 - level);
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(endX, endY);
+    ctx.stroke();
+    
+    // Recursive sub-branches
+    if (randomSeed > 0.3) {
+      const subLength = length * (0.4 + randomSeed * 0.3);
+      drawDendriticBranch(ctx, endX, endY, angle - Math.PI/6, subLength, level + 1, randomSeed * 0.8);
+      drawDendriticBranch(ctx, endX, endY, angle + Math.PI/6, subLength, level + 1, randomSeed * 0.7);
     }
+  };
 
-    return canvas;
+  // Helper function for crystalline details
+  const drawCrystallineDetail = (
+    ctx: CanvasRenderingContext2D,
+    centerX: number,
+    centerY: number,
+    size: number,
+    randomSeed: number
+  ) => {
+    const numPoints = 3 + Math.floor(randomSeed * 4); // 3-6 crystalline points
+    
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < numPoints; i++) {
+      const angle = (i * Math.PI * 2) / numPoints + randomSeed * Math.PI;
+      const length = size * (0.5 + randomSeed * 0.5);
+      
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.lineTo(
+        centerX + Math.cos(angle) * length,
+        centerY + Math.sin(angle) * length
+      );
+      ctx.stroke();
+    }
   };
 
   const drawComplexSnowflake = (
@@ -205,66 +209,62 @@ export default function SnowflakePattern({
     ctx.fill();
   };
 
-  // Helper function for recursive dendritic branching
-  const drawDendriticBranch = (
-    ctx: CanvasRenderingContext2D,
-    startX: number,
-    startY: number,
-    angle: number,
-    length: number,
-    level: number,
-    randomSeed: number
-  ) => {
-    if (length < 5 || level > 4) return; // Stop recursion
-    
-    const endX = startX + Math.cos(angle) * length;
-    const endY = startY + Math.sin(angle) * length;
-    
-    ctx.lineWidth = Math.max(0.5, 3 - level);
-    ctx.beginPath();
-    ctx.moveTo(startX, startY);
-    ctx.lineTo(endX, endY);
-    ctx.stroke();
-    
-    // Recursive sub-branches
-    if (randomSeed > 0.3) {
-      const subLength = length * (0.4 + randomSeed * 0.3);
-      drawDendriticBranch(ctx, endX, endY, angle - Math.PI/6, subLength, level + 1, randomSeed * 0.8);
-      drawDendriticBranch(ctx, endX, endY, angle + Math.PI/6, subLength, level + 1, randomSeed * 0.7);
-    }
-  };
+  const snowflakeTexture = useMemo(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1024, boundaries.width * 20);
+    canvas.height = Math.max(1024, boundaries.height * 20);
+    const ctx = canvas.getContext("2d")!;
 
-  // Helper function for crystalline details
-  const drawCrystallineDetail = (
-    ctx: CanvasRenderingContext2D,
-    centerX: number,
-    centerY: number,
-    size: number,
-    randomSeed: number
-  ) => {
-    const numPoints = 3 + Math.floor(randomSeed * 4); // 3-6 crystalline points
+    // Winter background with subtle gradient
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, "#E8F4FF");
+    gradient.addColorStop(0.5, "#F0F8FF");
+    gradient.addColorStop(1, "#F8FCFF");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Generate fewer but much larger snowflakes
+    const flakeRandom = multiRandom(seed);
+    const numSnowflakes = 20 + Math.floor(flakeRandom.x * 30); // 20-49 snowflakes (fewer for bigger size)
     
-    ctx.lineWidth = 0.5;
-    for (let i = 0; i < numPoints; i++) {
-      const angle = (i * Math.PI * 2) / numPoints + randomSeed * Math.PI;
-      const length = size * (0.5 + randomSeed * 0.5);
+    // Create grid-based distribution with space for large snowflakes
+    const gridCols = Math.ceil(Math.sqrt(numSnowflakes * 0.8));
+    const gridRows = Math.ceil(numSnowflakes / gridCols);
+    const cellWidth = canvas.width / gridCols;
+    const cellHeight = canvas.height / gridRows;
+
+    for (let i = 0; i < numSnowflakes; i++) {
+      const snowflakeRandom = multiRandom(seed + i * 1000);
       
-      ctx.beginPath();
-      ctx.moveTo(centerX, centerY);
-      ctx.lineTo(
-        centerX + Math.cos(angle) * length,
-        centerY + Math.sin(angle) * length
-      );
-      ctx.stroke();
+      // Grid-based positioning with controlled offset within cell
+      const gridCol = i % gridCols;
+      const gridRow = Math.floor(i / gridCols);
+      
+      const baseX = gridCol * cellWidth;
+      const baseY = gridRow * cellHeight;
+      
+      // Small random offset to stay within grid cell
+      const offsetX = (snowflakeRandom.x - 0.5) * cellWidth * 0.4;
+      const offsetY = (snowflakeRandom.y - 0.5) * cellHeight * 0.4;
+      
+      const centerX = baseX + cellWidth/2 + offsetX;
+      const centerY = baseY + cellHeight/2 + offsetY;
+      
+      // Much larger snowflakes - up to 80% of cell size
+      const maxRadius = Math.min(cellWidth, cellHeight) * 0.8; // Max 80% of cell size
+      const radius = maxRadius * 0.6 + snowflakeRandom.size * maxRadius * 0.4; // 60-100% of max
+      
+      drawComplexSnowflake(ctx, centerX, centerY, radius, snowflakeRandom);
     }
-  };
+
+    return canvas;
+  }, [boundaries.width, boundaries.height, seed]);
 
 
   const downloadPattern = () => {
-    const canvas = createSnowflakeTexture();
     const link = document.createElement("a");
     link.download = `snowflake-pattern-${seed}.png`;
-    link.href = canvas.toDataURL();
+    link.href = snowflakeTexture.toDataURL();
     link.click();
   };
 
@@ -283,7 +283,7 @@ export default function SnowflakePattern({
         {!usePngFile && (
           <canvasTexture
             attach="map"
-            image={createSnowflakeTexture()}
+            image={snowflakeTexture}
             wrapS={THREE.ClampToEdgeWrapping}
             wrapT={THREE.ClampToEdgeWrapping}
           />

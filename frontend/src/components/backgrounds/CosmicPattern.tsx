@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import * as THREE from "three";
 import { useLoader } from "@react-three/fiber";
 import {
@@ -29,7 +29,7 @@ export default function CosmicPattern({
     pngTexture.wrapT = THREE.ClampToEdgeWrapping;
     pngTexture.repeat.set(1, 1);
   }
-  const createCosmicTexture = () => {
+  const cosmicTexture = useMemo(() => {
     const canvas = document.createElement("canvas");
     canvas.width = 1024;
     canvas.height = 1024;
@@ -469,14 +469,13 @@ export default function CosmicPattern({
     }
 
     return canvas;
-  };
+  }, [boundaries.width, boundaries.height, seed]);
 
   // Utility function to download current pattern as PNG
   const downloadPattern = () => {
-    const canvas = createCosmicTexture();
     const link = document.createElement("a");
     link.download = `cosmic-pattern-${seed}.png`;
-    link.href = canvas.toDataURL();
+    link.href = cosmicTexture.toDataURL();
     link.click();
   };
 
@@ -500,7 +499,7 @@ export default function CosmicPattern({
         {!usePngFile && (
           <canvasTexture
             attach="map"
-            image={createCosmicTexture()}
+            image={cosmicTexture}
             wrapS={THREE.ClampToEdgeWrapping}
             wrapT={THREE.ClampToEdgeWrapping}
             repeat={new THREE.Vector2(repeatX, repeatY)}

@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { useLoader } from "@react-three/fiber";
+import { useMemo } from "react";
 import {
   TerrainBoundaries,
   TERRAIN_PLANE_CONFIG,
@@ -26,7 +27,7 @@ export default function MosaicPattern({
     pngTexture.wrapT = THREE.RepeatWrapping;
   }
 
-  const createMosaicTexture = () => {
+  const mosaicTexture = useMemo(() => {
     const canvas = document.createElement("canvas");
     // Make canvas match terrain size to avoid tiling
     canvas.width = Math.max(512, boundaries.width * 10);
@@ -512,14 +513,13 @@ export default function MosaicPattern({
     }
 
     return canvas;
-  };
+  }, [boundaries.width, boundaries.height, seed]);
 
   // Utility function to download current pattern as PNG
   const downloadPattern = () => {
-    const canvas = createMosaicTexture();
     const link = document.createElement("a");
     link.download = `city-pattern-${seed}.png`;
-    link.href = canvas.toDataURL();
+    link.href = mosaicTexture.toDataURL();
     link.click();
   };
 
@@ -549,7 +549,7 @@ export default function MosaicPattern({
             // eslint-disable-next-line react/no-unknown-property
             attach="map"
             // eslint-disable-next-line react/no-unknown-property
-            image={createMosaicTexture()}
+            image={mosaicTexture}
             // eslint-disable-next-line react/no-unknown-property
             wrapS={THREE.ClampToEdgeWrapping}
             // eslint-disable-next-line react/no-unknown-property

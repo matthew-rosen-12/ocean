@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import * as THREE from "three";
 import { useLoader } from "@react-three/fiber";
 import {
@@ -30,7 +30,7 @@ export default function FloralPattern({
     pngTexture.repeat.set(1, 1);
   }
 
-  const createFloralTexture = () => {
+  const floralTexture = useMemo(() => {
     const canvas = document.createElement("canvas");
     canvas.width = 1024;
     canvas.height = 1024;
@@ -249,14 +249,13 @@ export default function FloralPattern({
     }
 
     return canvas;
-  };
+  }, [boundaries.width, boundaries.height, seed]);
 
   // Utility function to download current pattern as PNG
   const downloadPattern = () => {
-    const canvas = createFloralTexture();
     const link = document.createElement("a");
     link.download = `midcentury-floral-${seed}.png`;
-    link.href = canvas.toDataURL();
+    link.href = floralTexture.toDataURL();
     link.click();
   };
 
@@ -280,7 +279,7 @@ export default function FloralPattern({
         {!usePngFile && (
           <canvasTexture
             attach="map"
-            image={createFloralTexture()}
+            image={floralTexture}
             wrapS={THREE.ClampToEdgeWrapping}
             wrapT={THREE.ClampToEdgeWrapping}
             repeat={new THREE.Vector2(repeatX, repeatY)}
