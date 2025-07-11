@@ -466,37 +466,67 @@ export default function GuestLogin({
   return (
     <div className="flex flex-col items-center justify-center min-h-screen relative">
       <GeneratedNPCBackground />
-      <div className="p-8 bg-white rounded-lg shadow-md relative z-10">
-        <h1 className="text-2xl font-bold mb-4 text-center text-black">
-          Welcome to Dolphin and Wolf
-        </h1>
-        <div className="mb-4">
-          <label htmlFor="nickname" className="block text-sm font-medium text-gray-700 mb-2">
-            Nickname
-          </label>
-          <input
-            ref={inputRef}
-            id="nickname"
-            type="text"
-            value={nickname}
-            onChange={handleNicknameChange}
-            onKeyDown={handleNicknameKeyDown}
-            onFocus={handleNicknameFocus}
-            onClick={handleNicknameClick}
-            placeholder=""
-            className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white placeholder-gray-500 ${
-              !userHasTyped ? 'text-gray-400' : 'text-gray-900'
-            }`}
-            maxLength={20}
-          />
+      
+      {/* Main login card with glassmorphism effect */}
+      <div className="relative z-10 w-full max-w-md mx-4">
+        <div className="backdrop-blur-lg bg-white/20 border border-white/30 rounded-3xl shadow-2xl p-8 relative overflow-hidden">
+          {/* Subtle gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
+          
+          {/* Content */}
+          <div className="relative z-10">
+            <h1 className="text-4xl font-bold mb-8 text-center text-white drop-shadow-lg">
+              Nature vs NPC
+            </h1>
+            
+            <div className="mb-6">
+              <label htmlFor="nickname" className="block text-sm font-semibold text-white/90 mb-3 drop-shadow-sm">
+                Choose your nickname
+              </label>
+              <div className="relative">
+                <input
+                  ref={inputRef}
+                  id="nickname"
+                  type="text"
+                  value={nickname}
+                  onChange={handleNicknameChange}
+                  onKeyDown={handleNicknameKeyDown}
+                  onFocus={handleNicknameFocus}
+                  onClick={handleNicknameClick}
+                  placeholder=""
+                  className={`w-full px-4 py-4 bg-white/40 border border-white/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-400/60 focus:border-blue-400/60 backdrop-blur-sm transition-all duration-200 placeholder-gray-600 text-lg caret-gray-800 ${
+                    !userHasTyped ? 'text-gray-700' : 'text-gray-900'
+                  } hover:bg-white/50 focus:bg-white/60 focus:text-gray-900 selection:bg-blue-200/50`}
+                  maxLength={20}
+                />
+                {/* Subtle inner glow effect */}
+                <div className="absolute inset-0 rounded-2xl pointer-events-none opacity-0 transition-opacity duration-200 bg-gradient-to-r from-blue-400/20 to-purple-400/20 peer-focus:opacity-100"></div>
+              </div>
+            </div>
+            
+            <button
+              onClick={handleGuestLogin}
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 px-8 rounded-2xl hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Joining...
+                </span>
+              ) : (
+                "Join Game"
+              )}
+            </button>
+          </div>
         </div>
-        <button
-          onClick={handleGuestLogin}
-          disabled={loading}
-          className="w-full bg-blue-500 text-white py-4 px-8 rounded-lg hover:bg-blue-600 disabled:opacity-50 text-xl h-16"
-        >
-          {loading ? "Joining..." : "Join"}
-        </button>
+        
+        {/* Floating elements for visual interest */}
+        <div className="absolute -top-4 -left-4 w-20 h-20 bg-gradient-to-br from-blue-400/30 to-purple-400/30 rounded-full blur-xl animate-pulse"></div>
+        <div className="absolute -bottom-4 -right-4 w-16 h-16 bg-gradient-to-br from-purple-400/30 to-pink-400/30 rounded-full blur-xl animate-pulse" style={{ animationDelay: '1s' }}></div>
       </div>
     </div>
   );

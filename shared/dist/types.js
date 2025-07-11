@@ -15,7 +15,7 @@ export var Animal;
 })(Animal || (Animal = {}));
 export const ANIMAL_SCALES = {
     DOLPHIN: 3.0,
-    WOLF: 1.0,
+    WOLF: 2.0,
     PENGUIN: 2.5,
     SNAKE: 2.0,
     TURTLE: 2.0,

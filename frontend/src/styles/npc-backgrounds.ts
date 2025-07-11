@@ -12,6 +12,31 @@ const backgrounds = [
   },
 ];
 
-// Randomly choose a background each time the app loads
-const randomIndex = Math.floor(Math.random() * backgrounds.length);
-export const npcBackgroundStyles = backgrounds[randomIndex];
+// Generate random position and zoom for background
+function generateRandomBackgroundStyle() {
+  const randomIndex = Math.floor(Math.random() * backgrounds.length);
+  const baseStyle = backgrounds[randomIndex];
+  
+  // Different zoom ranges for different background types
+  let zoom;
+  if (baseStyle.backgroundImage.includes('animal-background')) {
+    // Animal backgrounds: 50% to 100%
+    zoom = 0.5 + Math.random() * 0.5;
+  } else {
+    // NPC backgrounds: 25% to 300%
+    zoom = 0.25 + Math.random() * 2.75;
+  }
+  
+  // Random position (0-100% for both x and y)
+  const positionX = Math.random() * 100;
+  const positionY = Math.random() * 100;
+  
+  return {
+    ...baseStyle,
+    backgroundSize: `${zoom * 100}%`,
+    backgroundPosition: `${positionX}% ${positionY}%`,
+  };
+}
+
+// Randomly choose a background with random position and zoom each time the app loads
+export const npcBackgroundStyles = generateRandomBackgroundStyle();
