@@ -55,26 +55,31 @@ export default function GameOverScreen({ finalScores, users, onReturnToLogin, wi
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
       <GeneratedNPCBackground />
-      <div className="bg-white rounded-lg shadow-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto relative z-10">
+      <div className="backdrop-blur-lg bg-white/20 border border-white/30 rounded-3xl shadow-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto relative z-10">
+        {/* Subtle gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none rounded-3xl"></div>
+        
+        {/* Content wrapper */}
+        <div className="relative z-10">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-4">
+          <h1 className="text-4xl font-bold text-white drop-shadow-lg mb-4">
             {currentPlayerWon ? '🏆 You Won! 🏆' : '🎉 Game Over! 🎉'}
           </h1>
           {winner && (
             <div className="mb-6">
-              <h2 className="text-2xl font-semibold text-yellow-600 mb-4">
+              <h2 className="text-2xl font-semibold text-yellow-300 drop-shadow-md mb-4">
                 🏆 Winner: {winner.user?.nickname || winner.user?.animal || 'Unknown Player'}
               </h2>
-              <p className="text-lg text-gray-600 mb-4">
+              <p className="text-lg text-white/90 drop-shadow-sm mb-4">
                 {winner.score} NPC{winner.score !== 1 ? 's' : ''} captured!
               </p>
               
               {/* Winner Screenshot */}
               {winnerScreenshot && (
                 <div className="mb-4">
-                  <h3 className="text-lg font-medium text-gray-700 mb-2">Final Moment:</h3>
-                  <div className="border-4 border-yellow-400 rounded-lg overflow-hidden shadow-lg">
+                  <h3 className="text-lg font-medium text-white/90 drop-shadow-sm mb-2">Final Moment:</h3>
+                  <div className="border-4 border-yellow-300/70 rounded-2xl overflow-hidden shadow-lg backdrop-blur-sm">
                     <img 
                       src={winnerScreenshot} 
                       alt="Winner's final game moment"
@@ -90,45 +95,45 @@ export default function GameOverScreen({ finalScores, users, onReturnToLogin, wi
 
         {/* Final Scores */}
         <div className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-800 mb-4 text-center">
+          <h3 className="text-xl font-semibold text-white drop-shadow-md mb-4 text-center">
             Final Leaderboard
           </h3>
           <div className="space-y-3">
             {sortedResults.map((result, index) => (
               <div
                 key={result.userId}
-                className={`flex items-center justify-between p-4 rounded-lg ${
+                className={`flex items-center justify-between p-4 rounded-2xl backdrop-blur-sm ${
                   index === 0
-                    ? 'bg-yellow-100 border-2 border-yellow-400'
+                    ? 'bg-yellow-300/20 border-2 border-yellow-300/60'
                     : index === 1
-                    ? 'bg-gray-100 border-2 border-gray-300'
+                    ? 'bg-gray-300/20 border-2 border-gray-300/60'
                     : index === 2
-                    ? 'bg-orange-100 border-2 border-orange-300'
-                    : 'bg-gray-50 border border-gray-200'
+                    ? 'bg-orange-300/20 border-2 border-orange-300/60'
+                    : 'bg-white/15 border border-white/30'
                 }`}
               >
                 <div className="flex items-center space-x-3">
                   <span className={`text-lg font-bold ${
-                    index === 0 ? 'text-yellow-600' : 'text-gray-600'
+                    index === 0 ? 'text-yellow-300' : 'text-white/80'
                   }`}>
                     {index === 0 ? '🏆' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
                   </span>
                   <div>
-                    <div className="font-semibold text-gray-800">
+                    <div className="font-semibold text-white drop-shadow-sm">
                       {result.user?.nickname || result.user?.animal || 'Unknown Player'}
                     </div>
                     {result.user?.nickname && (
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-white/70">
                         {result.user.animal}
                       </div>
                     )}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-lg font-bold text-gray-800">
+                  <div className="text-lg font-bold text-white drop-shadow-sm">
                     {result.score}
                   </div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-white/70">
                     NPC{result.score !== 1 ? 's' : ''}
                   </div>
                 </div>
@@ -141,11 +146,11 @@ export default function GameOverScreen({ finalScores, users, onReturnToLogin, wi
         <div className="text-center space-y-4">
           {!autoRedirectCancelled ? (
             <div>
-              <p className="text-gray-600 mb-4">
+              <p className="text-white/90 drop-shadow-sm mb-4">
                 Returning to{' '}
                 <button
                   onClick={handleReturnNow}
-                  className="text-blue-600 hover:text-blue-800 underline font-medium"
+                  className="text-blue-300 hover:text-blue-200 underline font-medium"
                 >
                   Guest Login
                 </button>
@@ -153,22 +158,23 @@ export default function GameOverScreen({ finalScores, users, onReturnToLogin, wi
               </p>
               <button
                 onClick={handleCancelAutoRedirect}
-                className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                className="bg-white/20 backdrop-blur-sm text-white border border-white/30 px-6 py-2 rounded-2xl hover:bg-white/30 transition-all duration-200 font-medium"
               >
                 Cancel Auto-Redirect
               </button>
             </div>
           ) : (
             <div>
-              <p className="text-gray-600 mb-4">Auto-redirect cancelled</p>
+              <p className="text-white/90 drop-shadow-sm mb-4">Auto-redirect cancelled</p>
               <button
                 onClick={handleReturnNow}
-                className="bg-blue-500 text-white px-8 py-3 rounded-lg hover:bg-blue-600 transition-colors text-lg font-medium"
+                className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-3 rounded-2xl hover:from-blue-600 hover:to-purple-700 transition-all duration-200 text-lg font-medium shadow-lg"
               >
                 Return to Guest Login
               </button>
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>

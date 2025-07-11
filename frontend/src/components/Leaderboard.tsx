@@ -189,7 +189,7 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
   return (
     <div
       ref={leaderboardRef}
-      className={`fixed bg-white bg-opacity-90 border border-gray-300 rounded-lg shadow-lg backdrop-blur-sm z-50 select-none ${
+      className={`fixed backdrop-blur-lg bg-white/80 border border-white/50 rounded-3xl shadow-2xl z-50 select-none ${
         isDragging ? 'cursor-grabbing' : isResizing ? 'cursor-nw-resize' : 'cursor-grab'
       }`}
       style={{
@@ -207,10 +207,10 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
       onMouseDown={handleMouseDown}
     >
       {/* Header */}
-      <div className={`drag-handle bg-gray-100 ${isCollapsed ? 'rounded-lg' : 'rounded-t-lg border-b border-gray-200'}`}>
+      <div className={`drag-handle bg-gray-100/90 backdrop-blur-sm ${isCollapsed ? 'rounded-3xl' : 'rounded-t-3xl border-b border-gray-200/50'}`}>
         {/* Timer */}
         {remainingSeconds !== null && (
-          <div className="drag-handle px-3 pt-2 text-center">
+          <div className="drag-handle px-4 pt-3 text-center">
             <div className={`text-lg font-bold pointer-events-none ${
               isLowTime ? 'text-red-600' : 'text-gray-800'
             }`}>
@@ -220,7 +220,7 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
         )}
         
         {/* Title and collapse button */}
-        <div className="drag-handle flex items-center justify-between p-3">
+        <div className="drag-handle flex items-center justify-between p-4">
           <h3 className="text-sm font-semibold text-gray-800 pointer-events-none">Leaderboard</h3>
           <button
             onClick={() => {
@@ -233,7 +233,7 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
               }
               setIsCollapsed(!isCollapsed);
             }}
-            className="text-gray-600 hover:text-gray-800 focus:outline-none pointer-events-auto"
+            className="text-gray-600 hover:text-gray-800 focus:outline-none pointer-events-auto transition-colors duration-200"
           >
             {isCollapsed ? '▼' : '▲'}
           </button>
@@ -242,7 +242,7 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
 
       {/* Content */}
       {!isCollapsed && (
-        <div className="p-3 overflow-y-auto flex-1" style={{ maxHeight: `${size.height - 120}px` }}>
+        <div className="p-4 overflow-y-auto flex-1" style={{ maxHeight: `${size.height - 120}px` }}>
           {sortedUsers.length === 0 ? (
             <div className="text-gray-500 text-sm">No players</div>
           ) : (
@@ -250,14 +250,14 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
               {sortedUsers.map((user, index) => (
                 <div
                   key={user.id}
-                  className={`flex items-center justify-between p-2 rounded ${
+                  className={`flex items-center justify-between p-3 rounded-xl backdrop-blur-sm transition-all duration-200 ${
                     user.id === myUserId
-                      ? 'bg-blue-100 border border-blue-200'
-                      : 'bg-gray-50'
+                      ? 'bg-blue-100/70 border border-blue-300/70 shadow-lg'
+                      : 'bg-gray-100/50 border border-gray-200/50 hover:bg-gray-100/70'
                   }`}
                 >
-                  <div className="flex items-center space-x-2">
-                    <span className={`text-xs font-medium ${
+                  <div className="flex items-center space-x-3">
+                    <span className={`text-xs font-bold ${
                       index === 0 && user.npcCount > 0 ? 'text-yellow-600' : 'text-gray-600'
                     }`}>
                       {index === 0 && user.npcCount > 0 ? '🏆' : `#${index + 1}`}
@@ -269,7 +269,7 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
                       >
                         {user.nickname || ''}
                       </span>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-600">
                         {user.animal}
                       </span>
                     </div>
@@ -280,7 +280,7 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
                     }`}>
                       {user.npcCount}
                     </span>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-600">
                       {user.npcCount === 1 ? 'NPC' : 'NPCs'}
                     </span>
                   </div>
@@ -294,7 +294,7 @@ export default function Leaderboard({ users, myUserId, npcGroups, gameStartTime,
       
       {/* Resize handle */}
       <div
-        className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize bg-gray-300 hover:bg-gray-400 opacity-50 hover:opacity-100 transition-opacity"
+        className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize bg-gray-600 hover:bg-gray-800 shadow-lg transition-all duration-200"
         style={{
           clipPath: 'polygon(100% 0%, 0% 100%, 100% 100%)'
         }}

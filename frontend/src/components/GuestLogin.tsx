@@ -1,5 +1,5 @@
 // nature_v_npc/app/components/GuestLogin.tsx
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { uniqueNamesGenerator, adjectives, animals, colors } from 'unique-names-generator';
 import {
   NPCGroup,
@@ -72,6 +72,7 @@ export default function GuestLogin({
   const [nickname, setNickname] = useState("");
   const [suggestedNickname, setSuggestedNickname] = useState("");
   const [userHasTyped, setUserHasTyped] = useState(false);
+  const [initialized, setInitialized] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const myUserRef = useRef<UserInfo | null>(null);
   const pathsRef = useRef<Map<npcGroupId, pathData>>(new Map());
@@ -97,7 +98,9 @@ export default function GuestLogin({
       setUserHasTyped(true); // User has previously typed this nickname
     } else {
       setNickname(suggestion);
+      setUserHasTyped(false); // Ensure we're in suggestion mode
     }
+    setInitialized(true);
   }, []);
 
   // Set cursor to beginning whenever we're in suggestion mode
@@ -163,16 +166,21 @@ export default function GuestLogin({
     
     if (value === "" && userHasTyped) {
       // User deleted everything, go back to suggestion
-      setNickname(suggestedNickname);
-      setUserHasTyped(false);
+      // Batch the state updates to prevent flash
+      React.startTransition(() => {
+        setNickname(suggestedNickname);
+        setUserHasTyped(false);
+      });
       // Cursor positioning will be handled by the useEffect
-    } else if (userHasTyped || value !== suggestedNickname) {
-      // User is typing or has typed something
+    } else if (userHasTyped) {
+      // User is continuing to type
       setNickname(value);
-      if (!userHasTyped) {
-        setUserHasTyped(true);
-      }
+    } else if (value !== suggestedNickname) {
+      // User is typing something different from suggestion
+      setNickname(value);
+      setUserHasTyped(true);
     }
+    // If value === suggestedNickname and !userHasTyped, do nothing (stay in suggestion mode)
   };
 
   const handleGuestLogin = async () => {
@@ -495,8 +503,8 @@ export default function GuestLogin({
                   onClick={handleNicknameClick}
                   placeholder=""
                   className={`w-full px-4 py-4 bg-white/40 border border-white/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-400/60 focus:border-blue-400/60 backdrop-blur-sm transition-all duration-200 placeholder-gray-600 text-lg caret-gray-800 ${
-                    !userHasTyped ? 'text-gray-700' : 'text-gray-900'
-                  } hover:bg-white/50 focus:bg-white/60 focus:text-gray-900 selection:bg-blue-200/50`}
+                    !initialized || !userHasTyped ? 'text-gray-300' : 'text-gray-900'
+                  } hover:bg-white/50 focus:bg-white/60 selection:bg-blue-200/50`}
                   maxLength={20}
                 />
                 {/* Subtle inner glow effect */}

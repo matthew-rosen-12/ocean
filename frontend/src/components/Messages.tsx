@@ -42,7 +42,7 @@ export default function Messages({
 
   // Calculate minimum height to show latest message completely
   const calculateMinHeightForLatestMessage = () => {
-    const headerHeight = 48; // Header height
+    const headerHeight = 64; // Header height (updated for p-4)
     if (!hasMessages) {
       return headerHeight + 60; // Just header + small empty state
     }
@@ -253,17 +253,17 @@ export default function Messages({
   return (
     <div
       ref={messagesRef}
-      className={`fixed bg-white bg-opacity-90 border border-gray-300 rounded-lg shadow-lg backdrop-blur-sm z-40 select-none ${
+      className={`fixed backdrop-blur-lg bg-white/80 border border-white/50 rounded-3xl shadow-2xl z-40 select-none ${
         isDragging ? 'cursor-grabbing' : isResizing ? 'cursor-nw-resize' : 'cursor-grab'
       }`}
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
         width: `${size.width}px`,
-        height: isCollapsed ? '48px' : `${size.height}px`, // Collapse to exact header height (p-3 = 12px top + 12px bottom + content height)
+        height: isCollapsed ? '64px' : `${size.height}px`, // Collapse to exact header height (p-4 = 16px top + 16px bottom + content height)
         minWidth: '200px',
         maxWidth: '500px',
-        minHeight: '48px',
+        minHeight: '64px',
         maxHeight: '400px',
         resize: 'none',
         overflow: 'hidden'
@@ -271,9 +271,9 @@ export default function Messages({
       onMouseDown={handleMouseDown}
     >
       {/* Header */}
-      <div className={`drag-handle bg-gray-100 ${isCollapsed ? 'rounded-lg' : 'rounded-t-lg border-b border-gray-200'}`}>
+      <div className={`drag-handle bg-gray-100/90 backdrop-blur-sm ${isCollapsed ? 'rounded-3xl' : 'rounded-t-3xl border-b border-gray-200/50'}`}>
         {/* Title and collapse button */}
-        <div className="drag-handle flex items-center justify-between p-3">
+        <div className="drag-handle flex items-center justify-between p-4">
           <h3 className="text-sm font-semibold text-gray-800 pointer-events-none">Messages</h3>
           <button
             onClick={() => {
@@ -290,7 +290,7 @@ export default function Messages({
               }
               setIsCollapsed(!isCollapsed);
             }}
-            className="text-gray-600 hover:text-gray-800 focus:outline-none pointer-events-auto"
+            className="text-gray-600 hover:text-gray-800 focus:outline-none pointer-events-auto transition-colors duration-200"
           >
             {isCollapsed ? '▼' : '▲'}
           </button>
@@ -299,7 +299,7 @@ export default function Messages({
 
       {/* Content */}
       {!isCollapsed && (
-        <div className="relative" style={{ height: `${size.height - 48}px` }}>
+        <div className="relative" style={{ height: `${size.height - 64}px` }}>
           {!hasMessages ? (
             <div className="flex items-center justify-center h-full text-gray-500 text-sm">
               No messages yet
@@ -307,12 +307,12 @@ export default function Messages({
           ) : (
             <div 
               ref={messageContainerRef}
-              className="overflow-y-auto h-full"
+              className="overflow-y-auto h-full pb-4"
               onScroll={handleScroll}
             >
               {/* Message History */}
               {messageHistory.map((entry, index) => (
-            <div key={`${entry.interaction.timestamp}-${index}`} className="border-b border-gray-100 p-3">
+            <div key={`${entry.interaction.timestamp}-${index}`} className="border-b border-gray-200/50 p-3">
               <div className="flex items-start space-x-3">
                 <div className="flex flex-col space-y-2">
                   <img 
@@ -342,25 +342,25 @@ export default function Messages({
 
           {/* Current Message */}
           {(latestInteraction || hasCapturedNpc) && (
-            <div className="px-3 pt-3 pb-1 bg-blue-50">
+            <div className="px-3 pt-3 pb-1 bg-blue-100/70 backdrop-blur-sm">
               <div className="flex items-start space-x-3">
                 <div className="flex flex-col space-y-2">
                   <img 
                     src={`/npcs/${latestInteraction?.npcFaceFileName || myNpcGroup?.faceFileName || 'default.png'}`}
                     alt="Primary NPC"
-                    className="w-12 h-12 rounded-full border-2 border-blue-300 object-cover"
+                    className="w-12 h-12 rounded-full border-2 border-blue-400 object-cover"
                   />
                   {latestInteraction && 'secondaryNpcFaceFileName' in latestInteraction && latestInteraction.secondaryNpcFaceFileName && (
                     <img 
                       src={`/npcs/${latestInteraction.secondaryNpcFaceFileName}`}
                       alt="Secondary NPC"
-                      className="w-10 h-10 rounded-full border-2 border-blue-300 object-cover"
+                      className="w-10 h-10 rounded-full border-2 border-blue-400 object-cover"
                     />
                   )}
                 </div>
                 <div className="flex flex-col flex-1 min-w-0">
                   {latestInteraction && (
-                    <div className="text-xs text-blue-600 mb-1">
+                    <div className="text-xs text-blue-700 mb-1">
                       {formatMessageTitle(latestInteraction)}
                     </div>
                   )}
@@ -382,7 +382,7 @@ export default function Messages({
             <div className="absolute bottom-1 right-2">
               <button
                 onClick={scrollToBottom}
-                className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded-full shadow-lg transition-colors flex items-center space-x-1"
+                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white text-xs px-3 py-2 rounded-full shadow-lg transition-all duration-200 flex items-center space-x-1"
               >
                 <span>New</span>
                 <span>↓</span>
@@ -394,7 +394,7 @@ export default function Messages({
       
       {/* Resize handle */}
       <div
-        className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize bg-gray-300 hover:bg-gray-400 opacity-50 hover:opacity-100 transition-opacity"
+        className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize bg-gray-600 hover:bg-gray-800 shadow-lg transition-all duration-200"
         style={{
           clipPath: 'polygon(100% 0%, 0% 100%, 100% 100%)'
         }}
