@@ -5,6 +5,7 @@ import FloralPattern from "../components/backgrounds/FloralPattern";
 import CosmicPattern from "../components/backgrounds/CosmicPattern";
 import CityPattern from "../components/backgrounds/CityPattern";
 import SnowflakePattern from "../components/backgrounds/SnowflakePattern";
+import TerrainOutline from "../components/backgrounds/TerrainOutline";
 import { Z_DEPTHS } from "shared/z-depths";
 import { BackgroundString, BackgroundType, normalizeBackgroundType } from "shared/background-types";
 
@@ -213,6 +214,7 @@ function renderTerrainBackground(
     <>
       <CloudBackground />
       {renderPattern()}
+      <TerrainOutline boundaries={boundaries} seed={seed} />
     </>
   );
 }
