@@ -9,29 +9,46 @@ interface SmokeAnimationProps {
 
 const SmokeAnimation: React.FC<SmokeAnimationProps> = ({ position, onComplete }) => {
   const groupRef = useRef<THREE.Group>(null);
-  const particlesRef = useRef<THREE.Points[]>([]);
+  const wispRefs = useRef<{ mesh: THREE.Points; direction: THREE.Vector3; delay: number; initialPositions: Float32Array }[]>([]);
   const startTime = useRef(Date.now());
-  const duration = 2000; // 2 seconds
+  const duration = 2000;
 
   useEffect(() => {
     if (!groupRef.current) return;
 
-    // Create multiple particle systems for smoke effect
-    const numSystems = 5;
-    particlesRef.current = [];
+    // Create 12 skinny wisps radiating outward
+    const numWisps = 12;
+    wispRefs.current = [];
 
-    for (let i = 0; i < numSystems; i++) {
-      const particleCount = 20;
+    for (let i = 0; i < numWisps; i++) {
+      // Create a much longer, skinnier line of particles for each wisp
+      const particleCount = 15;
       const geometry = new THREE.BufferGeometry();
       const positions = new Float32Array(particleCount * 3);
       const opacities = new Float32Array(particleCount);
+      const initialPositions = new Float32Array(particleCount * 3);
 
-      // Initialize particles in a small area
+      // Direction for this wisp to move in any random direction
+      const direction = new THREE.Vector3(
+        (Math.random() - 0.5) * 2, // Random x direction
+        (Math.random() - 0.5) * 2, // Random y direction (no upward bias)
+        (Math.random() - 0.5) * 2  // Random z direction
+      ).normalize();
+
+      // Create particles starting in a larger cloud area
       for (let j = 0; j < particleCount; j++) {
         const index = j * 3;
-        positions[index] = (Math.random() - 0.5) * 2; // x
-        positions[index + 1] = (Math.random() - 0.5) * 2; // y
-        positions[index + 2] = Math.random() * 1; // z
+        
+        // Start particles in a larger area around center
+        positions[index] = (Math.random() - 0.5) * 1.5; // x spread
+        positions[index + 1] = (Math.random() - 0.5) * 1.5; // y spread
+        positions[index + 2] = (Math.random() - 0.5) * 1.5; // z spread
+        
+        // Store initial positions
+        initialPositions[index] = positions[index];
+        initialPositions[index + 1] = positions[index + 1];
+        initialPositions[index + 2] = positions[index + 2];
+        
         opacities[j] = 1.0;
       }
 
@@ -39,34 +56,35 @@ const SmokeAnimation: React.FC<SmokeAnimationProps> = ({ position, onComplete })
       geometry.setAttribute('opacity', new THREE.BufferAttribute(opacities, 1));
 
       const material = new THREE.PointsMaterial({
-        color: 0x888888,
-        size: 0.5 + i * 0.2,
+        color: 0xffffff, // Pure white instead of light grey
+        size: 0.6,
         transparent: true,
         opacity: 0.8,
-        vertexColors: false,
-        blending: THREE.AdditiveBlending,
+        blending: THREE.AdditiveBlending, // Additive blending for better cloud effect
+        depthWrite: false, // Prevent z-fighting issues
       });
 
-      const particles = new THREE.Points(geometry, material);
-      particles.position.set(
-        position.x + (Math.random() - 0.5) * 1,
-        position.y + (Math.random() - 0.5) * 1,
-        position.z
-      );
+      const wisp = new THREE.Points(geometry, material);
+      wisp.position.copy(position);
       
-      groupRef.current.add(particles);
-      particlesRef.current.push(particles);
+      groupRef.current.add(wisp);
+      wispRefs.current.push({
+        mesh: wisp,
+        direction: direction,
+        delay: Math.random() * 300,
+        initialPositions: initialPositions
+      });
     }
 
     return () => {
       // Cleanup
-      particlesRef.current.forEach(particles => {
+      wispRefs.current.forEach(({ mesh }) => {
         if (groupRef.current) {
-          groupRef.current.remove(particles);
+          groupRef.current.remove(mesh);
         }
-        particles.geometry.dispose();
-        if (particles.material instanceof THREE.Material) {
-          particles.material.dispose();
+        mesh.geometry.dispose();
+        if (mesh.material instanceof THREE.Material) {
+          mesh.material.dispose();
         }
       });
     };
@@ -76,28 +94,39 @@ const SmokeAnimation: React.FC<SmokeAnimationProps> = ({ position, onComplete })
     const elapsed = Date.now() - startTime.current;
     const progress = Math.min(elapsed / duration, 1);
 
-    particlesRef.current.forEach((particles, systemIndex) => {
-      const positions = particles.geometry.attributes.position.array as Float32Array;
-      const opacities = particles.geometry.attributes.opacity.array as Float32Array;
-
-      for (let i = 0; i < positions.length / 3; i++) {
-        const index = i * 3;
-        
-        // Move particles upward and outward
-        positions[index + 1] += 0.02 * (1 + systemIndex * 0.1); // y movement (upward)
-        positions[index] += (Math.random() - 0.5) * 0.01; // x drift
-        positions[index + 2] += (Math.random() - 0.5) * 0.01; // z drift
-        
-        // Fade out over time
-        opacities[i] = Math.max(0, 1 - progress * 1.5);
-      }
-
-      particles.geometry.attributes.position.needsUpdate = true;
-      particles.geometry.attributes.opacity.needsUpdate = true;
+    wispRefs.current.forEach(({ mesh, direction, delay, initialPositions }) => {
+      const activeTime = elapsed - delay;
       
-      // Update material opacity
-      if (particles.material instanceof THREE.PointsMaterial) {
-        particles.material.opacity = Math.max(0, 0.8 - progress * 1.2);
+      if (activeTime > 0) {
+        const positions = mesh.geometry.attributes.position.array as Float32Array;
+        const opacities = mesh.geometry.attributes.opacity.array as Float32Array;
+        
+        // Move each particle along the wisp direction
+        for (let i = 0; i < positions.length / 3; i++) {
+          const index = i * 3;
+          
+          // Each particle moves at a different speed to create the wisp trail effect
+          const particleSpeed = 0.0003 + (i * 0.00002); // Later particles move slightly faster
+          const distance = activeTime * particleSpeed;
+          
+          // Move particle smoothly along the direction from its initial position
+          positions[index] = initialPositions[index] + direction.x * distance;
+          positions[index + 1] = initialPositions[index + 1] + direction.y * distance;
+          positions[index + 2] = initialPositions[index + 2] + direction.z * distance;
+          
+          // Fade out over time
+          const fadeProgress = Math.min(activeTime / (duration - delay), 1);
+          opacities[i] = Math.max(0, 1 - fadeProgress);
+        }
+        
+        mesh.geometry.attributes.position.needsUpdate = true;
+        mesh.geometry.attributes.opacity.needsUpdate = true;
+        
+        // Update material opacity
+        if (mesh.material instanceof THREE.PointsMaterial) {
+          const fadeProgress = Math.min(activeTime / (duration - delay), 1);
+          mesh.material.opacity = Math.max(0, 0.8 * (1 - fadeProgress));
+        }
       }
     });
 
