@@ -46,16 +46,28 @@ export default function Messages({
     if (!hasMessages) {
       return headerHeight + 60; // Just header + small empty state
     }
-    const messageHeight = 180; // More generous height for message with NPC images and text
+    
+    // Dynamically calculate required height based on actual content
+    if (messageContainerRef.current) {
+      const container = messageContainerRef.current;
+      const scrollHeight = container.scrollHeight;
+      const requiredHeight = headerHeight + scrollHeight + 20; // 20px buffer
+      return Math.min(requiredHeight, 400); // Cap at max height
+    }
+    
+    const messageHeight = 180; // Fallback for initial render
     return headerHeight + messageHeight + 30; // Extra 30px buffer
   };
 
   // Ensure height is sufficient for showing latest message
   const ensureHeightForLatestMessage = () => {
-    const minHeight = calculateMinHeightForLatestMessage();
-    if (size.height < minHeight) {
-      setSize(prev => ({ ...prev, height: minHeight }));
-    }
+    // Wait for DOM to update, then calculate required height
+    requestAnimationFrame(() => {
+      const minHeight = calculateMinHeightForLatestMessage();
+      if (size.height < minHeight) {
+        setSize(prev => ({ ...prev, height: minHeight }));
+      }
+    });
   };
   const [position, setPosition] = useState<Position>({ x: 0, y: 450 }); // Start below leaderboard area
   const [size, setSize] = useState<Size>({ width: 250, height: 200 });

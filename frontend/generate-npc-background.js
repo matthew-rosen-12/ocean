@@ -404,11 +404,11 @@ function generateRandomBackgroundStyle() {
   // Different zoom ranges for different background types
   let zoom;
   if (baseStyle.backgroundImage.includes('animal-background')) {
-    // Animal backgrounds: 75% to 100%
-    zoom = 0.75 + Math.random() * 0.5;
+    // Animal backgrounds: 100% to 150%
+    zoom = 1 + Math.random() * 0.5;
   } else {
-    // NPC backgrounds: 50% to 150%
-    zoom = 0.5 + Math.random() * 1.25;
+    // NPC backgrounds: 100% to 200%
+    zoom = 1.5 + Math.random() * 1;
   }
   
   // Random position (0-100% for both x and y)
