@@ -6,65 +6,33 @@ import { createCanvas, loadImage } from 'canvas';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// All NPC PNG files from the public/npcs directory
-const NPC_FILES = [
-  "ada_lovelace.png",
-  "akbar.png", 
-  "angela_merkel.png",
-  "beethoven.png",
-  "benjamin_franklin.png",
-  "boudica.png",
-  "bruce_lee.png",
-  "chang_e.png",
-  "cleopatra.png",
-  "da_vinci.png",
-  "emperor_meiji.png",
-  "fdr.png",
-  "florence_nightingale.png",
-  "fred_astaire.png",
-  "frederick_douglass.png",
-  "girl_with_a_pearl_earring.png",
-  "hermes.png",
-  "isaac_netwon.png",
-  "jane_austen.png",
-  "jim_thorpe.png",
-  "julia_codesido.png",
-  "julius_caesar.png",
-  "leif_erikson.png",
-  "mansa_musa.png",
-  "margaret_thatcher.png",
-  "marie_curie.png",
-  "mary_queen_of_scots.png",
-  "mary_wollenstonecraft.png",
-  "morgan_la_fey.png",
-  "napoleon_bonaparte.png",
-  "nelson_mandela.png",
-  "nzinga_of_ndongo_and_matamba.png",
-  "queen_elizabeth_I.png",
-  "queen_lili_uokalani.png",
-  "robinhood.png",
-  "rumi.png",
-  "sacagawea.png",
-  "shakespeare.png",
-  "sukarno.png",
-  "winston_churchill.png",
-];
+// Animal scales from shared/types.ts
+const ANIMAL_SCALES = {
+  DOLPHIN: 3.0,
+  WOLF: 1.0,
+  PENGUIN: 2.5,
+  SNAKE: 2.0,
+  TURTLE: 2.0,
+  TIGER: 4.0,
+  TUNA: 3.0,
+  EAGLE: 2.5,
+  BEE: 2.0,
+  BEAR: 2.5,
+  CUTTLEFISH: 2.0,
+  SALAMANDER: 2.5,
+};
 
-// All animal SVG files from the public/animals directory
-const ANIMAL_FILES = [
-  "bear.svg",
-  "bee.svg",
-  "cuttlefish.svg",
-  "dolphin.svg",
-  "eagle.svg",
-  "penguin.svg",
-  "salamander.svg",
-  "snake.svg",
-  "tiger.svg",
-  "tuna.svg",
-  "turtle.svg",
-  "wolf.svg",
-];
+// Read NPC PNG files dynamically from the public/npcs directory
+function getNPCFiles() {
+  const npcsDir = path.join(__dirname, 'public', 'npcs');
+  return fs.readdirSync(npcsDir).filter(file => file.endsWith('.png'));
+}
+
+// Read animal SVG files dynamically from the public/animals directory
+function getAnimalFiles() {
+  const animalsDir = path.join(__dirname, 'public', 'animals');
+  return fs.readdirSync(animalsDir).filter(file => file.endsWith('.svg'));
+}
 
 // Shuffle function for deterministic randomization
 function deterministicShuffle(array, seed) {
@@ -99,11 +67,14 @@ async function generateNPCBackgroundPNG(seed = 42) {
   // Configuration for NPC arrangement
   const npcSize = 80; // Size of each NPC image
   const spacing = 120; // Space between NPCs
-  const rowOffset = 60; // Offset for alternating rows
+  const rowOffset = 0; // No offset for perfect tiling
   
-  // Create a larger tileable pattern to show more NPCs
-  const patternWidth = 1080; // 9 columns * 120px spacing
-  const patternHeight = 720; // 6 rows * 120px spacing
+  // Create a tileable pattern that properly handles row offset
+  // The pattern needs to accommodate the offset for seamless horizontal tiling
+  const cols = 8;
+  const rows = 4;
+  const patternWidth = spacing * cols; // Base width
+  const patternHeight = spacing * rows; // Base height
   
   const canvas = createCanvas(patternWidth, patternHeight);
   const ctx = canvas.getContext('2d');
@@ -113,10 +84,10 @@ async function generateNPCBackgroundPNG(seed = 42) {
   ctx.fillRect(0, 0, patternWidth, patternHeight);
   
   // Use all NPCs for maximum variety
-  const selectedNPCs = deterministicShuffle(NPC_FILES, seed);
+  const npcFiles = getNPCFiles();
+  const selectedNPCs = deterministicShuffle(npcFiles, seed);
   
-  const cols = Math.ceil(patternWidth / spacing);
-  const rows = Math.ceil(patternHeight / spacing);
+  // cols and rows already defined above
   
   let npcIndex = 0;
   let imagesLoaded = 0;
@@ -128,10 +99,11 @@ async function generateNPCBackgroundPNG(seed = 42) {
       const isEvenRow = row % 2 === 0;
       const xOffset = isEvenRow ? 0 : rowOffset;
       
+      // Position with proper spacing for seamless tiling
       const x = col * spacing + xOffset + spacing / 2;
       const y = row * spacing + spacing / 2;
       
-      // Skip if position is outside canvas
+      // Skip if position extends beyond pattern bounds
       if (x < npcSize/2 || x > patternWidth - npcSize/2 || 
           y < npcSize/2 || y > patternHeight - npcSize/2) continue;
       
@@ -195,14 +167,17 @@ async function generateNPCBackgroundPNG(seed = 42) {
 async function generateAnimalBackgroundPNG(seed = 42) {
   console.log(`Generating animal background PNG with seed ${seed}...`);
   
-  // Configuration for animal arrangement
-  const animalSize = 80; // Size of each animal image
-  const spacing = 120; // Space between animals
-  const rowOffset = 60; // Offset for alternating rows
+  // Configuration for animal arrangement - match NPC configuration
+  const animalSize = 80; // Same size as NPCs for consistency
+  const spacing = 120; // Same spacing as NPCs
+  const rowOffset = 0; // No offset for perfect tiling
   
-  // Create a larger tileable pattern to show more animals
-  const patternWidth = 1080; // 9 columns * 120px spacing
-  const patternHeight = 720; // 6 rows * 120px spacing
+  // Create a tileable pattern that properly handles row offset
+  // The pattern needs to accommodate the offset for seamless horizontal tiling
+  const cols = 8;
+  const rows = 4;
+  const patternWidth = spacing * cols; // Base width
+  const patternHeight = spacing * rows; // Base height
   
   const canvas = createCanvas(patternWidth, patternHeight);
   const ctx = canvas.getContext('2d');
@@ -212,10 +187,10 @@ async function generateAnimalBackgroundPNG(seed = 42) {
   ctx.fillRect(0, 0, patternWidth, patternHeight);
   
   // Use all animals for maximum variety
-  const selectedAnimals = deterministicShuffle(ANIMAL_FILES, seed);
+  const animalFiles = getAnimalFiles();
+  const selectedAnimals = deterministicShuffle(animalFiles, seed);
   
-  const cols = Math.ceil(patternWidth / spacing);
-  const rows = Math.ceil(patternHeight / spacing);
+  // cols and rows already defined above
   
   let animalIndex = 0;
   let imagesLoaded = 0;
@@ -227,10 +202,11 @@ async function generateAnimalBackgroundPNG(seed = 42) {
       const isEvenRow = row % 2 === 0;
       const xOffset = isEvenRow ? 0 : rowOffset;
       
+      // Position with proper spacing for seamless tiling
       const x = col * spacing + xOffset + spacing / 2;
       const y = row * spacing + spacing / 2;
       
-      // Skip if position is outside canvas
+      // Skip if position extends beyond pattern bounds
       if (x < animalSize/2 || x > patternWidth - animalSize/2 || 
           y < animalSize/2 || y > patternHeight - animalSize/2) continue;
       
@@ -244,21 +220,30 @@ async function generateAnimalBackgroundPNG(seed = 42) {
         // Load and draw the animal image
         const image = await loadImage(imagePath);
         
-        // Calculate size while maintaining aspect ratio
-        const imageAspect = image.width / image.height;
-        let drawWidth, drawHeight;
+        // Use animal scales from shared/types.ts to maintain relative sizes
+        const animalName = animalFile.replace('.svg', '').toUpperCase();
+        const animalScale = ANIMAL_SCALES[animalName] || 1.0;
         
+        // Calculate aspect ratio from image
+        const imageAspect = image.width / image.height;
+        
+        // Base size that gets scaled by animal scale
+        const baseSize = 30; // Medium base unit size - between 20 and 40
+        const scaledSize = baseSize * animalScale;
+        
+        // Apply aspect ratio while maintaining scale
+        let drawWidth, drawHeight;
         if (imageAspect > 1) {
           // Wider than tall
-          drawWidth = animalSize;
-          drawHeight = animalSize / imageAspect;
+          drawWidth = scaledSize;
+          drawHeight = scaledSize / imageAspect;
         } else {
           // Taller than wide
-          drawHeight = animalSize;
-          drawWidth = animalSize * imageAspect;
+          drawHeight = scaledSize;
+          drawWidth = scaledSize * imageAspect;
         }
         
-        // Draw with slight transparency for better blending
+        // Draw with slight transparency for better blending, same as NPCs
         ctx.globalAlpha = 0.8;
         ctx.drawImage(
           image,
