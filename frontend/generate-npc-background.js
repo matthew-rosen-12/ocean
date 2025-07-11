@@ -53,12 +53,11 @@ async function generateNPCBackgroundPNG(seed = 42) {
   // Configuration for NPC arrangement
   const npcSize = 80; // Size of each NPC image
   const spacing = 120; // Space between NPCs
-  const rowOffset = 0; // No offset for perfect tiling
+  // Variable row offset for different starting indices per row
   
-  // Create a tileable pattern that properly handles row offset
-  // The pattern needs to accommodate the offset for seamless horizontal tiling
-  const cols = 8;
-  const rows = 4;
+  // Create a larger pattern to avoid visible tiling at 4x zoom out
+  const cols = 32; // 4x larger for 4x zoom out
+  const rows = 16; // 4x larger for 4x zoom out
   const patternWidth = spacing * cols; // Base width
   const patternHeight = spacing * rows; // Base height
   
@@ -73,29 +72,70 @@ async function generateNPCBackgroundPNG(seed = 42) {
   const npcFiles = getNPCFiles();
   const selectedNPCs = deterministicShuffle(npcFiles, seed);
   
-  // cols and rows already defined above
+  // Create a grid to store which NPC is at each position
+  const grid = Array(rows).fill(null).map(() => Array(cols).fill(-1));
   
-  let npcIndex = 0;
+  // Simple deterministic random number generator for consistent results
+  let randomSeed = seed;
+  const nextRandom = () => {
+    randomSeed = (randomSeed * 9301 + 49297) % 233280;
+    return randomSeed / 233280;
+  };
+  
   let imagesLoaded = 0;
   let imagesFailed = 0;
   
-  // Load and draw NPCs
+  // Fill grid with NPCs, avoiding neighboring duplicates (including wraparound)
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
-      const isEvenRow = row % 2 === 0;
-      const xOffset = isEvenRow ? 0 : rowOffset;
+      // Get list of neighbors (including wraparound for tiling)
+      const neighbors = [];
       
-      // Position with proper spacing for seamless tiling
-      const x = col * spacing + xOffset + spacing / 2;
+      // Calculate wrapped coordinates
+      const upRow = row > 0 ? row - 1 : rows - 1;
+      const downRow = (row + 1) % rows;
+      const leftCol = col > 0 ? col - 1 : cols - 1;
+      const rightCol = (col + 1) % cols;
+      
+      // Check cardinal directions (up, down, left, right)
+      if (grid[upRow][col] !== -1) neighbors.push(grid[upRow][col]);
+      if (grid[row][leftCol] !== -1) neighbors.push(grid[row][leftCol]);
+      if (grid[downRow][col] !== -1) neighbors.push(grid[downRow][col]);
+      if (grid[row][rightCol] !== -1) neighbors.push(grid[row][rightCol]);
+      
+      // Check diagonal directions
+      if (grid[upRow][leftCol] !== -1) neighbors.push(grid[upRow][leftCol]); // up-left
+      if (grid[upRow][rightCol] !== -1) neighbors.push(grid[upRow][rightCol]); // up-right
+      if (grid[downRow][leftCol] !== -1) neighbors.push(grid[downRow][leftCol]); // down-left
+      if (grid[downRow][rightCol] !== -1) neighbors.push(grid[downRow][rightCol]); // down-right
+      
+      // Create list of available NPCs (excluding neighbors)
+      const availableNPCs = [];
+      for (let i = 0; i < selectedNPCs.length; i++) {
+        if (!neighbors.includes(i)) {
+          availableNPCs.push(i);
+        }
+      }
+      
+      // Randomly select from available NPCs
+      const selectedIndex = Math.floor(nextRandom() * availableNPCs.length);
+      const npcIndex = availableNPCs[selectedIndex];
+      grid[row][col] = npcIndex;
+    }
+  }
+  
+  // Draw NPCs based on grid
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const x = col * spacing + spacing / 2;
       const y = row * spacing + spacing / 2;
       
       // Skip if position extends beyond pattern bounds
       if (x < npcSize/2 || x > patternWidth - npcSize/2 || 
           y < npcSize/2 || y > patternHeight - npcSize/2) continue;
       
-      // Get NPC file (cycle through the list)
-      const npcFile = selectedNPCs[npcIndex % selectedNPCs.length];
-      npcIndex++;
+      const npcIndex = grid[row][col];
+      const npcFile = selectedNPCs[npcIndex];
       
       const imagePath = path.join(__dirname, 'public', 'npcs', npcFile);
       
@@ -156,12 +196,11 @@ async function generateAnimalBackgroundPNG(seed = 42) {
   // Configuration for animal arrangement - match NPC configuration
   const animalSize = 80; // Same size as NPCs for consistency
   const spacing = 120; // Same spacing as NPCs
-  const rowOffset = 0; // No offset for perfect tiling
+  // Variable row offset for different starting indices per row
   
-  // Create a tileable pattern that properly handles row offset
-  // The pattern needs to accommodate the offset for seamless horizontal tiling
-  const cols = 8;
-  const rows = 4;
+  // Create a larger pattern to avoid visible tiling at 1.5x zoom out
+  const cols = 12; // 1.5x larger for 1.5x zoom out
+  const rows = 6; // 1.5x larger for 1.5x zoom out
   const patternWidth = spacing * cols; // Base width
   const patternHeight = spacing * rows; // Base height
   
@@ -176,29 +215,70 @@ async function generateAnimalBackgroundPNG(seed = 42) {
   const animalFiles = getAnimalFiles();
   const selectedAnimals = deterministicShuffle(animalFiles, seed);
   
-  // cols and rows already defined above
+  // Create a grid to store which animal is at each position
+  const grid = Array(rows).fill(null).map(() => Array(cols).fill(-1));
   
-  let animalIndex = 0;
+  // Simple deterministic random number generator for consistent results
+  let randomSeed = seed;
+  const nextRandom = () => {
+    randomSeed = (randomSeed * 9301 + 49297) % 233280;
+    return randomSeed / 233280;
+  };
+  
   let imagesLoaded = 0;
   let imagesFailed = 0;
   
-  // Load and draw animals
+  // Fill grid with animals, avoiding neighboring duplicates (including wraparound)
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
-      const isEvenRow = row % 2 === 0;
-      const xOffset = isEvenRow ? 0 : rowOffset;
+      // Get list of neighbors (including wraparound for tiling)
+      const neighbors = [];
       
-      // Position with proper spacing for seamless tiling
-      const x = col * spacing + xOffset + spacing / 2;
+      // Calculate wrapped coordinates
+      const upRow = row > 0 ? row - 1 : rows - 1;
+      const downRow = (row + 1) % rows;
+      const leftCol = col > 0 ? col - 1 : cols - 1;
+      const rightCol = (col + 1) % cols;
+      
+      // Check cardinal directions (up, down, left, right)
+      if (grid[upRow][col] !== -1) neighbors.push(grid[upRow][col]);
+      if (grid[row][leftCol] !== -1) neighbors.push(grid[row][leftCol]);
+      if (grid[downRow][col] !== -1) neighbors.push(grid[downRow][col]);
+      if (grid[row][rightCol] !== -1) neighbors.push(grid[row][rightCol]);
+      
+      // Check diagonal directions
+      if (grid[upRow][leftCol] !== -1) neighbors.push(grid[upRow][leftCol]); // up-left
+      if (grid[upRow][rightCol] !== -1) neighbors.push(grid[upRow][rightCol]); // up-right
+      if (grid[downRow][leftCol] !== -1) neighbors.push(grid[downRow][leftCol]); // down-left
+      if (grid[downRow][rightCol] !== -1) neighbors.push(grid[downRow][rightCol]); // down-right
+      
+      // Create list of available animals (excluding neighbors)
+      const availableAnimals = [];
+      for (let i = 0; i < selectedAnimals.length; i++) {
+        if (!neighbors.includes(i)) {
+          availableAnimals.push(i);
+        }
+      }
+      
+      // Randomly select from available animals
+      const selectedIndex = Math.floor(nextRandom() * availableAnimals.length);
+      const animalIndex = availableAnimals[selectedIndex];
+      grid[row][col] = animalIndex;
+    }
+  }
+  
+  // Draw animals based on grid
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const x = col * spacing + spacing / 2;
       const y = row * spacing + spacing / 2;
       
       // Skip if position extends beyond pattern bounds
       if (x < animalSize/2 || x > patternWidth - animalSize/2 || 
           y < animalSize/2 || y > patternHeight - animalSize/2) continue;
       
-      // Get animal file (cycle through the list)
-      const animalFile = selectedAnimals[animalIndex % selectedAnimals.length];
-      animalIndex++;
+      const animalIndex = grid[row][col];
+      const animalFile = selectedAnimals[animalIndex];
       
       const imagePath = path.join(__dirname, 'public', 'animals', animalFile);
       
@@ -324,11 +404,11 @@ function generateRandomBackgroundStyle() {
   // Different zoom ranges for different background types
   let zoom;
   if (baseStyle.backgroundImage.includes('animal-background')) {
-    // Animal backgrounds: 50% to 100%
-    zoom = 0.5 + Math.random() * 0.5;
+    // Animal backgrounds: 75% to 100%
+    zoom = 0.75 + Math.random() * 0.5;
   } else {
-    // NPC backgrounds: 25% to 150%
-    zoom = 0.25 + Math.random() * 1.25;
+    // NPC backgrounds: 50% to 150%
+    zoom = 0.5 + Math.random() * 1.25;
   }
   
   // Random position (0-100% for both x and y)

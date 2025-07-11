@@ -23,8 +23,8 @@ function generateRandomBackgroundStyle() {
     // Animal backgrounds: 50% to 100%
     zoom = 0.5 + Math.random() * 0.5;
   } else {
-    // NPC backgrounds: 25% to 300%
-    zoom = 0.25 + Math.random() * 2.75;
+    // NPC backgrounds: 25% to 150%
+    zoom = 0.25 + Math.random() * 1.25;
   }
   
   // Random position (0-100% for both x and y)
