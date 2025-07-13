@@ -90,8 +90,7 @@ export function useCollisionDetection({
         // Emit socket events after state update
         if (localUser) {
           const currentTypedSocket = typedSocket();
-          // IMPORTANT: Send deletion of old group first, then the new merged group
-          // This prevents server-side duplication when React strict mode runs this twice
+          // Delete the captured NPC group and add the updated merged group
           currentTypedSocket.emit("update-npc-group", { npcGroup: new NPCGroup({ ...capturedNPCGroup, fileNames: [] }) }); // Mark as deleted
           currentTypedSocket.emit("update-npc-group", { npcGroup: updatedNpcGroup });
         }

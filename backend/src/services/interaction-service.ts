@@ -167,11 +167,7 @@ export class InteractionService {
     } catch (error) {
       console.error('Error generating AI response for interaction:', error);
       
-      // Check if this is a rate limiting error specifically
-      const isRateLimited = (error as Error)?.message === 'RATE_LIMITED';
-      const aiResponse = isRateLimited ? "Rate limited - try again later" : "Error generating response";
-      
-      console.log(`Sending fallback interaction response: ${aiResponse}`);
+      const aiResponse = "Error generating response";
       
       // Send interaction without AI response as fallback
       const allUsers = getAllUsersInRoom(room);
