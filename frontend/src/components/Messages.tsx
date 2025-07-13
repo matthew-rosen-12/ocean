@@ -71,7 +71,10 @@ export default function Messages({
       }
     });
   };
-  const [position, setPosition] = useState<Position>({ x: 0, y: 450 }); // Start below leaderboard area
+  const [position, setPosition] = useState<Position>(() => ({
+    x: window.innerWidth - 270, // Start near final position (approximate width + margin)
+    y: 450 // Below leaderboard area
+  }));
   const [size, setSize] = useState<Size>({ width: 250, height: 200 });
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
