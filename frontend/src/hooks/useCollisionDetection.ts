@@ -30,6 +30,7 @@ export function useCollisionDetection({
   
   const handleNPCGroupCollision = useCallback(
     (capturedNPCGroup: NPCGroup, localUser: boolean) => {
+      
       // Get existing user NPCs before merging
       let userNpcGroup = npcGroups.getByUserId(myUser.id);
       
@@ -60,8 +61,10 @@ export function useCollisionDetection({
       if (userNpcGroup) {
         groupId = userNpcGroup.id; // Keep the existing group ID
       } else {
-        // First capture for this user - create new ID
-        groupId = uuidv4();
+        // First capture for this user - generate ID deterministically based on this specific capture
+        // This ensures React strict mode generates the same ID for the same capture
+        const seed = `${myUser.id}-${capturedNPCGroup.id}-${Math.floor(Date.now() / 1000)}`; // Same second = same ID
+        groupId = `capture-${seed.replace(/[^a-zA-Z0-9]/g, '-')}`;
       }
 
       const existingFileNames = userNpcGroup ? userNpcGroup.fileNames : [];
@@ -87,7 +90,8 @@ export function useCollisionDetection({
         // Emit socket events after state update
         if (localUser) {
           const currentTypedSocket = typedSocket();
-          // Delete the captured NPC group and add the updated merged group
+          // IMPORTANT: Send deletion of old group first, then the new merged group
+          // This prevents server-side duplication when React strict mode runs this twice
           currentTypedSocket.emit("update-npc-group", { npcGroup: new NPCGroup({ ...capturedNPCGroup, fileNames: [] }) }); // Mark as deleted
           currentTypedSocket.emit("update-npc-group", { npcGroup: updatedNpcGroup });
         }

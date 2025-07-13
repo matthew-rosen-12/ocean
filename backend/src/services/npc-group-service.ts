@@ -631,13 +631,18 @@ function handlePathNPCMerge(
     // Get the first captured NPC for the interaction
     const capturedNPCFileName = loser.fileNames[0];
     if (capturedNPCFileName) {
-      InteractionService.handleReturningNPCRecaptured(
-        room,
-        winnerNPCGroup.captorId,
-        winnerNPCGroup,
-        loser,
-        winnerPathData.pathPhase
-      );
+      // Process interaction asynchronously to avoid blocking game mechanics
+      setImmediate(() => {
+        if (winnerNPCGroup.captorId) {
+          InteractionService.handleReturningNPCRecaptured(
+            room,
+            winnerNPCGroup.captorId,
+            winnerNPCGroup,
+            loser,
+            winnerPathData.pathPhase
+          );
+        }
+      });
     }
   }
 
@@ -739,22 +744,32 @@ function handleCapturedNPCEmission(
     
     // Send THROWN_NPC_GROUP_COLLISION interaction to the thrower
     if (thrownNPCGroup.captorId && emittedNPCFileName) {
-      InteractionService.handleThrownNPCCollision(
-        room,
-        thrownNPCGroup.captorId,
-        thrownNPCGroup,
-        new NPCGroup({ ...capturedNPCGroup, fileNames: [emittedNPCFileName] })
-      );
+      // Process interaction asynchronously to avoid blocking game mechanics
+      setImmediate(() => {
+        if (thrownNPCGroup.captorId) {
+          InteractionService.handleThrownNPCCollision(
+            room,
+            thrownNPCGroup.captorId,
+            thrownNPCGroup,
+            new NPCGroup({ ...capturedNPCGroup, fileNames: [emittedNPCFileName] })
+          );
+        }
+      });
     }
     
     // Send NPC_GROUP_EMITTED interaction to the captured group owner
     if (capturedNPCGroup.captorId && thrownNPCGroup.faceFileName && emittedNPCFileName) {
-      InteractionService.handleNPCGroupEmitted(
-        room,
-        capturedNPCGroup.captorId,
-        new NPCGroup({ ...capturedNPCGroup, fileNames: [emittedNPCFileName] }),
-        thrownNPCGroup
-      );
+      // Process interaction asynchronously to avoid blocking game mechanics
+      setImmediate(() => {
+        if (capturedNPCGroup.captorId) {
+          InteractionService.handleNPCGroupEmitted(
+            room,
+            capturedNPCGroup.captorId,
+            new NPCGroup({ ...capturedNPCGroup, fileNames: [emittedNPCFileName] }),
+            thrownNPCGroup
+          );
+        }
+      });
     }
   }
   
@@ -1235,12 +1250,17 @@ export function checkAndDeleteFleeingNPCs(room: string): void {
       if (outsideDistance >= DELETION_DISTANCE) {        
         // Send interaction for deleted thrown/returning NPC if applicable
         if (npcGroup.captorId && (pathData.pathPhase === PathPhase.THROWN || pathData.pathPhase === PathPhase.RETURNING)) {
-          InteractionService.handleNPCGroupDeleted(
-            room,
-            npcGroup.captorId,
-            npcGroup,
-            pathData.pathPhase
-          );
+          // Process interaction asynchronously to avoid blocking game mechanics
+          setImmediate(() => {
+            if (npcGroup.captorId) {
+              InteractionService.handleNPCGroupDeleted(
+                room,
+                npcGroup.captorId,
+                npcGroup,
+                pathData.pathPhase
+              );
+            }
+          });
         }
         
         // Delete the NPC group from memory

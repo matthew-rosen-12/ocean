@@ -189,18 +189,23 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
             }
         }));
         // Handle client-detected interactions
-        typedSocket.on("interaction-detected", (_a) => __awaiter(void 0, [_a], void 0, function* ({ interaction }) {
+        typedSocket.on("interaction-detected", ({ interaction }) => {
             try {
                 const room = typedSocket.data.room;
                 if (room) {
-                    // Process the interaction and send it to all users with AI response
-                    yield interaction_service_1.InteractionService.processClientDetectedInteraction(room, interaction);
+                    // Process the interaction asynchronously (fire-and-forget)
+                    // This prevents LLM failures from blocking critical game state updates
+                    interaction_service_1.InteractionService.processClientDetectedInteraction(room, interaction)
+                        .catch(error => {
+                        console.error("Non-blocking interaction processing error:", error);
+                        // Interaction failures should never affect game mechanics
+                    });
                 }
             }
             catch (error) {
                 console.error("Error handling client-detected interaction:", error);
             }
-        }));
+        });
         // Handle disconnection
         socket.on("disconnect", () => __awaiter(void 0, void 0, void 0, function* () {
             try {

@@ -473,7 +473,12 @@ function handlePathNPCMerge(room, winnerPathData, winnerNPCGroup, loser, collisi
         // Get the first captured NPC for the interaction
         const capturedNPCFileName = loser.fileNames[0];
         if (capturedNPCFileName) {
-            interaction_service_1.InteractionService.handleReturningNPCRecaptured(room, winnerNPCGroup.captorId, winnerNPCGroup, loser, winnerPathData.pathPhase);
+            // Process interaction asynchronously to avoid blocking game mechanics
+            setImmediate(() => {
+                if (winnerNPCGroup.captorId) {
+                    interaction_service_1.InteractionService.handleReturningNPCRecaptured(room, winnerNPCGroup.captorId, winnerNPCGroup, loser, winnerPathData.pathPhase);
+                }
+            });
         }
     }
     // Create merged group with winner's captor ID
@@ -539,11 +544,21 @@ function handleCapturedNPCEmission(room, _thrownPathData, thrownNPCGroup, captur
         const emittedNPCFileName = capturedNPCGroup.fileNames[0];
         // Send THROWN_NPC_GROUP_COLLISION interaction to the thrower
         if (thrownNPCGroup.captorId && emittedNPCFileName) {
-            interaction_service_1.InteractionService.handleThrownNPCCollision(room, thrownNPCGroup.captorId, thrownNPCGroup, new types_1.NPCGroup(Object.assign(Object.assign({}, capturedNPCGroup), { fileNames: [emittedNPCFileName] })));
+            // Process interaction asynchronously to avoid blocking game mechanics
+            setImmediate(() => {
+                if (thrownNPCGroup.captorId) {
+                    interaction_service_1.InteractionService.handleThrownNPCCollision(room, thrownNPCGroup.captorId, thrownNPCGroup, new types_1.NPCGroup(Object.assign(Object.assign({}, capturedNPCGroup), { fileNames: [emittedNPCFileName] })));
+                }
+            });
         }
         // Send NPC_GROUP_EMITTED interaction to the captured group owner
         if (capturedNPCGroup.captorId && thrownNPCGroup.faceFileName && emittedNPCFileName) {
-            interaction_service_1.InteractionService.handleNPCGroupEmitted(room, capturedNPCGroup.captorId, new types_1.NPCGroup(Object.assign(Object.assign({}, capturedNPCGroup), { fileNames: [emittedNPCFileName] })), thrownNPCGroup);
+            // Process interaction asynchronously to avoid blocking game mechanics
+            setImmediate(() => {
+                if (capturedNPCGroup.captorId) {
+                    interaction_service_1.InteractionService.handleNPCGroupEmitted(room, capturedNPCGroup.captorId, new types_1.NPCGroup(Object.assign(Object.assign({}, capturedNPCGroup), { fileNames: [emittedNPCFileName] })), thrownNPCGroup);
+                }
+            });
         }
     }
     // Calculate impact direction (where the thrown NPC hit from)
@@ -889,7 +904,12 @@ function checkAndDeleteFleeingNPCs(room) {
             if (outsideDistance >= DELETION_DISTANCE) {
                 // Send interaction for deleted thrown/returning NPC if applicable
                 if (npcGroup.captorId && (pathData.pathPhase === types_1.PathPhase.THROWN || pathData.pathPhase === types_1.PathPhase.RETURNING)) {
-                    interaction_service_1.InteractionService.handleNPCGroupDeleted(room, npcGroup.captorId, npcGroup, pathData.pathPhase);
+                    // Process interaction asynchronously to avoid blocking game mechanics
+                    setImmediate(() => {
+                        if (npcGroup.captorId) {
+                            interaction_service_1.InteractionService.handleNPCGroupDeleted(room, npcGroup.captorId, npcGroup, pathData.pathPhase);
+                        }
+                    });
                 }
                 // Delete the NPC group from memory
                 allNPCGroups.deleteByNpcGroupId(npcGroup.id);
