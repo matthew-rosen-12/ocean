@@ -65,7 +65,9 @@ export default function Messages({
     requestAnimationFrame(() => {
       const minHeight = calculateMinHeightForLatestMessage();
       if (size.height < minHeight) {
-        setSize(prev => ({ ...prev, height: minHeight }));
+        // Smooth height transition by setting a slightly larger target
+        const targetHeight = Math.min(minHeight + 10, 400); // Add 10px buffer, cap at max
+        setSize(prev => ({ ...prev, height: targetHeight }));
       }
     });
   };
@@ -283,6 +285,8 @@ export default function Messages({
     <div
       ref={messagesRef}
       className={`fixed backdrop-blur-lg bg-white/80 border border-white/50 rounded-3xl shadow-2xl z-40 select-none ${
+        isDragging || isResizing ? '' : 'transition-all duration-300 ease-in-out'
+      } ${
         isDragging ? 'cursor-grabbing' : isResizing ? 'cursor-nw-resize' : 'cursor-grab'
       }`}
       style={{
@@ -328,7 +332,7 @@ export default function Messages({
 
       {/* Content */}
       {!isCollapsed && (
-        <div className="relative" style={{ height: `${size.height - 64}px` }}>
+        <div className="relative transition-all duration-300 ease-in-out" style={{ height: `${size.height - 64}px` }}>
           {!hasMessages ? (
             <div className="flex items-center justify-center h-full text-gray-500 text-sm">
               No messages yet
@@ -336,7 +340,7 @@ export default function Messages({
           ) : (
             <div 
               ref={messageContainerRef}
-              className="overflow-y-auto h-full pb-4"
+              className="overflow-y-auto h-full pb-4 transition-all duration-200 ease-in-out"
               onScroll={handleScroll}
             >
               {/* Message History */}
@@ -371,7 +375,7 @@ export default function Messages({
 
           {/* Current Message */}
           {(latestInteraction || hasCapturedNpc) && (
-            <div className="px-3 pt-3 pb-1 bg-blue-100/70 backdrop-blur-sm">
+            <div className="px-3 pt-3 pb-1 bg-blue-100/70 backdrop-blur-sm transition-all duration-200 ease-in-out">
               <div className="flex items-start space-x-3">
                 <div className="flex flex-col space-y-2">
                   <img 
@@ -389,11 +393,11 @@ export default function Messages({
                 </div>
                 <div className="flex flex-col flex-1 min-w-0">
                   {latestInteraction && (
-                    <div className="text-xs text-blue-700 mb-1">
+                    <div className="text-xs text-blue-700 mb-1 transition-all duration-150 ease-in-out">
                       {formatMessageTitle(latestInteraction)}
                     </div>
                   )}
-                  <div className="text-sm font-bold text-gray-800 break-words">
+                  <div className="text-sm font-bold text-gray-800 break-words transition-all duration-200 ease-in-out">
                     {latestInteraction ? 
                       (latestAiResponse ? 
                         (latestAiResponse.includes('Error generating response') || latestAiResponse.includes('Rate limited') ? 
