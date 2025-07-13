@@ -1,16 +1,23 @@
 import { UserInfo, Animal } from "shared/types";
 import * as THREE from "three";
 
-// Fixed palette of distinct colors
+// Dark, maximally contrasting color palette (no gold/yellow tones)
 export const USER_COLOR_PALETTE: string[] = [
-  "#FF0000", // Red
-  "#00FF00", // Green
-  "#0000FF", // Blue
-  "#00FFFF", // Cyan
-  "#FF00FF", // Magenta
-  "#000000",
-  "#FFFFFF",
+  "#FF0000", // Bright Red
+  "#00FF00", // Bright Green  
+  "#0000FF", // Bright Blue
+  "#FF00FF", // Bright Magenta
+  "#00FFFF", // Bright Cyan
+  "#8A2BE2", // Blue Violet
+  "#DC143C", // Crimson
+  "#006400", // Dark Green
+  "#4B0082", // Indigo
+  "#8B0000", // Dark Red
+  "#000080", // Navy Blue
   "#800080", // Purple
+  "#228B22", // Forest Green
+  "#B22222", // Fire Brick
+  "#191970", // Midnight Blue
 ];
 
 // Generate a hash from a string
@@ -34,8 +41,9 @@ export function getUserColor(user: UserInfo): THREE.Color {
   // Generate a room-specific offset based on room name hash
   const roomOffset = generateStringHash(user.room);
   
-  // Calculate the color index: animal index + room offset, wrapped around palette size
-  const colorIndex = (animalIndex + roomOffset) % USER_COLOR_PALETTE.length;
+  // Calculate the color index: use animal index directly, then apply room offset to spread colors
+  // This ensures each animal type gets a different base color, then room variations
+  const colorIndex = (animalIndex * 7 + roomOffset) % USER_COLOR_PALETTE.length;
   
   return new THREE.Color(USER_COLOR_PALETTE[colorIndex]);
 }
