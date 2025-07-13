@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { UserInfo, userId, NPCGroupsBiMap } from 'shared/types';
-import { NPCInteraction } from 'shared/interaction-types';
+import { NPCInteraction, AIResponse } from 'shared/interaction-types';
 import { getNicknameOutlineColor, getUserColor } from '../utils/animal-colors';
 
 interface LeaderboardProps {
@@ -11,7 +11,7 @@ interface LeaderboardProps {
   gameDuration?: number;
   onInteractionUpdate?: (setter: (interaction: NPCInteraction) => void) => void;
   latestInteraction: NPCInteraction | null;
-  latestAiResponse: string | null;
+  latestAiResponse: AIResponse | null;
 }
 
 interface Position {

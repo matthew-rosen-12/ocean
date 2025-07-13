@@ -61,3 +61,30 @@ export type NPCInteraction =
   | ThrownNPCGroupCollisionInteraction
   | NPCGroupsBouncedInteraction
   | IdleNPCCapturedThrownInteraction;
+
+// AI Response types
+export enum AIResponseType {
+  SUCCESS = 'SUCCESS',
+  ERROR = 'ERROR',
+  RATE_LIMITED = 'RATE_LIMITED'
+}
+
+export interface AIResponse {
+  type: AIResponseType;
+  message: string;
+  greeting?: string; // For error/rate limited responses
+}
+
+export interface SuccessAIResponse extends AIResponse {
+  type: AIResponseType.SUCCESS;
+}
+
+export interface ErrorAIResponse extends AIResponse {
+  type: AIResponseType.ERROR;
+  greeting: string; // Required for error responses
+}
+
+export interface RateLimitedAIResponse extends AIResponse {
+  type: AIResponseType.RATE_LIMITED;
+  greeting: string; // Required for rate limited responses
+}

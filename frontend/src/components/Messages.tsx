@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { UserInfo, userId, NPCGroupsBiMap } from 'shared/types';
-import { NPCInteraction, InteractionType } from 'shared/interaction-types';
+import { NPCInteraction, AIResponse, AIResponseType } from 'shared/interaction-types';
 
 interface MessagesProps {
   myUserId: userId;
   users: Map<userId, UserInfo>;
   npcGroups: NPCGroupsBiMap;
   latestInteraction: NPCInteraction | null;
-  latestAiResponse: string | null;
+  latestAiResponse: AIResponse | null;
 }
 
 interface Position {
@@ -27,9 +27,8 @@ export default function Messages({
   latestInteraction, 
   latestAiResponse
 }: MessagesProps) {
-  const [messageHistory, setMessageHistory] = useState<{interaction: NPCInteraction, response: string}[]>([]);
+  const [messageHistory, setMessageHistory] = useState<{interaction: NPCInteraction, response: AIResponse}[]>([]);
   const [hasNewMessage, setHasNewMessage] = useState(false);
-  const [showHi, setShowHi] = useState(true);
   const [isCollapsed, setIsCollapsed] = useState(false);
   
   // Get local player's captured NPC group
@@ -87,7 +86,7 @@ export default function Messages({
 
   // Track previous interaction and response
   const [previousInteraction, setPreviousInteraction] = useState<NPCInteraction | null>(null);
-  const [previousResponse, setPreviousResponse] = useState<string | null>(null);
+  const [previousResponse, setPreviousResponse] = useState<AIResponse | null>(null);
 
   // Handle new interaction when latestInteraction changes
   useEffect(() => {
@@ -147,14 +146,14 @@ export default function Messages({
         }
       }
     });
-  }, [latestInteraction, latestAiResponse, messageHistory]);
+  }, [latestInteraction, latestAiResponse, messageHistory, ensureHeightForLatestMessage]);
 
   // Auto-resize when messages state changes (empty vs has messages)
   useEffect(() => {
     if (!isCollapsed) {
       ensureHeightForLatestMessage();
     }
-  }, [hasMessages, isCollapsed]);
+  }, [hasMessages, isCollapsed, ensureHeightForLatestMessage]);
 
   // Scroll to bottom function for the new message indicator
   const scrollToBottom = () => {
@@ -243,14 +242,6 @@ export default function Messages({
     };
   }, [isDragging, isResizing, dragOffset]);
 
-  // Alternate Hi/Bye every 10 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setShowHi(prev => !prev);
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   // Format interaction for message display
   const formatMessageTitle = (interaction: NPCInteraction) => {
@@ -265,21 +256,17 @@ export default function Messages({
     }
   };
 
-  // Determine greeting based on interaction type
-  const getErrorGreeting = (interaction: NPCInteraction | null) => {
-    if (!interaction) return showHi ? 'Hi' : 'Bye';
-    
-    // "Hi" for capture-related actions
-    if ([
-      InteractionType.CAPTURED_NPC_GROUP,
-      InteractionType.RETURNING_NPC_GROUP_RECAPTURED,
-      InteractionType.IDLE_NPC_CAPTURED_THROWN
-    ].includes(interaction.type)) {
-      return 'Hi';
+  // Format AI response based on type
+  const formatAIResponse = (response: AIResponse, _interaction: NPCInteraction, userAnimal?: string) => {
+    switch (response.type) {
+      case AIResponseType.SUCCESS:
+        return response.message;
+      case AIResponseType.ERROR:
+      case AIResponseType.RATE_LIMITED:
+        return response.greeting || `Hi ${userAnimal || 'Unknown'}`;
+      default:
+        return response.message;
     }
-    
-    // "Bye" for emit/delete/collision/bounce actions
-    return 'Bye';
   };
 
   // Show component but adjust content based on messages state
@@ -369,7 +356,7 @@ export default function Messages({
                     {formatMessageTitle(entry.interaction)}
                   </div>
                   <div className="text-sm text-gray-800 break-words">
-                    {entry.response}
+                    {formatAIResponse(entry.response, entry.interaction, myUser?.animal)}
                   </div>
                 </div>
               </div>
@@ -403,10 +390,7 @@ export default function Messages({
                   <div className="text-sm font-bold text-gray-800 break-words transition-all duration-200 ease-in-out">
                     {latestInteraction ? 
                       (latestAiResponse ? 
-                        (latestAiResponse.includes('Error generating response') || latestAiResponse.includes('Rate limited') ? 
-                          `${getErrorGreeting(latestInteraction)} ${myUser?.animal || 'Unknown'}` : 
-                          latestAiResponse
-                        ) : 
+                        formatAIResponse(latestAiResponse, latestInteraction, myUser?.animal) : 
                         'typing...'
                       ) : 
                       'typing...'

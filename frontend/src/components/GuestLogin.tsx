@@ -15,6 +15,7 @@ import {
   FinalScores,
 } from "shared/types";
 import { NPCInteraction, createInteraction } from "shared/interaction-prompts";
+import { AIResponse } from "shared/interaction-types";
 import { getSocket } from "../socket";
 import { ServerTerrainConfig } from "../utils/terrain";
 import { TypedSocket } from "../utils/typed-socket";
@@ -52,7 +53,7 @@ interface Props {
   setGameDuration: React.Dispatch<React.SetStateAction<number | undefined>>;
   deletingNPCs: Set<string>;
   setDeletingNPCs: React.Dispatch<React.SetStateAction<Set<string>>>;
-  interactionSetter: ((interaction: NPCInteraction, aiResponse: string) => void) | null;
+  interactionSetter: ((interaction: NPCInteraction, aiResponse: AIResponse) => void) | null;
   // Note: setGameOver, setFinalScores, and setWinnerScreenshot are now handled by Scene component
 }
 
@@ -422,7 +423,7 @@ export default function GuestLogin({
       });
 
       // Handle NPC interactions with AI responses from server
-      typedSocket.on("npc-interaction-with-response", ({ interaction, aiResponse }: { interaction: NPCInteraction; aiResponse: string }) => {
+      typedSocket.on("npc-interaction-with-response", ({ interaction, aiResponse }: { interaction: NPCInteraction; aiResponse: AIResponse }) => {
         if (interactionSetter) {
           console.log('Received server-side interaction with AI response:', interaction, aiResponse);
           interactionSetter(interaction, aiResponse);

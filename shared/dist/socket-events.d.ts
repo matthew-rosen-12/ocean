@@ -1,5 +1,6 @@
 import { UserInfo, TerrainConfig, NPCGroup, pathData, Position, npcGroupId, NPCGroupsBiMap, userId, FinalScores, PathPhase, fileName } from "./types";
 import { NPCInteraction } from "./interaction-prompts";
+import { AIResponse } from "./interaction-types";
 export interface ServerToClientEvents {
     "user-joined": (data: {
         user: UserInfo;
@@ -66,7 +67,7 @@ export interface ServerToClientEvents {
     }) => void;
     "npc-interaction-with-response": (data: {
         interaction: NPCInteraction;
-        aiResponse: string;
+        aiResponse: AIResponse;
     }) => void;
     "times-up": (data: {
         finalScores: FinalScores;

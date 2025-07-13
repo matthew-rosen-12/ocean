@@ -1,5 +1,6 @@
 import { UserInfo, TerrainConfig, NPCGroup, pathData, Position, npcGroupId, NPCGroupsBiMap, userId, FinalScores, PathPhase, fileName } from "./types";
 import { NPCInteraction } from "./interaction-prompts";
+import { AIResponse } from "./interaction-types";
 
 export interface ServerToClientEvents {
     "user-joined": (data: { user: UserInfo }) => void;
@@ -22,7 +23,7 @@ export interface ServerToClientEvents {
     "npc-group-deleted": (data: { npcGroupId: npcGroupId; currentPosition: { x: number; y: number; z: number }; captorId?: userId; pathPhase: PathPhase; faceFileName?: fileName }) => void;
     "npc-group-spawned": (data: { npcGroup: NPCGroup; spawnPosition: { x: number; y: number; z: number } }) => void;
     "npc-interaction": (data: { interaction: NPCInteraction }) => void;
-    "npc-interaction-with-response": (data: { interaction: NPCInteraction; aiResponse: string }) => void;
+    "npc-interaction-with-response": (data: { interaction: NPCInteraction; aiResponse: AIResponse }) => void;
     "times-up": (data: { finalScores: FinalScores }) => void;
   }
   

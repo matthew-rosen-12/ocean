@@ -7,7 +7,7 @@ import {
   userId,
   FinalScores,
 } from "shared/types";
-import { NPCInteraction } from "shared/interaction-types";
+import { NPCInteraction, AIResponse } from "shared/interaction-types";
 import Scene from "./components/Scene";
 import GuestLogin from "./components/GuestLogin";
 import Leaderboard from "./components/Leaderboard";
@@ -38,12 +38,12 @@ function App() {
   const [winnerScreenshot, setWinnerScreenshot] = useState<string>("");
   const [deletingNPCs, setDeletingNPCs] = useState<Set<string>>(new Set());
   const [latestInteraction, setLatestInteraction] = useState<NPCInteraction | null>(null);
-  const [latestAiResponse, setLatestAiResponse] = useState<string | null>(null);
+  const [latestAiResponse, setLatestAiResponse] = useState<AIResponse | null>(null);
   const [kickedForInactivity, setKickedForInactivity] = useState(false);
   
   // Create a stable interaction setter function (throttled to 30 seconds)
   const interactionSetter = useCallback(
-    throttle((interaction: NPCInteraction, aiResponse: string) => {
+    throttle((interaction: NPCInteraction, aiResponse: AIResponse) => {
       setLatestInteraction(interaction);
       setLatestAiResponse(aiResponse);
     }, 10000, { 

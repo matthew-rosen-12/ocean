@@ -3,6 +3,7 @@ import { PathPhase, NPCGroup, roomId, userId } from "shared/types";
 import { emitToUser } from "../typed-socket";
 import { getAllUsersInRoom } from "../state/users";
 import { aiChatService } from "./ai-chat-service";
+import { AIResponse, AIResponseType } from "shared/interaction-types";
 
 /**
  * Service for generating and sending NPC interactions to users
@@ -137,27 +138,36 @@ export class InteractionService {
    * Send an interaction to all users in the room via socket, with AI response
    */
   private static async sendInteractionToRoom(room: roomId, interaction: NPCInteraction): Promise<void> {
+    const allUsers = getAllUsersInRoom(room);
+    
     try {
       // Check rate limiting before making AI API call
       if (!this.canCreateInteraction(room)) {
         console.log(`Rate limiting: Skipping AI response for ${interaction.type} interaction in room ${room}`);
-        // Send interaction without AI response due to rate limiting
-        const allUsers = getAllUsersInRoom(room);
+        // Send interaction with structured rate limited response
+        const rateLimitedResponse: AIResponse = {
+          type: AIResponseType.RATE_LIMITED,
+          message: "Rate limited - try again later",
+          greeting: "Hi" // Default greeting for rate limited
+        };
+        
         for (const user of allUsers.values()) {
           emitToUser(room, user.id, "npc-interaction-with-response", { 
             interaction, 
-            aiResponse: "Rate limited - try again later" 
+            aiResponse: rateLimitedResponse
           });
         }
         return;
       }
 
-      // Generate AI response
+      // Generate AI response using structured method
       const prompt = interactionToPrompt(interaction);
-      const aiResponse = await aiChatService.generateResponse(prompt);
+      
+      // Get a user to determine animal type for error fallbacks
+      const anyUser = Array.from(allUsers.values())[0];
+      const aiResponse = await aiChatService.generateStructuredResponse(prompt, interaction, anyUser?.animal);
       
       // Send interaction + AI response to all users in the room
-      const allUsers = getAllUsersInRoom(room);
       for (const user of allUsers.values()) {
         emitToUser(room, user.id, "npc-interaction-with-response", { 
           interaction, 
@@ -167,14 +177,19 @@ export class InteractionService {
     } catch (error) {
       console.error('Error generating AI response for interaction:', error);
       
-      const aiResponse = "Error generating response";
+      // Get a user to determine animal type for error fallbacks
+      const anyUser = Array.from(allUsers.values())[0];
+      const errorResponse: AIResponse = {
+        type: AIResponseType.ERROR,
+        message: "Error generating response",
+        greeting: anyUser ? `Hi ${anyUser.animal}` : "Hi Unknown"
+      };
       
-      // Send interaction without AI response as fallback
-      const allUsers = getAllUsersInRoom(room);
+      // Send interaction with structured error response as fallback
       for (const user of allUsers.values()) {
         emitToUser(room, user.id, "npc-interaction-with-response", { 
           interaction, 
-          aiResponse
+          aiResponse: errorResponse
         });
       }
     }
