@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { UserInfo, userId, NPCGroupsBiMap } from 'shared/types';
-import { NPCInteraction } from 'shared/interaction-types';
+import { NPCInteraction, InteractionType } from 'shared/interaction-types';
 
 interface MessagesProps {
   myUserId: userId;
@@ -260,6 +260,23 @@ export default function Messages({
     }
   };
 
+  // Determine greeting based on interaction type
+  const getErrorGreeting = (interaction: NPCInteraction | null) => {
+    if (!interaction) return showHi ? 'Hi' : 'Bye';
+    
+    // "Hi" for capture-related actions
+    if ([
+      InteractionType.CAPTURED_NPC_GROUP,
+      InteractionType.RETURNING_NPC_GROUP_RECAPTURED,
+      InteractionType.IDLE_NPC_CAPTURED_THROWN
+    ].includes(interaction.type)) {
+      return 'Hi';
+    }
+    
+    // "Bye" for emit/delete/collision/bounce actions
+    return 'Bye';
+  };
+
   // Show component but adjust content based on messages state
 
   return (
@@ -378,8 +395,14 @@ export default function Messages({
                   )}
                   <div className="text-sm font-bold text-gray-800 break-words">
                     {latestInteraction ? 
-                      (latestAiResponse || 'Processing...') : 
-                      `${showHi ? 'Hi' : 'Bye'} ${myUser?.animal || 'Unknown'}`
+                      (latestAiResponse ? 
+                        (latestAiResponse.includes('Error generating response') || latestAiResponse.includes('Rate limited') ? 
+                          `${getErrorGreeting(latestInteraction)} ${myUser?.animal || 'Unknown'}` : 
+                          latestAiResponse
+                        ) : 
+                        'typing...'
+                      ) : 
+                      'typing...'
                     }
                   </div>
                 </div>
