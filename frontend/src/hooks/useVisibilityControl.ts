@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 
 /**
- * Hook to kick inactive players after 30 seconds
- * Simple and immediate - no attempt to keep game running in background
+ * Hook to kick inactive players after 30 seconds when tab loses focus/visibility
+ * Works alongside frame rate monitoring for comprehensive inactivity detection
  */
 export function useVisibilityControl(onInactivityKick?: () => void) {
   const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);

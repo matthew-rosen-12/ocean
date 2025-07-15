@@ -21,6 +21,7 @@ import { usePositionBroadcast } from "../hooks/usePositionBroadcast";
 import { useCollisionDetection } from "../hooks/useCollisionDetection";
 import { useKeyboardMovement } from "../hooks/useKeyboardMovement";
 import { useVisibilityControl } from "../hooks/useVisibilityControl";
+import { useFrameRateMonitor } from "../hooks/useFrameRateMonitor";
 import { CinematicScreenshot } from "./CinematicScreenshot";
 import { TerrainConfig } from "../utils/terrain";
 import BotCollisionManager from "./BotCollisionManager";
@@ -156,6 +157,9 @@ export default function Scene({
 
   // Prevent game from pausing when tab is hidden
   useVisibilityControl(onInactivityKick);
+
+  // Monitor frame rate to detect browser resource throttling
+  useFrameRateMonitor(onInactivityKick);
 
 
   // Expose NPC groups for debugging in browser developer tools (throttled for performance)

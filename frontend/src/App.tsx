@@ -21,6 +21,7 @@ import {
 } from "./utils/terrain";
 import { preloadFonts } from "./utils/font-preloader";
 import { throttle } from "lodash";
+import { typedSocket } from "./socket";
 
 function App() {
   const [myUser, setMyUser] = useState<UserInfo | null>(null);
@@ -61,6 +62,13 @@ function App() {
   // Handle inactivity kick
   const handleInactivityKick = useCallback(() => {
     console.log('Player kicked for inactivity');
+    
+    // Disconnect from server to notify other clients that user has left
+    const currentTypedSocket = typedSocket();
+    if (currentTypedSocket) {
+      currentTypedSocket.disconnect();
+    }
+    
     setKickedForInactivity(true);
     setMyUser(null); // Clear user state
   }, []);
