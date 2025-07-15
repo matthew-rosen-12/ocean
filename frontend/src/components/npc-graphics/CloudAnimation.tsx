@@ -55,17 +55,17 @@ const CloudAnimation: React.FC<CloudAnimationProps> = ({ position, onComplete })
         positions[j * 3 + 2] = p.z;
         
         sizes[j] = 1.5 + Math.random() * 2.0;
-        opacities[j] = 0.8 + Math.random() * 0.2;
+        opacities[j] = 1.0;
       }
 
       geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
       geometry.setAttribute('opacity', new THREE.BufferAttribute(opacities, 1));
       geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
-      // --- CHANGE: Simplified shader. Removed the 'uProgress' uniform. ---
       const shaderMaterial = new THREE.ShaderMaterial({
         uniforms: {
           color: { value: new THREE.Color(0xffffff) },
+          uFade: { value: 1.0 },
         },
         vertexShader: `
           attribute float size;
@@ -78,22 +78,21 @@ const CloudAnimation: React.FC<CloudAnimationProps> = ({ position, onComplete })
             gl_Position = projectionMatrix * mvPosition;
           }
         `,
-        // --- CHANGE: Fragment shader now only uses opacity for fading. ---
         fragmentShader: `
           uniform vec3 color;
+          uniform float uFade;
           varying float vOpacity;
           void main() {
             float strength = distance(gl_PointCoord, vec2(0.5));
             if (strength > 0.5) discard;
             
-            // The final alpha is a combination of the particle's opacity and its soft edge.
-            float finalOpacity = vOpacity * (1.0 - strength * 2.0);
+            float finalOpacity = vOpacity * uFade * (1.0 - strength * 2.0);
 
             gl_FragColor = vec4(color, finalOpacity);
           }
         `,
         transparent: true,
-        blending: THREE.AdditiveBlending,
+        blending: THREE.NormalBlending,
         depthWrite: false,
       });
 
@@ -133,7 +132,7 @@ const CloudAnimation: React.FC<CloudAnimationProps> = ({ position, onComplete })
       }
 
       const elapsed = now - wisp.startTime;
-      const progress = Math.min(elapsed / duration, 1);
+      const progress = Math.min(elapsed / duration, 1.0);
       
       if (progress < 1) {
           allComplete = false;
@@ -141,19 +140,12 @@ const CloudAnimation: React.FC<CloudAnimationProps> = ({ position, onComplete })
 
       const travelDistance = progress * wisp.speed * 8;
       wisp.mesh.position.copy(wisp.direction).multiplyScalar(travelDistance);
-
-      const opacities = wisp.mesh.geometry.attributes.opacity.array as Float32Array;
-      // Use a stronger curve for the fade-out to make it more noticeable
-      const fadeOutProgress = Math.pow(progress, 1.5);
-
-      for (let i = 0; i < opacities.length; i++) {
-        // --- CHANGE: This is now the ONLY attribute driving the fade effect. ---
-        opacities[i] = 1.0 - fadeOutProgress;
-      }
-
-      wisp.mesh.geometry.attributes.opacity.needsUpdate = true;
       
-      // --- REMOVED: No longer need to update the shader uniform for color. ---
+      // --- ✅ CHANGE: Use a power curve for a much more aggressive fade ---
+      // This makes the opacity drop very quickly at the start of the animation.
+      const fadeValue = 1.0 - Math.pow(progress, 0.3) - .3;
+
+      (wisp.mesh.material as THREE.ShaderMaterial).uniforms.uFade.value = fadeValue;
       
       wisp.mesh.rotation.x += delta * wisp.speed * 0.1;
       wisp.mesh.rotation.y += delta * wisp.speed * 0.1;

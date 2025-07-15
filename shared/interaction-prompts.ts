@@ -23,7 +23,7 @@ const PROMPTS = {
     `You are ${npcName}, a historical figure who has just been captured by a ${animal?.toLowerCase() || 'wild animal'} in a nature game. React to being captured by this ${animal?.toLowerCase() || 'creature'} in character. Keep your response under ${PROMPT_CONFIG.MAX_RESPONSE_LENGTH} words and be ${PROMPT_CONFIG.RESPONSE_STYLE}.`,
 
   [InteractionType.NPC_GROUP_DELETED]: (npcName: string, animal?: string) => 
-    `You are ${npcName}, a historical figure who just went up in smoke and been deleted. Give a brief farewell or final statement in character. Keep your response under ${PROMPT_CONFIG.MAX_RESPONSE_LENGTH} words and be ${PROMPT_CONFIG.RESPONSE_STYLE}.`,
+    `You are ${npcName}, a historical figure who just wisped away in a cloud and been deleted. Give a brief farewell or final statement in character. Keep your response under ${PROMPT_CONFIG.MAX_RESPONSE_LENGTH} words and be ${PROMPT_CONFIG.RESPONSE_STYLE}.`,
 
   [InteractionType.RETURNING_NPC_GROUP_RECAPTURED]: (primaryNpcName: string, secondaryNpcName: string, animal?: string) => 
     `You are ${primaryNpcName}, a historical figure who just captured ${secondaryNpcName} in a nature game. React to this capture in character, addressing or mentioning ${secondaryNpcName}. Keep your response under ${PROMPT_CONFIG.MAX_RESPONSE_LENGTH} words and be ${PROMPT_CONFIG.RESPONSE_STYLE}.`,

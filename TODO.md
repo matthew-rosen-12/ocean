@@ -1,12 +1,9 @@
-- fix leaderboard message rendering (auto expand, scroll to bottom)
-- change mosaic to city scape, add one more background
 - create llm calls for npc speech - upgrade tier?
-- make sure animal colors are dark
-- quality assurance
+- quality assurance (test both local vs bot and local vs local)
 - local vs other user z render depth
-- polish / fix bugs and glitches
 - add music
-- llm calls be global not per user
-- make prettier
+
+- make sure local user is always processing interactions (log out if not because tab inactive)
+- ? adjust frosted glass text on background color
 
 - make publicly available

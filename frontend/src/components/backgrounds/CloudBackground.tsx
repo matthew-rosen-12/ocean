@@ -21,13 +21,16 @@ export default function CloudBackground() {
               ctx.fillStyle = "#2F5F8F"; // Darker blue
               ctx.fillRect(0, 0, 256, 256);
 
-              // Add cloud shapes with different shades of white/off-white
+              // Add cloud shapes with white and gray tones for more variation
               const cloudShades = [
-                "rgba(255, 255, 255, 0.9)", // Pure white
-                "rgba(248, 248, 255, 0.85)", // Ghost white
-                "rgba(245, 245, 245, 0.8)", // White smoke
-                "rgba(240, 248, 255, 0.75)", // Alice blue tint
-                "rgba(255, 250, 240, 0.8)", // Floral white (warm off-white)
+                "rgba(255, 255, 255, 0.95)", // Pure white
+                "rgba(248, 248, 255, 0.9)", // Ghost white
+                "rgba(245, 245, 245, 0.85)", // White smoke
+                "rgba(220, 220, 220, 0.8)", // Light gray
+                "rgba(200, 200, 200, 0.75)", // Silver gray
+                "rgba(240, 248, 255, 0.8)", // Alice blue tint
+                "rgba(230, 230, 230, 0.7)", // Medium light gray
+                "rgba(211, 211, 211, 0.65)", // Light gray tone
               ];
               
               for (let i = 0; i < 200; i++) {
@@ -36,19 +39,26 @@ export default function CloudBackground() {
                 const size = 4 + Math.random() * 8; // Slightly larger clouds
                 
                 // Choose random shade for this cloud
-                ctx.fillStyle = cloudShades[Math.floor(Math.random() * cloudShades.length)];
+                const shadeIndex = Math.floor(Math.random() * cloudShades.length);
+                ctx.fillStyle = cloudShades[shadeIndex];
 
                 // Draw cloud as 3-4 overlapping circles for more realistic shape
-                for (let j = 0; j < 3 + Math.random() * 2; j++) {
+                const blobCount = 3 + Math.random() * 2;
+                for (let j = 0; j < blobCount; j++) {
+                  const blobX = x + (Math.random() - 0.5) * size * 0.8;
+                  const blobY = y + (Math.random() - 0.5) * size * 0.4;
+                  const blobRadius = size * (0.4 + Math.random() * 0.6);
+                  
                   ctx.beginPath();
-                  ctx.arc(
-                    x + (Math.random() - 0.5) * size * 0.8,
-                    y + (Math.random() - 0.5) * size * 0.4,
-                    size * (0.4 + Math.random() * 0.6),
-                    0,
-                    Math.PI * 2
-                  );
+                  ctx.arc(blobX, blobY, blobRadius, 0, Math.PI * 2);
                   ctx.fill();
+                  
+                  // Add outline to make blob shapes more visible
+                  if (Math.random() > 0.1) { // Almost all blobs get an outline
+                    ctx.strokeStyle = `rgba(170, 170, 170, ${0.6 + Math.random() * 0.3})`;
+                    ctx.lineWidth = 1.5 + Math.random() * 1.5;
+                    ctx.stroke();
+                  }
                 }
               }
 

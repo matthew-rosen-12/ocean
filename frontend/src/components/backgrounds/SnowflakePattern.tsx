@@ -40,7 +40,7 @@ export default function SnowflakePattern({
     const endX = startX + Math.cos(angle) * length;
     const endY = startY + Math.sin(angle) * length;
     
-    ctx.lineWidth = Math.max(0.5, 3 - level);
+    ctx.lineWidth = Math.max(2, 6 - level);
     ctx.beginPath();
     ctx.moveTo(startX, startY);
     ctx.lineTo(endX, endY);
@@ -64,7 +64,7 @@ export default function SnowflakePattern({
   ) => {
     const numPoints = 3 + Math.floor(randomSeed * 4); // 3-6 crystalline points
     
-    ctx.lineWidth = 0.5;
+    ctx.lineWidth = 2;
     for (let i = 0; i < numPoints; i++) {
       const angle = (i * Math.PI * 2) / numPoints + randomSeed * Math.PI;
       const length = size * (0.5 + randomSeed * 0.5);
@@ -87,23 +87,23 @@ export default function SnowflakePattern({
     random: any
   ) => {
     const snowflakeColors = [
-      "rgba(0, 30, 80, 0.9)",       // Very dark blue
-      "rgba(10, 40, 90, 0.8)",      // Dark blue
-      "rgba(20, 60, 120, 0.8)",     // Medium blue
-      "rgba(30, 70, 130, 0.7)",     // Medium-light blue
-      "rgba(40, 80, 140, 0.7)",     // Lighter blue
-      "rgba(50, 90, 150, 0.6)",     // Light blue
-      "rgba(60, 100, 160, 0.6)",    // Even lighter blue
-      "rgba(70, 110, 170, 0.5)",    // Very light blue
-      "rgba(80, 120, 180, 0.5)",    // Lightest blue
-      "rgba(0, 20, 60, 0.9)",       // Navy blue
-      "rgba(15, 35, 85, 0.8)",      // Dark navy blue
+      "rgba(40, 80, 140, 0.5)",     // Medium blue
+      "rgba(50, 90, 150, 0.48)",    // Light blue
+      "rgba(60, 100, 160, 0.48)",   // Lighter blue
+      "rgba(70, 110, 170, 0.46)",   // Even lighter blue
+      "rgba(80, 120, 180, 0.46)",   // Very light blue
+      "rgba(90, 130, 190, 0.44)",   // Light sky blue
+      "rgba(100, 140, 200, 0.44)",  // Sky blue
+      "rgba(110, 150, 210, 0.42)",  // Lighter sky blue
+      "rgba(120, 160, 220, 0.42)",  // Very light sky blue
+      "rgba(60, 110, 180, 0.5)",    // Medium sky blue
+      "rgba(70, 120, 190, 0.48)",   // Light medium blue
     ];
     
     const colorIndex = Math.floor(random.color * snowflakeColors.length);
     ctx.strokeStyle = snowflakeColors[colorIndex];
     ctx.fillStyle = snowflakeColors[colorIndex];
-    ctx.lineWidth = 2 + random.extra * 4; // Thinner for detail (2-6px)
+    ctx.lineWidth = 5 + random.extra * 7; // Much thicker for detail (5-12px)
     ctx.lineCap = "round";
 
     // Always 6 branches for natural snowflake symmetry
@@ -115,7 +115,7 @@ export default function SnowflakePattern({
       const branchLength = radius * (0.8 + random.x * 0.4); // 80-120% variation
       
       // Draw main spine with thickness variation
-      const spineThickness = 1 + random.size * 3;
+      const spineThickness = 4 + random.size * 6;
       ctx.lineWidth = spineThickness;
       
       ctx.beginPath();
@@ -177,7 +177,7 @@ export default function SnowflakePattern({
         const featherLength = branchLength * 0.1 * (1 - edgeRatio);
         const featherAngle = angle + (random.x - 0.5) * Math.PI / 4;
         
-        ctx.lineWidth = 0.5 + random.extra;
+        ctx.lineWidth = 2 + random.extra * 2;
         ctx.beginPath();
         ctx.moveTo(edgeX, edgeY);
         ctx.lineTo(
@@ -192,7 +192,7 @@ export default function SnowflakePattern({
     const centerRadius = 3 + random.extra * 8;
     
     // Draw hexagonal center
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 5;
     ctx.beginPath();
     for (let i = 0; i <= 6; i++) {
       const hexAngle = (i * Math.PI) / 3;
