@@ -6,6 +6,7 @@ import {
   TERRAIN_PLANE_CONFIG,
   multiRandom,
 } from "../../utils/terrain";
+import { RENDER_ORDERS } from "shared/z-depths";
 
 interface FloralPatternProps {
   boundaries: TerrainBoundaries;
@@ -269,7 +270,7 @@ export default function FloralPattern({
   const repeatY = 1;
 
   return (
-    <mesh position={TERRAIN_PLANE_CONFIG.position}>
+    <mesh position={TERRAIN_PLANE_CONFIG.position} renderOrder={RENDER_ORDERS.TERRAIN}>
       <planeGeometry args={[boundaries.width, boundaries.height]} />
       <meshBasicMaterial
         transparent

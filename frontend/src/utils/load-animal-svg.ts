@@ -268,7 +268,7 @@ async function finishLoadingAnimal(
     transparent: true,
     alphaTest: 0.1,
     side: THREE.DoubleSide,
-    depthWrite: true,
+    depthWrite: false,
     opacity: 1.0,
     premultipliedAlpha: false,
     toneMapped: false,
@@ -276,7 +276,7 @@ async function finishLoadingAnimal(
 
   // Create mesh
   const mesh = new THREE.Mesh(geometry, material);
-  mesh.renderOrder = isLocalPlayer ? RENDER_ORDERS.LOCAL_ANIMAL : RENDER_ORDERS.REMOTE_ANIMAL;
+  mesh.renderOrder = isLocalPlayer ? RENDER_ORDERS.LOCAL_ANIMAL_GRAPHIC : RENDER_ORDERS.REMOTE_ANIMAL_GRAPHIC;
   mesh.position.z = isLocalPlayer ? Z_DEPTHS.LOCAL_ANIMAL_GRAPHIC : Z_DEPTHS.REMOTE_ANIMAL_GRAPHIC;
 
   // Center the geometry at origin and get the center offset
@@ -385,7 +385,8 @@ export function createEdgeGeometry(
   color: THREE.Color | string | number,
   isLocalPlayer: boolean = false,
   outlineLineGeometry?: LineGeometry | null,
-  fallbackGeometry?: THREE.BufferGeometry
+  fallbackGeometry?: THREE.BufferGeometry,
+  renderOrder?: number
 ): THREE.Object3D {
   let lineSegmentsGeometry: LineGeometry;
 
@@ -417,8 +418,11 @@ export function createEdgeGeometry(
   });
 
   const edgeLines = new LineSegments2(lineSegmentsGeometry, edgeMaterial);
-  edgeLines.renderOrder = isLocalPlayer ? RENDER_ORDERS.LOCAL_ANIMAL_OUTLINE : RENDER_ORDERS.REMOTE_ANIMAL_OUTLINE;
-  edgeLines.position.z = isLocalPlayer ? Z_DEPTHS.LOCAL_ANIMAL_OUTLINE : Z_DEPTHS.REMOTE_ANIMAL_OUTLINE;
+  
+  const finalRenderOrder = renderOrder ?? (isLocalPlayer ? RENDER_ORDERS.LOCAL_ANIMAL_OUTLINE : RENDER_ORDERS.REMOTE_ANIMAL_OUTLINE);
+  edgeLines.renderOrder = finalRenderOrder;
+  console.log('Animal outline render order:', isLocalPlayer ? 'LOCAL' : 'REMOTE', 'passed renderOrder:', renderOrder, 'final:', finalRenderOrder);
+  edgeLines.position.z = 0; // Use render order only for depth sorting
 
   edgeLines.matrixAutoUpdate = true;
 
@@ -830,15 +834,15 @@ export function loadAnimalSVG(
             map: fallbackTexture,
             transparent: false,
             side: THREE.DoubleSide,
-            depthWrite: true,
+            depthWrite: false,
             // Use green for fallback to distinguish from main case
             color: 0x00ff00,
           });
 
           // Create mesh
           const mesh = new THREE.Mesh(fallbackGeometry, material);
-          mesh.renderOrder = isLocalPlayer ? 1 : 0;
-          mesh.position.z = 0.1; // Ensure it's in front
+          mesh.renderOrder = isLocalPlayer ? RENDER_ORDERS.LOCAL_ANIMAL_GRAPHIC : RENDER_ORDERS.REMOTE_ANIMAL_GRAPHIC;
+          mesh.position.z = isLocalPlayer ? Z_DEPTHS.LOCAL_ANIMAL_GRAPHIC : Z_DEPTHS.REMOTE_ANIMAL_GRAPHIC;
 
           // Center the geometry at origin
           fallbackGeometry.computeBoundingBox();

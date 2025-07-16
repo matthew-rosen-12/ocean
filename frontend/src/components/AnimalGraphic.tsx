@@ -74,7 +74,8 @@ function AnimalSprite({
 
       // Create mesh with cached geometry
       const mesh = new THREE.Mesh(cached.geometry.clone(), material);
-      mesh.renderOrder = isLocalPlayer ? RENDER_ORDERS.LOCAL_ANIMAL : RENDER_ORDERS.REMOTE_ANIMAL;
+      mesh.renderOrder = isLocalPlayer ? RENDER_ORDERS.LOCAL_ANIMAL_GRAPHIC : RENDER_ORDERS.REMOTE_ANIMAL_GRAPHIC;
+      console.log('Animal mesh render order:', isLocalPlayer ? 'LOCAL' : 'REMOTE', mesh.renderOrder);
       mesh.position.z = isLocalPlayer ? Z_DEPTHS.LOCAL_ANIMAL_GRAPHIC : Z_DEPTHS.REMOTE_ANIMAL_GRAPHIC;
       group.add(mesh);
 
@@ -84,7 +85,8 @@ function AnimalSprite({
         borderColor,
         isLocalPlayer,
         cached.outlineLineGeometry,
-        cached.geometry
+        cached.geometry,
+        isLocalPlayer ? RENDER_ORDERS.LOCAL_ANIMAL_OUTLINE : RENDER_ORDERS.REMOTE_ANIMAL_OUTLINE
       );
       group.add(edgeLines);
 
@@ -168,7 +170,8 @@ function AnimalSprite({
             borderColor,
             isLocalPlayer,
             cached.outlineLineGeometry,
-            cached.geometry
+            cached.geometry,
+            isLocalPlayer ? RENDER_ORDERS.LOCAL_ANIMAL_OUTLINE : RENDER_ORDERS.REMOTE_ANIMAL_OUTLINE
           );
           group.add(edgeLines);
         }

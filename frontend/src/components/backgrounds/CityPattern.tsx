@@ -6,6 +6,7 @@ import {
   TERRAIN_PLANE_CONFIG,
   multiRandom,
 } from "../../utils/terrain";
+import { RENDER_ORDERS } from "shared/z-depths";
 
 /**
  * MosaicPattern – city‑block texture with rivers, bridges & traffic
@@ -238,7 +239,7 @@ export default function MosaicPattern({ boundaries, seed, usePngFile }: MosaicPa
     const a=document.createElement('a'); a.download=`city-${seed}.png`; a.href=mosaicTexture.toDataURL(); a.click(); };
 
   return (
-    <mesh position={TERRAIN_PLANE_CONFIG.position}>
+    <mesh position={TERRAIN_PLANE_CONFIG.position} renderOrder={RENDER_ORDERS.TERRAIN}>
       <planeGeometry args={[boundaries.width, boundaries.height]} />
       <meshBasicMaterial transparent opacity={TERRAIN_PLANE_CONFIG.opacity} map={pngTexture || undefined}>
         {!usePngFile && <canvasTexture attach="map" image={mosaicTexture} wrapS={THREE.ClampToEdgeWrapping} wrapT={THREE.ClampToEdgeWrapping} />}

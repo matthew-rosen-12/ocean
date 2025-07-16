@@ -140,16 +140,19 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
       const lineMaterial = new LineMaterial({
         color: userColor, // Start with user color
         linewidth: 15.0,
-        transparent: true,
+        transparent: false,
         opacity: 1.0,
         depthTest: true,
-        depthWrite: false,
+        depthWrite: true,
         side: THREE.DoubleSide,
         resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
       });
       
       const lineSegment = new LineSegments2(lineGeometry, lineMaterial);
       lineSegment.scale.set(scale, scale, 1);
+      // Individual segments inherit the group's render order - set explicitly to avoid conflicts
+      const zDepths = getNPCZDepths();
+      lineSegment.renderOrder = zDepths.goldOutlineRenderOrder;
       
       // Store animation data for this segment
       (lineSegment as LineSegments2 & { userData: Record<string, unknown> }).userData = {
@@ -164,8 +167,9 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
     });
     
     const zDepths = getNPCZDepths();
-    outlineGroup.renderOrder = zDepths.outlineRenderOrder;
-    outlineGroup.position.z = zDepths.outline;
+    outlineGroup.renderOrder = zDepths.goldOutlineRenderOrder;
+    console.log('GOLD outline render order:', outlineGroup.renderOrder, 'vs NPC mesh:', zDepths.renderOrder);
+    outlineGroup.position.z = 0; // Use render order only for depth sorting
     
     // Mark the group for animation
     (outlineGroup as THREE.Group & { userData: Record<string, unknown> }).userData = {
@@ -213,10 +217,10 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
       edgeMaterial = new LineMaterial({
         color: goldColor,
         linewidth: 18.0, // Thicker for the swirl effect
-        transparent: true,
-        opacity: 0.9,
+        transparent: false,
+        opacity: 1.0,
         depthTest: true,
-        depthWrite: false,
+        depthWrite: true,
         side: THREE.DoubleSide,
         resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
       });
@@ -234,10 +238,10 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
       edgeMaterial = new LineMaterial({
         color: borderColor,
         linewidth: 12.0,
-        transparent: true,
+        transparent: false,
         opacity: 1.0,
         depthTest: true,
-        depthWrite: false,
+        depthWrite: true,
         side: THREE.DoubleSide,
         resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
       });
@@ -247,7 +251,7 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
     const outlineObj = new LineSegments2(lineGeometry, edgeMaterial);
     outlineObj.renderOrder = isGold ? zDepths.goldOutlineRenderOrder : zDepths.outlineRenderOrder;
     outlineObj.scale.set(scale * (isGold ? 1.15 : 1), scale * (isGold ? 1.15 : 1), 1); // Gold outline larger
-    outlineObj.position.z = isGold ? zDepths.goldOutline : zDepths.outline;
+    outlineObj.position.z = 0; // Use render order only for depth sorting
     
     // Add swirling animation for gold outline
     if (isGold) {
@@ -354,6 +358,7 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
       const zDepths = getNPCZDepths();
       mesh.current.position.z = zDepths.mesh;
       mesh.current.renderOrder = zDepths.renderOrder;
+      console.log('NPC MESH render order set to:', mesh.current.renderOrder);
 
       // Scale based on texture aspect ratio and fileNames count
       const imageAspect =

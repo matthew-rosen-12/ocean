@@ -4,6 +4,7 @@ import {
   TerrainBoundaries,
   TERRAIN_PLANE_CONFIG,
 } from "../../utils/terrain";
+import { RENDER_ORDERS } from "shared/z-depths";
 
 interface TerrainOutlineProps {
   boundaries: TerrainBoundaries;
@@ -80,13 +81,16 @@ export default function TerrainOutline({
   }, [boundaries.width, boundaries.height, seed]);
 
   return (
-    <mesh position={[TERRAIN_PLANE_CONFIG.position[0], TERRAIN_PLANE_CONFIG.position[1], TERRAIN_PLANE_CONFIG.position[2] + 0.001]}>
+    <mesh 
+      position={[TERRAIN_PLANE_CONFIG.position[0], TERRAIN_PLANE_CONFIG.position[1], TERRAIN_PLANE_CONFIG.position[2] + 0.001]}
+      renderOrder={RENDER_ORDERS.TERRAIN_OUTLINE}
+    >
       <planeGeometry args={[boundaries.width * 1.02, boundaries.height * 1.02]} />
       <meshBasicMaterial
         transparent
         opacity={1.0}
-        depthWrite={false}
-        depthTest={false}
+        depthWrite={true}
+        depthTest={true}
       >
         <canvasTexture
           attach="map"
