@@ -21,12 +21,12 @@ import { usePositionBroadcast } from "../hooks/usePositionBroadcast";
 import { useCollisionDetection } from "../hooks/useCollisionDetection";
 import { useKeyboardMovement } from "../hooks/useKeyboardMovement";
 import { useVisibilityControl } from "../hooks/useVisibilityControl";
-import { useFrameRateMonitor } from "../hooks/useFrameRateMonitor";
 import { CinematicScreenshot } from "./CinematicScreenshot";
 import { TerrainConfig } from "../utils/terrain";
 import BotCollisionManager from "./BotCollisionManager";
 import { AnimationManagerProvider } from "../contexts/AnimationManagerContext";
 import { KeyboardMovementManager } from "./KeyboardMovementManager";
+import { FrameRateManager } from "./FrameRateManager";
 // Extend Performance interface for Chrome's memory API
 declare global {
   interface Performance {
@@ -168,8 +168,6 @@ export default function Scene({
   // Prevent game from pausing when tab is hidden
   useVisibilityControl(onInactivityKick);
 
-  // Monitor frame rate to detect browser resource throttling
-  useFrameRateMonitor(onInactivityKick);
 
 
   // Expose NPC groups for debugging in browser developer tools (throttled for performance)
@@ -369,6 +367,9 @@ export default function Scene({
             checkBoundaryCollision={checkBoundaryCollision}
             inputDisabled={cinematicActive}
           />
+
+          {/* Frame rate monitoring for inactivity detection */}
+          <FrameRateManager onInactivityKick={onInactivityKick} />
         </AnimationManagerProvider>
       </Canvas>
 
