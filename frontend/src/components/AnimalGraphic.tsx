@@ -441,7 +441,7 @@ export default function AnimalGraphic({
           position={[
             user.position.x + nicknameTextInfo.position[0],
             user.position.y + nicknameTextInfo.position[1],
-            isLocalPlayer ? Z_DEPTHS.LOCAL_ANIMAL_GRAPHIC : Z_DEPTHS.REMOTE_ANIMAL_GRAPHIC
+            isLocalPlayer ? Z_DEPTHS.LOCAL_ANIMAL_GRAPHIC +.05: Z_DEPTHS.REMOTE_ANIMAL_GRAPHIC - .05
           ]}
           fontSize={nicknameTextInfo.fontSize}
           color={nicknameTextInfo.color}
