@@ -1,7 +1,7 @@
 import React, { useMemo, useEffect, useRef } from "react";
 import { UserInfo, Animal, ANIMAL_SCALES, ANIMAL_ORIENTATION } from "shared/types";
 import * as THREE from "three";
-import { useFrame } from "@react-three/fiber";
+import { useAnimationManagerContext } from "../contexts/AnimationManagerContext";
 import { Text } from "@react-three/drei";
 import { smoothMove } from "../utils/movement";
 import { useMount } from "../hooks/use-npc-group-base";
@@ -44,6 +44,7 @@ function AnimalSprite({
   ) => void;
   terrainBoundaries?: TerrainBoundaries;
 }) {
+  const animationManager = useAnimationManagerContext();
   const group = useMemo(() => new THREE.Group(), []);
   const previousPosition = useMemo(() => new THREE.Vector3(), []);
   const previousRotation = useRef(0);
@@ -54,6 +55,7 @@ function AnimalSprite({
   const initialOrientation = useRef(
     ANIMAL_ORIENTATION[animal] || { rotation: 0, flipY: false }
   );
+  const animalAnimationId = useRef<string>(`animal-${user.id}`);
 
   // Get outline effect functions
 
@@ -233,80 +235,97 @@ function AnimalSprite({
       targetRotation.current = angle;
     }
   }
-  useFrame(() => {
-    // Skip if SVG isn't loaded yet
+  // Register animal animation with AnimationManager
+  useEffect(() => {
+    const callbackId = animalAnimationId.current;
+    const animalCallback = (_state: unknown, _delta: number) => {
+      // Skip if SVG isn't loaded yet
+      if (!svgLoaded.current || !initialScale.current) return;
 
-    if (!svgLoaded.current || !initialScale.current) return;
+      // Position handling - same for local and non-local
+      group.position.copy(positionRef.current);
 
-    // Position handling - same for local and non-local
-    group.position.copy(positionRef.current);
-
-    if (directionRef.current && directionRef.current.length() > 0.01) {
-      setRotation(directionRef.current);
-    }
-
-    // Handle position interpolation for non-local players
-    if (!isLocalPlayer) {
-      // Apply smooth movement
-      previousPosition.copy(
-        smoothMove(previousPosition.clone(), positionRef.current, {
-          lerpFactor: 0.1,
-          moveSpeed: MOVE_SPEED,
-          minDistance: 0.01,
-          useConstantSpeed: true,
-        })
-      );
-
-      // Apply the calculated position
-      group.position.copy(previousPosition);
-    }
-
-    // Rotation interpolation with faster non-local rotation
-    if (Math.abs(targetRotation.current - previousRotation.current) > 0.001) {
-      let delta = targetRotation.current - previousRotation.current;
-
-      // Normalize delta to [-PI, PI]
-      while (delta > Math.PI) delta -= Math.PI * 2;
-      while (delta < -Math.PI) delta += Math.PI * 2;
-
-      if (
-        Math.abs(targetRotation.current) == Math.PI / 2 &&
-        Math.abs(delta) == Math.PI &&
-        currentYScale.current < 0
-      ) {
-        delta *= -1;
+      if (directionRef.current && directionRef.current.length() > 0.01) {
+        setRotation(directionRef.current);
       }
 
-      const rotSpeed = ROTATION_SPEED;
+      // Handle position interpolation for non-local players
+      if (!isLocalPlayer) {
+        // Apply smooth movement
+        previousPosition.copy(
+          smoothMove(previousPosition.clone(), positionRef.current, {
+            lerpFactor: 0.1,
+            moveSpeed: MOVE_SPEED,
+            minDistance: 0.01,
+            useConstantSpeed: true,
+          })
+        );
 
-      if (Math.abs(delta) < rotSpeed) {
-        previousRotation.current = targetRotation.current;
-      } else {
-        previousRotation.current += Math.sign(delta) * rotSpeed;
+        // Apply the calculated position
+        group.position.copy(previousPosition);
       }
 
-      group.rotation.z = previousRotation.current;
-    }
+      // Rotation interpolation with faster non-local rotation
+      if (Math.abs(targetRotation.current - previousRotation.current) > 0.001) {
+        let delta = targetRotation.current - previousRotation.current;
 
-    // Handle Y scale flipping based on direction
-    if (directionRef.current && directionRef.current.length() > 0.01) {
-      const direction = directionRef.current.clone().normalize();
-      const targetYScale = direction.x < 0 ? -1 : 1;
-      
-      // Smoothly animate Y scale towards target
-      if (Math.abs(currentYScale.current - targetYScale) > 0.1) {
-        const flipSpeed = FLIP_SPEED;
-        currentYScale.current += (targetYScale - currentYScale.current) * flipSpeed;
+        // Normalize delta to [-PI, PI]
+        while (delta > Math.PI) delta -= Math.PI * 2;
+        while (delta < -Math.PI) delta += Math.PI * 2;
+
+        if (
+          Math.abs(targetRotation.current) == Math.PI / 2 &&
+          Math.abs(delta) == Math.PI &&
+          currentYScale.current < 0
+        ) {
+          delta *= -1;
+        }
+
+        const rotSpeed = ROTATION_SPEED;
+
+        if (Math.abs(delta) < rotSpeed) {
+          previousRotation.current = targetRotation.current;
+        } else {
+          previousRotation.current += Math.sign(delta) * rotSpeed;
+        }
+
+        group.rotation.z = previousRotation.current;
+      }
+
+      // Handle Y scale flipping based on direction
+      if (directionRef.current && directionRef.current.length() > 0.01) {
+        const direction = directionRef.current.clone().normalize();
+        const targetYScale = direction.x < 0 ? -1 : 1;
         
-        // Apply the current Y scale
-        group.scale.y = currentYScale.current * Math.abs(initialScale.current.y);
-      } else {
-        // Snap to target when close enough
-        currentYScale.current = targetYScale;
-        group.scale.y = targetYScale * Math.abs(initialScale.current.y);
+        // Smoothly animate Y scale towards target
+        if (Math.abs(currentYScale.current - targetYScale) > 0.1) {
+          const flipSpeed = FLIP_SPEED;
+          currentYScale.current += (targetYScale - currentYScale.current) * flipSpeed;
+          
+          // Apply the current Y scale
+          group.scale.y = currentYScale.current * Math.abs(initialScale.current.y);
+        } else {
+          // Snap to target when close enough
+          currentYScale.current = targetYScale;
+          group.scale.y = targetYScale * Math.abs(initialScale.current.y);
+        }
       }
-    }
-  });
+    };
+
+    animationManager.registerAnimationCallback(callbackId, animalCallback);
+
+    return () => {
+      animationManager.unregisterAnimationCallback(callbackId);
+    };
+  }, [
+    animationManager,
+    group,
+    positionRef,
+    directionRef,
+    isLocalPlayer,
+    previousPosition,
+    setRotation,
+  ]);
 
   return <primitive object={group} />;
 }
