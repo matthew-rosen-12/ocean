@@ -46,16 +46,16 @@ export function CinematicScreenshot({
       
       // Calculate zoom based on animal size and NPC group size
       const currentCameraDistance = 30; // Normal camera distance
-      const baseZoomIn = 0.2; // Zoom in much closer (smaller Z = closer)
+      const baseZoomIn = .1; // Zoom in much closer (smaller Z = closer)
       
       // Adjust zoom based on animal size (larger animals need to be further back)
-      const animalSizeAdjustment = animalScale * 0.3;
+      const animalSizeAdjustment = animalScale
       
       // Adjust zoom based on NPC count (more NPCs = need to be further back to fit all)
-      const npcSizeAdjustment = Math.sqrt(npcCount) * 0.2;
+      const npcSizeAdjustment = Math.sqrt(npcCount) + 1
       
       // Final zoom calculation: zoom in from current distance, then adjust for animal and NPC size
-      const targetZoom = currentCameraDistance * (baseZoomIn + animalSizeAdjustment + npcSizeAdjustment);
+      const targetZoom = currentCameraDistance * (baseZoomIn * animalSizeAdjustment * npcSizeAdjustment);
       
       // Store original camera position
       const originalPosition = camera.position.clone();
