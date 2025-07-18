@@ -324,7 +324,6 @@ function AnimalSprite({
     directionRef,
     isLocalPlayer,
     previousPosition,
-    setRotation,
   ]);
 
   return <primitive object={group} />;
