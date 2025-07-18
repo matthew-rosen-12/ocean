@@ -589,39 +589,48 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
   }, [throwChargeCount, currentScale, goldColor]);
 
 
-  // Animate the shimmering gold outline
-  useFrame((state) => {
-    if (goldOutline.current && (goldOutline.current as THREE.Group & { userData: Record<string, unknown> }).userData?.isShimmeringGroup) {
-      const groupUserData = (goldOutline.current as THREE.Group & { userData: Record<string, unknown> }).userData;
-      const time = state.clock.getElapsedTime() * (groupUserData.animationSpeed as number);
-      
-      // Animate each segment in the group
-      goldOutline.current.children.forEach((child, index) => {
-        if (child instanceof LineSegments2) {
-          const segmentUserData = (child as LineSegments2 & { userData: Record<string, unknown> }).userData;
-          if (segmentUserData?.isShimmering) {
-            const material = segmentUserData.material as LineMaterial;
-            const userColor = segmentUserData.userColor as THREE.Color;
-            const goldColor = segmentUserData.goldColor as THREE.Color;
-            
-            // Create traveling wave effect - each segment has a phase offset
-            const segmentPhase = (index / 8) * Math.PI * 2; // 8 segments around the square
-            const wave = Math.sin(time + segmentPhase) * 0.5 + 0.5; // 0 to 1
-            
-            // Blend between user color and gold based on the wave
-            // Use cached color object to avoid per-frame allocation
-            cachedBlendedColor.current.lerpColors(userColor, goldColor, wave);
-            
-            material.color.copy(cachedBlendedColor.current);
-            
-            // Add slight intensity variation for extra shimmer
-            const intensity = Math.sin(time * 2 + segmentPhase) * 0.1 + 0.9; // 0.8 to 1.0
-            material.opacity = intensity;
+  // Register shimmer animation with AnimationManager
+  useEffect(() => {
+    const callbackId = shimmerAnimationId.current;
+    const shimmerCallback = (state: any, _delta: number) => {
+      if (goldOutline.current && (goldOutline.current as THREE.Group & { userData: Record<string, unknown> }).userData?.isShimmeringGroup) {
+        const groupUserData = (goldOutline.current as THREE.Group & { userData: Record<string, unknown> }).userData;
+        const time = (state as any).clock.getElapsedTime() * (groupUserData.animationSpeed as number);
+        
+        // Animate each segment in the group
+        goldOutline.current.children.forEach((child, index) => {
+          if (child instanceof LineSegments2) {
+            const segmentUserData = (child as LineSegments2 & { userData: Record<string, unknown> }).userData;
+            if (segmentUserData?.isShimmering) {
+              const material = segmentUserData.material as LineMaterial;
+              const userColor = segmentUserData.userColor as THREE.Color;
+              const goldColor = segmentUserData.goldColor as THREE.Color;
+              
+              // Create traveling wave effect - each segment has a phase offset
+              const segmentPhase = (index / 8) * Math.PI * 2; // 8 segments around the square
+              const wave = Math.sin(time + segmentPhase) * 0.5 + 0.5; // 0 to 1
+              
+              // Blend between user color and gold based on the wave
+              // Use cached color object to avoid per-frame allocation
+              cachedBlendedColor.current.lerpColors(userColor, goldColor, wave);
+              
+              material.color.copy(cachedBlendedColor.current);
+              
+              // Add slight intensity variation for extra shimmer
+              const intensity = Math.sin(time * 2 + segmentPhase) * 0.1 + 0.9; // 0.8 to 1.0
+              material.opacity = intensity;
+            }
           }
-        }
-      });
-    }
-  });
+        });
+      }
+    };
+
+    animationManager.registerAnimationCallback(callbackId, shimmerCallback);
+
+    return () => {
+      animationManager.unregisterAnimationCallback(callbackId);
+    };
+  }, [animationManager]);
 
   return {
     group,

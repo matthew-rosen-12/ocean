@@ -26,6 +26,7 @@ import { CinematicScreenshot } from "./CinematicScreenshot";
 import { TerrainConfig } from "../utils/terrain";
 import BotCollisionManager from "./BotCollisionManager";
 import { AnimationManagerProvider } from "../contexts/AnimationManagerContext";
+import { KeyboardMovementManager } from "./KeyboardMovementManager";
 // Extend Performance interface for Chrome's memory API
 declare global {
   interface Performance {
@@ -124,7 +125,15 @@ export default function Scene({
     return new THREE.Vector3(adjustedX, adjustedY, newPosition.z);
   };
 
-  const { position, direction, spaceStartTime } = useKeyboardMovement(
+  const { 
+    position, 
+    direction, 
+    spaceStartTime, 
+    keysPressed,
+    setPosition,
+    setDirection,
+    setSpaceStartTime
+  } = useKeyboardMovement(
     initialPosition,
     initialDirection,
     myUser,
@@ -339,6 +348,26 @@ export default function Scene({
             setPaths={setPaths}
             setNpcGroups={setNpcGroups}
             animalDimensions={animalDimensions}
+          />
+          
+          {/* Keyboard movement manager */}
+          <KeyboardMovementManager
+            position={position}
+            direction={direction}
+            setPosition={setPosition}
+            setDirection={setDirection}
+            keysPressed={keysPressed}
+            spaceStartTime={spaceStartTime}
+            setSpaceStartTime={setSpaceStartTime}
+            myUser={myUser}
+            npcGroups={npcGroups}
+            paths={paths}
+            setPaths={setPaths}
+            setNpcGroups={setNpcGroups}
+            terrain={terrain}
+            animalDimensions={animalDimensions}
+            checkBoundaryCollision={checkBoundaryCollision}
+            inputDisabled={cinematicActive}
           />
         </AnimationManagerProvider>
       </Canvas>

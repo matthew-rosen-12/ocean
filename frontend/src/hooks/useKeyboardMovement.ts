@@ -12,8 +12,8 @@ import { useMount } from "./use-npc-group-base";
 import { pathNPCGroup } from "../utils/npc-throwing";
 import { TerrainConfig } from "../utils/terrain";
 
-// Speed of movement per keypress/frame
-const MOVEMENT_SPEED = 0.5;
+// Speed of movement per frame (keeping original frame-based approach for now)
+const MOVEMENT_SPEED = 1.5; // Increased from 0.5 to compensate for potential frame rate differences
 
 export function useKeyboardMovement(
   initialPosition: THREE.Vector3,
@@ -190,10 +190,6 @@ export function useKeyboardMovement(
   });
 
   useMount(() => {
-    const updatePositionWrapper = () => {
-      updatePositionRef.current();
-    };
-
     const handleKeyDownWrapper = (event: KeyboardEvent) => {
       handleKeyDownRef.current?.(event);
     };
@@ -202,13 +198,6 @@ export function useKeyboardMovement(
       handleKeyUpRef.current?.(event);
     };
 
-    const animate = () => {
-      updatePositionWrapper();
-      animationFrameRef.current = requestAnimationFrame(animate);
-    };
-
-    // Start the animation loop once
-    animationFrameRef.current = requestAnimationFrame(animate);
     window.addEventListener("keydown", handleKeyDownWrapper);
     window.addEventListener("keyup", handleKeyUpWrapper);
 
@@ -218,5 +207,13 @@ export function useKeyboardMovement(
     };
   });
 
-  return { position, direction, spaceStartTime };
+  return { 
+    position, 
+    direction, 
+    spaceStartTime, 
+    keysPressed,
+    setPosition,
+    setDirection,
+    setSpaceStartTime
+  };
 }
