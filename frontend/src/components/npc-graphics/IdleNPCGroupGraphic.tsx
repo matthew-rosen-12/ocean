@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Text } from "@react-three/drei";
 import * as THREE from "three";
-import { useFrame } from "@react-three/fiber";
+import { useAnimationManagerContext } from "../../contexts/AnimationManagerContext";
 import { smoothMove } from "../../utils/movement";
 import { useMount, useNPCGroupBase } from "../../hooks/use-npc-group-base";
 import { NPCGroup } from "shared/types";
@@ -17,6 +17,8 @@ const IdleNPCGroupGraphic: React.FC<IdleNPCGroupGraphicProps> = ({
 }) => {
   const { group, positionRef, textureLoaded, updatePositionWithTracking, textInfo } =
     useNPCGroupBase(npcGroup);
+  const animationManager = useAnimationManagerContext();
+  const animationId = useRef<string>(`idle-${npcGroup.id}`);
 
   // Set initial position
   useMount(() => {
@@ -27,24 +29,33 @@ const IdleNPCGroupGraphic: React.FC<IdleNPCGroupGraphicProps> = ({
     group.position.copy(positionRef.current);
   });
 
-  // Handle updates and collision detection
-  useFrame(() => {
-    if (!group || !textureLoaded.current) return;
+  // Register animation callback with the AnimationManager
+  useEffect(() => {
+    const callbackId = animationId.current;
+    const animationCallback = (_state: unknown, _delta: number) => {
+      if (!group || !textureLoaded.current) return;
 
-    const targetPosition = new THREE.Vector3(npcGroup.position.x, npcGroup.position.y, 0);
-    if (!positionRef.current.equals(targetPosition)) {
-      updatePositionWithTracking(
-        smoothMove(positionRef.current.clone(), targetPosition),
-        "IdleNPC"
-      );
+      const targetPosition = new THREE.Vector3(npcGroup.position.x, npcGroup.position.y, 0);
+      if (!positionRef.current.equals(targetPosition)) {
+        updatePositionWithTracking(
+          smoothMove(positionRef.current.clone(), targetPosition),
+          "IdleNPC"
+        );
 
-      group.position.copy(positionRef.current);
-    }
-    group.rotation.z = 0; // Fixed upright rotation
+        group.position.copy(positionRef.current);
+      }
+      group.rotation.z = 0; // Fixed upright rotation
 
-    // Check for collision
-    checkForCollision(npcGroup);
-  });
+      // Check for collision
+      checkForCollision(npcGroup);
+    };
+
+    animationManager.registerAnimationCallback(callbackId, animationCallback);
+
+    return () => {
+      animationManager.unregisterAnimationCallback(callbackId);
+    };
+  }, [npcGroup, group, textureLoaded, positionRef, updatePositionWithTracking, checkForCollision, animationManager]);
 
   // Add effect to track useFrame lifecycles
   return (

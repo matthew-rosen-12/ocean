@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo } from "react";
 import * as THREE from "three";
-import { useFrame } from "@react-three/fiber";
+import { useAnimationManagerContext } from "../contexts/AnimationManagerContext";
 import { DEBUG } from "../utils/config";
 import { NPCGroup, UserInfo, pathData, PathPhase, NPCPhase } from "shared/types";
 import { calculateNPCGroupScale } from "../utils/npc-group-utils";
@@ -25,6 +25,7 @@ console.log(
 const debug = DEBUG.NPC_MOVEMENT;
 
 export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: pathData, throwChargeCount?: number, isLocalUser?: boolean) {
+  const animationManager = useAnimationManagerContext();
   const group = useMemo(() => {
     const newGroup = new THREE.Group();
     return newGroup;
@@ -39,6 +40,9 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
   const meshVersion = useRef(0);
   const outline = useRef<THREE.Object3D | null>(null);
   const goldOutline = useRef<THREE.Object3D | null>(null);
+  // Cache THREE.Color object to avoid per-frame creation
+  const cachedBlendedColor = useRef(new THREE.Color());
+  const shimmerAnimationId = useRef<string>(`shimmer-${npcGroup.id}-${Date.now()}`);
 
   // Add a function to track position changes
   const updatePositionWithTracking = (
@@ -605,10 +609,10 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
             const wave = Math.sin(time + segmentPhase) * 0.5 + 0.5; // 0 to 1
             
             // Blend between user color and gold based on the wave
-            const blendedColor = new THREE.Color();
-            blendedColor.lerpColors(userColor, goldColor, wave);
+            // Use cached color object to avoid per-frame allocation
+            cachedBlendedColor.current.lerpColors(userColor, goldColor, wave);
             
-            material.color.copy(blendedColor);
+            material.color.copy(cachedBlendedColor.current);
             
             // Add slight intensity variation for extra shimmer
             const intensity = Math.sin(time * 2 + segmentPhase) * 0.1 + 0.9; // 0.8 to 1.0

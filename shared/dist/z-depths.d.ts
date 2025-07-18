@@ -27,14 +27,14 @@ export declare const RENDER_ORDERS: {
     readonly PATH_NPC_RETURNING_GOLD_OUTLINE: 51;
     readonly PATH_NPC_RETURNING_OUTLINE: 52;
     readonly PATH_NPC_RETURNING: 53;
-    readonly PATH_NPC_THROWN_GOLD_OUTLINE: 100;
-    readonly PATH_NPC_THROWN_OUTLINE: 100;
-    readonly PATH_NPC_THROWN: 101;
+    readonly PATH_NPC_THROWN_GOLD_OUTLINE: 64;
+    readonly PATH_NPC_THROWN_OUTLINE: 65;
+    readonly PATH_NPC_THROWN: 66;
     readonly LOCAL_CAPTURED_NPC_GROUP_GOLD_OUTLINE: 61;
     readonly LOCAL_CAPTURED_NPC_GROUP_OUTLINE: 62;
     readonly LOCAL_CAPTURED_NPC_GROUP: 63;
-    readonly LOCAL_ANIMAL_OUTLINE: 64;
-    readonly LOCAL_ANIMAL_GRAPHIC: 65;
+    readonly LOCAL_ANIMAL_OUTLINE: 100;
+    readonly LOCAL_ANIMAL_GRAPHIC: 101;
 };
 /**
  * The final, calculated z-depth values to be used for object positions.

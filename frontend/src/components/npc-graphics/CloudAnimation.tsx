@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import * as THREE from "three";
-import { useFrame } from "@react-three/fiber";
+import { useAnimationManagerContext } from "../../contexts/AnimationManagerContext";
 
 interface CloudAnimationProps {
   position: THREE.Vector3;
@@ -16,6 +16,8 @@ const CloudAnimation: React.FC<CloudAnimationProps> = ({ position, onComplete })
     startTime: number;
   }[]>([]);
   const duration = 3000;
+  const animationManager = useAnimationManagerContext();
+  const animationId = useRef<string>(`cloud-${Date.now()}-${Math.random()}`);
 
   useEffect(() => {
     if (!groupRef.current) return;
@@ -117,44 +119,54 @@ const CloudAnimation: React.FC<CloudAnimationProps> = ({ position, onComplete })
     };
   }, []);
 
-  useFrame((state, delta) => {
-    const now = Date.now();
-    let allComplete = true;
+  // Register animation callback with the AnimationManager
+  useEffect(() => {
+    const callbackId = animationId.current;
+    const animationCallback = (_state: unknown, delta: number) => {
+      const now = Date.now();
+      let allComplete = true;
 
-    if (groupRef.current) {
-        groupRef.current.position.copy(position);
-    }
-
-    wispRefs.current.forEach(wisp => {
-      if (now < wisp.startTime) {
-        allComplete = false;
-        return;
+      if (groupRef.current) {
+          groupRef.current.position.copy(position);
       }
 
-      const elapsed = now - wisp.startTime;
-      const progress = Math.min(elapsed / duration, 1.0);
-      
-      if (progress < 1) {
+      wispRefs.current.forEach(wisp => {
+        if (now < wisp.startTime) {
           allComplete = false;
+          return;
+        }
+
+        const elapsed = now - wisp.startTime;
+        const progress = Math.min(elapsed / duration, 1.0);
+        
+        if (progress < 1) {
+            allComplete = false;
+        }
+
+        const travelDistance = progress * wisp.speed * 8;
+        wisp.mesh.position.copy(wisp.direction).multiplyScalar(travelDistance);
+        
+        // --- ✅ CHANGE: Use a power curve for a much more aggressive fade ---
+        // This makes the opacity drop very quickly at the start of the animation.
+        const fadeValue = 1.0 - Math.pow(progress, 0.3) - .3;
+
+        (wisp.mesh.material as THREE.ShaderMaterial).uniforms.uFade.value = fadeValue;
+        
+        wisp.mesh.rotation.x += delta * wisp.speed * 0.1;
+        wisp.mesh.rotation.y += delta * wisp.speed * 0.1;
+      });
+
+      if (allComplete) {
+        onComplete?.();
       }
+    };
 
-      const travelDistance = progress * wisp.speed * 8;
-      wisp.mesh.position.copy(wisp.direction).multiplyScalar(travelDistance);
-      
-      // --- ✅ CHANGE: Use a power curve for a much more aggressive fade ---
-      // This makes the opacity drop very quickly at the start of the animation.
-      const fadeValue = 1.0 - Math.pow(progress, 0.3) - .3;
+    animationManager.registerAnimationCallback(callbackId, animationCallback);
 
-      (wisp.mesh.material as THREE.ShaderMaterial).uniforms.uFade.value = fadeValue;
-      
-      wisp.mesh.rotation.x += delta * wisp.speed * 0.1;
-      wisp.mesh.rotation.y += delta * wisp.speed * 0.1;
-    });
-
-    if (allComplete) {
-      onComplete?.();
-    }
-  });
+    return () => {
+      animationManager.unregisterAnimationCallback(callbackId);
+    };
+  }, [position, onComplete, duration, animationManager]);
 
   return <group ref={groupRef} />;
 };

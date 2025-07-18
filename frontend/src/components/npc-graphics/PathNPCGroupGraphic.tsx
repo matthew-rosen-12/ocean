@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import { Text } from "@react-three/drei";
 import {
   NPCPhase,
@@ -8,7 +8,7 @@ import {
   NPCGroupsBiMap,
 } from "shared/types";
 import * as THREE from "three";
-import { useFrame } from "@react-three/fiber";
+import { useAnimationManagerContext } from "../../contexts/AnimationManagerContext";
 import { useMount, useNPCGroupBase } from "../../hooks/use-npc-group-base";
 import { TerrainBoundaries } from "../../utils/terrain";
 
@@ -42,6 +42,8 @@ const PathNPCGroupGraphic: React.FC<PathNPCGroupGraphicProps> = ({
 }) => {
   const { group, positionRef, textureLoaded, updatePositionWithTracking, textInfo } =
     useNPCGroupBase(npcGroup, user, pathData);
+  const animationManager = useAnimationManagerContext();
+  const animationId = useRef<string>(`path-${npcGroup.id}`);
 
 
 
@@ -56,7 +58,7 @@ const PathNPCGroupGraphic: React.FC<PathNPCGroupGraphicProps> = ({
   });
 
   // Calculate position for path NPCs
-  const calculatePathPosition = (pathData: pathData, currentTime: number) => {
+  const calculatePathPosition = useCallback((pathData: pathData, currentTime: number) => {
     // Calculate elapsed time in seconds
     const elapsedTime = (currentTime - pathData.timestamp) / 1000;
     const pathDurationSec = pathData.pathDuration / 1000;
@@ -83,38 +85,60 @@ const PathNPCGroupGraphic: React.FC<PathNPCGroupGraphicProps> = ({
     }
 
     return { position, progress };
-  };
+  }, [pathData]);
 
   
 
 
 
-  // Handle position updates
-  useFrame(() => {
-    if (!group || !textureLoaded.current) return;
+  // Register animation callback with the AnimationManager
+  useEffect(() => {
+    const callbackId = animationId.current;
+    const animationCallback = (_state: unknown, _delta: number) => {
+      if (!group || !textureLoaded.current) return;
 
-    // Safety check: don't calculate path position if NPC phase changed
-    if (npcGroup.phase !== NPCPhase.PATH) return;
+      // Safety check: don't calculate path position if NPC phase changed
+      if (npcGroup.phase !== NPCPhase.PATH) return;
 
-    const currentTime = Date.now();
+      const currentTime = Date.now();
 
-    // Calculate current position based on time for path objects
-    const { position: pathPosition } = calculatePathPosition(pathData, currentTime);
-    updatePositionWithTracking(pathPosition, "pathPC-update");
+      // Calculate current position based on time for path objects
+      const { position: pathPosition } = calculatePathPosition(pathData, currentTime);
+      updatePositionWithTracking(pathPosition, "pathPC-update");
 
-    group.position.copy(positionRef.current);
+      group.position.copy(positionRef.current);
 
-    // Check for collision with player (for both thrown and returning NPCs)
-    if (npcGroup.captorId && checkForCollision) {
-      checkForCollision(npcGroup, pathPosition, user?.id === myUserId);
-    }
+      // Check for collision with player (for both thrown and returning NPCs)
+      if (npcGroup.captorId && checkForCollision) {
+        checkForCollision(npcGroup, pathPosition, user?.id === myUserId);
+      }
 
-    // For fleeing NPCs (no captorId), check for collision
-    if (!npcGroup.captorId && checkForCollision) {
-      checkForCollision(npcGroup, pathPosition);
-    }
+      // For fleeing NPCs (no captorId), check for collision
+      if (!npcGroup.captorId && checkForCollision) {
+        checkForCollision(npcGroup, pathPosition);
+      }
+    };
 
-  });
+    animationManager.registerAnimationCallback(callbackId, animationCallback);
+
+    return () => {
+      animationManager.unregisterAnimationCallback(callbackId);
+    };
+  }, [
+    group,
+    textureLoaded,
+    npcGroup.phase,
+    npcGroup.captorId,
+    npcGroup,
+    calculatePathPosition,
+    pathData,
+    updatePositionWithTracking,
+    positionRef,
+    checkForCollision,
+    user?.id,
+    myUserId,
+    animationManager,
+  ]);
 
 
 

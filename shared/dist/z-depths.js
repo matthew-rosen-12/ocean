@@ -37,16 +37,16 @@ export const RENDER_ORDERS = {
     PATH_NPC_RETURNING_OUTLINE: 52,
     PATH_NPC_RETURNING: 53,
     // Path NPCs in thrown state
-    PATH_NPC_THROWN_GOLD_OUTLINE: 100,
-    PATH_NPC_THROWN_OUTLINE: 100,
-    PATH_NPC_THROWN: 101,
+    PATH_NPC_THROWN_GOLD_OUTLINE: 64,
+    PATH_NPC_THROWN_OUTLINE: 65,
+    PATH_NPC_THROWN: 66,
     // Captured NPC groups - local player (higher priority)
     LOCAL_CAPTURED_NPC_GROUP_GOLD_OUTLINE: 61,
     LOCAL_CAPTURED_NPC_GROUP_OUTLINE: 62,
     LOCAL_CAPTURED_NPC_GROUP: 63,
     // Local player animal (draw last - on top)
-    LOCAL_ANIMAL_OUTLINE: 64,
-    LOCAL_ANIMAL_GRAPHIC: 65,
+    LOCAL_ANIMAL_OUTLINE: 100,
+    LOCAL_ANIMAL_GRAPHIC: 101,
 };
 // =================================================================
 // 2. Z-DEPTH CALCULATION

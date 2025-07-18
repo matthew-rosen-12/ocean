@@ -25,6 +25,7 @@ import { useFrameRateMonitor } from "../hooks/useFrameRateMonitor";
 import { CinematicScreenshot } from "./CinematicScreenshot";
 import { TerrainConfig } from "../utils/terrain";
 import BotCollisionManager from "./BotCollisionManager";
+import { AnimationManagerProvider } from "../contexts/AnimationManagerContext";
 // Extend Performance interface for Chrome's memory API
 declare global {
   interface Performance {
@@ -274,71 +275,72 @@ export default function Scene({
         }}
         gl={{ preserveDrawingBuffer: true }}
       >
-        <CameraController
-          targetPosition={position}
-          animalScale={ANIMAL_SCALES[myUser.animal]}
-        />
-        <BackgroundColorSetter />
-        <CinematicScreenshot
-          users={users}
-          npcGroups={npcGroups}
-          onScreenshotCapture={onScreenshotCapture}
-          onGameOver={onGameOver}
-          setCinematicActive={setCinematicActive}
-          setShowTimesUpText={setShowTimesUpText}
-          setShowFlash={setShowFlash}
-        />
-        <ambientLight intensity={Math.PI / 2} />
-        <spotLight
-          position={[10, 10, 10]}
-          angle={0.15}
-          penumbra={1}
-          decay={0}
-          intensity={Math.PI}
-        />
-        <pointLight position={[-10, -10, -10]} decay={0} intensity={Math.PI} />
-        {terrain.renderBackground()}
-        {/* Render all users with their NPCs */}
-        {Array.from(users.values()).map((user) => (
-          <AnimalGraphic
-            key={user.id}
-            user={user}
-            myUserId={myUser.id}
-            setAnimalDimensions={setAnimalDimensionsCallback}
-            animalDimensions={animalDimensions}
+        <AnimationManagerProvider>
+          <CameraController
+            targetPosition={position}
+            animalScale={ANIMAL_SCALES[myUser.animal]}
           />
-        ))}
-
-        {npcGroups.values()
-          .map((npcGroup) => (
-            <NPCGraphicWrapper
-              key={npcGroup.id}
-              npcGroup={npcGroup}
-              checkForCollision={checkForNPCGroupCollision}
-              pathData={paths.get(npcGroup.id)}
-              users={users}
-              allPaths={paths}
-              npcGroups={npcGroups}
+          <BackgroundColorSetter />
+          <CinematicScreenshot
+            users={users}
+            npcGroups={npcGroups}
+            onScreenshotCapture={onScreenshotCapture}
+            onGameOver={onGameOver}
+            setCinematicActive={setCinematicActive}
+            setShowTimesUpText={setShowTimesUpText}
+            setShowFlash={setShowFlash}
+          />
+          <ambientLight intensity={Math.PI / 2} />
+          <spotLight
+            position={[10, 10, 10]}
+            angle={0.15}
+            penumbra={1}
+            decay={0}
+            intensity={Math.PI}
+          />
+          <pointLight position={[-10, -10, -10]} decay={0} intensity={Math.PI} />
+          {terrain.renderBackground()}
+          {/* Render all users with their NPCs */}
+          {Array.from(users.values()).map((user) => (
+            <AnimalGraphic
+              key={user.id}
+              user={user}
               myUserId={myUser.id}
+              setAnimalDimensions={setAnimalDimensionsCallback}
               animalDimensions={animalDimensions}
-              setPaths={setPaths}
-              setNpcGroups={setNpcGroups}
-              throwChargeCount={npcGroup.captorId === myUser.id ? currentThrowCount : undefined}
-              deletingNPCs={deletingNPCs}
             />
           ))}
 
-        {/* Bot collision detection manager */}
-        <BotCollisionManager
-          myUser={myUser}
-          users={users}
-          npcGroups={npcGroups}
-          allPaths={paths}
-          setPaths={setPaths}
-          setNpcGroups={setNpcGroups}
-          animalDimensions={animalDimensions}
-        />
+          {npcGroups.values()
+            .map((npcGroup) => (
+              <NPCGraphicWrapper
+                key={npcGroup.id}
+                npcGroup={npcGroup}
+                checkForCollision={checkForNPCGroupCollision}
+                pathData={paths.get(npcGroup.id)}
+                users={users}
+                allPaths={paths}
+                npcGroups={npcGroups}
+                myUserId={myUser.id}
+                animalDimensions={animalDimensions}
+                setPaths={setPaths}
+                setNpcGroups={setNpcGroups}
+                throwChargeCount={npcGroup.captorId === myUser.id ? currentThrowCount : undefined}
+                deletingNPCs={deletingNPCs}
+              />
+            ))}
 
+          {/* Bot collision detection manager */}
+          <BotCollisionManager
+            myUser={myUser}
+            users={users}
+            npcGroups={npcGroups}
+            allPaths={paths}
+            setPaths={setPaths}
+            setNpcGroups={setNpcGroups}
+            animalDimensions={animalDimensions}
+          />
+        </AnimationManagerProvider>
       </Canvas>
 
       {/* TIMES UP! Text */}
