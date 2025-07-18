@@ -89,7 +89,7 @@ export default function TerrainOutline({
       <meshBasicMaterial
         transparent
         opacity={1.0}
-        depthWrite={true}
+        depthWrite={false}
         depthTest={true}
       >
         <canvasTexture

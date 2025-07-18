@@ -1,6 +1,5 @@
 import React from "react";
 import { NPCPhase, pathData, UserInfo, NPCGroup, NPCGroupsBiMap } from "shared/types";
-import { NPCInteraction } from "shared/interaction-types";
 import * as THREE from "three";
 import { TerrainBoundaries } from "../../utils/terrain";
 import IdleNPCGroupGraphic from "./IdleNPCGroupGraphic";
@@ -116,6 +115,7 @@ const NPCGraphicWrapper = ({
         terrainBoundaries={terrainBoundaries}
         users={users}
         throwChargeCount={throwChargeCount}
+        myUserId={myUserId}
       />
     );
   }

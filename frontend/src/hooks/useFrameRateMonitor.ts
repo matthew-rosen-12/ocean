@@ -24,14 +24,14 @@ export function useFrameRateMonitor(onResourceThrottling?: () => void) {
 
       // If frame gap is longer than 2 seconds, browser is likely throttling
       if (timeSinceLastFrame > 2000) {
-        console.log(`Frame gap detected: ${timeSinceLastFrame}ms - browser throttling detected`);
+        
         onResourceThrottling?.();
         return;
       }
 
       // Set timeout to detect if no frame comes in the next 3 seconds
       throttleTimeoutRef.current = setTimeout(() => {
-        console.log('No requestAnimationFrame for 3+ seconds - browser throttling detected');
+        
         onResourceThrottling?.();
       }, 3000);
 

@@ -10,7 +10,7 @@ let fontsPreloaded = false;
 export const preloadFonts = async (): Promise<void> => {
   if (fontsPreloaded) return;
   
-  console.log('[FONT PRELOADER] Starting font preload...');
+  
   
   try {
     // Use troika-three-text's preloadFont method
@@ -31,7 +31,7 @@ export const preloadFonts = async (): Promise<void> => {
     });
     
     fontsPreloaded = true;
-    console.log('[FONT PRELOADER] Roboto font preloaded successfully');
+    
   } catch (error) {
     console.warn('[FONT PRELOADER] Failed to preload fonts:', error);
     // Even if preloading fails, mark as attempted to avoid repeated attempts

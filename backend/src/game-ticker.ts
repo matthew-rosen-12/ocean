@@ -42,7 +42,7 @@ class GameTicker {
       this.spawnCheckCounter++;
 
       
-      // console.log(`[DEBUG] Game ticker running. Rooms: ${roomNames.length}, Counter: ${this.spawnCheckCounter}/${this.SPAWN_CHECK_INTERVAL}`);
+      // 
       
       // Check if we should run spawn checks this tick
       const shouldRunSpawnCheck = this.spawnCheckCounter >= this.SPAWN_CHECK_INTERVAL;

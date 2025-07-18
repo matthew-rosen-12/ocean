@@ -18,7 +18,7 @@ function generateAnimalDimensions() {
     // Read the manifest file
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     
-    console.log('🔍 Analyzing animal cache files...');
+    
     
     const animalRatios = {};
     
@@ -44,7 +44,7 @@ function generateAnimalDimensions() {
         originalBounds: { width, height }
       };
       
-      console.log(`📐 ${name}: ${width.toFixed(1)}x${height.toFixed(1)} → ratio: ${aspectRatio.toFixed(3)} → normalized: ${baseWidth}x${normalizedHeight.toFixed(3)}`);
+      
     }
     
     // Generate TypeScript file
@@ -97,8 +97,8 @@ ${Object.entries(animalRatios).map(([name, data]) =>
     // Write the generated file
     fs.writeFileSync(outputPath, tsContent, 'utf8');
     
-    console.log(`✅ Generated animal dimensions at: ${outputPath}`);
-    console.log(`📊 Processed ${Object.keys(animalRatios).length} animals`);
+    
+    
     
   } catch (error) {
     console.error('❌ Error generating animal dimensions:', error);

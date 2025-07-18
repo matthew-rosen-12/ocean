@@ -48,7 +48,7 @@ function deterministicShuffle(array, seed) {
 }
 
 async function generateNPCBackgroundPNG(seed = 42) {
-  console.log(`Generating NPC background PNG with seed ${seed}...`);
+  
   
   // Configuration for NPC arrangement
   const npcSize = 80; // Size of each NPC image
@@ -185,13 +185,13 @@ async function generateNPCBackgroundPNG(seed = 42) {
     }
   }
   
-  console.log(`PNG generation complete: ${imagesLoaded} images loaded, ${imagesFailed} fallbacks used`);
+  
   
   return canvas;
 }
 
 async function generateAnimalBackgroundPNG(seed = 42) {
-  console.log(`Generating animal background PNG with seed ${seed}...`);
+  
   
   // Configuration for animal arrangement - match NPC configuration
   const animalSize = 80; // Same size as NPCs for consistency
@@ -351,7 +351,7 @@ async function generateAnimalBackgroundPNG(seed = 42) {
     }
   }
   
-  console.log(`Animal PNG generation complete: ${imagesLoaded} images loaded, ${imagesFailed} fallbacks used`);
+  
   
   return canvas;
 }
@@ -365,7 +365,7 @@ async function main() {
     ];
     
     for (const bg of backgrounds) {
-      console.log(`\nGenerating ${bg.name}...`);
+      
       const canvas = await bg.generator(bg.seed);
       
       // Save PNG to public directory
@@ -378,7 +378,7 @@ async function main() {
       const buffer = canvas.toBuffer('image/png');
       fs.writeFileSync(outputPath, buffer);
       
-      console.log(`✓ Saved ${bg.name} (${(buffer.length / 1024).toFixed(1)}KB)`);
+      
     }
     
     // Also generate a TypeScript file with background styles for React components
@@ -428,9 +428,9 @@ export const npcBackgroundStyles = generateRandomBackgroundStyle();
     
     const stylesPath = path.join(__dirname, 'src', 'styles', 'npc-backgrounds.ts');
     fs.writeFileSync(stylesPath, backgroundStyles);
-    console.log(`✓ Saved npc-backgrounds.ts (${(backgroundStyles.length / 1024).toFixed(1)}KB)`);
     
-    console.log('\n🎉 All background PNGs generated successfully!');
+    
+    
   } catch (error) {
     console.error('Error generating NPC backgrounds:', error);
     process.exit(1);

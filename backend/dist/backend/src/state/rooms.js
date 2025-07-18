@@ -32,7 +32,6 @@ const decrementRoomUsersInMemory = (roomName, _userId) => {
         room.numUsers -= 1;
         room.lastActive = new Date().toISOString();
         if (room.numUsers === 0) {
-            console.log("Deleting room and all associated data:", roomName);
             // Stop bot spawning for this room
             bot_management_service_1.BotManagementService.stopBotSpawning(roomName);
             // Delete room and all associated data from dedicated stores

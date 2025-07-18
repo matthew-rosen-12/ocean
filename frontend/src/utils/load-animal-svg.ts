@@ -265,10 +265,11 @@ async function finishLoadingAnimal(
   // Create material with texture
   const material = new THREE.MeshBasicMaterial({
     map: texture,
-    transparent: true,
+    transparent: false,
     alphaTest: 0.1,
     side: THREE.DoubleSide,
-    depthWrite: false,
+    depthWrite: true,
+    depthTest: true,
     opacity: 1.0,
     premultipliedAlpha: false,
     toneMapped: false,
@@ -339,7 +340,7 @@ async function finishLoadingAnimal(
   // After scaling AND orientation, measure width and height
   const scaledBox = new THREE.Box3().setFromObject(group);
   const scaledSize = scaledBox.getSize(new THREE.Vector3());
-  console.log(`[ANIMAL DIMENSIONS] ${animal}: width=${scaledSize.x.toFixed(3)}, height=${scaledSize.y.toFixed(3)}`);
+  
   setAnimalDimensions(animal, {
     width: scaledSize.x,
     height: scaledSize.y,
@@ -409,11 +410,14 @@ export function createEdgeGeometry(
   const edgeMaterial = new LineMaterial({
     color: color,
     linewidth: 10.0,
-    transparent: true,
+    transparent: false,
     opacity: 1.0,
     depthTest: true,
-    depthWrite: false,
+    depthWrite: true,
     side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: 1,
+    polygonOffsetUnits: 1,
     resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
   });
 
@@ -421,8 +425,13 @@ export function createEdgeGeometry(
   
   const finalRenderOrder = renderOrder ?? (isLocalPlayer ? RENDER_ORDERS.LOCAL_ANIMAL_OUTLINE : RENDER_ORDERS.REMOTE_ANIMAL_OUTLINE);
   edgeLines.renderOrder = finalRenderOrder;
-  console.log('Animal outline render order:', isLocalPlayer ? 'LOCAL' : 'REMOTE', 'passed renderOrder:', renderOrder, 'final:', finalRenderOrder);
-  edgeLines.position.z = 0; // Use render order only for depth sorting
+  
+  // Set z-depth based on render order for consistent depth sorting
+  if (isLocalPlayer) {
+    edgeLines.position.z = Z_DEPTHS.LOCAL_ANIMAL_OUTLINE;
+  } else {
+    edgeLines.position.z = Z_DEPTHS.REMOTE_ANIMAL_OUTLINE;
+  }
 
   edgeLines.matrixAutoUpdate = true;
 
@@ -603,7 +612,7 @@ function createGeometryFromOutlinePath(
     }; // fallback
   }
 
-  console.log(`[OUTLINE] Using dedicated outline path with id: ${outlineId}`);
+  
 
   // Create geometry from just the outline path
   const shapes = outlinePath.toShapes(true);
@@ -710,7 +719,7 @@ export function loadAnimalSVG(
     const cachedData = await loadCachedAnimalData(animal);
     
     if (cachedData) {
-      console.log(`Loading ${animal} from cache`);
+      
       try {
         // Create geometry from cached outline data
         const { geometry, outlineShape } = createGeometryFromCachedOutline(cachedData);
@@ -751,7 +760,7 @@ export function loadAnimalSVG(
     }
 
     // Fall back to original SVG loading
-    console.log(`Loading ${animal} from SVG (no cache available)`);
+    
     const loader = new SVGLoader();
 
     loader.load(
@@ -834,7 +843,8 @@ export function loadAnimalSVG(
             map: fallbackTexture,
             transparent: false,
             side: THREE.DoubleSide,
-            depthWrite: false,
+            depthWrite: true,
+            depthTest: true,
             // Use green for fallback to distinguish from main case
             color: 0x00ff00,
           });
@@ -889,7 +899,7 @@ export function loadAnimalSVG(
           // After scaling AND orientation, measure width and height
           const scaledBox = new THREE.Box3().setFromObject(group);
           const scaledSize = scaledBox.getSize(new THREE.Vector3());
-          console.log(`[ANIMAL DIMENSIONS] ${animal}: width=${scaledSize.x.toFixed(3)}, height=${scaledSize.y.toFixed(3)}`);
+          
           setAnimalDimensions(animal, {
             width: scaledSize.x,
             height: scaledSize.y,

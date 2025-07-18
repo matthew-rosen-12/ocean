@@ -279,6 +279,8 @@ export default function SnowflakePattern({
       <meshBasicMaterial
         transparent
         opacity={TERRAIN_PLANE_CONFIG.opacity}
+        depthWrite={false}
+        depthTest={true}
         map={pngTexture || undefined}
       >
         {!usePngFile && (

@@ -39,14 +39,12 @@ function startGameTimer(roomName) {
         roomName,
     };
     gameTimers.set(roomName, gameTimer);
-    console.log(`Game timer started for room ${roomName} - ${exports.GAME_DURATION / 1000} seconds`);
 }
 function stopGameTimer(roomName) {
     const gameTimer = gameTimers.get(roomName);
     if (gameTimer) {
         clearTimeout(gameTimer.timeoutId);
         gameTimers.delete(roomName);
-        console.log(`Game timer stopped for room ${roomName}`);
     }
 }
 function calculateFinalScores(roomName) {
@@ -65,7 +63,6 @@ function calculateFinalScores(roomName) {
 function handleGameEnd(roomName) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            console.log(`Game ended for room ${roomName}`);
             // Calculate final scores before clearing data
             const finalScores = calculateFinalScores(roomName);
             // Emit times-up event to all clients in the room

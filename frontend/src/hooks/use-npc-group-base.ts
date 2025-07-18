@@ -24,7 +24,7 @@ console.log(
 // Use the specific debug flag
 const debug = DEBUG.NPC_MOVEMENT;
 
-export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: pathData, throwChargeCount?: number) {
+export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: pathData, throwChargeCount?: number, isLocalUser?: boolean) {
   const group = useMemo(() => {
     const newGroup = new THREE.Group();
     return newGroup;
@@ -63,9 +63,9 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
   const getNPCZDepths = () => {
     if (pathData?.pathPhase === PathPhase.THROWN || pathData?.pathPhase === PathPhase.RETURNING) {
       return {
-        mesh: Z_DEPTHS.PATH_NPC_THROWN,
-        outline: Z_DEPTHS.PATH_NPC_THROWN_OUTLINE,
-        goldOutline: Z_DEPTHS.PATH_NPC_THROWN_GOLD_OUTLINE,
+        mesh: .1,
+        outline: 0,
+        goldOutline: 0,
         renderOrder: RENDER_ORDERS.PATH_NPC_THROWN,
         outlineRenderOrder: RENDER_ORDERS.PATH_NPC_THROWN_OUTLINE,
         goldOutlineRenderOrder: RENDER_ORDERS.PATH_NPC_THROWN_GOLD_OUTLINE
@@ -80,15 +80,26 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
         goldOutlineRenderOrder: RENDER_ORDERS.PATH_NPC_FLEEING_GOLD_OUTLINE
       };
     } else if (npcGroup.phase === NPCPhase.CAPTURED) {
-      // Captured NPC group
-      return {
-        mesh: Z_DEPTHS.CAPTURED_NPC_GROUP,
-        outline: Z_DEPTHS.CAPTURED_NPC_GROUP_OUTLINE,
-        goldOutline: Z_DEPTHS.CAPTURED_NPC_GROUP_GOLD_OUTLINE,
-        renderOrder: RENDER_ORDERS.CAPTURED_NPC_GROUP,
-        outlineRenderOrder: RENDER_ORDERS.CAPTURED_NPC_GROUP_OUTLINE,
-        goldOutlineRenderOrder: RENDER_ORDERS.CAPTURED_NPC_GROUP_GOLD_OUTLINE
-      };
+      // Captured NPC group - check if local or remote
+      if (isLocalUser) {
+        return {
+          mesh: -.01,
+          outline: -.02,
+          goldOutline: -.01,
+          renderOrder: RENDER_ORDERS.LOCAL_CAPTURED_NPC_GROUP,
+          outlineRenderOrder: RENDER_ORDERS.LOCAL_CAPTURED_NPC_GROUP_OUTLINE,
+          goldOutlineRenderOrder: RENDER_ORDERS.LOCAL_CAPTURED_NPC_GROUP_GOLD_OUTLINE
+        };
+      } else {
+        return {
+          mesh: Z_DEPTHS.REMOTE_CAPTURED_NPC_GROUP,
+          outline: Z_DEPTHS.REMOTE_CAPTURED_NPC_GROUP_OUTLINE,
+          goldOutline: Z_DEPTHS.REMOTE_CAPTURED_NPC_GROUP_GOLD_OUTLINE,
+          renderOrder: RENDER_ORDERS.REMOTE_CAPTURED_NPC_GROUP,
+          outlineRenderOrder: RENDER_ORDERS.REMOTE_CAPTURED_NPC_GROUP_OUTLINE,
+          goldOutlineRenderOrder: RENDER_ORDERS.REMOTE_CAPTURED_NPC_GROUP_GOLD_OUTLINE
+        };
+      }
     } else {
       // Idle NPC group
       return {
@@ -168,8 +179,7 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
     
     const zDepths = getNPCZDepths();
     outlineGroup.renderOrder = zDepths.goldOutlineRenderOrder;
-    console.log('GOLD outline render order:', outlineGroup.renderOrder, 'vs NPC mesh:', zDepths.renderOrder);
-    outlineGroup.position.z = 0; // Use render order only for depth sorting
+    outlineGroup.position.z = zDepths.goldOutline; // Use proper z-depth for consistent depth sorting
     
     // Mark the group for animation
     (outlineGroup as THREE.Group & { userData: Record<string, unknown> }).userData = {
@@ -222,6 +232,9 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
         depthTest: true,
         depthWrite: true,
         side: THREE.DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: 1,
+        polygonOffsetUnits: 1,
         resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
       });
       
@@ -243,15 +256,18 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
         depthTest: true,
         depthWrite: true,
         side: THREE.DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: 1,
+        polygonOffsetUnits: 1,
         resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
       });
     }
     
     const zDepths = getNPCZDepths();
     const outlineObj = new LineSegments2(lineGeometry, edgeMaterial);
+    outlineObj.position.z = isGold ? zDepths.goldOutline : zDepths.outline;
     outlineObj.renderOrder = isGold ? zDepths.goldOutlineRenderOrder : zDepths.outlineRenderOrder;
     outlineObj.scale.set(scale * (isGold ? 1.15 : 1), scale * (isGold ? 1.15 : 1), 1); // Gold outline larger
-    outlineObj.position.z = 0; // Use render order only for depth sorting
     
     // Add swirling animation for gold outline
     if (isGold) {
@@ -345,8 +361,10 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
         // Create material and cache it
         material.current = new THREE.MeshBasicMaterial({
           map: texture.current,
-          transparent: true,
+          transparent: false,
           side: THREE.DoubleSide,
+          depthWrite: true,
+          depthTest: true,
         });
         materialCache.set(texturePath, material.current);
       }
@@ -358,7 +376,12 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
       const zDepths = getNPCZDepths();
       mesh.current.position.z = zDepths.mesh;
       mesh.current.renderOrder = zDepths.renderOrder;
-      console.log('NPC MESH render order set to:', mesh.current.renderOrder);
+      
+      // Force Three.js to update the depth sorting
+      mesh.current.updateMatrix();
+      mesh.current.updateMatrixWorld(true);
+      
+      
 
       // Scale based on texture aspect ratio and fileNames count
       const imageAspect =
@@ -431,8 +454,10 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
           // Create material and cache it
           material.current = new THREE.MeshBasicMaterial({
             map: loadedTexture,
-            transparent: true,
+            transparent: false,
             side: THREE.DoubleSide,
+            depthWrite: true,
+            depthTest: true,
           });
           materialCache.set(texturePath, material.current);
 
@@ -443,6 +468,12 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
           const zDepths = getNPCZDepths();
           mesh.current.position.z = zDepths.mesh;
           mesh.current.renderOrder = zDepths.renderOrder;
+          
+          // Force Three.js to update the depth sorting
+          mesh.current.updateMatrix();
+          mesh.current.updateMatrixWorld(true);
+          
+          
 
           // Scale based on texture aspect ratio and fileNames count
           const imageAspect =
@@ -533,7 +564,7 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
         }
       }
     };
-  }, [npcGroup.faceFileName, npcGroup.fileNames.length, pathData?.pathPhase, group, user, previousPosition]);
+  }, [isLocalUser, npcGroup.faceFileName, npcGroup.phase, npcGroup.fileNames.length, pathData?.pathPhase, group, user, previousPosition]);
 
   // Calculate current scale for text positioning
   const currentScale = useMemo(() => {

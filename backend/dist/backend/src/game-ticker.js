@@ -45,7 +45,7 @@ class GameTicker {
                 // Get all room names
                 const roomNames = (0, rooms_1.getAllRoomsfromMemory)();
                 this.spawnCheckCounter++;
-                // console.log(`[DEBUG] Game ticker running. Rooms: ${roomNames.length}, Counter: ${this.spawnCheckCounter}/${this.SPAWN_CHECK_INTERVAL}`);
+                // 
                 // Check if we should run spawn checks this tick
                 const shouldRunSpawnCheck = this.spawnCheckCounter >= this.SPAWN_CHECK_INTERVAL;
                 // Process each room

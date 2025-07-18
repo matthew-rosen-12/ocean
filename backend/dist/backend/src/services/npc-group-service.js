@@ -29,7 +29,6 @@ function setPathCompleteInRoom(room, npcGroup) {
     const paths = (0, paths_1.getpathsfromMemory)(room);
     const pathDataForNPC = paths.get(npcGroup.id);
     if (!pathDataForNPC) {
-        console.log(`No path data found for NPC ${npcGroup.id} in room ${room}`);
         return;
     }
     // Check if this is a thrown path that should transition to returning
@@ -329,7 +328,6 @@ function checkAndHandleNPCCollisions(room) {
             for (const idleNPCGroup of uncapturedIdleNPCs) {
                 const collided = detectCollision(pathPosition, Object.assign(Object.assign({}, idleNPCGroup.position), { z: 0 }), types_1.NPC_WIDTH, types_1.NPC_HEIGHT, types_1.NPC_WIDTH, types_1.NPC_HEIGHT);
                 if (collided) {
-                    console.log(`Path NPC ${thrownPath.npcGroupId} collided with uncaptured idle NPC ${idleNPCGroup.id}`);
                     handlePathNPCMerge(room, thrownPath, pathNPCGroup, idleNPCGroup, pathPosition);
                     return;
                 }
@@ -347,7 +345,6 @@ function checkAndHandleNPCCollisions(room) {
                 }
                 const collided = detectCollision(pathPosition, Object.assign(Object.assign({}, capturedIdleNPCGroup.position), { z: 0 }), types_1.NPC_WIDTH, types_1.NPC_HEIGHT, types_1.NPC_WIDTH, types_1.NPC_HEIGHT);
                 if (collided) {
-                    console.log(`Path NPC ${thrownPath.npcGroupId} collided with captured idle NPC ${capturedIdleNPCGroup.id}`);
                     handleCapturedNPCEmission(room, thrownPath, pathNPCGroup, capturedIdleNPCGroup, pathPosition);
                     return;
                 }
@@ -373,7 +370,6 @@ function checkAndHandleNPCCollisions(room) {
                     const sameOwner = otherPathNPCGroup.captorId === thrownPathNPCGroup.captorId;
                     if (sameOwner) {
                         // Same owner: always merge (no bouncing between same player's NPCs)
-                        console.log(`Merging same-owner path NPCs: ${thrownPath.npcGroupId} + ${otherPath.npcGroupId}`);
                         if (thrownPathSize >= otherPathSize) {
                             handlePathNPCMerge(room, thrownPath, thrownPathNPCGroup, otherPathNPCGroup, thrownPathPosition);
                         }
@@ -414,7 +410,6 @@ function checkAndHandleNPCCollisions(room) {
             for (const idleNPCGroup of uncapturedIdleNPCs) {
                 const collided = detectCollision(fleeingPosition, Object.assign(Object.assign({}, idleNPCGroup.position), { z: 0 }), types_1.NPC_WIDTH, types_1.NPC_HEIGHT, types_1.NPC_WIDTH, types_1.NPC_HEIGHT);
                 if (collided) {
-                    console.log(`Fleeing NPC ${fleeingPath.npcGroupId} collided with idle NPC ${idleNPCGroup.id}`);
                     handleFleeingIdleMerge(room, fleeingPath, fleeingNPCGroup, idleNPCGroup, fleeingPosition);
                     return;
                 }
@@ -455,7 +450,6 @@ function checkAndHandleNPCCollisions(room) {
                 const idleNPC2 = uncapturedIdleNPCs[j];
                 const collided = detectCollision(Object.assign(Object.assign({}, idleNPC1.position), { z: 0 }), Object.assign(Object.assign({}, idleNPC2.position), { z: 0 }), types_1.NPC_WIDTH, types_1.NPC_HEIGHT, types_1.NPC_WIDTH, types_1.NPC_HEIGHT);
                 if (collided) {
-                    console.log(`Idle NPCs collided: ${idleNPC1.id} + ${idleNPC2.id}`);
                     handleIdleIdleMerge(room, idleNPC1, idleNPC2);
                     return;
                 }
@@ -496,7 +490,6 @@ function handlePathNPCMerge(room, winnerPathData, winnerNPCGroup, loser, collisi
     (0, paths_1.setPathsInMemory)(room, paths);
     // Broadcast updates
     (0, typed_socket_1.emitToRoom)(room, "path-update", { pathData: updatedPathData });
-    console.log(`Merged path NPCs: ${winnerPathData.npcGroupId} absorbed ${loser.id}`);
 }
 // Handle bouncing between two path NPCs
 function handleNPCBounce(room, pathData, myPosition, otherPosition) {
@@ -531,14 +524,12 @@ function handleNPCBounce(room, pathData, myPosition, otherPosition) {
     const paths = (0, paths_1.getpathsfromMemory)(room);
     paths.set(pathData.npcGroupId, bouncePathData);
     (0, paths_1.setPathsInMemory)(room, paths);
-    console.log("handle npc bounce");
     // Broadcast to all clients
     (0, typed_socket_1.emitToRoom)(room, "path-update", { pathData: bouncePathData });
 }
 // Handle collision between thrown NPC and captured idle NPC - emit individual NPCs
 function handleCapturedNPCEmission(room, _thrownPathData, thrownNPCGroup, capturedNPCGroup, collisionPosition) {
     const emissionCount = thrownNPCGroup.fileNames.length;
-    console.log(`Emitting ${emissionCount} individual NPCs from captured group ${capturedNPCGroup.id}`);
     // Send interactions for both involved users
     if (capturedNPCGroup.fileNames.length > 0) {
         const emittedNPCFileName = capturedNPCGroup.fileNames[0];
@@ -669,7 +660,6 @@ function handleFleeingIdleMerge(room, fleeingPath, fleeingNPCGroup, idleNPCGroup
     // Broadcast updates
     (0, typed_socket_1.emitToRoom)(room, "path-update", { pathData: updatedPathData });
     (0, typed_socket_1.emitToRoom)(room, "npc-group-update", { npcGroup: new types_1.NPCGroup(Object.assign(Object.assign({}, idleNPCGroup), { fileNames: [] })) }); // Mark idle as deleted
-    console.log(`Merged fleeing NPC ${fleeingPath.npcGroupId} with idle NPC ${idleNPCGroup.id}`);
 }
 // Handle merging between two fleeing NPCs
 function handleFleeingFleeingMerge(room, winnerPath, winnerNPCGroup, _loserPath, loserNPCGroup, collisionPosition) {
@@ -712,7 +702,6 @@ function handleIdleIdleMerge(room, npc1, npc2) {
     (0, npc_groups_1.setNPCGroupsInMemory)(room, allNPCGroups);
     // Broadcast updates
     (0, typed_socket_1.emitToRoom)(room, "npc-group-update", { npcGroup: new types_1.NPCGroup(Object.assign(Object.assign({}, loser), { fileNames: [] })) }); // Mark loser as deleted
-    console.log(`Merged idle NPCs: ${winner.id} absorbed ${loser.id}`);
 }
 // Utility function to normalize direction vectors
 function normalizeDirection(direction) {

@@ -241,7 +241,13 @@ export default function MosaicPattern({ boundaries, seed, usePngFile }: MosaicPa
   return (
     <mesh position={TERRAIN_PLANE_CONFIG.position} renderOrder={RENDER_ORDERS.TERRAIN}>
       <planeGeometry args={[boundaries.width, boundaries.height]} />
-      <meshBasicMaterial transparent opacity={TERRAIN_PLANE_CONFIG.opacity} map={pngTexture || undefined}>
+      <meshBasicMaterial 
+        transparent 
+        opacity={TERRAIN_PLANE_CONFIG.opacity} 
+        depthWrite={false}
+        depthTest={true}
+        map={pngTexture || undefined}
+      >
         {!usePngFile && <canvasTexture attach="map" image={mosaicTexture} wrapS={THREE.ClampToEdgeWrapping} wrapT={THREE.ClampToEdgeWrapping} />}
       </meshBasicMaterial>
     </mesh>

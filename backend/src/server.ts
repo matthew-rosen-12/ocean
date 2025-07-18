@@ -55,7 +55,7 @@ const startServer = async () => {
   try {
     const PORT = process.env.PORT || 3001;
     httpServer.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      
     });
   } catch (error) {
     console.error("Failed to start server:", error);
@@ -74,7 +74,7 @@ io.on("connection", async (socket) => {
     // Authenticate socket using token
     const token = socket.handshake.auth.token;
     if (!token) {
-      console.log("No token provided, disconnecting");
+      
       typedSocket.disconnect();
       return;
     }
@@ -89,7 +89,6 @@ io.on("connection", async (socket) => {
 
     // Join room and broadcast user joined
     typedSocket.on("join-room", async ({ name }) => {
-      console.log("joining room");
 
       typedSocket.join(name);
       typedSocket.data.room = name;
@@ -231,7 +230,7 @@ io.on("connection", async (socket) => {
 
         const room = socket.data.room;
         if (room) {
-          console.log("disconnecting");
+          
 
           const userId = socket.data.user.id;
           // set npcs of this user's npc groups to IDLE

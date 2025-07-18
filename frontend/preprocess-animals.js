@@ -168,7 +168,7 @@ function cross(O, A, B) {
 
 // Process a single SVG file
 function processSVGFile(filePath, animalName) {
-  console.log(`Processing ${animalName}...`);
+  
   
   const svgContent = fs.readFileSync(filePath, 'utf8');
   const parser = new DOMParser();
@@ -316,7 +316,7 @@ function main() {
   // Get all SVG files
   const svgFiles = fs.readdirSync(animalsDir).filter(file => file.endsWith('.svg'));
   
-  console.log(`Found ${svgFiles.length} SVG files to process`);
+  
   
   const processedAnimals = [];
   
@@ -339,7 +339,7 @@ function main() {
         pathCount: cacheData.paths.length
       });
       
-      console.log(`✓ ${animalName}: ${cacheData.paths.length} paths, outline: ${cacheData.outline.length} points`);
+      
       
     } catch (error) {
       console.error(`✗ Error processing ${animalName}:`, error.message);
@@ -355,8 +355,8 @@ function main() {
   
   fs.writeFileSync(path.join(cacheDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
   
-  console.log(`\nProcessing complete! Generated cache for ${processedAnimals.length} animals`);
-  console.log(`Cache files saved to: ${cacheDir}`);
+  
+  
 }
 
 // Run if this is the main module

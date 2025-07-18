@@ -19,17 +19,17 @@ export function useVisibilityControl(onInactivityKick?: () => void) {
       clearInactivityTimer(); // Clear any existing timer
       
       inactivityTimerRef.current = setTimeout(() => {
-        console.log('Player kicked due to 30 seconds of inactivity');
+        
         onInactivityKick?.();
       }, 30000); // 30 seconds
     };
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        console.log('Tab hidden - starting inactivity timer');
+        
         startInactivityTimer();
       } else {
-        console.log('Tab visible - clearing inactivity timer');
+        
         clearInactivityTimer();
       }
     };

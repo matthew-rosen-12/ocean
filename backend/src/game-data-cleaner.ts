@@ -14,7 +14,6 @@ import { NPCGroupsBiMap } from "shared/types";
  */
 export function clearAllGameData(roomName: string): void {
   try {
-    console.log(`Clearing all game data for room: ${roomName}`);
 
     // Clear users in the room
     const roomUsersData = getAllUsersInRoom(roomName);
@@ -24,7 +23,6 @@ export function clearAllGameData(roomName: string): void {
       userIds.forEach(userId => {
         removeUserFromRoom(roomName, userId);
       });
-      console.log(`Cleared ${userCount} users from room ${roomName}`);
     }
 
     // Clear NPC groups in the room
@@ -33,7 +31,6 @@ export function clearAllGameData(roomName: string): void {
       const npcGroupCount = roomNpcGroups.values().length;
       // Clear by setting an empty NPCGroupsBiMap
       setNPCGroupsInMemory(roomName, new NPCGroupsBiMap());
-      console.log(`Cleared ${npcGroupCount} NPC groups from room ${roomName}`);
     }
 
     // Clear paths in the room
@@ -42,13 +39,11 @@ export function clearAllGameData(roomName: string): void {
       const pathCount = roomPaths.size;
       // Clear by setting an empty Map
       setPathsInMemory(roomName, new Map());
-      console.log(`Cleared ${pathCount} paths from room ${roomName}`);
     }
 
     // Note: Room data cleanup is handled by the rooms module when users disconnect
     // The room will be automatically cleaned up when numUsers reaches 0
 
-    console.log(`Successfully cleared all game data for room: ${roomName}`);
 
   } catch (error) {
     console.error(`Error clearing game data for room ${roomName}:`, error);
@@ -61,7 +56,6 @@ export function clearAllGameData(roomName: string): void {
  */
 export function clearAllGameDataGlobally(): void {
   try {
-    console.log("Clearing all game data globally");
 
     // Get all room names and clear each room individually
     const allRooms = getAllRoomsfromMemory();
@@ -75,8 +69,6 @@ export function clearAllGameDataGlobally(): void {
         console.error(`Error clearing room ${roomName}:`, error);
       }
     });
-
-    console.log(`Globally cleared ${totalCleared} rooms`);
 
   } catch (error) {
     console.error("Error clearing all game data globally:", error);

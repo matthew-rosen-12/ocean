@@ -35,7 +35,7 @@ export function startGameTimer(roomName: string): void {
   };
 
   gameTimers.set(roomName, gameTimer);
-  console.log(`Game timer started for room ${roomName} - ${GAME_DURATION / 1000} seconds`);
+  
 }
 
 export function stopGameTimer(roomName: string): void {
@@ -43,7 +43,7 @@ export function stopGameTimer(roomName: string): void {
   if (gameTimer) {
     clearTimeout(gameTimer.timeoutId);
     gameTimers.delete(roomName);
-    console.log(`Game timer stopped for room ${roomName}`);
+    
   }
 }
 
@@ -64,7 +64,7 @@ function calculateFinalScores(roomName: string): FinalScores {
 
 async function handleGameEnd(roomName: string): Promise<void> {
   try {
-    console.log(`Game ended for room ${roomName}`);
+    
 
     // Calculate final scores before clearing data
     const finalScores = calculateFinalScores(roomName);

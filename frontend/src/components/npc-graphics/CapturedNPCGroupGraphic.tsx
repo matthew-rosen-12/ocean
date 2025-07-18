@@ -7,7 +7,6 @@ import {
   PathPhase,
   NPCGroupsBiMap,
 } from "shared/types";
-import { NPCInteraction } from "shared/interaction-types";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { smoothMove } from "../../utils/movement";
@@ -43,6 +42,7 @@ interface CapturedNPCGroupGraphicProps {
   terrainBoundaries?: TerrainBoundaries; // Add terrain boundaries for wrapping
   users: Map<string, UserInfo>; // All users for getting group positions
   throwChargeCount: number | undefined;
+  myUserId: string; // Current user ID for render order logic
 }
 
 const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
@@ -73,7 +73,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     mesh,
     textInfo,
     throwChargeCountTextInfo,
-  } = useNPCGroupBase(group, user, undefined, throwChargeCount);
+  } = useNPCGroupBase(group, user, undefined, throwChargeCount, isLocalUser);
 
 
   // Reference for smooth movement interpolation (non-local users)

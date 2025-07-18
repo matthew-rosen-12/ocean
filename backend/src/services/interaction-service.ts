@@ -143,7 +143,7 @@ export class InteractionService {
     try {
       // Check rate limiting before making AI API call
       if (!this.canCreateInteraction(room)) {
-        console.log(`Rate limiting: Skipping AI response for ${interaction.type} interaction in room ${room}`);
+        
         // Send interaction with structured rate limited response
         const rateLimitedResponse: AIResponse = {
           type: AIResponseType.RATE_LIMITED,
@@ -273,7 +273,7 @@ export class InteractionService {
    * Process client-detected interactions (e.g., from collision detection)
    */
   static async processClientDetectedInteraction(room: roomId, interaction: NPCInteraction): Promise<void> {
-    console.log(`Processing client-detected interaction in room ${room}:`, interaction.type);
+    
     
     // No rate limiting for client-detected interactions - rate limiting happens in sendInteractionToRoom for AI API calls
     await this.sendInteractionToRoom(room, interaction);

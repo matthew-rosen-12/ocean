@@ -35,7 +35,7 @@ export function setPathCompleteInRoom(room: string, npcGroup: NPCGroup) {
     const pathDataForNPC = paths.get(npcGroup.id);
 
     if (!pathDataForNPC) {
-      console.log(`No path data found for NPC ${npcGroup.id} in room ${room}`);
+      
       return;
     }
 
@@ -445,7 +445,7 @@ export function checkAndHandleNPCCollisions(room: string): void{
         );
 
         if (collided) {
-          console.log(`Path NPC ${thrownPath.npcGroupId} collided with uncaptured idle NPC ${idleNPCGroup.id}`);
+          
           handlePathNPCMerge(room, thrownPath, pathNPCGroup, idleNPCGroup, pathPosition);
           return;
         }
@@ -471,7 +471,7 @@ export function checkAndHandleNPCCollisions(room: string): void{
         );
 
         if (collided) {
-          console.log(`Path NPC ${thrownPath.npcGroupId} collided with captured idle NPC ${capturedIdleNPCGroup.id}`);
+          
           handleCapturedNPCEmission(room, thrownPath, pathNPCGroup, capturedIdleNPCGroup, pathPosition);
           return;
         }
@@ -506,7 +506,7 @@ export function checkAndHandleNPCCollisions(room: string): void{
 
           if (sameOwner) {
             // Same owner: always merge (no bouncing between same player's NPCs)
-            console.log(`Merging same-owner path NPCs: ${thrownPath.npcGroupId} + ${otherPath.npcGroupId}`);
+            
             if (thrownPathSize >= otherPathSize) {
               handlePathNPCMerge(room, thrownPath, thrownPathNPCGroup, otherPathNPCGroup, thrownPathPosition);
             } else {
@@ -550,7 +550,7 @@ export function checkAndHandleNPCCollisions(room: string): void{
         );
 
         if (collided) {
-          console.log(`Fleeing NPC ${fleeingPath.npcGroupId} collided with idle NPC ${idleNPCGroup.id}`);
+          
           handleFleeingIdleMerge(room, fleeingPath, fleeingNPCGroup, idleNPCGroup, fleeingPosition);
           return;
         }
@@ -605,7 +605,7 @@ export function checkAndHandleNPCCollisions(room: string): void{
         );
 
         if (collided) {
-          console.log(`Idle NPCs collided: ${idleNPC1.id} + ${idleNPC2.id}`);
+          
           handleIdleIdleMerge(room, idleNPC1, idleNPC2);
           return;
         }
@@ -674,7 +674,7 @@ function handlePathNPCMerge(
   // Broadcast updates
   emitToRoom(room, "path-update", { pathData: updatedPathData });
 
-  console.log(`Merged path NPCs: ${winnerPathData.npcGroupId} absorbed ${loser.id}`);
+  
 }
 
 // Handle bouncing between two path NPCs
@@ -721,7 +721,7 @@ function handleNPCBounce(
   paths.set(pathData.npcGroupId, bouncePathData);
    setPathsInMemory(room, paths);
 
-  console.log("handle npc bounce");
+  
 
   // Broadcast to all clients
   emitToRoom(room, "path-update", { pathData: bouncePathData });
@@ -736,7 +736,7 @@ function handleCapturedNPCEmission(
   collisionPosition: { x: number; y: number; z: number }
 ): void {
   const emissionCount = thrownNPCGroup.fileNames.length;
-  console.log(`Emitting ${emissionCount} individual NPCs from captured group ${capturedNPCGroup.id}`);
+  
   
   // Send interactions for both involved users
   if (capturedNPCGroup.fileNames.length > 0) {
@@ -922,7 +922,7 @@ function handleFleeingIdleMerge(
   emitToRoom(room, "path-update", { pathData: updatedPathData });
   emitToRoom(room, "npc-group-update", { npcGroup: new NPCGroup({ ...idleNPCGroup, fileNames: [] }) }); // Mark idle as deleted
 
-  console.log(`Merged fleeing NPC ${fleeingPath.npcGroupId} with idle NPC ${idleNPCGroup.id}`);
+  
 }
 
 // Handle merging between two fleeing NPCs
@@ -1001,7 +1001,7 @@ function handleIdleIdleMerge(
   // Broadcast updates
   emitToRoom(room, "npc-group-update", { npcGroup: new NPCGroup({ ...loser, fileNames: [] }) }); // Mark loser as deleted
 
-  console.log(`Merged idle NPCs: ${winner.id} absorbed ${loser.id}`);
+  
 }
 
 // Utility function to normalize direction vectors

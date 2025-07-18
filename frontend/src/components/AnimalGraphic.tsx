@@ -67,15 +67,15 @@ function AnimalSprite({
       // Create material with cached texture
       const material = new THREE.MeshBasicMaterial({
         map: cached.texture,
-        transparent: true,
+        transparent: false,
         side: THREE.DoubleSide,
-        depthWrite: false,
+        depthWrite: true,
+        depthTest: true,
       });
 
       // Create mesh with cached geometry
       const mesh = new THREE.Mesh(cached.geometry.clone(), material);
       mesh.renderOrder = isLocalPlayer ? RENDER_ORDERS.LOCAL_ANIMAL_GRAPHIC : RENDER_ORDERS.REMOTE_ANIMAL_GRAPHIC;
-      console.log('Animal mesh render order:', isLocalPlayer ? 'LOCAL' : 'REMOTE', mesh.renderOrder);
       mesh.position.z = isLocalPlayer ? Z_DEPTHS.LOCAL_ANIMAL_GRAPHIC : Z_DEPTHS.REMOTE_ANIMAL_GRAPHIC;
       group.add(mesh);
 
@@ -100,7 +100,6 @@ function AnimalSprite({
       // Measure and set width and height
       const scaledBox = new THREE.Box3().setFromObject(group);
       const scaledSize = scaledBox.getSize(new THREE.Vector3());
-      console.log(`[ANIMAL DIMENSIONS] ${animal}: width=${scaledSize.x.toFixed(3)}, height=${scaledSize.y.toFixed(3)}`);
       setAnimalDimensions(animal, {
         width: scaledSize.x,
         height: scaledSize.y,
@@ -442,7 +441,7 @@ export default function AnimalGraphic({
           position={[
             user.position.x + nicknameTextInfo.position[0],
             user.position.y + nicknameTextInfo.position[1],
-            nicknameTextInfo.position[2]
+            isLocalPlayer ? Z_DEPTHS.LOCAL_ANIMAL_GRAPHIC : Z_DEPTHS.REMOTE_ANIMAL_GRAPHIC
           ]}
           fontSize={nicknameTextInfo.fontSize}
           color={nicknameTextInfo.color}
@@ -451,6 +450,9 @@ export default function AnimalGraphic({
           font="https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxM.woff"
           outlineWidth={0.2}
           outlineColor={nicknameTextInfo.outlineColor}
+          outlineOpacity={1.0}
+          fillOpacity={1.0}
+          renderOrder={isLocalPlayer ? RENDER_ORDERS.LOCAL_ANIMAL_GRAPHIC : RENDER_ORDERS.REMOTE_ANIMAL_GRAPHIC}
         >
           {nicknameTextInfo.text}
         </Text>

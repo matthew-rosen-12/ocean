@@ -17,7 +17,6 @@ const types_1 = require("shared/types");
  */
 function clearAllGameData(roomName) {
     try {
-        console.log(`Clearing all game data for room: ${roomName}`);
         // Clear users in the room
         const roomUsersData = (0, users_1.getAllUsersInRoom)(roomName);
         if (roomUsersData && roomUsersData.size > 0) {
@@ -26,7 +25,6 @@ function clearAllGameData(roomName) {
             userIds.forEach(userId => {
                 (0, users_1.removeUserFromRoom)(roomName, userId);
             });
-            console.log(`Cleared ${userCount} users from room ${roomName}`);
         }
         // Clear NPC groups in the room
         const roomNpcGroups = (0, npc_groups_1.getNPCGroupsfromMemory)(roomName);
@@ -34,7 +32,6 @@ function clearAllGameData(roomName) {
             const npcGroupCount = roomNpcGroups.values().length;
             // Clear by setting an empty NPCGroupsBiMap
             (0, npc_groups_1.setNPCGroupsInMemory)(roomName, new types_1.NPCGroupsBiMap());
-            console.log(`Cleared ${npcGroupCount} NPC groups from room ${roomName}`);
         }
         // Clear paths in the room
         const roomPaths = (0, paths_1.getpathsfromMemory)(roomName);
@@ -42,11 +39,9 @@ function clearAllGameData(roomName) {
             const pathCount = roomPaths.size;
             // Clear by setting an empty Map
             (0, paths_1.setPathsInMemory)(roomName, new Map());
-            console.log(`Cleared ${pathCount} paths from room ${roomName}`);
         }
         // Note: Room data cleanup is handled by the rooms module when users disconnect
         // The room will be automatically cleaned up when numUsers reaches 0
-        console.log(`Successfully cleared all game data for room: ${roomName}`);
     }
     catch (error) {
         console.error(`Error clearing game data for room ${roomName}:`, error);
@@ -58,7 +53,6 @@ function clearAllGameData(roomName) {
  */
 function clearAllGameDataGlobally() {
     try {
-        console.log("Clearing all game data globally");
         // Get all room names and clear each room individually
         const allRooms = (0, rooms_1.getAllRoomsfromMemory)();
         let totalCleared = 0;
@@ -71,7 +65,6 @@ function clearAllGameDataGlobally() {
                 console.error(`Error clearing room ${roomName}:`, error);
             }
         });
-        console.log(`Globally cleared ${totalCleared} rooms`);
     }
     catch (error) {
         console.error("Error clearing all game data globally:", error);

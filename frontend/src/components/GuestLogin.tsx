@@ -425,7 +425,7 @@ export default function GuestLogin({
       // Handle NPC interactions with AI responses from server
       typedSocket.on("npc-interaction-with-response", ({ interaction, aiResponse }: { interaction: NPCInteraction; aiResponse: AIResponse }) => {
         if (interactionSetter) {
-          console.log('Received server-side interaction with AI response:', interaction, aiResponse);
+          
           interactionSetter(interaction, aiResponse);
         }
       });

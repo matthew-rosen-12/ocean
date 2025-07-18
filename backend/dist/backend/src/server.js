@@ -61,7 +61,6 @@ const startServer = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const PORT = process.env.PORT || 3001;
         httpServer.listen(PORT, () => {
-            console.log(`Server running on port ${PORT}`);
         });
     }
     catch (error) {
@@ -77,7 +76,6 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
         // Authenticate socket using token
         const token = socket.handshake.auth.token;
         if (!token) {
-            console.log("No token provided, disconnecting");
             typedSocket.disconnect();
             return;
         }
@@ -88,7 +86,6 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
         typedSocket.data.user = user;
         // Join room and broadcast user joined
         typedSocket.on("join-room", (_a) => __awaiter(void 0, [_a], void 0, function* ({ name }) {
-            console.log("joining room");
             typedSocket.join(name);
             typedSocket.data.room = name;
             // Check if this is the first user in the room (before adding)
@@ -212,7 +209,6 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
                 const lastPosition = socket.data.lastPosition;
                 const room = socket.data.room;
                 if (room) {
-                    console.log("disconnecting");
                     const userId = socket.data.user.id;
                     // set npcs of this user's npc groups to IDLE
                     const npcGroups = (0, npc_groups_1.getNPCGroupsfromMemory)(room);

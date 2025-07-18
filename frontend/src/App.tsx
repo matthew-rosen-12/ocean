@@ -61,7 +61,7 @@ function App() {
 
   // Handle inactivity kick
   const handleInactivityKick = useCallback(() => {
-    console.log('Player kicked for inactivity');
+    
     
     // Disconnect from server to notify other clients that user has left
     const currentTypedSocket = typedSocket();
