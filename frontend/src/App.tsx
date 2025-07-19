@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   pathData,
   UserInfo,
@@ -75,17 +75,20 @@ function App() {
 
   // Handle return to login from inactivity kick
   const handleReturnToLoginFromInactivity = useCallback(() => {
-    setKickedForInactivity(false);
-    setMyUser(null);
-    setUsers(new Map());
-    setPaths(new Map());
-    setNPCGroups(new NPCGroupsBiMap());
-    setGameOver(false);
-    setFinalScores({});
-    setWinnerScreenshot("");
-    setDeletingNPCs(new Set());
-    setLatestInteraction(null);
-    setLatestAiResponse(null);
+    // Batch all state resets together using React 18 automatic batching
+    React.startTransition(() => {
+      setKickedForInactivity(false);
+      setMyUser(null);
+      setUsers(new Map());
+      setPaths(new Map());
+      setNPCGroups(new NPCGroupsBiMap());
+      setGameOver(false);
+      setFinalScores({});
+      setWinnerScreenshot("");
+      setDeletingNPCs(new Set());
+      setLatestInteraction(null);
+      setLatestAiResponse(null);
+    });
   }, []);
 
   // Preload fonts on app initialization
@@ -105,20 +108,22 @@ function App() {
       socket.disconnect();
     }
     
-    // Reset all game state
-    setMyUser(null);
-    setUsers(new Map());
-    setPaths(new Map());
-    setNPCGroups(new NPCGroupsBiMap());
-    setServerTerrainConfig(null);
-    setGameStartTime(undefined);
-    setGameDuration(undefined);
-    setGameOver(false);
-    setFinalScores({});
-    setWinnerScreenshot("");
-    setDeletingNPCs(new Set());
-    setLatestInteraction(null);
-    setLatestAiResponse(null);
+    // Batch all state resets together using React 18 automatic batching
+    React.startTransition(() => {
+      setMyUser(null);
+      setUsers(new Map());
+      setPaths(new Map());
+      setNPCGroups(new NPCGroupsBiMap());
+      setServerTerrainConfig(null);
+      setGameStartTime(undefined);
+      setGameDuration(undefined);
+      setGameOver(false);
+      setFinalScores({});
+      setWinnerScreenshot("");
+      setDeletingNPCs(new Set());
+      setLatestInteraction(null);
+      setLatestAiResponse(null);
+    });
   };
 
   // Show inactivity kick screen if player was kicked

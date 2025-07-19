@@ -1,5 +1,5 @@
 import { useThree } from "@react-three/fiber";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { userId, UserInfo, NPCGroupsBiMap, FinalScores, ANIMAL_SCALES } from "shared/types";
 import * as THREE from "three";
 
@@ -32,9 +32,12 @@ export function CinematicScreenshot({
       const winnerUser = users.get(winnerUserId);
       if (!winnerUser) return;
       
-      setIsAnimating(true);
-      setCinematicActive(true);
-      setShowTimesUpText(true);
+      // Batch animation state initialization together
+      React.startTransition(() => {
+        setIsAnimating(true);
+        setCinematicActive(true);
+        setShowTimesUpText(true);
+      });
       
       // Calculate winner's NPC group size and animal type for zoom adjustment
       const winnerNpcGroup = npcGroups.getByUserId(winnerUserId);
@@ -79,7 +82,9 @@ export function CinematicScreenshot({
       
       // Hide "TIMES UP!" text 500ms before flash (at 1000ms)
       setTimeout(() => {
-        setShowTimesUpText(false);
+        React.startTransition(() => {
+          setShowTimesUpText(false);
+        });
       }, 1000);
       
       const animateCamera = () => {

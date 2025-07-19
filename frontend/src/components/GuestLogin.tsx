@@ -223,8 +223,11 @@ export default function GuestLogin({
       });
 
       typedSocket.on("game-timer-info", ({ gameStartTime, gameDuration }: { gameStartTime: number; gameDuration: number }) => {
-        setGameStartTime(gameStartTime);
-        setGameDuration(gameDuration);
+        // Batch game timer state updates together
+        React.startTransition(() => {
+          setGameStartTime(gameStartTime);
+          setGameDuration(gameDuration);
+        });
       });
 
       typedSocket.on("all-npc-groups", ({ npcGroups }: { npcGroups: NPCGroupsBiMap }) => {
@@ -267,27 +270,29 @@ export default function GuestLogin({
       });
 
       typedSocket.on("user-left", ({ lastPosition, userId }: { lastPosition: Position; userId: string }) => {
-        setUsers((prev) => {
-          const newUsers = new Map(prev);
-          newUsers.delete(userId);
-          return newUsers;
-        });
+        // Batch user removal and NPC group updates together
+        React.startTransition(() => {
+          setUsers((prev) => {
+            const newUsers = new Map(prev);
+            newUsers.delete(userId);
+            return newUsers;
+          });
 
+          setNPCGroups((prev) => {
+            const newNpcGroups = new NPCGroupsBiMap(prev);
+            const captorGroup = newNpcGroups.getByUserId(userId);
+            if (captorGroup) {
+              const newCaptorGroup = new NPCGroup({
+                ...captorGroup,
+                captorId: undefined,
+                position: lastPosition,
+                phase: NPCPhase.IDLE,
+              });
+              newNpcGroups.setByNpcGroupId(captorGroup.id, newCaptorGroup);
+            }
 
-        setNPCGroups((prev) => {
-          const newNpcGroups = new NPCGroupsBiMap(prev);
-          const captorGroup = newNpcGroups.getByUserId(userId);
-          if (captorGroup) {
-            const newCaptorGroup = new NPCGroup({
-              ...captorGroup,
-              captorId: undefined,
-              position: lastPosition,
-              phase: NPCPhase.IDLE,
-            });
-            newNpcGroups.setByNpcGroupId(captorGroup.id, newCaptorGroup);
-          }
-
-          return newNpcGroups;
+            return newNpcGroups;
+          });
         });
 
       });

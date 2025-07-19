@@ -11,7 +11,7 @@ import {
   ANIMAL_SCALES,
 } from "shared/types";
 import { NPCInteraction } from "shared/interaction-types";
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import AnimalGraphic from "./AnimalGraphic";
 import { UI_Z_INDICES } from "shared/z-depths";
 import NPCGraphicWrapper from "./npc-graphics/NPCGroupGraphicWrapper";
@@ -207,8 +207,19 @@ export default function Scene({
       return;
     }
     
+    let lastUpdateTime = 0;
+    const throttleDelay = 150; // Increased from 100ms to 150ms for better batching
+    
     const updateChargeCount = () => {
-      const chargeDuration = Date.now() - spaceStartTime;
+      const now = Date.now();
+      
+      // Throttle updates to reduce unnecessary renders
+      if (now - lastUpdateTime < throttleDelay) {
+        return;
+      }
+      lastUpdateTime = now;
+      
+      const chargeDuration = now - spaceStartTime;
       const secondsHeld = Math.min(chargeDuration / 1000 * 4, 10); // Cap at 10 seconds
       const rawThrowCount = Math.floor(Math.pow(2, secondsHeld));
       
@@ -216,16 +227,24 @@ export default function Scene({
       const availableNPCs = npcGroups.getByUserId(myUser.id)?.fileNames.length || 0;
       const cappedThrowCount = Math.min(rawThrowCount, availableNPCs);
       
-      setCurrentThrowCount(cappedThrowCount);
+      // Use React.startTransition for non-urgent UI updates
+      React.startTransition(() => {
+        setCurrentThrowCount(cappedThrowCount);
+      });
     };
     
     // Update immediately
     updateChargeCount();
     
-    // Continue updating while charging
-    const interval = setInterval(updateChargeCount, 100); // Update every 100ms (was 50ms)
+    // Continue updating while charging with requestAnimationFrame for better performance
+    let animationId: number;
+    const scheduleUpdate = () => {
+      updateChargeCount();
+      animationId = requestAnimationFrame(scheduleUpdate);
+    };
+    animationId = requestAnimationFrame(scheduleUpdate);
     
-    return () => clearInterval(interval);
+    return () => cancelAnimationFrame(animationId);
   }, [spaceStartTime, npcGroups, myUser.id]);
 
   const setAnimalDimensionsCallback = useCallback(

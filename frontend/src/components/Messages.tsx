@@ -91,14 +91,17 @@ export default function Messages({
   // Handle new interaction when latestInteraction changes
   useEffect(() => {
     if (latestInteraction && latestAiResponse) {
-      // Save previous interaction and response to history
-      if (previousInteraction && previousResponse) {
-        setMessageHistory(prev => [...prev, { interaction: previousInteraction, response: previousResponse }]);
-      }
-      
-      // Update previous interaction tracking
-      setPreviousInteraction(latestInteraction);
-      setPreviousResponse(latestAiResponse);
+      // Batch message history and tracking updates together
+      React.startTransition(() => {
+        // Save previous interaction and response to history
+        if (previousInteraction && previousResponse) {
+          setMessageHistory(prev => [...prev, { interaction: previousInteraction, response: previousResponse }]);
+        }
+        
+        // Update previous interaction tracking
+        setPreviousInteraction(latestInteraction);
+        setPreviousResponse(latestAiResponse);
+      });
     }
   }, [latestInteraction, latestAiResponse]);
 
@@ -209,26 +212,35 @@ export default function Messages({
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (isDragging) {
-        setPosition({
-          x: e.clientX - dragOffset.x,
-          y: e.clientY - dragOffset.y
+        // Use startTransition for smoother dragging experience
+        React.startTransition(() => {
+          setPosition({
+            x: e.clientX - dragOffset.x,
+            y: e.clientY - dragOffset.y
+          });
         });
       } else if (isResizing) {
         const rect = messagesRef.current?.getBoundingClientRect();
         if (rect) {
           const newWidth = Math.max(200, e.clientX - rect.left);
           const newHeight = Math.max(100, e.clientY - rect.top);
-          setSize({
-            width: newWidth,
-            height: newHeight
+          // Use startTransition for smoother resizing experience
+          React.startTransition(() => {
+            setSize({
+              width: newWidth,
+              height: newHeight
+            });
           });
         }
       }
     };
 
     const handleMouseUp = () => {
-      setIsDragging(false);
-      setIsResizing(false);
+      // Batch drag/resize state cleanup together
+      React.startTransition(() => {
+        setIsDragging(false);
+        setIsResizing(false);
+      });
     };
 
     if (isDragging || isResizing) {
