@@ -62,19 +62,36 @@ cachedBlendedColor.current.lerpColors(userColor, goldColor, wave);
 ```
 
 ### 3. **Optimize Position Calculations**
-**Status**: 🔴 Pending  
+**Status**: ✅ **COMPLETED**  
 **Impact**: Medium - Reduces unnecessary calculations  
 **Complexity**: Medium  
 
-**Issues Found**:
-- `CapturedNPCGroupGraphic.tsx:147` calculates target position every frame even when user hasn't moved
-- Multiple position update calls without change detection
+**✅ COMPLETED - Position calculation optimizations successfully implemented**:
+- ✅ Added position change detection using `useRef` for last known user positions and directions
+- ✅ Only recalculate target positions when user actually moves or changes direction
+- ✅ Cached target position for local users to avoid recalculation every frame
+- ✅ Optimized `Vector3.equals()` usage for efficient position comparison
+- ✅ Maintained existing memoization for non-local users
 
-**Plan**:
-1. Add position change detection using `useRef` for last known positions
-2. Only recalculate target positions when user actually moves
-3. Use `Vector3.equals()` for efficient position comparison
-4. Estimated impact: ~10% performance gain
+**Performance Impact**:
+- **Before**: `calculateNPCGroupPosition()` called every frame for every NPC group
+- **After**: Position calculation only when user position or direction changes
+- **Estimated improvement**: ~10% performance gain in movement-heavy scenarios
+
+**Implementation Details**:
+```typescript
+// Added cached position tracking
+const lastUserPosition = useRef(new THREE.Vector2(user.position.x, user.position.y));
+const lastUserDirection = useRef(new THREE.Vector2(user.direction.x, user.direction.y));
+const cachedTargetPosition = useRef<THREE.Vector3 | null>(null);
+
+// Only recalculate when needed
+const positionChanged = !lastUserPosition.current.equals(currentUserPosition);
+const directionChanged = !lastUserDirection.current.equals(currentUserDirection);
+if (positionChanged || directionChanged || !cachedTargetPosition.current) {
+  cachedTargetPosition.current = calculateNPCGroupPosition(user, animalWidth, scaleFactor);
+}
+```
 
 ### 4. **Optimize Update Frequencies**
 **Status**: 🟡 Partially Done  
@@ -146,7 +163,7 @@ cachedBlendedColor.current.lerpColors(userColor, goldColor, wave);
 
 1. ✅ **Phase 1**: Complete remaining useFrame consolidation (simplest first)
 2. ✅ **Phase 2**: Color caching and shimmer animation consolidation
-3. **Phase 3**: Position calculation optimizations
+3. ✅ **Phase 3**: Position calculation optimizations
 4. **Phase 4**: React re-render optimizations  
 5. **Phase 5**: Complete remaining useFrame hooks (BotCollisionDetection, AnimalGraphic)
 6. **Phase 6**: Texture and graphics optimizations

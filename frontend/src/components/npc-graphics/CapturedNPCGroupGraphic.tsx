@@ -81,31 +81,34 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
 
   // Reference for smooth movement interpolation (non-local users)
   const previousPosition = useMemo(() => new THREE.Vector3(), []);
-  // Memoize target position calculation to avoid unnecessary recalculations
-  // Only memoize for non-local users since local users need real-time updates
-  const memoizedTargetPosition = useMemo(() => {
-    if (isLocalUser || !animalWidth) return null; // Don't memoize for local users or if no animalWidth
-    return calculateNPCGroupPosition(user, animalWidth, scaleFactor);
-  }, [
-    isLocalUser,
-    user.position.x,
-    user.position.y,
-    user.direction.x,
-    user.direction.y,
-    animalWidth,
-    scaleFactor,
-    user,
-  ]);
+  
+  // Track last known user position and direction to detect changes
+  const lastUserPosition = useRef(new THREE.Vector2(user.position.x, user.position.y));
+  const lastUserDirection = useRef(new THREE.Vector2(user.direction.x, user.direction.y));
+  const cachedTargetPosition = useRef<THREE.Vector3 | null>(null);
+  
+  // Position calculation is now handled uniformly by calculateTargetPosition with caching
 
   // Export position and scale calculation functions for collision detection
   const calculateTargetPosition = useCallback((): THREE.Vector3 => {
-    // For local users, always calculate fresh to ensure real-time updates
-    // For non-local users, use memoized value for performance
-    if (isLocalUser && animalWidth) {
-      return calculateNPCGroupPosition(user, animalWidth, scaleFactor);
+    if (!animalWidth) return new THREE.Vector3(0, 0, -10);
+    
+    // Check if position or direction has changed for both local and non-local users
+    const currentUserPosition = new THREE.Vector2(user.position.x, user.position.y);
+    const currentUserDirection = new THREE.Vector2(user.direction.x, user.direction.y);
+    
+    const positionChanged = !lastUserPosition.current.equals(currentUserPosition);
+    const directionChanged = !lastUserDirection.current.equals(currentUserDirection);
+    
+    // Only recalculate if user has moved or changed direction, or if we don't have a cached value
+    if (positionChanged || directionChanged || !cachedTargetPosition.current) {
+      cachedTargetPosition.current = calculateNPCGroupPosition(user, animalWidth, scaleFactor);
+      lastUserPosition.current.copy(currentUserPosition);
+      lastUserDirection.current.copy(currentUserDirection);
     }
-    return memoizedTargetPosition || new THREE.Vector3(0, 0, -10);
-  }, [isLocalUser, animalWidth, user, scaleFactor, memoizedTargetPosition]);
+    
+    return cachedTargetPosition.current;
+  }, [animalWidth, user, scaleFactor]);
 
 
 
@@ -152,7 +155,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     const animationCallback = (_state: unknown, _delta: number) => {
       if (!threeGroup || !textureLoaded.current || !user || group.fileNames.length === 0 || !animalWidth) return;
 
-      // Calculate target position with offset from user
+      // Calculate target position with offset from user (now cached and only recalculated when needed)
       const targetPosition = calculateTargetPosition();
 
       // Check for collisions with path NPCs if we have the required props
@@ -162,6 +165,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
       // - Non-local: interpolates towards target calculated from discrete socket user position
       // For non-local users, we need SLOWER interpolation so NPC group lags behind
       // the already-interpolated animal position
+      // Use Vector3.equals() for efficient position comparison
       if (!positionRef.current.equals(targetPosition)) {
         const interpolationParams = isLocalUser
           ? {

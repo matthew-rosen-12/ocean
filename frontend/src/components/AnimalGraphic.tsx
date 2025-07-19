@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useRef } from "react";
+import React, { useMemo, useEffect, useRef, useState } from "react";
 import { UserInfo, Animal, ANIMAL_SCALES, ANIMAL_ORIENTATION } from "shared/types";
 import * as THREE from "three";
 import { useAnimationManagerContext } from "../contexts/AnimationManagerContext";
@@ -31,6 +31,7 @@ function AnimalSprite({
   user,
   setAnimalDimensions,
   terrainBoundaries: _terrainBoundaries,
+  onRemotePositionUpdate,
 }: {
   animal: Animal;
   scale?: number;
@@ -43,6 +44,7 @@ function AnimalSprite({
     dimensions: { width: number; height: number }
   ) => void;
   terrainBoundaries?: TerrainBoundaries;
+  onRemotePositionUpdate?: (position: [number, number, number]) => void;
 }) {
   const animationManager = useAnimationManagerContext();
   const group = useMemo(() => new THREE.Group(), []);
@@ -125,6 +127,11 @@ function AnimalSprite({
 
       previousPosition.copy(positionRef.current);
       group.position.copy(previousPosition);
+
+      // Initialize nickname position for remote users
+      if (!isLocalPlayer && onRemotePositionUpdate) {
+        onRemotePositionUpdate([positionRef.current.x, positionRef.current.y, positionRef.current.z]);
+      }
 
       // Apply initial rotation if available
       if (directionRef.current && directionRef.current.length() > 0.01) {
@@ -263,6 +270,11 @@ function AnimalSprite({
 
         // Apply the calculated position
         group.position.copy(previousPosition);
+        
+        // Update nickname position for remote users only (pass the smoothed animal position)
+        if (onRemotePositionUpdate) {
+          onRemotePositionUpdate([previousPosition.x, previousPosition.y, previousPosition.z]);
+        }
       }
 
       // Rotation interpolation with faster non-local rotation
@@ -423,6 +435,11 @@ export default function AnimalGraphic({
     new THREE.Vector3(user.position.x, user.position.y, user.position.z ?? 0)
   );
 
+  // State for remote user nickname position (will trigger re-renders)
+  const [remoteNicknamePosition, setRemoteNicknamePosition] = useState([
+    user.position.x, user.position.y, user.position.z ?? 0
+  ]);
+
   // Create direction ref as Vector3
   const directionRef = useRef<THREE.Vector3>(
     new THREE.Vector3(user.direction.x, user.direction.y, 0)
@@ -452,14 +469,15 @@ export default function AnimalGraphic({
         user={user}
         setAnimalDimensions={setAnimalDimensions}
         terrainBoundaries={_terrainBoundaries}
+        onRemotePositionUpdate={isLocalPlayer ? undefined : setRemoteNicknamePosition}
       />
       {/* Nickname */}
       {nicknameTextInfo && (
         <Text
           position={[
-            user.position.x + nicknameTextInfo.position[0],
-            user.position.y + nicknameTextInfo.position[1],
-            isLocalPlayer ? Z_DEPTHS.LOCAL_ANIMAL_GRAPHIC +.05: Z_DEPTHS.REMOTE_ANIMAL_GRAPHIC - .05
+            (isLocalPlayer ? user.position.x : remoteNicknamePosition[0]) + nicknameTextInfo.position[0],
+            (isLocalPlayer ? user.position.y : remoteNicknamePosition[1]) + nicknameTextInfo.position[1],
+            (isLocalPlayer ? Z_DEPTHS.LOCAL_ANIMAL_GRAPHIC : Z_DEPTHS.REMOTE_ANIMAL_GRAPHIC) + 0.05
           ]}
           fontSize={nicknameTextInfo.fontSize}
           color={nicknameTextInfo.color}
