@@ -122,4 +122,47 @@ const NPCGraphicWrapper = ({
 
   return null;
 };
-export default React.memo(NPCGraphicWrapper);
+export default React.memo(NPCGraphicWrapper, (prevProps, nextProps) => {
+  // Quick primitive checks first (fastest)
+  if (prevProps.npcGroup.id !== nextProps.npcGroup.id) return false;
+  if (prevProps.npcGroup.phase !== nextProps.npcGroup.phase) return false;
+  if (prevProps.npcGroup.captorId !== nextProps.npcGroup.captorId) return false;
+  if (prevProps.myUserId !== nextProps.myUserId) return false;
+  if (prevProps.throwChargeCount !== nextProps.throwChargeCount) return false;
+  
+  // Check if NPC is being deleted (common change)
+  if (prevProps.deletingNPCs.has(prevProps.npcGroup.id) !== nextProps.deletingNPCs.has(nextProps.npcGroup.id)) return false;
+  
+  // PathData comparison (important for rendering different graphics)
+  const prevHasPath = !!prevProps.pathData;
+  const nextHasPath = !!nextProps.pathData;
+  if (prevHasPath !== nextHasPath) return false;
+  
+  if (prevHasPath && nextHasPath) {
+    if (prevProps.pathData!.id !== nextProps.pathData!.id ||
+        prevProps.pathData!.timestamp !== nextProps.pathData!.timestamp ||
+        prevProps.pathData!.pathPhase !== nextProps.pathData!.pathPhase) return false;
+  }
+  
+  // NPC group fileNames comparison (affects graphics)
+  if (prevProps.npcGroup.fileNames.length !== nextProps.npcGroup.fileNames.length) return false;
+  for (let i = 0; i < prevProps.npcGroup.fileNames.length; i++) {
+    if (prevProps.npcGroup.fileNames[i] !== nextProps.npcGroup.fileNames[i]) return false;
+  }
+  
+  // Users Map comparison only for captured NPCs (need user info)
+  if (prevProps.npcGroup.phase === NPCPhase.CAPTURED) {
+    const prevUser = prevProps.users.get(prevProps.npcGroup.captorId!);
+    const nextUser = nextProps.users.get(nextProps.npcGroup.captorId!);
+    
+    if (!prevUser !== !nextUser) return false;
+    if (prevUser && nextUser) {
+      if (prevUser.position.x !== nextUser.position.x ||
+          prevUser.position.y !== nextUser.position.y ||
+          prevUser.direction.x !== nextUser.direction.x ||
+          prevUser.direction.y !== nextUser.direction.y) return false;
+    }
+  }
+  
+  return true;
+});

@@ -167,4 +167,36 @@ const PathNPCGroupGraphic: React.FC<PathNPCGroupGraphicProps> = ({
   );
 };
 
-export default React.memo(PathNPCGroupGraphic);
+export default React.memo(PathNPCGroupGraphic, (prevProps, nextProps) => {
+  // Quick primitive checks first (fastest)
+  if (prevProps.npcGroup.id !== nextProps.npcGroup.id) return false;
+  if (prevProps.npcGroup.phase !== nextProps.npcGroup.phase) return false;
+  if (prevProps.myUserId !== nextProps.myUserId) return false;
+  
+  // PathData comparison (critical for path NPCs)
+  if (prevProps.pathData.id !== nextProps.pathData.id) return false;
+  if (prevProps.pathData.timestamp !== nextProps.pathData.timestamp) return false;
+  if (prevProps.pathData.pathPhase !== nextProps.pathData.pathPhase) return false;
+  if (prevProps.pathData.startPosition.x !== nextProps.pathData.startPosition.x) return false;
+  if (prevProps.pathData.startPosition.y !== nextProps.pathData.startPosition.y) return false;
+  if (prevProps.pathData.direction.x !== nextProps.pathData.direction.x) return false;
+  if (prevProps.pathData.direction.y !== nextProps.pathData.direction.y) return false;
+  if (prevProps.pathData.velocity !== nextProps.pathData.velocity) return false;
+  
+  // User comparison (affects border color)
+  const prevHasUser = !!prevProps.user;
+  const nextHasUser = !!nextProps.user;
+  if (prevHasUser !== nextHasUser) return false;
+  
+  if (prevHasUser && nextHasUser) {
+    if (prevProps.user!.id !== nextProps.user!.id) return false;
+  }
+  
+  // NPC group fileNames comparison (affects graphics)
+  if (prevProps.npcGroup.fileNames.length !== nextProps.npcGroup.fileNames.length) return false;
+  for (let i = 0; i < prevProps.npcGroup.fileNames.length; i++) {
+    if (prevProps.npcGroup.fileNames[i] !== nextProps.npcGroup.fileNames[i]) return false;
+  }
+  
+  return true;
+});

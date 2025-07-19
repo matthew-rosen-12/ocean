@@ -358,8 +358,8 @@ export default function AnimalGraphic({
   terrainBoundaries?: TerrainBoundaries;
 }) {
   
-  // Calculate the highest point of the animal considering rotation and dimensions
-  const calculateHighestPoint = () => {
+  // Calculate the highest point of the animal considering rotation and dimensions (memoized)
+  const highestPoint = useMemo(() => {
     const dimensions = animalDimensions?.[user.animal as Animal];
     if (!dimensions) {
       return 3.0; // Fallback distance if dimensions not available
@@ -409,26 +409,21 @@ export default function AnimalGraphic({
     
     // Add padding above the highest point
     return maxY + 1.5;
-  };
+  }, [animalDimensions, user.animal, user.direction]);
 
-  // Get text info for nickname
-  const getNicknameTextInfo = () => {
+  // Get text info for nickname (memoized)
+  const nicknameTextInfo = useMemo(() => {
     const baseColor = getAnimalBorderColor(user); // Use animal color for nickname
     const outlineColor = getNicknameOutlineColor(user); // White or black based on animal color
     
-    // Calculate position based on the actual highest point of the rotated animal
-    const yOffset = calculateHighestPoint();
-    
     return {
       text: user.nickname,
-      position: [0, yOffset, 0] as [number, number, number], // Position above the highest point
+      position: [0, highestPoint, 0] as [number, number, number], // Position above the highest point
       fontSize: 1.8, // Slightly smaller font
       color: baseColor,
       outlineColor: outlineColor
     };
-  };
-  
-  const nicknameTextInfo = getNicknameTextInfo();
+  }, [user, highestPoint]);
   // Create position ref as Vector3
   const isLocalPlayer = myUserId === user.id;
   const positionRef = useRef(

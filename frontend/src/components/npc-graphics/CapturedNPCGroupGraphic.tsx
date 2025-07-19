@@ -226,22 +226,12 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
       animationManager.unregisterAnimationCallback(callbackId);
     };
   }, [
-    threeGroup,
-    textureLoaded,
-    user,
-    group.fileNames.length,
-    animalWidth,
-    calculateTargetPosition,
-    positionRef,
-    isLocalUser,
-    updatePositionWithTracking,
-    scaleFactor,
-    mesh,
-    allPaths,
-    npcGroups,
-    group.captorId,
-    checkForPathNPCCollision,
+    // Only include dependencies that affect animation logic setup, not values used in the callback
     animationManager,
+    calculateTargetPosition,
+    checkForPathNPCCollision,
+    updatePositionWithTracking,
+    isLocalUser,
   ]);
 
   // Final early return after all hooks are called
@@ -289,46 +279,41 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
 };
 
 export default React.memo(CapturedNPCGroupGraphic, (prevProps, nextProps) => {
-  // Compare group properties
-  const captorIdSame = prevProps.group.captorId === nextProps.group.captorId;
-  const sizeSame = prevProps.group.fileNames.length === nextProps.group.fileNames.length;
+  // Quick primitive checks first (fastest)
+  if (prevProps.group.captorId !== nextProps.group.captorId) return false;
+  if (prevProps.group.fileNames.length !== nextProps.group.fileNames.length) return false;
+  if (prevProps.user.id !== nextProps.user.id) return false;
+  if (prevProps.animalWidth !== nextProps.animalWidth) return false;
+  if (prevProps.throwChargeCount !== nextProps.throwChargeCount) return false;
   
-  const prevNpcIds = Array.from(prevProps.group.fileNames).sort();
-  const nextNpcIds = Array.from(nextProps.group.fileNames).sort();
-  const npcIdsSame = prevNpcIds.every((id, index) => id === nextNpcIds[index]);
+  // User position/direction checks (common changes)
+  if (prevProps.user.position.x !== nextProps.user.position.x) return false;
+  if (prevProps.user.position.y !== nextProps.user.position.y) return false;
+  if (prevProps.user.direction.x !== nextProps.user.direction.x) return false;
+  if (prevProps.user.direction.y !== nextProps.user.direction.y) return false;
 
-  const groupsSame = captorIdSame && sizeSame && npcIdsSame;
+  // Path comparison (expensive but necessary) - check size first
+  if (prevProps.allPaths.size !== nextProps.allPaths.size) return false;
+  
+  // Only do deep path comparison if sizes match and we haven't failed other checks
+  const prevPaths = Array.from(prevProps.allPaths.entries());
+  for (let i = 0; i < prevPaths.length; i++) {
+    const [npcId, pathData] = prevPaths[i];
+    const nextPathData = nextProps.allPaths.get(npcId);
+    if (!nextPathData ||
+        pathData.id !== nextPathData.id ||
+        pathData.timestamp !== nextPathData.timestamp ||
+        pathData.pathPhase !== nextPathData.pathPhase) {
+      return false;
+    }
+  }
 
-  // Compare other props including user position
-  const userSame = prevProps.user.id === nextProps.user.id;
-  const userPositionSame =
-    prevProps.user.position.x === nextProps.user.position.x &&
-    prevProps.user.position.y === nextProps.user.position.y 
-  const userDirectionSame =
-    prevProps.user.direction.x === nextProps.user.direction.x &&
-    prevProps.user.direction.y === nextProps.user.direction.y;
-  const animalWidthSame = prevProps.animalWidth === nextProps.animalWidth;
-  const throwChargeCountSame = prevProps.throwChargeCount === nextProps.throwChargeCount;
+  // NPC fileNames comparison (most expensive) - do last
+  if (prevProps.group.fileNames.length !== nextProps.group.fileNames.length) return false;
+  for (let i = 0; i < prevProps.group.fileNames.length; i++) {
+    if (prevProps.group.fileNames[i] !== nextProps.group.fileNames[i]) return false;
+  }
 
-  // Compare allPaths - this is critical for collision detection
-  const allPathsSame = prevProps.allPaths.size === nextProps.allPaths.size &&
-    Array.from(prevProps.allPaths.entries()).every(([npcId, pathData]) => {
-      const nextPathData = nextProps.allPaths.get(npcId);
-      return nextPathData && 
-        pathData.id === nextPathData.id &&
-        pathData.timestamp === nextPathData.timestamp &&
-        pathData.pathPhase === nextPathData.pathPhase;
-    });
-
-  const shouldNotRerender =
-    groupsSame &&
-    userSame &&
-    userPositionSame &&
-    userDirectionSame &&
-    animalWidthSame &&
-    allPathsSame &&
-    throwChargeCountSame;
-
-  return shouldNotRerender;
+  return true;
 });
 
