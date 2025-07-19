@@ -71,14 +71,14 @@ export default function GameOverScreen({ finalScores, users, onReturnToLogin, wi
               <h2 className="text-2xl font-semibold text-yellow-300 drop-shadow-md mb-4">
                 🏆 Winner: {winner.user?.nickname || winner.user?.animal || 'Unknown Player'}
               </h2>
-              <p className="text-lg text-white/90 drop-shadow-sm mb-4">
+              <p className="text-lg text-black mb-4">
                 {winner.score} NPC{winner.score !== 1 ? 's' : ''} captured!
               </p>
               
               {/* Winner Screenshot */}
               {winnerScreenshot && (
                 <div className="mb-4">
-                  <h3 className="text-lg font-medium text-white/90 drop-shadow-sm mb-2">Final Moment:</h3>
+                  <h3 className="text-lg font-medium text-black mb-2">Final Moment:</h3>
                   <div className="border-4 border-yellow-300/70 rounded-2xl overflow-hidden shadow-lg backdrop-blur-sm">
                     <img 
                       src={winnerScreenshot} 
@@ -119,21 +119,21 @@ export default function GameOverScreen({ finalScores, users, onReturnToLogin, wi
                     {index === 0 ? '🏆' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
                   </span>
                   <div>
-                    <div className="font-semibold text-white drop-shadow-sm">
+                    <div className="font-semibold text-black">
                       {result.user?.nickname || result.user?.animal || 'Unknown Player'}
                     </div>
                     {result.user?.nickname && (
-                      <div className="text-sm text-white/70">
+                      <div className="text-sm text-black">
                         {result.user.animal}
                       </div>
                     )}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-lg font-bold text-white drop-shadow-sm">
+                  <div className="text-lg font-bold text-black">
                     {result.score}
                   </div>
-                  <div className="text-sm text-white/70">
+                  <div className="text-sm text-black">
                     NPC{result.score !== 1 ? 's' : ''}
                   </div>
                 </div>
@@ -146,11 +146,11 @@ export default function GameOverScreen({ finalScores, users, onReturnToLogin, wi
         <div className="text-center space-y-4">
           {!autoRedirectCancelled ? (
             <div>
-              <p className="text-white/90 drop-shadow-sm mb-4">
+              <p className="text-black mb-4">
                 Returning to{' '}
                 <button
                   onClick={handleReturnNow}
-                  className="text-blue-300 hover:text-blue-200 underline font-medium"
+                  className="text-black underline font-medium hover:text-gray-700"
                 >
                   Guest Login
                 </button>
@@ -158,14 +158,14 @@ export default function GameOverScreen({ finalScores, users, onReturnToLogin, wi
               </p>
               <button
                 onClick={handleCancelAutoRedirect}
-                className="bg-white/20 backdrop-blur-sm text-white border border-white/30 px-6 py-2 rounded-2xl hover:bg-white/30 transition-all duration-200 font-medium"
+                className="bg-white/80 backdrop-blur-sm text-black border border-gray-300 px-6 py-2 rounded-2xl hover:bg-white transition-all duration-200 font-medium"
               >
                 Cancel Auto-Redirect
               </button>
             </div>
           ) : (
             <div>
-              <p className="text-white/90 drop-shadow-sm mb-4">Auto-redirect cancelled</p>
+              <p className="text-black mb-4">Auto-redirect cancelled</p>
               <button
                 onClick={handleReturnNow}
                 className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-3 rounded-2xl hover:from-blue-600 hover:to-purple-700 transition-all duration-200 text-lg font-medium shadow-lg"

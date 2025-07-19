@@ -489,7 +489,7 @@ export default function GuestLogin({
             </h1>
             
             <div className="mb-6">
-              <label htmlFor="nickname" className="block text-sm font-semibold text-white/90 mb-3 drop-shadow-sm">
+              <label htmlFor="nickname" className="block text-sm font-semibold text-black mb-3">
                 Choose your nickname
               </label>
               <div className="relative">

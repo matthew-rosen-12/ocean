@@ -33,11 +33,8 @@ export default function InactivityKick({ onReturnToLogin }: Props) {
               <h1 className="text-2xl font-bold mb-2 text-white drop-shadow-lg">
                 Removed Due to Inactivity
               </h1>
-              <p className="text-white/90 drop-shadow-sm mb-4">
-                You've been automatically removed from the game due to tab inactivity.
-              </p>
-              <p className="text-sm text-white/70 drop-shadow-sm">
-                Keep the game tab active to stay connected!
+              <p className="text-black mb-4">
+                You've been automatically removed from the game due to inactivity.
               </p>
             </div>
             
@@ -59,11 +56,6 @@ export default function InactivityKick({ onReturnToLogin }: Props) {
               )}
             </button>
             
-            <div className="mt-4 text-center">
-              <p className="text-xs text-white/60 drop-shadow-sm">
-                Tip: Don't switch tabs or minimize the window during gameplay
-              </p>
-            </div>
           </div>
         </div>
         
