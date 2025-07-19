@@ -250,8 +250,8 @@ export default function Scene({
     const { gl } = useThree();
     
     useEffect(() => {
-      // Set clear color to black to match the game's background
-      gl.setClearColor(0x000000, 1.0); // Black background
+      // Set clear color to match CloudBackground blue to prevent flashing
+      gl.setClearColor(0x2F5F8F, 1.0); // Dark blue background matching CloudBackground
     }, [gl]);
     
     return null;
@@ -264,8 +264,8 @@ export default function Scene({
       <style>{`
         @keyframes flash {
           0% { opacity: 0; }
-          50% { opacity: 0.9; }
-          100% { opacity: 0.3; }
+          30% { opacity: 0.9; }
+          100% { opacity: 0.2; }
         }
         @keyframes timesUpPulse {
           0% { transform: scale(1); opacity: 0.9; }

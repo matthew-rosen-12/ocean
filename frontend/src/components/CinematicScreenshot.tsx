@@ -46,16 +46,13 @@ export function CinematicScreenshot({
       
       // Calculate zoom based on animal size and NPC group size
       const currentCameraDistance = 30; // Normal camera distance
-      const baseZoomIn = .15; // Zoom in much closer (smaller Z = closer)
-      
-      // Adjust zoom based on animal size (larger animals need to be further back)
-      const animalSizeAdjustment = animalScale
-      
+      const baseZoomIn = .3; // Zoom in much closer (smaller Z = closer)
+            
       // Adjust zoom based on NPC count (more NPCs = need to be further back to fit all)
       const npcSizeAdjustment = Math.sqrt(npcCount) + 1
       
       // Final zoom calculation: zoom in from current distance, then adjust for animal and NPC size
-      const targetZoom = currentCameraDistance * (baseZoomIn * animalSizeAdjustment * npcSizeAdjustment);
+      const targetZoom = currentCameraDistance * (baseZoomIn * npcSizeAdjustment);
       
       // Store original camera position
       const originalPosition = camera.position.clone();
@@ -119,12 +116,17 @@ export function CinematicScreenshot({
         // Take screenshot after flash starts
         setTimeout(() => {
           try {
-            // Force a final render to ensure canvas is up to date
+            // Ensure canvas is ready and stable before screenshot
             gl.render(scene, camera);
             
-            const canvas = gl.domElement;
-            const screenshot = canvas.toDataURL('image/png', 0.9);
-            onScreenshotCapture(screenshot);
+            // Wait one additional frame to ensure all background layers are settled
+            requestAnimationFrame(() => {
+              gl.render(scene, camera);
+              
+              const canvas = gl.domElement;
+              const screenshot = canvas.toDataURL('image/png', 0.9);
+              onScreenshotCapture(screenshot);
+            });
           } catch (error) {
             console.error('Screenshot failed:', error);
           }

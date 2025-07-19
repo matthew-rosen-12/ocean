@@ -68,7 +68,7 @@ export const RENDER_ORDERS = {
  * @returns The calculated negative z-depth for the object's position.
  */
 const calculateZDepth = (renderOrder) => {
-    return -(102 - renderOrder) * 0.001;
+    return -(102 - renderOrder) * 0.01;
 };
 // =================================================================
 // 3. Z-DEPTH CONSTANTS
