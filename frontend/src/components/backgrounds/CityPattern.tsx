@@ -7,6 +7,7 @@ import {
   multiRandom,
 } from "../../utils/terrain";
 import { RENDER_ORDERS } from "shared/z-depths";
+import { canvasCache } from "../../utils/canvas-cache";
 
 /**
  * MosaicPattern – city‑block texture with rivers, bridges & traffic
@@ -34,11 +35,18 @@ export default function MosaicPattern({ boundaries, seed, usePngFile }: MosaicPa
   if (pngTexture) { pngTexture.wrapS = THREE.RepeatWrapping; pngTexture.wrapT = THREE.RepeatWrapping; }
 
   const mosaicTexture = useMemo(() => {
-    /* Canvas + colour palettes ------------------------------------------ */
-    const canvas = document.createElement("canvas");
-    canvas.width  = Math.max(1024, boundaries.width  * 10);
-    canvas.height = Math.max(1024, boundaries.height * 10);
-    const ctx = canvas.getContext("2d")!;
+    const width = Math.max(1024, boundaries.width * 10);
+    const height = Math.max(1024, boundaries.height * 10);
+    
+    return canvasCache.getOrCreate(
+      {
+        width,
+        height,
+        type: 'city',
+        hash: canvasCache.createHash({ boundaries, seed, usePngFile })
+      },
+      (canvas, ctx) => {
+        /* Canvas + colour palettes ------------------------------------------ */;
 
     ctx.fillStyle = "#E8F4F8"; ctx.fillRect(0,0,canvas.width,canvas.height);
 
@@ -231,12 +239,15 @@ export default function MosaicPattern({ boundaries, seed, usePngFile }: MosaicPa
       }
     }
 
-    return canvas;
+      }
+    );
   }, [boundaries.width, boundaries.height, seed, usePngFile]);
 
   /* Debug helper ---------------------------------------------------------- */
   if(typeof window!=="undefined") (window as any).downloadCityPattern = () => {
-    const a=document.createElement('a'); a.download=`city-${seed}.png`; a.href=mosaicTexture.toDataURL(); a.click(); };
+    // Extract canvas from cached texture for download
+    const canvas = (mosaicTexture as any).image || document.createElement('canvas');
+    const a=document.createElement('a'); a.download=`city-${seed}.png`; a.href=canvas.toDataURL(); a.click(); };
 
   return (
     <mesh position={TERRAIN_PLANE_CONFIG.position} renderOrder={RENDER_ORDERS.TERRAIN}>

@@ -4,7 +4,8 @@
     - ? why way faster on safari? speed up on firefox
     - sometimes path timestamp is undefined
     - on emission then instant recapture, number does not increase correctly
+    - make inactive if collisions not being detected (maybe has to do with multiple tabs running same game at once?)
 
-- ? adjust frosted glass text on background color or make npc / animal backgrounds darker
+- add instructions
 
 - make publicly available
