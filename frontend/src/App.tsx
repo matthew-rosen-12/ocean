@@ -21,7 +21,7 @@ import {
 } from "./utils/terrain";
 import { preloadFonts } from "./utils/font-preloader";
 import { throttle } from "lodash";
-import { typedSocket } from "./socket";
+import { typedSocket, getSocket } from "./socket";
 
 function App() {
   const [myUser, setMyUser] = useState<UserInfo | null>(null);
@@ -99,6 +99,12 @@ function App() {
     : createTerrain();
 
   const handleReturnToLogin = () => {
+    // Disconnect the socket to clean up event listeners and server state
+    const socket = getSocket();
+    if (socket) {
+      socket.disconnect();
+    }
+    
     // Reset all game state
     setMyUser(null);
     setUsers(new Map());

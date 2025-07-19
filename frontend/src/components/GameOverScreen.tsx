@@ -29,7 +29,7 @@ export default function GameOverScreen({ finalScores, users, onReturnToLogin, wi
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [autoRedirectCancelled, onReturnToLogin]);
+  }, [autoRedirectCancelled]); // Remove onReturnToLogin from dependencies to prevent constant re-creation
 
   // Sort users by final scores
   const sortedResults = Object.entries(finalScores)
