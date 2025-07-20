@@ -19,17 +19,14 @@ export function useVisibilityControl(onInactivityKick?: () => void) {
       clearInactivityTimer(); // Clear any existing timer
       
       inactivityTimerRef.current = setTimeout(() => {
-        
         onInactivityKick?.();
       }, 30000); // 30 seconds
     };
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        
         startInactivityTimer();
       } else {
-        
         clearInactivityTimer();
       }
     };

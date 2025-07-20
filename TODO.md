@@ -4,6 +4,7 @@
     - sometimes path timestamp is undefined
     - on emission then instant recapture, number does not increase correctly
     - make inactive if collisions not being detected (maybe has to do with multiple tabs running same game at once?)
+    - new user doesn't see existing user's existing npc group on login!
 
 - add instructions
 

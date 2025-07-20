@@ -2,9 +2,9 @@ import React, { useEffect, useRef } from "react";
 import { UserInfo, NPCGroupsBiMap, pathData, PathPhase } from "shared/types";
 import { NPCInteraction } from "shared/interaction-types";
 import { useAnimationManagerContext } from "../contexts/AnimationManagerContext";
-import { getAssignedBots, checkForPathNPCCollisionForUser } from "../utils/collision-utils";
+import { getAssignedBots, checkForPathNPCCollisionForUser } from "../utils/path-collision-utils";
 
-interface BotCollisionManagerProps {
+interface CapturedNPCGroupCollisionManagerProps {
   myUser: UserInfo | undefined;
   users: Map<string, UserInfo>;
   npcGroups: NPCGroupsBiMap;
@@ -19,7 +19,7 @@ interface BotCollisionManagerProps {
 }
 
 // This component needs to be inside the Canvas to use AnimationManager
-const BotCollisionManager: React.FC<BotCollisionManagerProps> = ({
+const CapturedNPCGroupCollisionManager: React.FC<CapturedNPCGroupCollisionManagerProps> = ({
   myUser,
   users,
   npcGroups,
@@ -29,9 +29,9 @@ const BotCollisionManager: React.FC<BotCollisionManagerProps> = ({
   animalDimensions,
 }) => {
   const animationManager = useAnimationManagerContext();
-  const collisionAnimationId = useRef<string>(`bot-collision-${myUser?.id || 'unknown'}`);
+  const collisionAnimationId = useRef<string>(`captured-group-collision-${myUser?.id || 'unknown'}`);
 
-  // Register bot collision detection with AnimationManager
+  // Register captured NPC group collision detection with AnimationManager
   useEffect(() => {
     const callbackId = collisionAnimationId.current;
     const collisionCallback = (_state: unknown, _delta: number) => {
@@ -39,7 +39,11 @@ const BotCollisionManager: React.FC<BotCollisionManagerProps> = ({
 
       // Get bots assigned to this local user for collision detection
       const assignedBots = getAssignedBots(myUser.id, users);
-      const usersToCheck = assignedBots; // Only check bots, not the local user (handled elsewhere)
+      const usersToCheck = [myUser, ...assignedBots]; // Check both local user and assigned bots
+      
+      if (usersToCheck.length > 1) {
+        console.log(`[CapturedNPCGroupCollisionManager] Processing collision for ${assignedBots.length} assigned bots + local user`);
+      }
       
       usersToCheck.forEach(userToCheck => {
         const animalWidth = animalDimensions[userToCheck.animal]?.width;
@@ -59,7 +63,7 @@ const BotCollisionManager: React.FC<BotCollisionManagerProps> = ({
               pathNPCGroup &&
               pathNPCGroup.captorId !== capturedGroup.captorId
             ) {
-              // For assigned bots, we need to use their position data instead of the local user's
+              // For both bots and local user, use their position data for collision detection
               checkForPathNPCCollisionForUser(pathNPCGroup, pathData, capturedGroup, userToCheck, animalWidth, setPaths, setNpcGroups);
             }
           });
@@ -78,4 +82,4 @@ const BotCollisionManager: React.FC<BotCollisionManagerProps> = ({
   return null;
 };
 
-export default BotCollisionManager;
+export default CapturedNPCGroupCollisionManager;

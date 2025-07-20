@@ -44,7 +44,6 @@ export function useAnimationManager() {
       // If frame gap is longer than 2 seconds, browser is likely throttling
       if (timeSinceLastFrame > 2000) {
         frameRateCallbackRef.current();
-        return;
       }
 
       // Set timeout to detect if no frame comes in the next 3 seconds

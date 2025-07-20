@@ -1,12 +1,11 @@
 import { useCallback } from "react";
 import { NPCGroup, NPCPhase, PathPhase, UserInfo, NPCGroupsBiMap, npcGroupId, pathData, ANIMAL_ORIENTATION } from "shared/types";
-import { NPCInteraction, createInteraction } from "shared/interaction-prompts";
+import { createInteraction } from "shared/interaction-prompts";
 import { checkRotatedBoundingBoxCollision } from "shared/animal-dimensions";
 import * as THREE from "three";
-import { v4 as uuidv4 } from "uuid";
 import { typedSocket } from "../socket";
 
-interface UseCollisionDetectionProps {
+interface UseCaptureCollisionProps {
   myUser: UserInfo;
   npcGroups: NPCGroupsBiMap;
   paths: Map<npcGroupId, pathData>;
@@ -19,14 +18,14 @@ interface UseCollisionDetectionProps {
   animalDimensions: { [animal: string]: { width: number; height: number } };
 }
 
-export function useCollisionDetection({
+export function useCaptureCollision({
   myUser,
   npcGroups,
   paths,
   setPaths,
   setNpcGroups,
   animalDimensions,
-}: UseCollisionDetectionProps) {
+}: UseCaptureCollisionProps) {
   
   const handleNPCGroupCollision = useCallback(
     (capturedNPCGroup: NPCGroup, localUser: boolean) => {
@@ -98,7 +97,7 @@ export function useCollisionDetection({
         return newNpcGroups;
       });
     },
-    [paths, setPaths, npcGroups, myUser.id, myUser.position, setNpcGroups]
+    [npcGroups, myUser.id, myUser.position, myUser.animal, paths, setPaths, setNpcGroups]
   );
 
   // Function to check for collisions with NPCs

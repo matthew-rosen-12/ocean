@@ -17,7 +17,7 @@ import {
   calculateNPCGroupPosition,
 } from "../../utils/npc-group-utils";
 import { getAnimalColor } from "../../utils/animal-colors";
-import { calculatePathPosition, handleNPCGroupReflectionForUser } from "../../utils/collision-utils";
+import { calculatePathPosition, handleNPCGroupReflectionForUser } from "../../utils/path-collision-utils";
 // Constants for positioning
 
 
@@ -54,7 +54,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
   setNpcGroups,
   animalWidth,
   isLocalUser = false, // Default to false for non-local users
-  users: _users, // Not used in this component anymore (handled by BotCollisionManager)
+  users: _users, // Not used in this component anymore (handled by CapturedNPCGroupCollisionManager)
   throwChargeCount,
 }) => {
   

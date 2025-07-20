@@ -29,6 +29,8 @@ export function getAssignedBots(localUserId: string, allUsers: Map<string, UserI
   const realUsers = Array.from(allUsers.values()).filter(user => !user.isBot);
   const bots = Array.from(allUsers.values()).filter(user => user.isBot);
   
+  console.log(`[getAssignedBots] localUserId: ${localUserId.slice(0,8)}, realUsers: ${realUsers.length}, bots: ${bots.length}`);
+  
   if (realUsers.length === 0 || bots.length === 0) {
     return [];
   }
@@ -48,12 +50,16 @@ export function getAssignedBots(localUserId: string, allUsers: Map<string, UserI
     const userIndex = Math.abs(Math.floor(hash * 1000)) % realUsers.length;
     const assignedUserId = realUsers[userIndex].id;
     
+    console.log(`[getAssignedBots] bot ${bot.id.slice(0,8)} assigned to user ${assignedUserId.slice(0,8)}, localUser is ${localUserId.slice(0,8)}`);
+    
     // If this real user is assigned to handle this bot's collision detection
     if (assignedUserId === localUserId) {
       assignedBots.push(bot);
+      console.log(`[getAssignedBots] ✓ bot ${bot.id.slice(0,8)} assigned to THIS user`);
     }
   });
   
+  console.log(`[getAssignedBots] Total assigned bots for this user: ${assignedBots.length}`);
   return assignedBots;
 }
 

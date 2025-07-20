@@ -10,7 +10,6 @@ import {
   FinalScores,
   ANIMAL_SCALES,
 } from "shared/types";
-import { NPCInteraction } from "shared/interaction-types";
 import React, { useEffect, useState, useCallback } from "react";
 import AnimalGraphic from "./AnimalGraphic";
 import { UI_Z_INDICES } from "shared/z-depths";
@@ -18,12 +17,12 @@ import NPCGraphicWrapper from "./npc-graphics/NPCGroupGraphicWrapper";
 import * as THREE from "three";
 import { CameraController } from "./CameraController";
 import { usePositionBroadcast } from "../hooks/usePositionBroadcast";
-import { useCollisionDetection } from "../hooks/useCollisionDetection";
+import { useCaptureCollision } from "../hooks/useCaptureCollision";
 import { useKeyboardMovement } from "../hooks/useKeyboardMovement";
 import { useVisibilityControl } from "../hooks/useVisibilityControl";
 import { CinematicScreenshot } from "./CinematicScreenshot";
 import { TerrainConfig } from "../utils/terrain";
-import BotCollisionManager from "./BotCollisionManager";
+import CapturedNPCGroupCollisionManager from "./CapturedNPCGroupCollisionManager";
 import { AnimationManagerProvider } from "../contexts/AnimationManagerContext";
 import { KeyboardMovementManager } from "./KeyboardMovementManager";
 import { FrameRateManager } from "./FrameRateManager";
@@ -148,7 +147,7 @@ export default function Scene({
   );
 
   // Use collision detection hook
-  const { checkForNPCGroupCollision } = useCollisionDetection({
+  const { checkForNPCGroupCollision } = useCaptureCollision({
     myUser,
     npcGroups,
     paths,
@@ -359,8 +358,8 @@ export default function Scene({
               />
             ))}
 
-          {/* Bot collision detection manager */}
-          <BotCollisionManager
+          {/* Captured NPC group collision detection manager */}
+          <CapturedNPCGroupCollisionManager
             myUser={myUser}
             users={users}
             npcGroups={npcGroups}
