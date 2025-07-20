@@ -271,6 +271,15 @@ export default function Scene({
     useEffect(() => {
       // Set clear color to match CloudBackground blue to prevent flashing
       gl.setClearColor(0x2F5F8F, 1.0); // Dark blue background matching CloudBackground
+      
+      // Log DPR optimization status
+      const deviceDPR = window.devicePixelRatio;
+      const actualDPR = gl.getPixelRatio();
+      if (deviceDPR > 1.5) {
+        console.log(`[PERF] Device pixel ratio optimized: ${deviceDPR.toFixed(2)} → ${actualDPR.toFixed(2)} (${((1 - actualDPR/deviceDPR) * 100).toFixed(1)}% pixel reduction)`);
+      } else {
+        console.log(`[PERF] Device pixel ratio: ${deviceDPR.toFixed(2)} (no optimization needed)`);
+      }
     }, [gl]);
     
     return null;
@@ -299,6 +308,7 @@ export default function Scene({
           width: "100%",
           height: "100%",
         }}
+        dpr={[1, 1.5]}
         gl={{ preserveDrawingBuffer: true }}
       >
         <AnimationManagerProvider>
