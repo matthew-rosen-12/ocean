@@ -87,28 +87,37 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
   const lastUserDirection = useRef(new THREE.Vector2(user.direction.x, user.direction.y));
   const cachedTargetPosition = useRef<THREE.Vector3 | null>(null);
   
+  // Track when to update target based on proximity
+  const TARGET_PROXIMITY_THRESHOLD = 0.5; // Distance to trigger target update
+  
   // Position calculation is now handled uniformly by calculateTargetPosition with caching
 
   // Export position and scale calculation functions for collision detection
   const calculateTargetPosition = useCallback((): THREE.Vector3 => {
     if (!animalWidth) return new THREE.Vector3(0, 0, -10);
     
-    // Check if position or direction has changed for both local and non-local users
+    // Check if position or direction has changed
     const currentUserPosition = new THREE.Vector2(user.position.x, user.position.y);
     const currentUserDirection = new THREE.Vector2(user.direction.x, user.direction.y);
     
     const positionChanged = !lastUserPosition.current.equals(currentUserPosition);
     const directionChanged = !lastUserDirection.current.equals(currentUserDirection);
     
-    // Only recalculate if user has moved or changed direction, or if we don't have a cached value
-    if (positionChanged || directionChanged || !cachedTargetPosition.current) {
+    // Check if we need to update the target
+    const needsUpdate = positionChanged || directionChanged || !cachedTargetPosition.current;
+    
+    // For local users, also update when NPC gets close to current target
+    const isCloseToTarget = isLocalUser && cachedTargetPosition.current && 
+      positionRef.current.distanceTo(cachedTargetPosition.current) < TARGET_PROXIMITY_THRESHOLD;
+    
+    if (needsUpdate || isCloseToTarget) {
       cachedTargetPosition.current = calculateNPCGroupPosition(user, animalWidth, scaleFactor);
       lastUserPosition.current.copy(currentUserPosition);
       lastUserDirection.current.copy(currentUserDirection);
     }
     
-    return cachedTargetPosition.current;
-  }, [animalWidth, user, scaleFactor]);
+    return cachedTargetPosition.current || new THREE.Vector3(0, 0, -10);
+  }, [animalWidth, user, scaleFactor, isLocalUser]);
 
 
 
@@ -165,33 +174,32 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
       // - Non-local: interpolates towards target calculated from discrete socket user position
       // For non-local users, we need SLOWER interpolation so NPC group lags behind
       // the already-interpolated animal position
-      // Use Vector3.equals() for efficient position comparison
-      if (!positionRef.current.equals(targetPosition)) {
-        const interpolationParams = isLocalUser
-          ? {
-              // Local users: standard interpolation creates nice lag relative to immediate movement
-              lerpFactor: 0.2,
-              moveSpeed: 0.5,
-              minDistance: 0.01,
-              useConstantSpeed: true,
-            }
-          : {
-              lerpFactor: 0.07,
-              moveSpeed: 0.5,
-              minDistance: 0.01,
-              useConstantSpeed: true,
-            };
+      // Always interpolate toward target - don't stop when we get close
+      // The smoothMove function has its own minDistance check to prevent unnecessary updates
+      const interpolationParams = isLocalUser
+        ? {
+            // Local users: use pure lerp without constant speed switching to avoid jitter
+            lerpFactor: 0.2,
+            moveSpeed: 0.5,
+            minDistance: 0.01,
+            useConstantSpeed: false,
+          }
+        : {
+            lerpFactor: 0.07,
+            moveSpeed: 0.5,
+            minDistance: 0.01,
+            useConstantSpeed: true,
+          };
 
-        updatePositionWithTracking(
-          smoothMove(
-            positionRef.current.clone(),
-            targetPosition,
-            interpolationParams
-          ),
-          "NPCGroup"
-        );
-        threeGroup.position.copy(positionRef.current);
-      }
+      updatePositionWithTracking(
+        smoothMove(
+          positionRef.current.clone(),
+          targetPosition,
+          interpolationParams
+        ),
+        "NPCGroup"
+      );
+      threeGroup.position.copy(positionRef.current);
 
 
       // Make a subtle oscillation to indicate this is a group
@@ -225,14 +233,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     return () => {
       animationManager.unregisterAnimationCallback(callbackId);
     };
-  }, [
-    // Only include dependencies that affect animation logic setup, not values used in the callback
-    animationManager,
-    calculateTargetPosition,
-    checkForPathNPCCollision,
-    updatePositionWithTracking,
-    isLocalUser,
-  ]);
+  }, [animationManager, calculateTargetPosition, checkForPathNPCCollision, updatePositionWithTracking, isLocalUser, threeGroup, textureLoaded, user, group.fileNames.length, group.captorId, animalWidth, positionRef, mesh, scaleFactor, allPaths, npcGroups]);
 
   // Final early return after all hooks are called
   if (!user || group.fileNames.length === 0 || !animalWidth) {
