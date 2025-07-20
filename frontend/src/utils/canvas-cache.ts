@@ -139,21 +139,21 @@ export { CanvasCache };
 // Export utility functions for common background patterns
 export const backgroundGenerators = {
   cloud: (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => {
-    // Blue sky background - darker blue
-    ctx.fillStyle = "#2F5F8F";
+    // Blue sky background - brighter blue
+    ctx.fillStyle = "#4A7FB8";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Batch cloud generation for better performance
     const cloudData: Array<{x: number; y: number; size: number; shadeIndex: number; blobCount: number}> = [];
     const cloudShades = [
+      "rgba(255, 255, 255, 1.0)",
       "rgba(255, 255, 255, 0.95)",
-      "rgba(248, 248, 255, 0.9)",
-      "rgba(245, 245, 245, 0.85)",
-      "rgba(220, 220, 220, 0.8)",
-      "rgba(200, 200, 200, 0.75)",
-      "rgba(240, 248, 255, 0.8)",
-      "rgba(230, 230, 230, 0.7)",
-      "rgba(211, 211, 211, 0.65)",
+      "rgba(250, 250, 255, 0.9)",
+      "rgba(245, 245, 250, 0.85)",
+      "rgba(235, 235, 240, 0.8)",
+      "rgba(248, 252, 255, 0.85)",
+      "rgba(240, 240, 245, 0.75)",
+      "rgba(230, 230, 235, 0.7)",
     ];
 
     // Pre-calculate cloud positions and properties
