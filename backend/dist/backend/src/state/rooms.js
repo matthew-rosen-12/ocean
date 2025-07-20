@@ -122,7 +122,7 @@ const populateRoomInMemory = (roomName) => {
         // Get terrain boundaries for proper NPC spawning
         const terrainConfig = (0, terrain_1.getTerrainConfig)(roomName);
         const terrainBoundaries = terrainConfig.boundaries;
-        const npcGroups = (0, npc_group_service_1.createNPCGroups)(terrainBoundaries);
+        const npcGroups = (0, npc_group_service_1.createNPCGroups)(terrainBoundaries, 1);
         const npcGroupsMap = new types_1.NPCGroupsBiMap();
         npcGroups.forEach((npcGroup) => {
             npcGroupsMap.setByNpcGroupId(npcGroup.id, npcGroup);

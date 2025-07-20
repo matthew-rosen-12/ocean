@@ -12,7 +12,6 @@ const types_1 = require("shared/types");
 const npc_info_1 = require("../initialization/npc-info");
 const uuid_1 = require("uuid");
 const terrain_1 = require("../state/terrain");
-const NUM_NPCS = 4;
 const MAX_CUMULATIVE_SIZE = 10;
 const paths_1 = require("../state/paths");
 const npc_groups_1 = require("../state/npc-groups");
@@ -217,11 +216,12 @@ function calculateLandingPosition(pathData) {
     // This is the same as calculatePathPosition at progress = 1
     return calculatePathPosition(pathData, pathData.timestamp + pathData.pathDuration);
 }
-function createNPCGroups(terrainBoundaries) {
+function createNPCGroups(terrainBoundaries, userCount = 1) {
     const npcGroups = [];
     const npcFilenames = getNPCFilenames();
     const shuffledFilenames = [...npcFilenames].sort(() => Math.random() - 0.5);
-    for (let i = 0; i < NUM_NPCS; i++) {
+    const targetNPCCount = userCount * 4;
+    for (let i = 0; i < targetNPCCount; i++) {
         const filenameIndex = i % shuffledFilenames.length;
         const filename = shuffledFilenames[filenameIndex];
         const npcGroup = new types_1.NPCGroup({
@@ -934,15 +934,33 @@ function calculateDistanceOutsideTerrain(position, terrainConfig) {
     const maxDistance = Math.max(0, leftDistance, rightDistance, bottomDistance, topDistance);
     return maxDistance;
 }
-// Check and spawn NPCs to maintain population of NUM_NPCS
+// Check and spawn NPCs to maintain population of 4 * user count
 function checkAndSpawnNPCs(room) {
     try {
         const allNPCGroups = (0, npc_groups_1.getNPCGroupsfromMemory)(room);
         const currentCount = allNPCGroups.size;
         const currentCumulativeSize = allNPCGroups.cumulativeSize;
-        // Check both group count and cumulative size limits
-        if (currentCount < NUM_NPCS && currentCumulativeSize < MAX_CUMULATIVE_SIZE) {
-            const maxByGroupCount = NUM_NPCS - currentCount;
+        // Calculate target NPC count based on user count
+        const allUsers = (0, users_1.getAllUsersInRoom)(room);
+        const userCount = allUsers.size;
+        const targetNPCCount = userCount * 4;
+        // If we have too many NPCs, remove excess uncaptured idle NPCs
+        if (currentCount > targetNPCCount) {
+            const excessCount = currentCount - targetNPCCount;
+            const idleNPCs = Array.from(allNPCGroups.values()).filter(npc => npc.phase === types_1.NPCPhase.IDLE && !npc.captorId);
+            // Remove excess NPCs (prioritize smaller groups)
+            const npcsToRemove = idleNPCs
+                .sort((a, b) => a.fileNames.length - b.fileNames.length)
+                .slice(0, excessCount);
+            npcsToRemove.forEach(npc => {
+                allNPCGroups.deleteByNpcGroupId(npc.id);
+                (0, typed_socket_1.emitToRoom)(room, "npc-group-update", { npcGroup: new types_1.NPCGroup(Object.assign(Object.assign({}, npc), { fileNames: [] })) });
+            });
+            (0, npc_groups_1.setNPCGroupsInMemory)(room, allNPCGroups);
+        }
+        // If we have too few NPCs, spawn new ones
+        else if (currentCount < targetNPCCount && currentCumulativeSize < MAX_CUMULATIVE_SIZE) {
+            const maxByGroupCount = targetNPCCount - currentCount;
             const maxByCumulativeSize = MAX_CUMULATIVE_SIZE - currentCumulativeSize;
             const spawnCount = Math.min(maxByGroupCount, maxByCumulativeSize); // Each new group adds 1 to cumulative size
             if (spawnCount > 0) {

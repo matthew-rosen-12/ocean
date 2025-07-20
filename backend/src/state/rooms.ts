@@ -157,7 +157,7 @@ const populateRoomInMemory = (roomName: string): void => {
     const terrainConfig = getTerrainConfig(roomName);
     const terrainBoundaries = terrainConfig.boundaries;
     
-    const npcGroups = createNPCGroups(terrainBoundaries);
+    const npcGroups = createNPCGroups(terrainBoundaries, 1);
     const npcGroupsMap: NPCGroupsBiMap = new NPCGroupsBiMap();
 
     npcGroups.forEach((npcGroup) => {
