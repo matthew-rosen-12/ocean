@@ -7,7 +7,7 @@ import {
   multiRandom,
 } from "../../utils/terrain";
 import { RENDER_ORDERS } from "shared/z-depths";
-import { canvasCache } from "../../utils/canvas-cache";
+import { canvasCache, CanvasCache } from "../../utils/canvas-cache";
 
 /**
  * MosaicPattern – city‑block texture with rivers, bridges & traffic
@@ -35,17 +35,26 @@ export default function MosaicPattern({ boundaries, seed, usePngFile }: MosaicPa
   if (pngTexture) { pngTexture.wrapS = THREE.RepeatWrapping; pngTexture.wrapT = THREE.RepeatWrapping; }
 
   const mosaicTexture = useMemo(() => {
-    const width = Math.max(1024, boundaries.width * 10);
-    const height = Math.max(1024, boundaries.height * 10);
+    const width = Math.max(1024, Math.abs(boundaries.width * 10));
+    const height = Math.max(1024, Math.abs(boundaries.height * 10));
     
-    return canvasCache.getOrCreate(
+    // Ensure valid dimensions
+    if (!width || !height || width <= 0 || height <= 0) {
+      console.error('[CityPattern] Invalid texture dimensions:', { width, height, boundaries });
+      return null;
+    }
+    
+    console.log('[CityPattern] Creating texture:', { width, height, boundaries });
+    
+    const texture = canvasCache.getOrCreate(
       {
         width,
         height,
         type: 'city',
-        hash: canvasCache.createHash({ boundaries, seed, usePngFile })
+        hash: CanvasCache.createHash({ boundaries, seed, usePngFile })
       },
       (canvas, ctx) => {
+        console.log('[CityPattern] Canvas generation:', { canvasWidth: canvas.width, canvasHeight: canvas.height });
         /* Canvas + colour palettes ------------------------------------------ */;
 
     ctx.fillStyle = "#E8F4F8"; ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -241,6 +250,11 @@ export default function MosaicPattern({ boundaries, seed, usePngFile }: MosaicPa
 
       }
     );
+    
+    // Texture is properly configured by canvas cache
+    
+    console.log('[CityPattern] Texture created:', texture);
+    return texture;
   }, [boundaries.width, boundaries.height, seed, usePngFile]);
 
   /* Debug helper ---------------------------------------------------------- */
@@ -257,10 +271,8 @@ export default function MosaicPattern({ boundaries, seed, usePngFile }: MosaicPa
         opacity={TERRAIN_PLANE_CONFIG.opacity} 
         depthWrite={false}
         depthTest={true}
-        map={pngTexture || undefined}
-      >
-        {!usePngFile && <canvasTexture attach="map" image={mosaicTexture} wrapS={THREE.ClampToEdgeWrapping} wrapT={THREE.ClampToEdgeWrapping} />}
-      </meshBasicMaterial>
+        map={usePngFile ? pngTexture : mosaicTexture}
+      />
     </mesh>
   );
 }

@@ -73,12 +73,19 @@ class CanvasCache {
     // Generate the canvas content
     generator(canvas, ctx);
 
-    // Create THREE.js texture
+    // Create THREE.js texture with safe configuration
     const texture = new THREE.CanvasTexture(canvas);
     texture.needsUpdate = true;
-    texture.flipY = false;
+    texture.flipY = true; // Fix upside-down city terrain
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
+    
+    // Prevent WebGL errors with safe filtering
+    texture.generateMipmaps = false;
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    
+    console.log(`[CANVAS CACHE] Created texture: ${key}, dimensions: ${canvas.width}x${canvas.height}`);
 
     // Cache the result
     const cached: CachedCanvas = {
@@ -125,8 +132,9 @@ class CanvasCache {
   }
 }
 
-// Export singleton instance
+// Export singleton instance and class
 export const canvasCache = new CanvasCache();
+export { CanvasCache };
 
 // Export utility functions for common background patterns
 export const backgroundGenerators = {
@@ -136,7 +144,7 @@ export const backgroundGenerators = {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Batch cloud generation for better performance
-    const cloudData = [];
+    const cloudData: Array<{x: number; y: number; size: number; shadeIndex: number; blobCount: number}> = [];
     const cloudShades = [
       "rgba(255, 255, 255, 0.95)",
       "rgba(248, 248, 255, 0.9)",
