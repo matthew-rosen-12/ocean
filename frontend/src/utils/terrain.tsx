@@ -150,7 +150,7 @@ export function createTerrainFromServer(
     renderBackground(): React.JSX.Element {
       return renderTerrainBackground(
         boundaries,
-        serverConfig.backgroundType,
+        BackgroundType.MOSAIC,
         serverConfig.seed
       );
     },

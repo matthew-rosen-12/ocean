@@ -1,3 +1,6 @@
+/* eslint-disable react-hooks/rules-of-hooks */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react/no-unknown-property */
 import * as THREE from "three";
 import { useLoader } from "@react-three/fiber";
 import { useMemo } from "react";
@@ -40,11 +43,10 @@ export default function MosaicPattern({ boundaries, seed, usePngFile }: MosaicPa
     
     // Ensure valid dimensions
     if (!width || !height || width <= 0 || height <= 0) {
-      console.error('[CityPattern] Invalid texture dimensions:', { width, height, boundaries });
       return null;
     }
     
-    console.log('[CityPattern] Creating texture:', { width, height, boundaries });
+    
     
     const texture = canvasCache.getOrCreate(
       {
@@ -54,7 +56,6 @@ export default function MosaicPattern({ boundaries, seed, usePngFile }: MosaicPa
         hash: CanvasCache.createHash({ boundaries, seed, usePngFile })
       },
       (canvas, ctx) => {
-        console.log('[CityPattern] Canvas generation:', { canvasWidth: canvas.width, canvasHeight: canvas.height });
         /* Canvas + colour palettes ------------------------------------------ */;
 
     ctx.fillStyle = "#E8F4F8"; ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -253,24 +254,24 @@ export default function MosaicPattern({ boundaries, seed, usePngFile }: MosaicPa
     
     // Texture is properly configured by canvas cache
     
-    console.log('[CityPattern] Texture created:', texture);
     return texture;
-  }, [boundaries.width, boundaries.height, seed, usePngFile]);
+  }, [boundaries, seed, usePngFile]);
 
   /* Debug helper ---------------------------------------------------------- */
   if(typeof window!=="undefined") (window as any).downloadCityPattern = () => {
     // Extract canvas from cached texture for download
-    const canvas = (mosaicTexture as any).image || document.createElement('canvas');
+    const canvas = (mosaicTexture as THREE.CanvasTexture)?.image || document.createElement('canvas');
     const a=document.createElement('a'); a.download=`city-${seed}.png`; a.href=canvas.toDataURL(); a.click(); };
 
   return (
     <mesh position={TERRAIN_PLANE_CONFIG.position} renderOrder={RENDER_ORDERS.TERRAIN}>
       <planeGeometry args={[boundaries.width, boundaries.height]} />
       <meshBasicMaterial 
-        transparent 
-        opacity={TERRAIN_PLANE_CONFIG.opacity} 
-        depthWrite={false}
+        transparent={true}
+        opacity={0.9}
+        depthWrite={true}
         depthTest={true}
+        alphaTest={0.1}
         map={usePngFile ? pngTexture : mosaicTexture}
       />
     </mesh>
