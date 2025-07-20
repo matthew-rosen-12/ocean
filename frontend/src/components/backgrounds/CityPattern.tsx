@@ -1,6 +1,3 @@
-/* eslint-disable react-hooks/rules-of-hooks */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable react/no-unknown-property */
 import * as THREE from "three";
 import { useLoader } from "@react-three/fiber";
 import { useMemo } from "react";
@@ -10,7 +7,7 @@ import {
   multiRandom,
 } from "../../utils/terrain";
 import { RENDER_ORDERS } from "shared/z-depths";
-import { canvasCache, CanvasCache } from "../../utils/canvas-cache";
+import { canvasCache } from "../../utils/canvas-cache";
 
 /**
  * MosaicPattern – city‑block texture with rivers, bridges & traffic
@@ -38,25 +35,16 @@ export default function MosaicPattern({ boundaries, seed, usePngFile }: MosaicPa
   if (pngTexture) { pngTexture.wrapS = THREE.RepeatWrapping; pngTexture.wrapT = THREE.RepeatWrapping; }
 
   const mosaicTexture = useMemo(() => {
-    const width = Math.max(1024, Math.abs(boundaries.width * 10));
-    const height = Math.max(1024, Math.abs(boundaries.height * 10));
-    
-    // Ensure valid dimensions
-    if (!width || !height || width <= 0 || height <= 0) {
-      return null;
-    }
-    
-    
-    
-    const texture = canvasCache.getOrCreate(
-      {
-        width,
-        height,
-        type: 'city',
-        hash: CanvasCache.createHash({ boundaries, seed, usePngFile })
-      },
-      (canvas, ctx) => {
-        /* Canvas + colour palettes ------------------------------------------ */;
+    // Create cache key with content hash for proper invalidation
+    const cacheKey = {
+      width: Math.max(1024, boundaries.width * 10),
+      height: Math.max(1024, boundaries.height * 10),
+      type: 'city',
+      hash: `${seed}_${boundaries.width}_${boundaries.height}_${usePngFile || 'none'}`
+    };
+
+    // Use canvas cache to get or create texture
+    const texture = canvasCache.getOrCreate(cacheKey, (canvas, ctx) => {
 
     ctx.fillStyle = "#E8F4F8"; ctx.fillRect(0,0,canvas.width,canvas.height);
 
@@ -248,32 +236,27 @@ export default function MosaicPattern({ boundaries, seed, usePngFile }: MosaicPa
         ctx.fillRect(x+12, y+h-10, 5, 5);
       }
     }
+    });
 
-      }
-    );
-    
-    // Texture is properly configured by canvas cache
-    
     return texture;
-  }, [boundaries, seed, usePngFile]);
+  }, [boundaries.width, boundaries.height, seed, usePngFile]);
 
   /* Debug helper ---------------------------------------------------------- */
   if(typeof window!=="undefined") (window as any).downloadCityPattern = () => {
-    // Extract canvas from cached texture for download
-    const canvas = (mosaicTexture as THREE.CanvasTexture)?.image || document.createElement('canvas');
-    const a=document.createElement('a'); a.download=`city-${seed}.png`; a.href=canvas.toDataURL(); a.click(); };
+    const a=document.createElement('a'); a.download=`city-${seed}.png`; a.href=(mosaicTexture.image as HTMLCanvasElement).toDataURL(); a.click(); };
 
   return (
     <mesh position={TERRAIN_PLANE_CONFIG.position} renderOrder={RENDER_ORDERS.TERRAIN}>
       <planeGeometry args={[boundaries.width, boundaries.height]} />
       <meshBasicMaterial 
-        transparent={true}
-        opacity={0.9}
-        depthWrite={true}
+        transparent 
+        opacity={TERRAIN_PLANE_CONFIG.opacity} 
+        depthWrite={false}
         depthTest={true}
-        alphaTest={0.1}
-        map={usePngFile ? pngTexture : mosaicTexture}
-      />
+        map={pngTexture || undefined}
+      >
+        {!usePngFile && <primitive attach="map" object={mosaicTexture} />}
+      </meshBasicMaterial>
     </mesh>
   );
 }
