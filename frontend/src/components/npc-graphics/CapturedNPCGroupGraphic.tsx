@@ -88,7 +88,15 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
   const cachedTargetPosition = useRef<THREE.Vector3 | null>(null);
   
   // Track when to update target based on proximity
-  const TARGET_PROXIMITY_THRESHOLD = 0.5; // Distance to trigger target update
+  const TARGET_PROXIMITY_THRESHOLD = 50.5; // Distance to trigger target update
+  const MAX_DISTANCE_FROM_USER = 15.0; // Maximum allowed distance from user
+  
+  // For local users, maintain smoothed user position
+  const smoothedUserPosition = useRef(new THREE.Vector2(user.position.x, user.position.y));
+  const smoothedUserDirection = useRef(new THREE.Vector2(user.direction.x, user.direction.y));
+  
+  // For remote users, maintain smoothed position to match AnimalGraphic interpolation
+  const remoteSmoothedPosition = useRef(new THREE.Vector2(user.position.x, user.position.y));
   
   // Position calculation is now handled uniformly by calculateTargetPosition with caching
 
@@ -103,17 +111,45 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     const positionChanged = !lastUserPosition.current.equals(currentUserPosition);
     const directionChanged = !lastUserDirection.current.equals(currentUserDirection);
     
-    // Check if we need to update the target
-    const needsUpdate = positionChanged || directionChanged || !cachedTargetPosition.current;
-    
-    // For local users, also update when NPC gets close to current target
-    const isCloseToTarget = isLocalUser && cachedTargetPosition.current && 
-      positionRef.current.distanceTo(cachedTargetPosition.current) < TARGET_PROXIMITY_THRESHOLD;
-    
-    if (needsUpdate || isCloseToTarget) {
-      cachedTargetPosition.current = calculateNPCGroupPosition(user, animalWidth, scaleFactor);
-      lastUserPosition.current.copy(currentUserPosition);
-      lastUserDirection.current.copy(currentUserDirection);
+    if (isLocalUser) {
+      // For local users, smooth the user position input first
+      const smoothingFactor = 0.2; // Higher = more smoothing
+      
+      smoothedUserPosition.current.x = smoothedUserPosition.current.x * smoothingFactor + user.position.x * (1 - smoothingFactor);
+      smoothedUserPosition.current.y = smoothedUserPosition.current.y * smoothingFactor + user.position.y * (1 - smoothingFactor);
+      
+      smoothedUserDirection.current.x = smoothedUserDirection.current.x * smoothingFactor + user.direction.x * (1 - smoothingFactor);
+      smoothedUserDirection.current.y = smoothedUserDirection.current.y * smoothingFactor + user.direction.y * (1 - smoothingFactor);
+      
+      // ONLY update when NPC gets close to current target or no target exists
+      const isCloseToTarget = cachedTargetPosition.current && 
+        positionRef.current.distanceTo(cachedTargetPosition.current) < TARGET_PROXIMITY_THRESHOLD;
+      
+      if (isCloseToTarget || !cachedTargetPosition.current) {
+        // Use smoothed position for target calculation
+        const smoothedUser = {
+          ...user,
+          position: { x: smoothedUserPosition.current.x, y: smoothedUserPosition.current.y },
+          direction: { x: smoothedUserDirection.current.x, y: smoothedUserDirection.current.y }
+        };
+        
+        cachedTargetPosition.current = calculateNPCGroupPosition(smoothedUser, animalWidth, scaleFactor);
+        lastUserPosition.current.copy(currentUserPosition);
+        lastUserDirection.current.copy(currentUserDirection);
+      }
+    } else {
+      // For remote users, apply same smoothing as AnimalGraphic (lerpFactor: 0.1)
+      const remoteSmoothingFactor = 0.9; // Equivalent to lerpFactor 0.1
+      
+      remoteSmoothedPosition.current.x = remoteSmoothedPosition.current.x * remoteSmoothingFactor + user.position.x * (1 - remoteSmoothingFactor);
+      remoteSmoothedPosition.current.y = remoteSmoothedPosition.current.y * remoteSmoothingFactor + user.position.y * (1 - remoteSmoothingFactor);
+      
+      // Update when user position/direction changes
+      if (positionChanged || directionChanged || !cachedTargetPosition.current) {
+        cachedTargetPosition.current = calculateNPCGroupPosition(user, animalWidth, scaleFactor);
+        lastUserPosition.current.copy(currentUserPosition);
+        lastUserDirection.current.copy(currentUserDirection);
+      }
     }
     
     return cachedTargetPosition.current || new THREE.Vector3(0, 0, -10);
@@ -179,9 +215,9 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
       const interpolationParams = isLocalUser
         ? {
             // Local users: use pure lerp without constant speed switching to avoid jitter
-            lerpFactor: 0.2,
+            lerpFactor: .2,
             moveSpeed: 0.5,
-            minDistance: 0.01,
+            minDistance: 0.1,
             useConstantSpeed: false,
           }
         : {
@@ -191,14 +227,32 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
             useConstantSpeed: true,
           };
 
-      updatePositionWithTracking(
-        smoothMove(
-          positionRef.current.clone(),
-          targetPosition,
-          interpolationParams
-        ),
-        "NPCGroup"
+      // Calculate new position with smooth movement
+      const newPosition = smoothMove(
+        positionRef.current.clone(),
+        targetPosition,
+        interpolationParams
       );
+      
+      // Apply distance cap - if too far from user, clamp to max distance
+      // For local users: use actual current position (not smoothed, since smoothed lags behind)
+      // For remote users: use smoothed position to match visual rendered position
+      const userPosition2D = isLocalUser 
+        ? new THREE.Vector2(user.position.x, user.position.y)
+        : new THREE.Vector2(remoteSmoothedPosition.current.x, remoteSmoothedPosition.current.y);
+      
+      const npcPosition2D = new THREE.Vector2(newPosition.x, newPosition.y);
+      const distanceFromUser = userPosition2D.distanceTo(npcPosition2D);
+      
+      if (distanceFromUser > MAX_DISTANCE_FROM_USER) {
+        // Clamp position to max distance from user
+        const directionToNPC = npcPosition2D.clone().sub(userPosition2D).normalize();
+        const clampedPosition = userPosition2D.clone().add(directionToNPC.multiplyScalar(MAX_DISTANCE_FROM_USER));
+        newPosition.x = clampedPosition.x;
+        newPosition.y = clampedPosition.y;
+      }
+      
+      updatePositionWithTracking(newPosition, "NPCGroup");
       threeGroup.position.copy(positionRef.current);
 
 
