@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from "react";
 import { UserInfo, NPCGroupsBiMap, pathData, PathPhase } from "shared/types";
-import { NPCInteraction } from "shared/interaction-types";
 import { useAnimationManagerContext } from "../contexts/AnimationManagerContext";
 import { getAssignedBots, checkForPathNPCCollisionForUser } from "../utils/path-collision-utils";
 

@@ -1,5 +1,6 @@
 import React from "react";
-import { NPCPhase, pathData, UserInfo, NPCGroup, NPCGroupsBiMap } from "shared/types";
+import { NPCPhase, pathData, UserInfo, NPCGroup, NPCGroupsBiMap, ANIMAL_SCALES } from "shared/types";
+import { getAnimalDimensions } from "shared/animal-dimensions";
 import * as THREE from "three";
 import { TerrainBoundaries } from "../../utils/terrain";
 import IdleNPCGroupGraphic from "./IdleNPCGroupGraphic";
@@ -100,7 +101,14 @@ const NPCGraphicWrapper = ({
       return null;
     }
 
-    const animalWidth = animalDimensions[captorUser.animal]?.width;
+    // Get animal width from dimensions, or calculate fallback if not loaded yet
+    let animalWidth = animalDimensions[captorUser.animal]?.width;
+    if (!animalWidth) {
+      // Calculate fallback dimensions using shared module
+      const animalScale = ANIMAL_SCALES[captorUser.animal as keyof typeof ANIMAL_SCALES] || 1.0;
+      const fallbackDimensions = getAnimalDimensions(captorUser.animal, animalScale);
+      animalWidth = fallbackDimensions.width;
+    }
     return (
       <CapturedNPCGroupGraphic
         key={npcGroup.id}
