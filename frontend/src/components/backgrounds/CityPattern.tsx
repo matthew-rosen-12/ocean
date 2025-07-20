@@ -44,10 +44,7 @@ export default function MosaicPattern({ boundaries, seed, usePngFile }: MosaicPa
       return null;
     }
     
-    console.log('[CityPattern] Creating muted city texture:', { width, height, boundaries });
-    
-    // Clear cache to ensure new muted colors are applied
-    canvasCache.clear();
+    console.log('[CityPattern] Creating texture:', { width, height, boundaries });
     
     const texture = canvasCache.getOrCreate(
       {
@@ -60,10 +57,10 @@ export default function MosaicPattern({ boundaries, seed, usePngFile }: MosaicPa
         console.log('[CityPattern] Canvas generation:', { canvasWidth: canvas.width, canvasHeight: canvas.height });
         /* Canvas + colour palettes ------------------------------------------ */;
 
-    ctx.fillStyle = "#E8E0D6"; ctx.fillRect(0,0,canvas.width,canvas.height); // Warm beige background to contrast with blue clouds
+    ctx.fillStyle = "#E8F4F8"; ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    const BUILD = ["rgba(120,110,95,.6)","rgba(110,100,90,.65)","rgba(105,95,85,.6)","rgba(115,105,90,.58)","rgba(100,90,80,.62)","rgba(125,115,100,.6)","rgba(110,105,95,.65)","rgba(130,120,105,.58)"]; // Warm muted building colors
-    const VEH   = ["rgba(160,90,80,.65)","rgba(80,100,160,.6)","rgba(200,170,100,.55)","rgba(100,160,110,.6)"]; // Muted but visible vehicle colors
+    const BUILD = ["rgba(100,100,100,.66)","rgba(80,80,90,.72)","rgba(60,80,100,.66)","rgba(90,70,70,.58)","rgba(70,85,110,.64)","rgba(110,90,70,.62)","rgba(85,95,120,.69)","rgba(120,100,80,.6)"];
+    const VEH   = ["rgba(200,50,50,.85)","rgba(50,100,200,.8)","rgba(255,200,50,.75)","rgba(100,200,100,.7)"];
 
     const blocksX = Math.floor(canvas.width / UNIT_X) + 1;
     const blocksY = Math.floor(canvas.height / UNIT_Y) + 1;
@@ -271,7 +268,7 @@ export default function MosaicPattern({ boundaries, seed, usePngFile }: MosaicPa
       <planeGeometry args={[boundaries.width, boundaries.height]} />
       <meshBasicMaterial 
         transparent 
-        opacity={0.7} 
+        opacity={TERRAIN_PLANE_CONFIG.opacity} 
         depthWrite={false}
         depthTest={true}
         map={usePngFile ? pngTexture : mosaicTexture}
