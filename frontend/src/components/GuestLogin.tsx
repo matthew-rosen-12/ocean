@@ -74,6 +74,7 @@ export default function GuestLogin({
   const [suggestedNickname, setSuggestedNickname] = useState("");
   const [userHasTyped, setUserHasTyped] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const myUserRef = useRef<UserInfo | null>(null);
   const pathsRef = useRef<Map<npcGroupId, pathData>>(new Map());
@@ -478,70 +479,264 @@ export default function GuestLogin({
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen relative">
+    <div className="flex items-center justify-center min-h-screen relative p-4">
       <GeneratedNPCBackground />
       
-      {/* Main login card with glassmorphism effect */}
-      <div className="relative z-10 w-full max-w-md mx-4">
-        <div className="backdrop-blur-lg bg-white/20 border border-white/30 rounded-3xl shadow-2xl p-8 relative overflow-hidden">
-          {/* Subtle gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
+      {/* Main content container with grid layout */}
+      <div className="relative z-10 w-full max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           
-          {/* Content */}
-          <div className="relative z-10">
-            <h1 className="text-4xl font-bold mb-8 text-center text-white drop-shadow-lg">
-              Nature vs NPC
-            </h1>
-            
-            <div className="mb-6">
-              <label htmlFor="nickname" className="block text-sm font-semibold text-black mb-3">
-                Choose your nickname
-              </label>
-              <div className="relative">
-                <input
-                  ref={inputRef}
-                  id="nickname"
-                  type="text"
-                  value={nickname}
-                  onChange={handleNicknameChange}
-                  onKeyDown={handleNicknameKeyDown}
-                  onFocus={handleNicknameFocus}
-                  onClick={handleNicknameClick}
-                  placeholder=""
-                  className={`w-full px-4 py-4 bg-white/40 border border-white/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-400/60 focus:border-blue-400/60 backdrop-blur-sm transition-all duration-200 placeholder-gray-600 text-lg caret-gray-800 ${
-                    !initialized || !userHasTyped ? 'text-gray-300' : 'text-gray-900'
-                  } hover:bg-white/50 focus:bg-white/60 selection:bg-blue-200/50`}
-                  maxLength={20}
-                />
-                {/* Subtle inner glow effect */}
-                <div className="absolute inset-0 rounded-2xl pointer-events-none opacity-0 transition-opacity duration-200 bg-gradient-to-r from-blue-400/20 to-purple-400/20 peer-focus:opacity-100"></div>
+          {/* Left third - empty for balance */}
+          <div className="hidden lg:block"></div>
+          
+          {/* Center third - Main login card */}
+          <div className="order-1 w-full max-w-md mx-auto lg:mx-0">
+            <div className="backdrop-blur-lg bg-white/20 border border-white/30 rounded-3xl shadow-2xl p-8 relative overflow-hidden">
+              {/* Subtle gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
+              
+              {/* Content */}
+              <div className="relative z-10">
+                <h1 className="text-4xl font-bold mb-4 text-center text-white drop-shadow-lg">
+                  Nature vs NPC
+                </h1>
+                
+                {/* Tagline */}
+                <p className="text-lg text-center text-white/90 drop-shadow-md mb-8 font-medium">
+                  Capture the most NPCs before time runs out!
+                </p>
+                
+                <div className="mb-6">
+                  <label htmlFor="nickname" className="block text-sm font-semibold text-black mb-3">
+                    Choose your nickname
+                  </label>
+                  <div className="relative">
+                    <input
+                      ref={inputRef}
+                      id="nickname"
+                      type="text"
+                      value={nickname}
+                      onChange={handleNicknameChange}
+                      onKeyDown={handleNicknameKeyDown}
+                      onFocus={handleNicknameFocus}
+                      onClick={handleNicknameClick}
+                      placeholder=""
+                      className={`w-full px-4 py-4 bg-white/40 border border-white/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-400/60 focus:border-blue-400/60 backdrop-blur-sm transition-all duration-200 placeholder-gray-600 text-lg caret-gray-800 ${
+                        !initialized || !userHasTyped ? 'text-gray-300' : 'text-gray-900'
+                      } hover:bg-white/50 focus:bg-white/60 selection:bg-blue-200/50`}
+                      maxLength={20}
+                    />
+                    {/* Subtle inner glow effect */}
+                    <div className="absolute inset-0 rounded-2xl pointer-events-none opacity-0 transition-opacity duration-200 bg-gradient-to-r from-blue-400/20 to-purple-400/20 peer-focus:opacity-100"></div>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={handleGuestLogin}
+                  disabled={loading}
+                  className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 px-8 rounded-2xl hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  {loading ? (
+                    <span className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Joining...
+                    </span>
+                  ) : (
+                    "Join Game"
+                  )}
+                </button>
+              </div>
+              
+              {/* Floating elements for visual interest */}
+              <div className="absolute -top-4 -left-4 w-20 h-20 bg-gradient-to-br from-blue-400/30 to-purple-400/30 rounded-full blur-xl animate-pulse"></div>
+              <div className="absolute -bottom-4 -right-4 w-16 h-16 bg-gradient-to-br from-purple-400/30 to-pink-400/30 rounded-full blur-xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+            </div>
+          </div>
+          
+          {/* Right third - Controls and guide card */}
+          <div className="order-2 lg:order-3 w-full max-w-md mx-auto lg:mx-0">
+            <div className="backdrop-blur-lg bg-black/30 border border-white/20 rounded-3xl shadow-2xl p-6 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none"></div>
+              
+              <div className="relative z-10">
+                <h3 className="text-lg font-semibold text-white mb-4 text-center drop-shadow-lg">Controls & Quick Guide</h3>
+                
+                {/* Controls */}
+                <div className="flex flex-col space-y-2 mb-6">
+                  <div className="flex items-center justify-center space-x-2 text-white">
+                    <div className="flex space-x-1">
+                      <kbd className="px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs font-mono text-white">W</kbd>
+                      <kbd className="px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs font-mono text-white">A</kbd>
+                      <kbd className="px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs font-mono text-white">S</kbd>
+                      <kbd className="px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs font-mono text-white">D</kbd>
+                    </div>
+                    <span className="text-white/80 font-medium">or</span>
+                    <div className="flex space-x-1">
+                      <kbd className="px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs text-white">←</kbd>
+                      <kbd className="px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs text-white">↑</kbd>
+                      <kbd className="px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs text-white">→</kbd>
+                      <kbd className="px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs text-white">↓</kbd>
+                    </div>
+                    <span className="text-sm text-white font-medium">= move</span>
+                  </div>
+                  <div className="flex items-center justify-center space-x-2 text-white">
+                    <kbd className="px-3 py-1 bg-gray-800 border border-gray-600 rounded text-xs font-mono text-white">Space</kbd>
+                    <span className="text-sm font-medium">= throw / charge throw</span>
+                  </div>
+                </div>
+                
+                {/* Quick Guide */}
+                <div className="space-y-2 text-white/90 text-sm mb-6">
+                  <div className="flex items-start space-x-2">
+                    <span className="text-blue-400 font-bold">1.</span>
+                    <span>Move to capture NPC groups</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <span className="text-blue-400 font-bold">2.</span>
+                    <span>Throw NPCs at other groups</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <span className="text-blue-400 font-bold">3.</span>
+                    <span>Bigger groups absorb smaller ones</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <span className="text-blue-400 font-bold">4.</span>
+                    <span>Most NPCs wins!</span>
+                  </div>
+                </div>
+                
+                {/* Detailed Guide button */}
+                <button
+                  onClick={() => setShowHowToPlay(true)}
+                  className="w-full bg-white/20 border border-white/30 text-white py-3 px-6 rounded-2xl hover:bg-white/30 transition-all duration-200 text-lg font-medium backdrop-blur-sm drop-shadow-lg"
+                >
+                  Detailed Guide
+                </button>
               </div>
             </div>
-            
-            <button
-              onClick={handleGuestLogin}
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 px-8 rounded-2xl hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
-            >
-              {loading ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Joining...
-                </span>
-              ) : (
-                "Join Game"
-              )}
-            </button>
+          </div>
+          
+        </div>
+      </div>
+      
+      {/* How to Play Modal */}
+      {showHowToPlay && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowHowToPlay(false)}
+          ></div>
+          
+          {/* Modal Content */}
+          <div className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="backdrop-blur-lg bg-black/40 border border-white/30 rounded-3xl shadow-2xl p-8 relative overflow-hidden">
+              {/* Gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-br from-black/20 to-transparent pointer-events-none"></div>
+              
+              {/* Content */}
+              <div className="relative z-10">
+                {/* Header */}
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-3xl font-bold text-white drop-shadow-lg">How to Play</h2>
+                  <button
+                    onClick={() => setShowHowToPlay(false)}
+                    className="text-white/80 hover:text-white text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 transition-all duration-200"
+                  >
+                    ×
+                  </button>
+                </div>
+                
+                {/* Game Instructions */}
+                <div className="space-y-6 text-white/90">
+                  {/* Basic Concept */}
+                  <div>
+                    <h3 className="text-xl font-semibold text-white mb-3">🎯 Objective</h3>
+                    <p className="leading-relaxed">
+                      Each player controls an 'animal' character. Your goal is to capture the most NPCs before time runs out!
+                    </p>
+                  </div>
+                  
+                  {/* NPC Groups */}
+                  <div>
+                    <h3 className="text-xl font-semibold text-white mb-3">👥 NPC Groups</h3>
+                    <ul className="space-y-2 leading-relaxed">
+                      <li>• NPCs appear in groups of varying sizes</li>
+                      <li>• The top character of each group is what you see rendered</li>
+                      <li>• A number above each group shows the total NPCs inside</li>
+                      <li>• Larger groups appear bigger on screen</li>
+                    </ul>
+                  </div>
+                  
+                  {/* Capturing */}
+                  <div>
+                    <h3 className="text-xl font-semibold text-white mb-3">🎣 Capturing NPCs</h3>
+                    <ul className="space-y-2 leading-relaxed">
+                      <li>• Move your animal close to NPC groups to capture them</li>
+                      <li>• Captured groups will follow your animal around</li>
+                      <li>• You can capture multiple groups to build a larger following</li>
+                    </ul>
+                  </div>
+                  
+                  {/* Throwing */}
+                  <div>
+                    <h3 className="text-xl font-semibold text-white mb-3">🚀 Throwing NPCs</h3>
+                    <ul className="space-y-2 leading-relaxed">
+                      <li>• Press <kbd className="px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs font-mono text-white">Space</kbd> once to throw a single NPC</li>
+                      <li>• Hold <kbd className="px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs font-mono text-white">Space</kbd> to charge up and throw multiple NPCs</li>
+                      <li>• Thrown NPCs become a new group that travels in the direction you aimed</li>
+                    </ul>
+                  </div>
+                  
+                  {/* Collisions */}
+                  <div>
+                    <h3 className="text-xl font-semibold text-white mb-3">💥 Group Collisions</h3>
+                    <ul className="space-y-2 leading-relaxed">
+                      <li>• When two NPC groups collide, the smaller one merges into the larger one</li>
+                      <li>• If groups are the same size, they bounce off each other</li>
+                      <li>• Use this mechanic strategically to build larger groups!</li>
+                    </ul>
+                  </div>
+                  
+                  {/* Controls reminder */}
+                  <div className="bg-black/30 backdrop-blur-sm border border-white/20 rounded-2xl p-4">
+                    <h3 className="text-lg font-semibold text-white mb-3 text-center drop-shadow-lg">Controls Reminder</h3>
+                    <div className="flex flex-col space-y-2">
+                      <div className="flex items-center justify-center space-x-2 text-white">
+                        <div className="flex space-x-1">
+                          <kbd className="px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs font-mono text-white">W</kbd>
+                          <kbd className="px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs font-mono text-white">A</kbd>
+                          <kbd className="px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs font-mono text-white">S</kbd>
+                          <kbd className="px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs font-mono text-white">D</kbd>
+                        </div>
+                        <span className="text-white/80 font-medium">or arrow keys</span>
+                        <span className="font-medium">= move around</span>
+                      </div>
+                      <div className="flex items-center justify-center space-x-2 text-white">
+                        <kbd className="px-3 py-1 bg-gray-800 border border-gray-600 rounded text-xs font-mono text-white">Space</kbd>
+                        <span className="font-medium">= throw NPCs (tap or hold to charge)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Close button */}
+                <div className="mt-8 text-center">
+                  <button
+                    onClick={() => setShowHowToPlay(false)}
+                    className="bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-8 rounded-2xl hover:from-blue-600 hover:to-purple-700 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    Got it!
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        
-        {/* Floating elements for visual interest */}
-        <div className="absolute -top-4 -left-4 w-20 h-20 bg-gradient-to-br from-blue-400/30 to-purple-400/30 rounded-full blur-xl animate-pulse"></div>
-        <div className="absolute -bottom-4 -right-4 w-16 h-16 bg-gradient-to-br from-purple-400/30 to-pink-400/30 rounded-full blur-xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-      </div>
+      )}
     </div>
   );
 }
