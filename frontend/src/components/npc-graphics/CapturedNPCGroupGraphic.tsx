@@ -111,7 +111,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     
     if (isLocalUser) {
       // For local users, smooth the user position input first
-      const smoothingFactor = 0.2; // Higher = more smoothing
+      const smoothingFactor = 0.3; // Higher = more smoothing
       
       smoothedUserPosition.current.x = smoothedUserPosition.current.x * smoothingFactor + user.position.x * (1 - smoothingFactor);
       smoothedUserPosition.current.y = smoothedUserPosition.current.y * smoothingFactor + user.position.y * (1 - smoothingFactor);
@@ -210,7 +210,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
       const interpolationParams = isLocalUser
         ? {
             // Local users: use pure lerp without constant speed switching to avoid jitter
-            lerpFactor: .2,
+            lerpFactor: .15,
             moveSpeed: 0.5,
             minDistance: 0.1,
             useConstantSpeed: false,
