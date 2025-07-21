@@ -87,8 +87,6 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
   const lastUserDirection = useRef(new THREE.Vector2(user.direction.x, user.direction.y));
   const cachedTargetPosition = useRef<THREE.Vector3 | null>(null);
   
-  // Track when to update target based on proximity
-  const TARGET_PROXIMITY_THRESHOLD = 50.5; // Distance to trigger target update
   const MAX_DISTANCE_FROM_USER = 15.0; // Maximum allowed distance from user
   
   // For local users, maintain smoothed user position
@@ -121,11 +119,8 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
       smoothedUserDirection.current.x = smoothedUserDirection.current.x * smoothingFactor + user.direction.x * (1 - smoothingFactor);
       smoothedUserDirection.current.y = smoothedUserDirection.current.y * smoothingFactor + user.direction.y * (1 - smoothingFactor);
       
-      // ONLY update when NPC gets close to current target or no target exists
-      const isCloseToTarget = cachedTargetPosition.current && 
-        positionRef.current.distanceTo(cachedTargetPosition.current) < TARGET_PROXIMITY_THRESHOLD;
-      
-      if (isCloseToTarget || !cachedTargetPosition.current) {
+      // Update when user position/direction changes or no target exists
+      if (positionChanged || directionChanged || !cachedTargetPosition.current) {
         // Use smoothed position for target calculation
         const smoothedUser = {
           ...user,
