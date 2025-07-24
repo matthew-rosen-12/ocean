@@ -30,9 +30,6 @@ export function useCaptureCollision({
   const handleNPCGroupCollision = useCallback(
     (capturedNPCGroup: NPCGroup, localUser: boolean) => {
       
-      // Get existing user NPCs before merging
-      let userNpcGroup = npcGroups.getByUserId(myUser.id);
-      
       // Send interaction to backend for local user (only for idle NPCs, thrown/returning handled server-side)
       if (localUser && !capturedNPCGroup.captorId) {
         // Captured NPC group without captor (idle/fleeing NPC)
@@ -54,32 +51,36 @@ export function useCaptureCollision({
         return newPaths as Map<npcGroupId, pathData>;
       });
 
-      let groupId: string;
-      
-      // If user already has a captured group, merge with it
-      if (userNpcGroup) {
-        groupId = userNpcGroup.id; // Keep the existing group ID
-      } else {
-        // First capture for this user - generate ID deterministically based on this specific capture
-        // This ensures React strict mode generates the same ID for the same capture
-        const seed = `${myUser.id}-${capturedNPCGroup.id}-${Math.floor(Date.now() / 1000)}`; // Same second = same ID
-        groupId = `capture-${seed.replace(/[^a-zA-Z0-9]/g, '-')}`;
-      }
-
-      const existingFileNames = userNpcGroup ? userNpcGroup.fileNames : [];
-      
-      // 2. create new merged npc group with existing NPCs + newly captured NPC
-      const updatedNpcGroup = new NPCGroup({
-        id: groupId, // Use existing ID or new ID for first capture
-        fileNames: [...existingFileNames, ...capturedNPCGroup.fileNames],
-        position: myUser.position,
-        phase: NPCPhase.CAPTURED,
-        captorId: myUser.id, // Set the captorId
-        direction: { x: 0, y: 0 },
-      });
-
+      // ATOMIC MERGE: Perform state read and merge in one operation to prevent race conditions
       setNpcGroups((prev) => {
         const newNpcGroups = new NPCGroupsBiMap(prev);
+        
+        // Read current user group from the latest state (not stale closure)
+        const currentUserNpcGroup = newNpcGroups.getByUserId(myUser.id);
+        
+        let groupId: string;
+        let existingFileNames: string[];
+        
+        // If user already has a captured group, merge with it
+        if (currentUserNpcGroup) {
+          groupId = currentUserNpcGroup.id; // Keep the existing group ID
+          existingFileNames = currentUserNpcGroup.fileNames;
+        } else {
+          // First capture for this user - generate ID deterministically based only on user ID
+          // This ensures React strict mode always generates the same ID
+          groupId = `capture-${myUser.id.replace(/[^a-zA-Z0-9]/g, '-')}`;
+          existingFileNames = [];
+        }
+        
+        // Create merged npc group with existing NPCs + newly captured NPC
+        const updatedNpcGroup = new NPCGroup({
+          id: groupId,
+          fileNames: [...existingFileNames, ...capturedNPCGroup.fileNames],
+          position: myUser.position,
+          phase: NPCPhase.CAPTURED,
+          captorId: myUser.id,
+          direction: { x: 0, y: 0 },
+        });
         
         // Remove the original captured NPC group
         newNpcGroups.deleteByNpcGroupId(capturedNPCGroup.id);
@@ -97,7 +98,7 @@ export function useCaptureCollision({
         return newNpcGroups;
       });
     },
-    [npcGroups, myUser.id, myUser.position, myUser.animal, paths, setPaths, setNpcGroups]
+    [myUser.id, myUser.position, myUser.animal, paths, setPaths, setNpcGroups]
   );
 
   // Function to check for collisions with NPCs

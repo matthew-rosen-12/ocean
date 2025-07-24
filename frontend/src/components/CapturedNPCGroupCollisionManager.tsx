@@ -29,6 +29,9 @@ const CapturedNPCGroupCollisionManager: React.FC<CapturedNPCGroupCollisionManage
 }) => {
   const animationManager = useAnimationManagerContext();
   const collisionAnimationId = useRef<string>(`captured-group-collision-${myUser?.id || 'unknown'}`);
+  
+  // Track recent collisions to prevent duplicate processing
+  const recentCollisionsRef = useRef<Set<string>>(new Set());
 
   // Register captured NPC group collision detection with AnimationManager
   useEffect(() => {
@@ -62,8 +65,24 @@ const CapturedNPCGroupCollisionManager: React.FC<CapturedNPCGroupCollisionManage
               pathNPCGroup &&
               pathNPCGroup.captorId !== capturedGroup.captorId
             ) {
-              // For both bots and local user, use their position data for collision detection
-              checkForPathNPCCollisionForUser(pathNPCGroup, pathData, capturedGroup, userToCheck, animalWidth, setPaths, setNpcGroups);
+              // Create unique collision key to prevent duplicate processing
+              const collisionKey = `${pathNPCGroup.id}-${capturedGroup.id}`;
+              
+              // Skip if this collision was recently processed
+              if (recentCollisionsRef.current.has(collisionKey)) {
+                return;
+              }
+              
+              // Check for collision and if it occurs, mark as recent
+              const collisionOccurred = checkForPathNPCCollisionForUser(pathNPCGroup, pathData, capturedGroup, userToCheck, animalWidth, setPaths, setNpcGroups);
+              
+              if (collisionOccurred) {
+                // Mark this collision as recent to prevent duplicate processing
+                recentCollisionsRef.current.add(collisionKey);
+                setTimeout(() => {
+                  recentCollisionsRef.current.delete(collisionKey);
+                }, 300); // 300ms debounce period
+              }
             }
           });
         });
