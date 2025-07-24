@@ -122,12 +122,6 @@ export class BotCollisionService {
       return;
     }
 
-    // Delete any path associated with the captured NPC group
-    const paths = getpathsfromMemory(roomName);
-    if (paths && paths.has(capturedNPCGroup.id)) {
-      deletePathInMemory(roomName, capturedNPCGroup.id);
-    }
-
     // Get bot's existing captured group (if any)
     let botNpcGroup = npcGroups.getByUserId(botUser.id);
     let existingFileNames: string[] = [];
@@ -152,10 +146,16 @@ export class BotCollisionService {
       direction: { x: 0, y: 0 },
     });
 
-    // Update NPC groups in memory
+    // Update NPC groups in memory FIRST
     npcGroups.deleteByNpcGroupId(capturedNPCGroup.id); // Remove captured group
     npcGroups.setByNpcGroupId(updatedNpcGroup.id, updatedNpcGroup); // Add merged group
     setNPCGroupsInMemory(roomName, npcGroups);
+
+    // THEN delete any path associated with the captured NPC group
+    const paths = getpathsfromMemory(roomName);
+    if (paths && paths.has(capturedNPCGroup.id)) {
+      deletePathInMemory(roomName, capturedNPCGroup.id);
+    }
 
     // Broadcast changes to all clients in the room
     const emptyGroup = new NPCGroup({ ...capturedNPCGroup, fileNames: [] }); // Mark as deleted

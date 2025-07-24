@@ -605,10 +605,7 @@ function handleCapturedNPCEmission(room, _thrownPathData, thrownNPCGroup, captur
         paths.set(npc.id, emittedPath);
         emittedPaths.push(emittedPath);
     });
-    // Remove the thrown NPC's path
-    paths.delete(thrownNPCGroup.id);
-    (0, paths_1.setPathsInMemory)(room, paths);
-    // Update memory with all the new NPCs
+    // Update memory with all the new NPCs FIRST
     const allNPCGroups = (0, npc_groups_1.getNPCGroupsfromMemory)(room);
     // Create remaining group with NPCs that weren't emitted
     const remainingNPCs = capturedNPCGroup.fileNames.slice(emissionCount);
@@ -625,6 +622,9 @@ function handleCapturedNPCEmission(room, _thrownPathData, thrownNPCGroup, captur
         // Include empty group to trigger deletion on frontend
         updatedNPCs.push(new types_1.NPCGroup(Object.assign(Object.assign({}, capturedNPCGroup), { fileNames: [] })));
     }
+    // THEN remove the thrown NPC's path (after NPC group memory is updated)
+    paths.delete(thrownNPCGroup.id);
+    (0, paths_1.setPathsInMemory)(room, paths);
     // Add all emitted NPCs
     emittedNPCs.forEach(npc => {
         allNPCGroups.setByNpcGroupId(npc.id, npc);

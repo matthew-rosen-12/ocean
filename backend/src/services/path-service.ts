@@ -9,8 +9,14 @@ export function deletePathInRoom(room: string, pathData: pathData) {
 
 export function getPathPosition(npcGroup: NPCGroup, room: roomId) {
     const paths = getpathsfromMemory(room)
-    const pathData = paths.get(npcGroup.id)!;
-        // Calculate current position along path with progress clamping
+    const pathData = paths.get(npcGroup.id);
+    
+    if (!pathData) {
+        // Return the NPC's current position if no path exists
+        return npcGroup.position;
+    }
+    
+    // Calculate current position along path with progress clamping
     const now = Date.now();
     const elapsedTime = (now - pathData.timestamp); // seconds
     const distance = pathData.velocity * elapsedTime;
