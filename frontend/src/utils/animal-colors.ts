@@ -3,22 +3,24 @@ import * as THREE from "three";
 
 // Dark, maximally contrasting color palette (no gold/yellow tones)
 export const USER_COLOR_PALETTE: string[] = [
-  "#C641FF", // Vivid Violet (kept bright only in chroma; still dark-ish background contrast)
-  "#FF3A8A", // Vivid Rose (magenta-leaning, not yellowish)
-  "#FF4E2F", // Vivid Vermilion (red-orange but below yellow range; still clearly not gold)
-  "#FF5DD1", // Hot Pink (distinct from rose via more blue; optional if needing fewer drop one pink)
-  "#3DDCFF", // Electric Cyan (only light-ish one; gives cool high contrast)
-  "#1FBF72", // Jade Green (teal-green yet far from cyan & forest)
-  "#00A5FF", // Azure
-  "#0074FF", // Strong Royal Blue (darker than pure #0000FF)
-  "#3250FF", // Indigo-Blue (shifted toward blue from purple)
-  "#5F00FF", // Electric Indigo (pure spectral violet; distinct from violet magenta)
-  "#8B00C9", // Deep Purple
-  "#D3005F", // Deep Cerise (different from other reds via higher magenta component)
-  "#B3002D", // Deep Crimson (darkest red; no orange cast)
-  "#00624C", // Deep Teal (distinct from jade by lower lightness & more blue)
-  "#133B8C", // Deep Cobalt
-  "#2E2E2E"  // Near Charcoal (neutral anchor; optional)
+
+"#FF3A8A",
+
+"#FF6F00",
+
+"#A0522D",
+
+"#3DDCFF",
+"#1FBF72",
+
+"#0074FF",
+
+"#5F00FF",
+"#8B00C9",
+"#B3002D",
+"#00624C",
+"#133B8C",
+"#2E2E2E",
 ];
 
 // Generate a hash from a string
