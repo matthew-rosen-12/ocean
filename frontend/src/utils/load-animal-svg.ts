@@ -416,8 +416,8 @@ export function createEdgeGeometry(
     depthWrite: true,
     side: THREE.DoubleSide,
     polygonOffset: true,
-    polygonOffsetFactor: 1,
-    polygonOffsetUnits: 1,
+    polygonOffsetFactor: 2,
+    polygonOffsetUnits: 2,
     resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
   });
 
