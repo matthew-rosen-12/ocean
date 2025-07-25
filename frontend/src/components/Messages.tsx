@@ -54,27 +54,32 @@ export default function Messages({
       return Math.min(requiredHeight, 400); // Cap at max height
     }
     
-    const messageHeight = 180; // Fallback for initial render
-    return headerHeight + messageHeight + 30; // Extra 30px buffer
+    // Smarter fallback: estimate based on whether we have actual content or just "typing..."
+    const isTypingOnly = !latestAiResponse && latestInteraction;
+    const estimatedMessageHeight = isTypingOnly ? 80 : 120; // Much smaller for typing state
+    return headerHeight + estimatedMessageHeight + 20; // Reduced buffer
   };
 
   // Ensure height is sufficient for showing latest message
   const ensureHeightForLatestMessage = () => {
     // Wait for DOM to update, then calculate required height
     requestAnimationFrame(() => {
-      const minHeight = calculateMinHeightForLatestMessage();
-      if (size.height < minHeight) {
-        // Smooth height transition by setting a slightly larger target
-        const targetHeight = Math.min(minHeight + 10, 400); // Add 10px buffer, cap at max
-        setSize(prev => ({ ...prev, height: targetHeight }));
-      }
+      requestAnimationFrame(() => { // Double RAF for more reliable DOM measurements
+        const minHeight = calculateMinHeightForLatestMessage();
+        // Only increase height if current height is significantly smaller (more than 20px difference)
+        // This prevents tiny adjustments for similar content
+        if (size.height < minHeight - 20) {
+          const targetHeight = Math.min(minHeight, 400); // Remove extra buffer, cap at max
+          setSize(prev => ({ ...prev, height: targetHeight }));
+        }
+      });
     });
   };
   const [position, setPosition] = useState<Position>(() => ({
     x: window.innerWidth - 270, // Start near final position (approximate width + margin)
     y: 450 // Below leaderboard area
   }));
-  const [size, setSize] = useState<Size>({ width: 250, height: 200 });
+  const [size, setSize] = useState<Size>({ width: 250, height: 150 });
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [dragOffset, setDragOffset] = useState<Position>({ x: 0, y: 0 });
@@ -142,7 +147,7 @@ export default function Messages({
               setHasNewMessage(false);
               wasAtBottomRef.current = true; // Keep tracking as at bottom
             }
-          }, 10);
+          }, 50); // Increased delay to work better with height transitions
         } else {
           // User was scrolled up, show new message indicator
           setHasNewMessage(true);
@@ -170,7 +175,7 @@ export default function Messages({
           setHasNewMessage(false);
           wasAtBottomRef.current = true; // Update tracking state
         }
-      }, 10);
+      }, 50); // Increased delay to work better with height transitions
     }
   };
 
@@ -287,7 +292,7 @@ export default function Messages({
     <div
       ref={messagesRef}
       className={`fixed backdrop-blur-lg bg-white/80 border border-white/50 rounded-3xl shadow-2xl z-40 select-none ${
-        isDragging || isResizing ? '' : 'transition-all duration-300 ease-in-out'
+        isDragging || isResizing ? '' : 'transition-all duration-500 ease-out'
       } ${
         isDragging ? 'cursor-grabbing' : isResizing ? 'cursor-nw-resize' : 'cursor-grab'
       }`}
@@ -301,7 +306,8 @@ export default function Messages({
         minHeight: '64px',
         maxHeight: '400px',
         resize: 'none',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        transition: isDragging || isResizing ? 'none' : 'height 0.4s cubic-bezier(0.4, 0, 0.2, 1), width 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
       }}
       onMouseDown={handleMouseDown}
     >
@@ -321,7 +327,7 @@ export default function Messages({
                     messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
                     wasAtBottomRef.current = true;
                   }
-                }, 20); // Slightly longer delay to allow height change
+                }, 450); // Wait for height transition to complete (400ms + buffer)
               }
               setIsCollapsed(!isCollapsed);
             }}
@@ -334,7 +340,7 @@ export default function Messages({
 
       {/* Content */}
       {!isCollapsed && (
-        <div className="relative transition-all duration-300 ease-in-out" style={{ height: `${size.height - 64}px` }}>
+        <div className="relative transition-all duration-400 ease-out" style={{ height: `${size.height - 64}px` }}>
           {!hasMessages ? (
             <div className="flex items-center justify-center h-full text-gray-500 text-sm">
               No messages yet
@@ -342,7 +348,7 @@ export default function Messages({
           ) : (
             <div 
               ref={messageContainerRef}
-              className="overflow-y-auto h-full pb-4 transition-all duration-200 ease-in-out"
+              className="overflow-y-auto h-full pb-4 transition-all duration-400 ease-out"
               onScroll={handleScroll}
             >
               {/* Message History */}
