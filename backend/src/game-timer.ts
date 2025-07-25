@@ -14,7 +14,7 @@ interface GameTimer {
 // Map of room names to their game timers
 const gameTimers: Map<string, GameTimer> = new Map();
 
-export const GAME_DURATION = 1.5 * 60 * 10 * 5 // 1.5 minutes in milliseconds
+export const GAME_DURATION = 1.5 * 60 * 1000 // 1.5 minutes in milliseconds
 
 export function startGameTimer(roomName: string): void {
   // Don't start a new timer if one already exists for this room

@@ -159,6 +159,9 @@ export function useNPCGroupBase(npcGroup: NPCGroup, user?: UserInfo, pathData?: 
         opacity: 1.0,
         depthTest: true,
         depthWrite: true,
+        polygonOffset: true,
+        polygonOffsetFactor: -2,
+        polygonOffsetUnits: -2,
         side: THREE.DoubleSide,
         resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
       });
