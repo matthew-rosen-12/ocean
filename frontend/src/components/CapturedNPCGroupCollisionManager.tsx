@@ -43,9 +43,6 @@ const CapturedNPCGroupCollisionManager: React.FC<CapturedNPCGroupCollisionManage
       const assignedBots = getAssignedBots(myUser.id, users);
       const usersToCheck = [myUser, ...assignedBots]; // Check both local user and assigned bots
       
-      if (usersToCheck.length > 1) {
-        console.log(`[CapturedNPCGroupCollisionManager] Processing collision for ${assignedBots.length} assigned bots + local user`);
-      }
       
       usersToCheck.forEach(userToCheck => {
         const animalWidth = animalDimensions[userToCheck.animal]?.width;

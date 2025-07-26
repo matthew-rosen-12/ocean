@@ -8,7 +8,6 @@ const apiKey = process.env.GOOGLE_AI_API_KEY;
 if (!apiKey) {
   console.error('GOOGLE_AI_API_KEY is not set in environment variables');
   throw new Error('GOOGLE_AI_API_KEY is not set in environment variables');
-  // Don't throw error to prevent server crash - handle gracefully in generateResponse
 }
 
 const genAI = new GoogleGenerativeAI(apiKey);

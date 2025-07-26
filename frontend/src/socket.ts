@@ -1,7 +1,9 @@
 import { io, Socket } from "socket.io-client";
 import { TypedSocket } from "./utils/typed-socket";
 
-export const BACKEND_URL = "http://localhost:3001";
+export const BACKEND_URL = process.env.NODE_ENV === 'production' 
+  ? '' // Use relative URL in production (same origin)
+  : "http://localhost:3001";
 let socketInstance: Socket | null = null;
 let typedSocketInstance: TypedSocket | null = null;
 
