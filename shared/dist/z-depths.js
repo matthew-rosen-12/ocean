@@ -1,11 +1,8 @@
-"use strict";
 /**
  * Z-depth constants for consistent rendering order across the game.
  * This file establishes a clear and manageable system for layering 2D-style
  * elements in a 3D space, preventing z-fighting issues.
  */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.UI_Z_INDICES = exports.Z_DEPTHS = exports.RENDER_ORDERS = void 0;
 // =================================================================
 // 1. RENDER ORDERS
 // =================================================================
@@ -15,7 +12,7 @@ exports.UI_Z_INDICES = exports.Z_DEPTHS = exports.RENDER_ORDERS = void 0;
  * Higher numbers are drawn last (appearing in front).
  * These are abstract "layer" indices, not direct z-depth values.
  */
-exports.RENDER_ORDERS = {
+export const RENDER_ORDERS = {
     // Background elements (draw first)
     CLOUDS: 0,
     TERRAIN: 1,
@@ -85,41 +82,41 @@ const calculateZDepth = (renderOrder) => {
  * - LOCAL_ANIMAL_OUTLINE (order 100) -> z = -0.2 (just behind the graphic)
  * - CLOUDS (order 0) -> z = -10.2 (farthest from camera)
  */
-exports.Z_DEPTHS = {
+export const Z_DEPTHS = {
     // Background elements (farthest from camera)
-    CLOUDS: calculateZDepth(exports.RENDER_ORDERS.CLOUDS),
-    TERRAIN: calculateZDepth(exports.RENDER_ORDERS.TERRAIN),
-    TERRAIN_OUTLINE: calculateZDepth(exports.RENDER_ORDERS.TERRAIN_OUTLINE),
+    CLOUDS: calculateZDepth(RENDER_ORDERS.CLOUDS),
+    TERRAIN: calculateZDepth(RENDER_ORDERS.TERRAIN),
+    TERRAIN_OUTLINE: calculateZDepth(RENDER_ORDERS.TERRAIN_OUTLINE),
     // Idle NPC groups
-    IDLE_NPC_GROUP: calculateZDepth(exports.RENDER_ORDERS.IDLE_NPC_GROUP),
-    IDLE_NPC_GROUP_OUTLINE: calculateZDepth(exports.RENDER_ORDERS.IDLE_NPC_GROUP_OUTLINE),
-    IDLE_NPC_GROUP_GOLD_OUTLINE: calculateZDepth(exports.RENDER_ORDERS.IDLE_NPC_GROUP_GOLD_OUTLINE),
+    IDLE_NPC_GROUP: calculateZDepth(RENDER_ORDERS.IDLE_NPC_GROUP),
+    IDLE_NPC_GROUP_OUTLINE: calculateZDepth(RENDER_ORDERS.IDLE_NPC_GROUP_OUTLINE),
+    IDLE_NPC_GROUP_GOLD_OUTLINE: calculateZDepth(RENDER_ORDERS.IDLE_NPC_GROUP_GOLD_OUTLINE),
     // Remote animals
-    REMOTE_ANIMAL_GRAPHIC: calculateZDepth(exports.RENDER_ORDERS.REMOTE_ANIMAL_GRAPHIC),
-    REMOTE_ANIMAL_OUTLINE: calculateZDepth(exports.RENDER_ORDERS.REMOTE_ANIMAL_OUTLINE),
+    REMOTE_ANIMAL_GRAPHIC: calculateZDepth(RENDER_ORDERS.REMOTE_ANIMAL_GRAPHIC),
+    REMOTE_ANIMAL_OUTLINE: calculateZDepth(RENDER_ORDERS.REMOTE_ANIMAL_OUTLINE),
     // Captured NPC groups - remote players
-    REMOTE_CAPTURED_NPC_GROUP: calculateZDepth(exports.RENDER_ORDERS.REMOTE_CAPTURED_NPC_GROUP),
-    REMOTE_CAPTURED_NPC_GROUP_OUTLINE: calculateZDepth(exports.RENDER_ORDERS.REMOTE_CAPTURED_NPC_GROUP_OUTLINE),
-    REMOTE_CAPTURED_NPC_GROUP_GOLD_OUTLINE: calculateZDepth(exports.RENDER_ORDERS.REMOTE_CAPTURED_NPC_GROUP_GOLD_OUTLINE),
+    REMOTE_CAPTURED_NPC_GROUP: calculateZDepth(RENDER_ORDERS.REMOTE_CAPTURED_NPC_GROUP),
+    REMOTE_CAPTURED_NPC_GROUP_OUTLINE: calculateZDepth(RENDER_ORDERS.REMOTE_CAPTURED_NPC_GROUP_OUTLINE),
+    REMOTE_CAPTURED_NPC_GROUP_GOLD_OUTLINE: calculateZDepth(RENDER_ORDERS.REMOTE_CAPTURED_NPC_GROUP_GOLD_OUTLINE),
     // Path NPCs in fleeing state
-    PATH_NPC_FLEEING: calculateZDepth(exports.RENDER_ORDERS.PATH_NPC_FLEEING),
-    PATH_NPC_FLEEING_OUTLINE: calculateZDepth(exports.RENDER_ORDERS.PATH_NPC_FLEEING_OUTLINE),
-    PATH_NPC_FLEEING_GOLD_OUTLINE: calculateZDepth(exports.RENDER_ORDERS.PATH_NPC_FLEEING_GOLD_OUTLINE),
+    PATH_NPC_FLEEING: calculateZDepth(RENDER_ORDERS.PATH_NPC_FLEEING),
+    PATH_NPC_FLEEING_OUTLINE: calculateZDepth(RENDER_ORDERS.PATH_NPC_FLEEING_OUTLINE),
+    PATH_NPC_FLEEING_GOLD_OUTLINE: calculateZDepth(RENDER_ORDERS.PATH_NPC_FLEEING_GOLD_OUTLINE),
     // Path NPCs in returning state
-    PATH_NPC_RETURNING: calculateZDepth(exports.RENDER_ORDERS.PATH_NPC_RETURNING),
-    PATH_NPC_RETURNING_OUTLINE: calculateZDepth(exports.RENDER_ORDERS.PATH_NPC_RETURNING_OUTLINE),
-    PATH_NPC_RETURNING_GOLD_OUTLINE: calculateZDepth(exports.RENDER_ORDERS.PATH_NPC_RETURNING_GOLD_OUTLINE),
+    PATH_NPC_RETURNING: calculateZDepth(RENDER_ORDERS.PATH_NPC_RETURNING),
+    PATH_NPC_RETURNING_OUTLINE: calculateZDepth(RENDER_ORDERS.PATH_NPC_RETURNING_OUTLINE),
+    PATH_NPC_RETURNING_GOLD_OUTLINE: calculateZDepth(RENDER_ORDERS.PATH_NPC_RETURNING_GOLD_OUTLINE),
     // Path NPCs in thrown state
-    PATH_NPC_THROWN: calculateZDepth(exports.RENDER_ORDERS.PATH_NPC_THROWN),
-    PATH_NPC_THROWN_OUTLINE: calculateZDepth(exports.RENDER_ORDERS.PATH_NPC_THROWN_OUTLINE),
-    PATH_NPC_THROWN_GOLD_OUTLINE: calculateZDepth(exports.RENDER_ORDERS.PATH_NPC_THROWN_GOLD_OUTLINE),
+    PATH_NPC_THROWN: calculateZDepth(RENDER_ORDERS.PATH_NPC_THROWN),
+    PATH_NPC_THROWN_OUTLINE: calculateZDepth(RENDER_ORDERS.PATH_NPC_THROWN_OUTLINE),
+    PATH_NPC_THROWN_GOLD_OUTLINE: calculateZDepth(RENDER_ORDERS.PATH_NPC_THROWN_GOLD_OUTLINE),
     // Captured NPC groups - local player
-    LOCAL_CAPTURED_NPC_GROUP: calculateZDepth(exports.RENDER_ORDERS.LOCAL_CAPTURED_NPC_GROUP),
-    LOCAL_CAPTURED_NPC_GROUP_OUTLINE: calculateZDepth(exports.RENDER_ORDERS.LOCAL_CAPTURED_NPC_GROUP_OUTLINE),
-    LOCAL_CAPTURED_NPC_GROUP_GOLD_OUTLINE: calculateZDepth(exports.RENDER_ORDERS.LOCAL_CAPTURED_NPC_GROUP_GOLD_OUTLINE),
+    LOCAL_CAPTURED_NPC_GROUP: calculateZDepth(RENDER_ORDERS.LOCAL_CAPTURED_NPC_GROUP),
+    LOCAL_CAPTURED_NPC_GROUP_OUTLINE: calculateZDepth(RENDER_ORDERS.LOCAL_CAPTURED_NPC_GROUP_OUTLINE),
+    LOCAL_CAPTURED_NPC_GROUP_GOLD_OUTLINE: calculateZDepth(RENDER_ORDERS.LOCAL_CAPTURED_NPC_GROUP_GOLD_OUTLINE),
     // Local player animal (closest to camera)
-    LOCAL_ANIMAL_GRAPHIC: calculateZDepth(exports.RENDER_ORDERS.LOCAL_ANIMAL_GRAPHIC),
-    LOCAL_ANIMAL_OUTLINE: calculateZDepth(exports.RENDER_ORDERS.LOCAL_ANIMAL_OUTLINE),
+    LOCAL_ANIMAL_GRAPHIC: calculateZDepth(RENDER_ORDERS.LOCAL_ANIMAL_GRAPHIC),
+    LOCAL_ANIMAL_OUTLINE: calculateZDepth(RENDER_ORDERS.LOCAL_ANIMAL_OUTLINE),
 };
 // =================================================================
 // 4. UI Z-INDICES
@@ -128,7 +125,7 @@ exports.Z_DEPTHS = {
  * Standard CSS z-index values for HTML UI elements that overlay the canvas.
  * These do not affect the three.js rendering context.
  */
-exports.UI_Z_INDICES = {
+export const UI_Z_INDICES = {
     TIMES_UP_TEXT: 1001,
     FLASH_EFFECT: 1000,
     GAME_UI: 999,

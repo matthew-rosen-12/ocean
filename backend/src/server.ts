@@ -3,6 +3,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import cors from "cors";
 import dotenv from "dotenv";
+import { superjsonParser } from "./superjson-parser";
 
 // Load environment variables
 dotenv.config();
@@ -49,6 +50,7 @@ export const io = new Server(httpServer, {
     credentials: true,
   },
   transports: ["websocket", "polling"],
+  parser: superjsonParser,
 });
 
 const startServer = async () => {

@@ -1,16 +1,14 @@
 
+import { Socket } from "socket.io-client";
+import { ServerToClientEvents, ClientToServerEvents } from "shared/socket-events";
 import superjson from "superjson";
 import { NPCGroupsBiMap, NPCGroup } from "shared/types";
-
-import { Socket } from "socket.io-client";
-
-import { ServerToClientEvents, ClientToServerEvents } from "shared/socket-events";
 
 // Register classes with superjson for proper serialization/deserialization
 superjson.registerClass(NPCGroupsBiMap);
 superjson.registerClass(NPCGroup);
 
-// For Redis storage
+// For Redis storage only
 export function serialize(data: unknown): string {
   return superjson.stringify(data);
 }
@@ -23,27 +21,20 @@ export function deserialize(serialized: string): unknown {
 export class TypedSocket {
   constructor(private socket: Socket) {}
 
-  // Typed socket.on with automatic deserialization
+  // Typed socket.on
   on<K extends keyof ServerToClientEvents>(
     event: K,
     handler: ServerToClientEvents[K]
   ): void {
-    (this.socket as any).on(event, (serializedData: string) => {
-      try {
-        const data = deserialize(serializedData);
-        handler(data as never);
-      } catch {
-        // Error deserializing event
-      }
-    });
+    (this.socket as any).on(event, handler);
   }
 
-  // Typed emit with automatic serialization
+  // Typed emit
   emit<K extends keyof ClientToServerEvents>(
     event: K,
     data: Parameters<ClientToServerEvents[K]>[0]
   ) {
-    this.socket.emit(event, serialize(data));
+    this.socket.emit(event, data);
   }
 
 

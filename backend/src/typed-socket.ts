@@ -1,5 +1,6 @@
 import { io } from "./server";
-
+import { Socket } from "socket.io";
+import { ServerToClientEvents, ClientToServerEvents } from "shared/socket-events";
 import superjson from "superjson";
 import { NPCGroupsBiMap, NPCGroup } from "shared/types";
 
@@ -7,10 +8,7 @@ import { NPCGroupsBiMap, NPCGroup } from "shared/types";
 superjson.registerClass(NPCGroupsBiMap);
 superjson.registerClass(NPCGroup);
 
-import { Socket } from "socket.io";
-import { ServerToClientEvents, ClientToServerEvents } from "shared/socket-events";
-
-// For Redis storage
+// For Redis storage only
 export function serialize(data: any): string {
   return superjson.stringify(data);
 }
@@ -25,7 +23,7 @@ export function emitToRoom<K extends keyof ServerToClientEvents>(
   event: K,
   data: Parameters<ServerToClientEvents[K]>[0]
 ) {
-  io.to(room).emit(event, serialize(data));
+  io.to(room).emit(event, data);
 }
 
 export function emitToUser<K extends keyof ServerToClientEvents>(
@@ -40,7 +38,7 @@ export function emitToUser<K extends keyof ServerToClientEvents>(
     for (const socketId of sockets) {
       const socket = io.sockets.sockets.get(socketId);
       if (socket?.data?.user?.id === userId) {
-        socket.emit(event, serialize(data));
+        socket.emit(event, data);
         break;
       }
     }
@@ -51,36 +49,29 @@ export function emitToUser<K extends keyof ServerToClientEvents>(
 export class TypedSocket {
   constructor(private socket: Socket) {}
 
-  // Typed socket.on with automatic deserialization
+  // Typed socket.on
   on<K extends keyof ClientToServerEvents>(
     event: K,
     handler: (data: Parameters<ClientToServerEvents[K]>[0]) => void | Promise<void>
   ) {
-    (this.socket as any).on(event, (serializedData: string) => {
-      try {
-        const data = deserialize(serializedData);
-        handler(data);
-      } catch (error) {
-        console.error(`Error deserializing ${event}:`, error);
-      }
-    });
+    (this.socket as any).on(event, handler);
   }
 
-  // Typed emit with automatic serialization
+  // Typed emit
   emit<K extends keyof ServerToClientEvents>(
     event: K,
     data: Parameters<ServerToClientEvents[K]>[0]
   ) {
-    this.socket.emit(event, serialize(data));
+    this.socket.emit(event, data);
   }
 
-  // Typed broadcast with automatic serialization
+  // Typed broadcast
   broadcast<K extends keyof ServerToClientEvents>(
     room: string,
     event: K,
     data: Parameters<ServerToClientEvents[K]>[0]
   ) {
-    this.socket.broadcast.to(room).emit(event, serialize(data));
+    this.socket.broadcast.to(room).emit(event, data);
   }
 
   // Pass through other socket methods

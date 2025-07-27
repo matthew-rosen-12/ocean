@@ -1,5 +1,6 @@
 import { io, Socket } from "socket.io-client";
 import { TypedSocket } from "./utils/typed-socket";
+import { superjsonParser } from "./superjson-parser";
 
 export const BACKEND_URL = process.env.NODE_ENV === 'production' 
   ? '' // Use relative URL in production (same origin)
@@ -16,6 +17,7 @@ export const getSocket = (token?: string) => {
     socketInstance = io(BACKEND_URL, {
       auth: { token },
       transports: ["websocket", "polling"],
+      parser: superjsonParser,
     });
     // Create new typed socket instance
     typedSocketInstance = new TypedSocket(socketInstance);
@@ -23,6 +25,7 @@ export const getSocket = (token?: string) => {
     // If no token and no instance, create one without auth
     socketInstance = io(BACKEND_URL, {
       transports: ["websocket", "polling"],
+      parser: superjsonParser,
     });
     // Create new typed socket instance
     typedSocketInstance = new TypedSocket(socketInstance);

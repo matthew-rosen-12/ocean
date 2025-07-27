@@ -14,7 +14,7 @@ const types_1 = require("shared/types");
 // Register classes with superjson for proper serialization/deserialization
 superjson_1.default.registerClass(types_1.NPCGroupsBiMap);
 superjson_1.default.registerClass(types_1.NPCGroup);
-// For Redis storage
+// For Redis storage only
 function serialize(data) {
     return superjson_1.default.stringify(data);
 }
@@ -24,7 +24,7 @@ function deserialize(serialized) {
     return superjson_1.default.parse(serialized);
 }
 function emitToRoom(room, event, data) {
-    server_1.io.to(room).emit(event, serialize(data));
+    server_1.io.to(room).emit(event, data);
 }
 function emitToUser(room, userId, event, data) {
     var _a, _b;
@@ -34,7 +34,7 @@ function emitToUser(room, userId, event, data) {
         for (const socketId of sockets) {
             const socket = server_1.io.sockets.sockets.get(socketId);
             if (((_b = (_a = socket === null || socket === void 0 ? void 0 : socket.data) === null || _a === void 0 ? void 0 : _a.user) === null || _b === void 0 ? void 0 : _b.id) === userId) {
-                socket.emit(event, serialize(data));
+                socket.emit(event, data);
                 break;
             }
         }
@@ -44,25 +44,17 @@ class TypedSocket {
     constructor(socket) {
         this.socket = socket;
     }
-    // Typed socket.on with automatic deserialization
+    // Typed socket.on
     on(event, handler) {
-        this.socket.on(event, (serializedData) => {
-            try {
-                const data = deserialize(serializedData);
-                handler(data);
-            }
-            catch (error) {
-                console.error(`Error deserializing ${event}:`, error);
-            }
-        });
+        this.socket.on(event, handler);
     }
-    // Typed emit with automatic serialization
+    // Typed emit
     emit(event, data) {
-        this.socket.emit(event, serialize(data));
+        this.socket.emit(event, data);
     }
-    // Typed broadcast with automatic serialization
+    // Typed broadcast
     broadcast(room, event, data) {
-        this.socket.broadcast.to(room).emit(event, serialize(data));
+        this.socket.broadcast.to(room).emit(event, data);
     }
     // Pass through other socket methods
     join(room) { return this.socket.join(room); }

@@ -1,7 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.NPCGroupsBiMap = exports.DefaultMap = exports.NPCGroup = exports.NPCPhase = exports.PathPhase = exports.NPC_HEIGHT = exports.NPC_WIDTH = exports.BACKEND_DIRECTION_OFFSET = exports.DIRECTION_OFFSET = exports.ANIMAL_ORIENTATION = exports.ANIMAL_SCALES = exports.Animal = void 0;
-var Animal;
+export var Animal;
 (function (Animal) {
     Animal["DOLPHIN"] = "DOLPHIN";
     Animal["WOLF"] = "WOLF";
@@ -15,8 +12,8 @@ var Animal;
     Animal["BEAR"] = "BEAR";
     Animal["CUTTLEFISH"] = "CUTTLEFISH";
     Animal["SALAMANDER"] = "SALAMANDER";
-})(Animal || (exports.Animal = Animal = {}));
-exports.ANIMAL_SCALES = {
+})(Animal || (Animal = {}));
+export const ANIMAL_SCALES = {
     DOLPHIN: 3.0,
     WOLF: 2.0,
     PENGUIN: 2.5,
@@ -30,7 +27,7 @@ exports.ANIMAL_SCALES = {
     CUTTLEFISH: 2.0,
     SALAMANDER: 2.5,
 };
-exports.ANIMAL_ORIENTATION = {
+export const ANIMAL_ORIENTATION = {
     WOLF: { rotation: 0, flipY: true },
     DOLPHIN: { rotation: 0, flipY: false },
     PENGUIN: { rotation: 0, flipY: false },
@@ -44,25 +41,25 @@ exports.ANIMAL_ORIENTATION = {
     CUTTLEFISH: { rotation: 0, flipY: true },
     SALAMANDER: { rotation: 0, flipY: false },
 };
-exports.DIRECTION_OFFSET = 0.1;
-exports.BACKEND_DIRECTION_OFFSET = 0.001;
+export const DIRECTION_OFFSET = 0.1;
+export const BACKEND_DIRECTION_OFFSET = 0.001;
 // NPC group dimensions
-exports.NPC_WIDTH = 4;
-exports.NPC_HEIGHT = 4;
+export const NPC_WIDTH = 4;
+export const NPC_HEIGHT = 4;
 // Path phases for different types of movement
-var PathPhase;
+export var PathPhase;
 (function (PathPhase) {
     PathPhase["THROWN"] = "THROWN";
     PathPhase["RETURNING"] = "RETURNING";
     PathPhase["FLEEING"] = "FLEEING";
-})(PathPhase || (exports.PathPhase = PathPhase = {}));
-var NPCPhase;
+})(PathPhase || (PathPhase = {}));
+export var NPCPhase;
 (function (NPCPhase) {
     NPCPhase["IDLE"] = "IDLE";
     NPCPhase["CAPTURED"] = "CAPTURED";
     NPCPhase["PATH"] = "PATH";
-})(NPCPhase || (exports.NPCPhase = NPCPhase = {}));
-class NPCGroup {
+})(NPCPhase || (NPCPhase = {}));
+export class NPCGroup {
     constructor(data) {
         this.id = data.id;
         this.fileNames = data.fileNames;
@@ -75,8 +72,7 @@ class NPCGroup {
         return this.fileNames.length > 0 ? this.fileNames[this.fileNames.length - 1] : undefined;
     }
 }
-exports.NPCGroup = NPCGroup;
-class DefaultMap extends Map {
+export class DefaultMap extends Map {
     constructor(defaultFactory) {
         super();
         this.defaultFactory = defaultFactory;
@@ -88,8 +84,7 @@ class DefaultMap extends Map {
         return super.get(key);
     }
 }
-exports.DefaultMap = DefaultMap;
-class NPCGroupsBiMap {
+export class NPCGroupsBiMap {
     constructor(existing) {
         this.map1 = new Map();
         this.map2 = new Map();
@@ -178,4 +173,3 @@ class NPCGroupsBiMap {
     getByUserId(userId) { return this.map1.get(userId); }
     getByNpcGroupId(npcGroupId) { return this.map2.get(npcGroupId); }
 }
-exports.NPCGroupsBiMap = NPCGroupsBiMap;

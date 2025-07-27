@@ -1,14 +1,8 @@
-"use strict";
 /**
  * Animal dimensions for collision detection
  * These values are calculated from SVG bounds and multiplied by animal scale
  * Generated automatically from animal cache files
  */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.ORIGINAL_SVG_BOUNDS = void 0;
-exports.getAnimalDimensions = getAnimalDimensions;
-exports.getCollisionThreshold = getCollisionThreshold;
-exports.checkRotatedBoundingBoxCollision = checkRotatedBoundingBoxCollision;
 // Base dimension ratios derived from SVG bounds
 const ANIMAL_BASE_DIMENSIONS = {
     BEAR: { width: 4.00, height: 4.00 },
@@ -28,7 +22,7 @@ const ANIMAL_BASE_DIMENSIONS = {
  * Get animal dimensions for collision detection
  * Multiplies base dimensions by animal scale
  */
-function getAnimalDimensions(animal, scale = 1.0) {
+export function getAnimalDimensions(animal, scale = 1.0) {
     const baseDimensions = ANIMAL_BASE_DIMENSIONS[animal] || { width: 4.0, height: 4.0 };
     return {
         width: baseDimensions.width * scale,
@@ -38,7 +32,7 @@ function getAnimalDimensions(animal, scale = 1.0) {
 /**
  * Get collision threshold for an animal (typically width * 0.5 to match frontend)
  */
-function getCollisionThreshold(animal, scale = 1.0) {
+export function getCollisionThreshold(animal, scale = 1.0) {
     const dimensions = getAnimalDimensions(animal, scale);
     return dimensions.width * 0.1; // Reduced from 0.25 to 0.1 to prevent immediate recapture
 }
@@ -54,7 +48,7 @@ function getCollisionThreshold(animal, scale = 1.0) {
  * @param rotation2 Rotation of second object in radians
  * @returns true if the bounding boxes collide
  */
-function checkRotatedBoundingBoxCollision(pos1, pos2, width1, height1, rotation1, width2, height2, rotation2) {
+export function checkRotatedBoundingBoxCollision(pos1, pos2, width1, height1, rotation1, width2, height2, rotation2) {
     // Get the corners of both bounding boxes
     const corners1 = getRotatedBoundingBoxCorners(pos1, width1, height1, rotation1);
     const corners2 = getRotatedBoundingBoxCorners(pos2, width2, height2, rotation2);
@@ -132,7 +126,7 @@ function projectBoundingBox(corners, axis) {
     return { min, max };
 }
 // Original SVG bounds for reference
-exports.ORIGINAL_SVG_BOUNDS = {
+export const ORIGINAL_SVG_BOUNDS = {
     BEAR: { width: 1024.0, height: 1024.0, aspectRatio: 1.000 },
     BEE: { width: 1024.0, height: 1024.0, aspectRatio: 1.000 },
     CUTTLEFISH: { width: 500.0, height: 250.0, aspectRatio: 2.000 },
