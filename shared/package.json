@@ -1,20 +1,50 @@
 {
     "name": "shared",
     "version": "1.0.0",
-    "type": "module",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "exports": {
-      "./*": "./dist/*",
-      "./types": "./dist/types.js",
-      "./socket-events": "./dist/socket-events.js",
-      "./constants": "./dist/constants.js",
-      "./animal-dimensions": "./dist/animal-dimensions.js",
-      "./interaction-types": "./dist/interaction-types.js",
-      "./interaction-prompts": "./dist/interaction-prompts.js",
-      "./background-types": "./dist/background-types.js"
+        "./types": {
+            "types": "./dist/types.d.ts",
+            "import": "./dist/types.mjs",
+            "require": "./dist/types.js"
+        },
+        "./z-depths": {
+            "types": "./dist/z-depths.d.ts",
+            "import": "./dist/z-depths.mjs",
+            "require": "./dist/z-depths.js"
+        },
+        "./socket-events": {
+            "types": "./dist/socket-events.d.ts",
+            "import": "./dist/socket-events.mjs",
+            "require": "./dist/socket-events.js"
+        },
+        "./animal-dimensions": {
+            "types": "./dist/animal-dimensions.d.ts",
+            "import": "./dist/animal-dimensions.mjs",
+            "require": "./dist/animal-dimensions.js"
+        },
+        "./background-types": {
+            "types": "./dist/background-types.d.ts",
+            "import": "./dist/background-types.mjs",
+            "require": "./dist/background-types.js"
+        },
+        "./interaction-types": {
+            "types": "./dist/interaction-types.d.ts",
+            "import": "./dist/interaction-types.mjs",
+            "require": "./dist/interaction-types.js"
+        },
+        "./interaction-prompts": {
+            "types": "./dist/interaction-prompts.d.ts",
+            "import": "./dist/interaction-prompts.mjs",
+            "require": "./dist/interaction-prompts.js"
+        }
     },
     "scripts": {
-      "build": "tsc"
+        "build": "tsup"
+    },
+    "devDependencies": {
+        "tsup": "^8.5.0",
+        "typescript": "^5.8.3"
     }
-  }
+}

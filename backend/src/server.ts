@@ -50,7 +50,7 @@ export const io = new Server(httpServer, {
     credentials: true,
   },
   transports: ["websocket", "polling"],
-  parser: superjsonParser,
+  // parser: superjsonParser,
 });
 
 const startServer = async () => {

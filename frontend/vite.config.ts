@@ -12,4 +12,12 @@ export default defineConfig({
       },
     },
   },
+  optimizeDeps: {
+    include: ["shared/types"]
+  },
+  build: {
+    commonjsOptions: {
+      include: [/shared/, /node_modules/]
+    }
+  }
 });

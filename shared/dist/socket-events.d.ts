@@ -1,7 +1,8 @@
-import { UserInfo, TerrainConfig, NPCGroup, pathData, Position, npcGroupId, NPCGroupsBiMap, userId, FinalScores, PathPhase, fileName } from "./types";
-import { NPCInteraction } from "./interaction-prompts";
-import { AIResponse } from "./interaction-types";
-export interface ServerToClientEvents {
+import { UserInfo, Position, userId, NPCGroupsBiMap, npcGroupId, pathData, TerrainConfig, NPCGroup, PathPhase, fileName, FinalScores } from './types.js';
+import { NPCInteraction, AIResponse } from './interaction-types.js';
+import './background-types.js';
+
+interface ServerToClientEvents {
     "user-joined": (data: {
         user: UserInfo;
     }) => void;
@@ -73,7 +74,7 @@ export interface ServerToClientEvents {
         finalScores: FinalScores;
     }) => void;
 }
-export interface ClientToServerEvents {
+interface ClientToServerEvents {
     "join-room": (data: {
         name: string;
     }) => void;
@@ -93,3 +94,5 @@ export interface ClientToServerEvents {
         interaction: NPCInteraction;
     }) => void;
 }
+
+export type { ClientToServerEvents, ServerToClientEvents };

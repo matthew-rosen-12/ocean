@@ -18,7 +18,6 @@ const http_1 = require("http");
 const socket_io_1 = require("socket.io");
 const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
-const superjson_parser_1 = require("./superjson-parser");
 // Load environment variables
 dotenv_1.default.config();
 const types_1 = require("shared/types");
@@ -57,7 +56,7 @@ exports.io = new socket_io_1.Server(httpServer, {
         credentials: true,
     },
     transports: ["websocket", "polling"],
-    parser: superjson_parser_1.superjsonParser,
+    // parser: superjsonParser,
 });
 const startServer = () => __awaiter(void 0, void 0, void 0, function* () {
     try {

@@ -1,5 +1,6 @@
-import { BackgroundString } from './background-types';
-export declare enum Animal {
+import { BackgroundString } from './background-types.js';
+
+declare enum Animal {
     DOLPHIN = "DOLPHIN",
     WOLF = "WOLF",
     PENGUIN = "PENGUIN",
@@ -13,7 +14,7 @@ export declare enum Animal {
     CUTTLEFISH = "CUTTLEFISH",
     SALAMANDER = "SALAMANDER"
 }
-export declare const ANIMAL_SCALES: {
+declare const ANIMAL_SCALES: {
     DOLPHIN: number;
     WOLF: number;
     PENGUIN: number;
@@ -27,7 +28,7 @@ export declare const ANIMAL_SCALES: {
     CUTTLEFISH: number;
     SALAMANDER: number;
 };
-export declare const ANIMAL_ORIENTATION: {
+declare const ANIMAL_ORIENTATION: {
     WOLF: {
         rotation: number;
         flipY: boolean;
@@ -77,16 +78,16 @@ export declare const ANIMAL_ORIENTATION: {
         flipY: boolean;
     };
 };
-export declare const DIRECTION_OFFSET = 0.1;
-export declare const BACKEND_DIRECTION_OFFSET = 0.001;
-export declare const NPC_WIDTH = 4;
-export declare const NPC_HEIGHT = 4;
-export declare enum PathPhase {
+declare const DIRECTION_OFFSET = 0.1;
+declare const BACKEND_DIRECTION_OFFSET = 0.001;
+declare const NPC_WIDTH = 4;
+declare const NPC_HEIGHT = 4;
+declare enum PathPhase {
     THROWN = "THROWN",// NPCs thrown by players
     RETURNING = "RETURNING",// NPCs returning to their thrower
     FLEEING = "FLEEING"
 }
-export interface pathData {
+interface pathData {
     id: string;
     room: string;
     npcGroupId: npcGroupId;
@@ -97,7 +98,7 @@ export interface pathData {
     timestamp: number;
     pathPhase: PathPhase;
 }
-export interface UserInfo {
+interface UserInfo {
     id: userId;
     animal: Animal;
     room: string;
@@ -106,14 +107,14 @@ export interface UserInfo {
     nickname: string;
     isBot?: boolean;
 }
-export declare enum NPCPhase {
+declare enum NPCPhase {
     IDLE = "IDLE",
     CAPTURED = "CAPTURED",
     PATH = "PATH"
 }
-export type fileName = string;
-export type npcGroupId = string;
-export declare class NPCGroup {
+type fileName = string;
+type npcGroupId = string;
+declare class NPCGroup {
     id: npcGroupId;
     fileNames: fileName[];
     captorId?: userId;
@@ -130,15 +131,15 @@ export declare class NPCGroup {
     });
     get faceFileName(): fileName | undefined;
 }
-export type userId = string;
-export type socketId = string;
-export declare class DefaultMap<K, V> extends Map<K, V> {
+type userId = string;
+type socketId = string;
+declare class DefaultMap<K, V> extends Map<K, V> {
     private defaultFactory;
     constructor(defaultFactory: (key: K) => V);
     get(key: K): V;
 }
-export type roomId = string;
-export declare class NPCGroupsBiMap {
+type roomId = string;
+declare class NPCGroupsBiMap {
     private map1;
     private map2;
     constructor(existing?: NPCGroupsBiMap);
@@ -153,15 +154,15 @@ export declare class NPCGroupsBiMap {
     getByUserId(userId: userId): NPCGroup | undefined;
     getByNpcGroupId(npcGroupId: npcGroupId): NPCGroup | undefined;
 }
-export interface Direction {
+interface Direction {
     x: number;
     y: number;
 }
-export interface Member {
+interface Member {
     id: string;
     info: UserInfo;
 }
-export interface TerrainConfig {
+interface TerrainConfig {
     boundaries: {
         minX: number;
         maxX: number;
@@ -180,11 +181,13 @@ export interface TerrainConfig {
     startTime?: number;
     duration?: number;
 }
-export interface FinalScores {
+interface FinalScores {
     [userId: string]: number;
 }
-export interface Position {
+interface Position {
     x: number;
     y: number;
     z?: number;
 }
+
+export { ANIMAL_ORIENTATION, ANIMAL_SCALES, Animal, BACKEND_DIRECTION_OFFSET, DIRECTION_OFFSET, DefaultMap, type Direction, type FinalScores, type Member, NPCGroup, NPCGroupsBiMap, NPCPhase, NPC_HEIGHT, NPC_WIDTH, PathPhase, type Position, type TerrainConfig, type UserInfo, type fileName, type npcGroupId, type pathData, type roomId, type socketId, type userId };

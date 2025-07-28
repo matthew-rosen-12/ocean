@@ -9,7 +9,7 @@
  * Higher numbers are drawn last (appearing in front).
  * These are abstract "layer" indices, not direct z-depth values.
  */
-export declare const RENDER_ORDERS: {
+declare const RENDER_ORDERS: {
     readonly CLOUDS: 0;
     readonly TERRAIN: 1;
     readonly TERRAIN_OUTLINE: 2;
@@ -45,7 +45,7 @@ export declare const RENDER_ORDERS: {
  * - LOCAL_ANIMAL_OUTLINE (order 100) -> z = -0.2 (just behind the graphic)
  * - CLOUDS (order 0) -> z = -10.2 (farthest from camera)
  */
-export declare const Z_DEPTHS: {
+declare const Z_DEPTHS: {
     readonly CLOUDS: number;
     readonly TERRAIN: number;
     readonly TERRAIN_OUTLINE: number;
@@ -76,8 +76,10 @@ export declare const Z_DEPTHS: {
  * Standard CSS z-index values for HTML UI elements that overlay the canvas.
  * These do not affect the three.js rendering context.
  */
-export declare const UI_Z_INDICES: {
+declare const UI_Z_INDICES: {
     readonly TIMES_UP_TEXT: 1001;
     readonly FLASH_EFFECT: 1000;
     readonly GAME_UI: 999;
 };
+
+export { RENDER_ORDERS, UI_Z_INDICES, Z_DEPTHS };

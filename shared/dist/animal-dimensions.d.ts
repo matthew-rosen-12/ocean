@@ -3,7 +3,7 @@
  * These values are calculated from SVG bounds and multiplied by animal scale
  * Generated automatically from animal cache files
  */
-export interface AnimalDimensions {
+interface AnimalDimensions {
     width: number;
     height: number;
 }
@@ -11,11 +11,11 @@ export interface AnimalDimensions {
  * Get animal dimensions for collision detection
  * Multiplies base dimensions by animal scale
  */
-export declare function getAnimalDimensions(animal: string, scale?: number): AnimalDimensions;
+declare function getAnimalDimensions(animal: string, scale?: number): AnimalDimensions;
 /**
  * Get collision threshold for an animal (typically width * 0.5 to match frontend)
  */
-export declare function getCollisionThreshold(animal: string, scale?: number): number;
+declare function getCollisionThreshold(animal: string, scale?: number): number;
 /**
  * Check if two rotated bounding boxes collide using Separating Axis Theorem (SAT)
  * @param pos1 Position of first object
@@ -28,14 +28,14 @@ export declare function getCollisionThreshold(animal: string, scale?: number): n
  * @param rotation2 Rotation of second object in radians
  * @returns true if the bounding boxes collide
  */
-export declare function checkRotatedBoundingBoxCollision(pos1: {
+declare function checkRotatedBoundingBoxCollision(pos1: {
     x: number;
     y: number;
 }, pos2: {
     x: number;
     y: number;
 }, width1: number, height1: number, rotation1: number, width2: number, height2: number, rotation2: number): boolean;
-export declare const ORIGINAL_SVG_BOUNDS: {
+declare const ORIGINAL_SVG_BOUNDS: {
     BEAR: {
         width: number;
         height: number;
@@ -97,3 +97,5 @@ export declare const ORIGINAL_SVG_BOUNDS: {
         aspectRatio: number;
     };
 };
+
+export { type AnimalDimensions, ORIGINAL_SVG_BOUNDS, checkRotatedBoundingBoxCollision, getAnimalDimensions, getCollisionThreshold };

@@ -570,6 +570,7 @@ export default function GuestLogin({
           pathPhase: PathPhase;
           faceFileName?: string;
         }) => {
+          console.log("🗑️ Received npc-group-deleted:", { npcGroupId, currentPosition, captorId, pathPhase, faceFileName });
           // Interaction detection is now handled server-side
 
           // Immediately delete the path to prevent NPC from reappearing

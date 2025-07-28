@@ -908,6 +908,13 @@ function checkAndDeleteFleeingNPCs(room) {
                 (0, npc_groups_1.setNPCGroupsInMemory)(room, allNPCGroups);
                 (0, paths_1.setPathsInMemory)(room, allPaths);
                 // Emit deletion event to room with current position, ownership, and path phase
+                console.log("🗑️ Sending npc-group-deleted to room:", room, {
+                    npcGroupId: npcGroup.id,
+                    currentPosition: currentPosition,
+                    captorId: npcGroup.captorId,
+                    pathPhase: pathData.pathPhase,
+                    faceFileName: npcGroup.faceFileName
+                });
                 (0, typed_socket_1.emitToRoom)(room, "npc-group-deleted", {
                     npcGroupId: npcGroup.id,
                     currentPosition: currentPosition,
@@ -944,6 +951,7 @@ function checkAndSpawnNPCs(room) {
         const allUsers = (0, users_1.getAllUsersInRoom)(room);
         const userCount = allUsers.size;
         const targetNPCCount = userCount * 4;
+        console.log(`Spawn check for ${room}: users=${userCount}, currentNPCs=${currentCount}, targetNPCs=${targetNPCCount}, cumulativeSize=${currentCumulativeSize}`);
         // If we have too many NPCs, remove excess uncaptured idle NPCs
         if (currentCount > targetNPCCount) {
             const excessCount = currentCount - targetNPCCount;
@@ -967,8 +975,10 @@ function checkAndSpawnNPCs(room) {
                 // Get terrain boundaries for proper spawning
                 const terrainConfig = (0, terrain_1.getTerrainConfig)(room);
                 const terrainBoundaries = terrainConfig.boundaries;
+                console.log(`Spawning ${spawnCount} NPCs for room ${room}`);
                 for (let i = 0; i < spawnCount; i++) {
                     const newNPCGroup = createSingleNPCGroup(terrainBoundaries);
+                    console.log(`Created NPC ${newNPCGroup.id} with filename ${newNPCGroup.faceFileName}`);
                     // Add NPC to memory and broadcast update immediately
                     const currentNPCGroups = (0, npc_groups_1.getNPCGroupsfromMemory)(room);
                     currentNPCGroups.setByNpcGroupId(newNPCGroup.id, newNPCGroup);

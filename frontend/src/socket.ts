@@ -17,7 +17,7 @@ export const getSocket = (token?: string) => {
     socketInstance = io(BACKEND_URL, {
       auth: { token },
       transports: ["websocket", "polling"],
-      parser: superjsonParser,
+      // parser: superjsonParser,
     });
     // Create new typed socket instance
     typedSocketInstance = new TypedSocket(socketInstance);
@@ -25,7 +25,7 @@ export const getSocket = (token?: string) => {
     // If no token and no instance, create one without auth
     socketInstance = io(BACKEND_URL, {
       transports: ["websocket", "polling"],
-      parser: superjsonParser,
+      // parser: superjsonParser,
     });
     // Create new typed socket instance
     typedSocketInstance = new TypedSocket(socketInstance);

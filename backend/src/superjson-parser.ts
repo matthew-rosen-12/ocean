@@ -1,26 +1,10 @@
 import superjson from "superjson";
 import { NPCGroupsBiMap, NPCGroup } from "shared/types";
+import { EventEmitter } from "events";
 
-// Register classes with superjson
-superjson.registerClass(NPCGroupsBiMap);
-superjson.registerClass(NPCGroup);
-
-// Simple EventEmitter implementation for Decoder
-class SimpleEmitter {
-  private events: { [event: string]: Function[] } = {};
-
-  emit(event: string, ...args: any[]) {
-    const handlers = this.events[event] || [];
-    handlers.forEach(handler => handler(...args));
-  }
-
-  on(event: string, handler: Function) {
-    if (!this.events[event]) {
-      this.events[event] = [];
-    }
-    this.events[event].push(handler);
-  }
-}
+// Register classes with superjson using explicit identifiers for cross-module compatibility
+superjson.registerClass(NPCGroupsBiMap, 'NPCGroupsBiMap');
+superjson.registerClass(NPCGroup, 'NPCGroup');
 
 class Encoder {
   encode(packet: any) {
@@ -28,16 +12,18 @@ class Encoder {
   }
 }
 
-class Decoder extends SimpleEmitter {
+class Decoder extends EventEmitter {
   add(chunk: string) {
     try {
       const packet = superjson.parse(chunk);
       if (this.isPacketValid(packet)) {
         this.emit("decoded", packet);
       } else {
+        console.error("Invalid packet format:", packet);
         throw new Error("invalid packet format");
       }
     } catch (error) {
+      console.error("Superjson parse error:", error, "Chunk:", chunk);
       throw new Error(`superjson parse error: ${error}`);
     }
   }
@@ -54,7 +40,7 @@ class Decoder extends SimpleEmitter {
   }
 
   destroy() {
-    // No cleanup needed
+    this.removeAllListeners();
   }
 }
 

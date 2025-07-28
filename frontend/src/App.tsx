@@ -3,11 +3,19 @@ import {
   pathData,
   UserInfo,
   NPCGroupsBiMap,
+  NPCGroup,
+  DefaultMap,
   npcGroupId,
   userId,
   FinalScores,
 } from "shared/types";
 import { NPCInteraction, AIResponse } from "shared/interaction-types";
+import superjson from "superjson";
+
+// Register classes with superjson using explicit identifiers for cross-module compatibility
+superjson.registerClass(NPCGroupsBiMap, 'NPCGroupsBiMap');
+superjson.registerClass(NPCGroup, 'NPCGroup');
+superjson.registerClass(DefaultMap, 'DefaultMap');
 import Scene from "./components/Scene";
 import GuestLogin from "./components/GuestLogin";
 import Leaderboard from "./components/Leaderboard";
