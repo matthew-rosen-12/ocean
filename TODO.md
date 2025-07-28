@@ -1,8 +1,13 @@
 - create llm calls for npc speech - upgrade tier?
 - outline / number text rendering depth
-- memory leaks of safari?? 
-- lag on new player join or new message
-- (one final check)
+- memory leaks of safari?? / on ec2??
 
-- code cleanup
+- lag on new player join or new message
+- don't load default flower background
+- duplicate collision fix got deleted(?)
+- sometimes bot doesn't emit from captured npc group on collision
+- create script for deployment to prod (or auto sync with git)
+- bad suggestion box on login
+
+- code cleanup, git repo readme cleanup etc
 - make publicly available

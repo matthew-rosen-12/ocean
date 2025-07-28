@@ -1,0 +1,23 @@
+{
+  "name": "nature-vs-npc",
+  "version": "1.0.0",
+  "description": "Nature vs NPC Game - Deployment Scripts",
+  "scripts": {
+    "deploy": "./deploy.sh full",
+    "deploy:frontend": "./deploy.sh frontend",
+    "deploy:backend": "./deploy.sh backend",
+    "deploy:shared": "./deploy.sh shared",
+    "deploy:env": "./deploy.sh env",
+    "status": "./deploy.sh status",
+    "build": "cd shared && npm run build && cd ../backend && npm run build && cd ../frontend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "build:shared": "cd shared && npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "."
+  },
+  "author": "",
+  "license": "ISC"
+}
