@@ -5,7 +5,6 @@ import { AIResponse, AIResponseType, SuccessAIResponse, ErrorAIResponse, RateLim
 dotenv.config();
 
 const apiKey = process.env.GOOGLE_AI_API_KEY;
-console.log('AI Service Debug - API Key length:', apiKey?.length, 'First 10 chars:', apiKey?.substring(0, 10));
 if (!apiKey) {
   console.error('GOOGLE_AI_API_KEY is not set in environment variables');
   throw new Error('GOOGLE_AI_API_KEY is not set in environment variables');
@@ -16,7 +15,6 @@ const genAI = new GoogleGenerativeAI(apiKey);
 // Test API key at startup
 (async () => {
   try {
-    console.log('Testing API key at startup...');
     const testModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
     const result = await testModel.generateContent('test');
     console.log('API key test successful:', result.response.text().substring(0, 50));

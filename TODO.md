@@ -3,11 +3,9 @@
 - memory leaks of safari?? / on ec2??
 
 - lag on new player join or new message
-- don't load default flower background
 - duplicate collision fix got deleted(?)
 - sometimes bot doesn't emit from captured npc group on collision
-- create script for deployment to prod (or auto sync with git)
 - bad suggestion box on login
+- decrease number of bots
 
 - code cleanup, git repo readme cleanup etc
-- make publicly available

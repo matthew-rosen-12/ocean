@@ -66,10 +66,6 @@ export class InteractionService {
         thrower.animal
       );
       
-      console.log(`Sending THROWN_NPC_GROUP_COLLISION interaction to room ${room}:`, {
-        thrownNpc: thrownNPCGroup.faceFileName,
-        emittedNpc: emittedNPCGroup.faceFileName
-      });
       
       this.sendInteractionToRoom(room, interaction);
     }
@@ -97,10 +93,6 @@ export class InteractionService {
         capturedGroupOwner.animal
       );
       
-      console.log(`Sending NPC_GROUP_EMITTED interaction to room ${room}:`, {
-        emittedNpc: emittedNPCGroup.faceFileName,
-        liberatorNpc: liberatorNPCGroup.faceFileName
-      });
       
       this.sendInteractionToRoom(room, interaction);
     }
@@ -125,11 +117,6 @@ export class InteractionService {
     if (!user || !npcGroup.faceFileName) return;
 
     const interaction = createInteraction.deleted(npcGroup.faceFileName, user.animal);
-    
-    console.log(`Sending NPC_GROUP_DELETED interaction to room ${room}:`, {
-      npcFace: npcGroup.faceFileName,
-      pathPhase
-    });
     
     this.sendInteractionToRoom(room, interaction);
   }
@@ -226,10 +213,6 @@ export class InteractionService {
         primaryUserAnimal
       );
       
-      console.log(`Sending NPC_GROUPS_BOUNCED interaction to room ${room}:`, {
-        primaryNpc: primaryNPCGroup.faceFileName,
-        secondaryNpc: secondaryNPCGroup.faceFileName
-      });
       
       this.sendInteractionToRoom(room, interaction);
     }
@@ -258,12 +241,6 @@ export class InteractionService {
         thrownNPCGroup.faceFileName,
         idleNpcOwner?.animal
       );
-      
-      console.log(`Sending IDLE_NPC_CAPTURED_THROWN interaction to room ${room}:`, {
-        idleNpc: idleNPCGroup.faceFileName,
-        thrownNpc: thrownNPCGroup.faceFileName,
-        pathPhase
-      });
       
       this.sendInteractionToRoom(room, interaction);
     }

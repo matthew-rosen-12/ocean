@@ -150,7 +150,7 @@ export function createTerrainFromServer(
     renderBackground(): React.JSX.Element {
       return renderTerrainBackground(
         boundaries,
-        BackgroundType.MOSAIC,
+        serverConfig.backgroundType,
         serverConfig.seed
       );
     },
@@ -178,7 +178,13 @@ export function createTerrain(): TerrainConfig {
     backgroundType: BackgroundType.FLORAL,
     seed: fallbackSeed,
     renderBackground(): React.JSX.Element {
-      return renderTerrainBackground(boundaries, BackgroundType.FLORAL, fallbackSeed);
+      // Don't render any pattern while loading - just show cloud backdrop
+      return (
+        <>
+          <CloudBackground />
+          <TerrainOutline boundaries={boundaries} seed={fallbackSeed} />
+        </>
+      );
     },
   };
 }
@@ -199,7 +205,7 @@ function renderTerrainBackground(
       case BackgroundType.COSMIC:
         return <CosmicPattern boundaries={boundaries} seed={seed} />;
 
-      case BackgroundType.MOSAIC:
+      case BackgroundType.CITY:
         return <CityPattern boundaries={boundaries} seed={seed} />;
 
       case BackgroundType.SNOWFLAKE:

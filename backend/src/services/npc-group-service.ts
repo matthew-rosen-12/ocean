@@ -223,9 +223,6 @@ function calculateLandingPositionWithCollisionAvoidance(
 
       if (collided) {
         hasCollision = true;
-        console.log(
-          `Bounding box collision detected between NPC ${movingNpcGroupId} and IDLE NPC ${idleNPCGroup.id}`
-        );
         break;
       }
     }
@@ -252,15 +249,8 @@ function calculateLandingPositionWithCollisionAvoidance(
     };
 
     extensionCount++;
-    console.log(
-      `Extending path for NPC ${movingNpcGroupId}, extension ${extensionCount}/${MAX_EXTENSIONS}`
-    );
   }
 
-  // If we've reached max extensions, return the last calculated position and extended path
-  console.log(
-    `Max extensions reached for NPC ${movingNpcGroupId}, settling at final position`
-  );
   return { 
     position: calculateLandingPosition(currentPathData),
     extendedPath: currentPathData 
@@ -1276,13 +1266,6 @@ export function checkAndDeleteFleeingNPCs(room: string): void {
         setPathsInMemory(room, allPaths);
         
         // Emit deletion event to room with current position, ownership, and path phase
-        console.log("🗑️ Sending npc-group-deleted to room:", room, { 
-          npcGroupId: npcGroup.id,
-          currentPosition: currentPosition,
-          captorId: npcGroup.captorId,
-          pathPhase: pathData.pathPhase,
-          faceFileName: npcGroup.faceFileName
-        });
         emitToRoom(room, "npc-group-deleted", { 
           npcGroupId: npcGroup.id,
           currentPosition: currentPosition,
@@ -1324,9 +1307,7 @@ export function checkAndSpawnNPCs(room: string): void {
     const allUsers = getAllUsersInRoom(room);
     const userCount = allUsers.size;
     const targetNPCCount = userCount * 4;
-    
-    console.log(`Spawn check for ${room}: users=${userCount}, currentNPCs=${currentCount}, targetNPCs=${targetNPCCount}, cumulativeSize=${currentCumulativeSize}`);
-    
+        
     // If we have too many NPCs, remove excess uncaptured idle NPCs
     if (currentCount > targetNPCCount) {
       const excessCount = currentCount - targetNPCCount;
@@ -1357,10 +1338,8 @@ export function checkAndSpawnNPCs(room: string): void {
         const terrainConfig = getTerrainConfig(room);
         const terrainBoundaries = terrainConfig.boundaries;
         
-        console.log(`Spawning ${spawnCount} NPCs for room ${room}`);
         for (let i = 0; i < spawnCount; i++) {
           const newNPCGroup = createSingleNPCGroup(terrainBoundaries);
-          console.log(`Created NPC ${newNPCGroup.id} with filename ${newNPCGroup.faceFileName}`);
                     
           // Add NPC to memory and broadcast update immediately
           const currentNPCGroups = getNPCGroupsfromMemory(room);

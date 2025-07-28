@@ -7,6 +7,7 @@ export enum BackgroundType {
   FLORAL = "floral",
   COSMIC = "cosmic",
   MOSAIC = "mosaic",
+  CITY = "city",
   SNOWFLAKE = "snowflake"
 }
 

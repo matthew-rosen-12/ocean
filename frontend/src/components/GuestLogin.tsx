@@ -482,18 +482,6 @@ export default function GuestLogin({
         setNPCGroups((prev) => {
           const newNpcGroups = new NPCGroupsBiMap(prev);
 
-          // Check if this update is for a thrown/returning NPC group being captured by local user
-          const myUser = myUserRef.current;
-
-          // Only log when it's my group with files (reduce spam)
-          if (npcGroup.captorId === myUser?.id && npcGroup.fileNames.length > 0) {
-            console.log("My NPC group update:", {
-              npcGroupId: npcGroup.id.slice(0, 8),
-              fileNamesLength: npcGroup.fileNames.length,
-              hasPath: !!pathsRef.current.get(npcGroup.id),
-              pathPhase: pathsRef.current.get(npcGroup.id)?.pathPhase,
-            });
-          }
 
           // Interaction detection is now handled server-side
 
@@ -570,7 +558,6 @@ export default function GuestLogin({
           pathPhase: PathPhase;
           faceFileName?: string;
         }) => {
-          console.log("🗑️ Received npc-group-deleted:", { npcGroupId, currentPosition, captorId, pathPhase, faceFileName });
           // Interaction detection is now handled server-side
 
           // Immediately delete the path to prevent NPC from reappearing
