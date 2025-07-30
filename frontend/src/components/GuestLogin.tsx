@@ -1,6 +1,5 @@
 // nature_v_npc/app/components/GuestLogin.tsx
 import React, { useState, useEffect, useRef } from "react";
-import { uniqueNamesGenerator, adjectives, animals, colors } from "unique-names-generator";
 import {
   NPCGroup,
   pathData,
@@ -20,6 +19,7 @@ import { getSocket } from "../socket";
 import { ServerTerrainConfig } from "../utils/terrain";
 import { TypedSocket } from "../utils/typed-socket";
 import GeneratedNPCBackground from "./backgrounds/GeneratedNPCBackground";
+import NicknameInput from "./NicknameInput";
 
 // Reusable components
 const ControlsSection = () => (
@@ -111,23 +111,6 @@ const GameInstructions = () => (
   </div>
 );
 
-// Cookie utility functions
-const setCookie = (name: string, value: string, days: number = 365) => {
-  const expires = new Date();
-  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
-};
-
-const getCookie = (name: string): string | null => {
-  const nameEQ = name + "=";
-  const cookies = document.cookie.split(";");
-  for (let i = 0; i < cookies.length; i++) {
-    let cookie = cookies[i];
-    while (cookie.charAt(0) === " ") cookie = cookie.substring(1, cookie.length);
-    if (cookie.indexOf(nameEQ) === 0) return cookie.substring(nameEQ.length, cookie.length);
-  }
-  return null;
-};
 
 interface Props {
   setMyUser: React.Dispatch<React.SetStateAction<UserInfo | null>>;
@@ -156,11 +139,8 @@ export default function GuestLogin({
   interactionSetter,
 }: Props) {
   const [loading, setLoading] = useState(false);
-  const [nickname, setNickname] = useState("");
-  const [suggestedNickname, setSuggestedNickname] = useState("");
-  const [userHasTyped, setUserHasTyped] = useState(false);
   const [initialized, setInitialized] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [currentNickname, setCurrentNickname] = useState("Guest");
   const myUserRef = useRef<UserInfo | null>(null);
   const pathsRef = useRef<Map<npcGroupId, pathData>>(new Map());
   const mainCardRef = useRef<HTMLDivElement>(null);
@@ -172,29 +152,8 @@ export default function GuestLogin({
   const [desktopCanScrollUp, setDesktopCanScrollUp] = useState(false);
   const [desktopCanScrollDown, setDesktopCanScrollDown] = useState(false);
 
-  // Load saved nickname and generate random suggestion
+  // Initialize component
   useEffect(() => {
-    const generateNickname = () => {
-      return uniqueNamesGenerator({
-        dictionaries: [adjectives, colors, animals],
-        separator: "",
-        style: "capital",
-        length: 2,
-      });
-    };
-
-    const suggestion = generateNickname();
-    setSuggestedNickname(suggestion);
-
-    // Try to load saved nickname from cookie
-    const savedNickname = getCookie("lastNickname");
-    if (savedNickname && savedNickname.trim()) {
-      setNickname(savedNickname);
-      setUserHasTyped(true); // User has previously typed this nickname
-    } else {
-      setNickname(suggestion);
-      setUserHasTyped(false); // Ensure we're in suggestion mode
-    }
     setInitialized(true);
   }, []);
 
@@ -275,94 +234,16 @@ export default function GuestLogin({
     };
   }, [initialized]);
 
-  // Set cursor to beginning whenever we're in suggestion mode
-  useEffect(() => {
-    if (!userHasTyped && inputRef.current && nickname === suggestedNickname) {
-      inputRef.current.setSelectionRange(0, 0);
-    }
-  }, [userHasTyped, nickname, suggestedNickname]);
 
-  const handleNicknameFocus = () => {
-    if (!userHasTyped && inputRef.current) {
-      // Ensure cursor is at beginning when focusing on suggestion
-      inputRef.current.setSelectionRange(0, 0);
-    }
+  const handleNicknameSubmit = (finalNickname: string) => {
+    handleGuestLogin(finalNickname);
   };
 
-  const handleNicknameClick = () => {
-    if (!userHasTyped && inputRef.current) {
-      // Ensure cursor is at beginning when clicking on suggestion
-      inputRef.current.setSelectionRange(0, 0);
-    }
+  const handleButtonClick = () => {
+    handleGuestLogin(currentNickname);
   };
 
-  const handleNicknameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Handle Enter key to submit
-    if (e.key === "Enter") {
-      handleGuestLogin();
-      return;
-    }
-
-    // Handle Tab key to accept suggestion and move cursor to end
-    if (!userHasTyped && e.key === "Tab") {
-      e.preventDefault(); // Prevent default tab behavior
-      setUserHasTyped(true); // Mark as user-typed to change appearance
-      // Move cursor to end of text
-      if (inputRef.current) {
-        const length = nickname.length;
-        setTimeout(() => {
-          if (inputRef.current) {
-            inputRef.current.setSelectionRange(length, length);
-            inputRef.current.focus();
-          }
-        }, 0);
-      }
-      return;
-    }
-
-    // Prevent backspace/delete from clearing suggestion when we're already in suggestion mode
-    if (!userHasTyped && (e.key === "Backspace" || e.key === "Delete")) {
-      e.preventDefault(); // Prevent the backspace from doing anything
-      return;
-    }
-
-    if (
-      !userHasTyped &&
-      e.key !== "Tab" &&
-      e.key !== "Shift" &&
-      e.key !== "Control" &&
-      e.key !== "Alt" &&
-      e.key !== "Meta"
-    ) {
-      // User is starting to type a character - clear suggestion, character will be added by onChange
-      setNickname("");
-      setUserHasTyped(true);
-    }
-  };
-
-  const handleNicknameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-
-    if (value === "" && userHasTyped) {
-      // User deleted everything, go back to suggestion
-      // Batch the state updates to prevent flash
-      React.startTransition(() => {
-        setNickname(suggestedNickname);
-        setUserHasTyped(false);
-      });
-      // Cursor positioning will be handled by the useEffect
-    } else if (userHasTyped) {
-      // User is continuing to type
-      setNickname(value);
-    } else if (value !== suggestedNickname) {
-      // User is typing something different from suggestion
-      setNickname(value);
-      setUserHasTyped(true);
-    }
-    // If value === suggestedNickname and !userHasTyped, do nothing (stay in suggestion mode)
-  };
-
-  const handleGuestLogin = async () => {
+  const handleGuestLogin = async (finalNickname?: string) => {
     setLoading(true);
     try {
       // Get user info and token from auth endpoint
@@ -628,19 +509,10 @@ export default function GuestLogin({
         }
       });
 
-      // Set initial user state with nickname (ensure it's never empty)
-      const finalNickname = (() => {
-        const trimmedNickname = nickname.trim();
-        if (!trimmedNickname || (!userHasTyped && nickname === suggestedNickname)) {
-          return suggestedNickname;
-        }
-        return trimmedNickname;
-      })();
+      // Use the provided nickname or default
+      const nickname = finalNickname || "Guest";
 
-      const userWithNickname = { ...user, nickname: finalNickname };
-
-      // Save the nickname to cookie for future use
-      setCookie("lastNickname", finalNickname);
+      const userWithNickname = { ...user, nickname };
 
       setMyUser(userWithNickname);
       myUserRef.current = userWithNickname;
@@ -681,32 +553,22 @@ export default function GuestLogin({
               </p>
 
               <div className="mb-6">
-                <label htmlFor="nickname" className="block text-sm font-semibold text-black mb-3">
+                <label htmlFor="nickname-desktop" className="block text-sm font-semibold text-black mb-3">
                   Choose your nickname
                 </label>
                 <div className="relative">
-                  <input
-                    ref={inputRef}
-                    id="nickname"
-                    type="text"
-                    value={nickname}
-                    onChange={handleNicknameChange}
-                    onKeyDown={handleNicknameKeyDown}
-                    onFocus={handleNicknameFocus}
-                    onClick={handleNicknameClick}
-                    placeholder=""
-                    className={`w-full px-4 py-4 bg-white/40 border border-white/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-400/60 focus:border-blue-400/60 backdrop-blur-sm transition-all duration-200 placeholder-gray-600 text-lg caret-gray-800 ${
-                      !initialized || !userHasTyped ? "text-gray-300" : "text-gray-900"
-                    } hover:bg-white/50 focus:bg-white/60 selection:bg-blue-200/50`}
-                    maxLength={20}
+                  <NicknameInput
+                    onSubmit={handleNicknameSubmit}
+                    loading={loading}
+                    id="nickname-desktop"
+                    onNicknameChange={setCurrentNickname}
                   />
-                  {/* Subtle inner glow effect */}
                   <div className="absolute inset-0 rounded-2xl pointer-events-none opacity-0 transition-opacity duration-200 bg-gradient-to-r from-blue-400/20 to-purple-400/20 peer-focus:opacity-100"></div>
                 </div>
               </div>
 
               <button
-                onClick={handleGuestLogin}
+                onClick={handleButtonClick}
                 disabled={loading}
                 className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 px-8 rounded-2xl hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
               >
@@ -790,32 +652,22 @@ export default function GuestLogin({
               </p>
 
               <div className="mb-6">
-                <label htmlFor="nickname" className="block text-sm font-semibold text-black mb-3">
+                <label htmlFor="nickname-mobile" className="block text-sm font-semibold text-black mb-3">
                   Choose your nickname
                 </label>
                 <div className="relative">
-                  <input
-                    ref={inputRef}
-                    id="nickname"
-                    type="text"
-                    value={nickname}
-                    onChange={handleNicknameChange}
-                    onKeyDown={handleNicknameKeyDown}
-                    onFocus={handleNicknameFocus}
-                    onClick={handleNicknameClick}
-                    placeholder=""
-                    className={`w-full px-4 py-4 bg-white/40 border border-white/50 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-400/60 focus:border-blue-400/60 backdrop-blur-sm transition-all duration-200 placeholder-gray-600 text-lg caret-gray-800 ${
-                      !initialized || !userHasTyped ? "text-gray-300" : "text-gray-900"
-                    } hover:bg-white/50 focus:bg-white/60 selection:bg-blue-200/50`}
-                    maxLength={20}
+                  <NicknameInput
+                    onSubmit={handleNicknameSubmit}
+                    loading={loading}
+                    id="nickname-mobile"
+                    onNicknameChange={setCurrentNickname}
                   />
-                  {/* Subtle inner glow effect */}
                   <div className="absolute inset-0 rounded-2xl pointer-events-none opacity-0 transition-opacity duration-200 bg-gradient-to-r from-blue-400/20 to-purple-400/20 peer-focus:opacity-100"></div>
                 </div>
               </div>
 
               <button
-                onClick={handleGuestLogin}
+                onClick={handleButtonClick}
                 disabled={loading}
                 className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 px-8 rounded-2xl hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
               >

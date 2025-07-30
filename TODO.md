@@ -6,6 +6,5 @@
 - duplicate collision fix got deleted(?)
 - sometimes bot doesn't emit from captured npc group on collision
 - bad suggestion box on login
-- decrease number of bots
 
 - code cleanup, git repo readme cleanup etc
