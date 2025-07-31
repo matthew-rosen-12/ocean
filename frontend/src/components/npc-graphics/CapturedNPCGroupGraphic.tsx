@@ -18,6 +18,7 @@ import {
 } from "../../utils/npc-group-utils";
 import { getAnimalColor } from "../../utils/animal-colors";
 import { calculatePathPosition, handleNPCGroupReflectionForUser } from "../../utils/path-collision-utils";
+import { RENDER_ORDERS, Z_DEPTHS } from "shared/z-depths";
 // Constants for positioning
 
 
@@ -295,7 +296,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
         {/* Text component like the original, positioned relative to the group */}
         {textInfo && (
           <Text
-            position={textInfo.position}
+            position={[textInfo.position[0], textInfo.position[1], isLocalUser ? -0.01 : Z_DEPTHS.REMOTE_CAPTURED_NPC_GROUP]}
             fontSize={textInfo.fontSize}
             color={textInfo.color}
             anchorX="center"
@@ -304,13 +305,14 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
             characters="0123456789"
             outlineWidth={0.1}
             outlineColor="white"
+            renderOrder={isLocalUser ? RENDER_ORDERS.LOCAL_CAPTURED_NPC_GROUP : RENDER_ORDERS.REMOTE_CAPTURED_NPC_GROUP}
           >
             {textInfo.count}
           </Text>
         )} 
         {throwChargeCountTextInfo && (
           <Text
-            position={throwChargeCountTextInfo.position}
+            position={[throwChargeCountTextInfo.position[0], throwChargeCountTextInfo.position[1], isLocalUser ? -0.01 : Z_DEPTHS.REMOTE_CAPTURED_NPC_GROUP]}
             fontSize={throwChargeCountTextInfo.fontSize}
             color={throwChargeCountTextInfo.color}
             anchorX="center"
@@ -319,6 +321,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
             characters="0123456789"
             outlineWidth={0.1}
             outlineColor={getAnimalColor(user)}
+            renderOrder={isLocalUser ? RENDER_ORDERS.LOCAL_CAPTURED_NPC_GROUP : RENDER_ORDERS.REMOTE_CAPTURED_NPC_GROUP}
           >
             {throwChargeCountTextInfo.count}
           </Text>
