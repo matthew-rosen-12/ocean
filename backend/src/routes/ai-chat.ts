@@ -15,7 +15,7 @@ router.post('/generate-from-interaction', async (req, res) => {
 
     const prompt = interactionToPrompt(interaction);
     const response = await aiChatService.generateResponse(prompt);
-    res.json({ response, prompt, provider: 'google' });
+    res.json({ response, prompt, provider: 'groq' });
   } catch (error) {
     console.error('AI chat error:', error);
     res.status(500).json({ error: 'Failed to generate response' });
@@ -32,7 +32,7 @@ router.post('/generate', async (req, res) => {
     }
 
     const response = await aiChatService.generateResponse(interaction);
-    res.json({ response, provider: 'google' });
+    res.json({ response, provider: 'groq' });
   } catch (error) {
     console.error('AI chat error:', error);
     res.status(500).json({ error: 'Failed to generate response' });

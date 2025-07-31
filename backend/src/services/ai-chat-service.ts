@@ -1,49 +1,65 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import { AIResponse, AIResponseType, SuccessAIResponse, ErrorAIResponse, RateLimitedAIResponse, NPCInteraction } from 'shared/interaction-types';
 
 dotenv.config();
 
-const apiKey = process.env.GOOGLE_AI_API_KEY;
+const apiKey = process.env.GROQ_API_KEY;
 if (!apiKey) {
-  console.error('GOOGLE_AI_API_KEY is not set in environment variables');
-  throw new Error('GOOGLE_AI_API_KEY is not set in environment variables');
+  console.error('GROQ_API_KEY is not set in environment variables');
+  throw new Error('GROQ_API_KEY is not set in environment variables');
 }
 
-const genAI = new GoogleGenerativeAI(apiKey);
+const groqClient = new OpenAI({
+  apiKey: apiKey,
+  baseURL: 'https://api.groq.com/openai/v1'
+});
 
 // Test API key at startup
 (async () => {
   try {
-    const testModel = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
-    const result = await testModel.generateContent('test');
-    console.log('API key test successful:', result.response.text().substring(0, 50));
+    const result = await groqClient.chat.completions.create({
+      messages: [{ role: 'user', content: 'test' }],
+      model: 'llama-3.1-8b-instant',
+      max_tokens: 10
+    });
+    console.log('API key test successful:', result.choices[0]?.message?.content?.substring(0, 50));
   } catch (error) {
     console.error('API key test failed at startup:', error instanceof Error ? error.message : error);
   }
 })();
 
 export class AIChatService {
-  // Use Gemini 1.0 Pro for maximum concurrent users (15 RPM vs 2 RPM)
-  private model = genAI.getGenerativeModel({ 
-    model: 'gemini-2.0-flash-lite',
-    generationConfig: {
-      maxOutputTokens: 100, // Limit response length (~75 words)
-      temperature: 0.7,     // Balanced creativity
-      topP: 0.9,
-      topK: 40
-    }
-  });
+  // Use llama-3.1-8b-instant for speed, cost-effectiveness, and good rate limits
+  private modelName = 'llama-3.1-8b-instant';
+  private defaultConfig = {
+    max_tokens: 100,     // Limit response length (~75 words)
+    temperature: 0.7,    // Balanced creativity
+    top_p: 0.9
+  };
 
   async generateResponse(prompt: string): Promise<string> {
     console.log('generateResponse called with API key:', apiKey?.substring(0, 10), 'length:', apiKey?.length);
     if (!apiKey) {
-      throw new Error('GOOGLE_AI_API_KEY is not set in environment variables');
-    }    
+      throw new Error('GROQ_API_KEY is not set in environment variables');
+    }
+
+    
     try {
-      const result = await this.model.generateContent(prompt);
-      const response = result.response;
-      return response.text();
+      const result = await groqClient.chat.completions.create({
+        messages: [{ role: 'user', content: prompt }],
+        model: this.modelName,
+        ...this.defaultConfig
+      });
+      
+      let responseText = result.choices[0]?.message?.content || '';
+      
+      // Remove beginning and ending quotes
+      responseText = responseText.replace(/^["']|["']$/g, '');
+      
+      // Use actual token counts from API response
+      
+      return responseText;
     } catch (error) {
       console.error('Error generating AI response:', error);
       throw new Error('Failed to generate AI response');
@@ -59,11 +75,19 @@ export class AIChatService {
       } as ErrorAIResponse;
     }
 
+
     try {
-      const result = await this.model.generateContent(prompt);
-      const response = result.response;
-      const message = response.text();
+      const result = await groqClient.chat.completions.create({
+        messages: [{ role: 'user', content: prompt }],
+        model: this.modelName,
+        ...this.defaultConfig
+      });
       
+      let message = result.choices[0]?.message?.content || '';
+      
+      // Remove beginning and ending quotes
+      message = message.replace(/^["']|["']$/g, '');
+            
       return {
         type: AIResponseType.SUCCESS,
         message
