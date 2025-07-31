@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { uniqueNamesGenerator, adjectives, animals, colors } from "unique-names-generator";
+import { uniqueNamesGenerator, adjectives, colors } from "unique-names-generator";
 
 // Cookie utility functions
 const setCookie = (name: string, value: string, days: number = 365) => {
@@ -38,7 +38,7 @@ export default function NicknameInput({ onSubmit, loading = false, className = "
   useEffect(() => {
     const generateNickname = () => {
       return uniqueNamesGenerator({
-        dictionaries: [adjectives, colors, animals],
+        dictionaries: [adjectives, colors],
         separator: "",
         style: "capital",
         length: 2,

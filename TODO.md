@@ -5,6 +5,5 @@
 - lag on new player join or new message
 - duplicate collision fix got deleted(?)
 - sometimes bot doesn't emit from captured npc group on collision
-- bad suggestion box on login
 
 - code cleanup, git repo readme cleanup etc
