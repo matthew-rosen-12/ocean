@@ -36,19 +36,45 @@ export function usePositionBroadcast({
     const positionChanged = positionDelta.length() >= POSITION_THRESHOLD;
 
     const directionChanged =
-      lastBroadcastDirection.current.x !== direction.x ||
-      lastBroadcastDirection.current.y !== direction.y;
+      Math.abs(lastBroadcastDirection.current.x - direction.x) > 0.01 ||
+      Math.abs(lastBroadcastDirection.current.y - direction.y) > 0.01;
 
     if (positionChanged || directionChanged) {
-      // Emit socket event
+      // Use delta compression for network efficiency
+      const deltaData = {
+        userId: myUser.id,
+        positionDelta: positionChanged ? {
+          dx: Number((position.x - lastBroadcastPosition.current.x).toFixed(2)),
+          dy: Number((position.y - lastBroadcastPosition.current.y).toFixed(2))
+        } : null,
+        direction: directionChanged ? { 
+          x: Number(direction.x.toFixed(3)), 
+          y: Number(direction.y.toFixed(3)) 
+        } : null,
+        timestamp: Date.now()
+      };
+
+      // Emit delta update if we have significant changes
       const currentTypedSocket = typedSocket();
-      currentTypedSocket.emit("update-user", {
-        user: {
-          ...myUser,
-          position: position.clone(),
-          direction: { ...direction },
-        },
-      });
+      if (deltaData.positionDelta || deltaData.direction) {
+        // For now, still emit full user data (delta compression would require server changes)
+        // But we optimize the data precision to reduce payload size
+        currentTypedSocket.emit("update-user", {
+          user: {
+            ...myUser,
+            position: {
+              x: Number(position.x.toFixed(2)),
+              y: Number(position.y.toFixed(2)),
+              z: position.z ?? 0
+            },
+            direction: { 
+              x: Number(direction.x.toFixed(3)), 
+              y: Number(direction.y.toFixed(3)) 
+            },
+          },
+        });
+      }
+      
       lastBroadcastPosition.current.copy(position);
       lastBroadcastDirection.current = { ...direction };
     }

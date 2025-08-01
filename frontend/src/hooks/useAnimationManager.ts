@@ -1,5 +1,6 @@
 import { useFrame } from '@react-three/fiber';
 import { useRef } from 'react';
+import { AnimationPool } from '../utils/AnimationPool';
 
 export interface AnimationCallback {
   id: string;
@@ -33,6 +34,9 @@ export function useAnimationManager() {
     animationCallbacksRef.current.forEach((callback) => {
       callback(state, delta);
     });
+
+    // Handle pooled animations for better performance
+    AnimationPool.executeAllPools(state, delta);
 
     // Handle frame rate monitoring
     if (frameRateCallbackRef.current) {
@@ -87,6 +91,19 @@ export function useAnimationManager() {
     // Unregister animation callback
     unregisterAnimationCallback: (id: string) => {
       animationCallbacksRef.current.delete(id);
+    },
+
+    // Pooled animation methods for better performance
+    registerPooledAnimation: (poolName: string, animationId: string, callback: (state: any, delta: number) => void) => {
+      AnimationPool.register(poolName, animationId, callback);
+    },
+
+    unregisterPooledAnimation: (poolName: string, animationId: string) => {
+      AnimationPool.unregister(poolName, animationId);
+    },
+
+    setPooledAnimationActive: (poolName: string, animationId: string, isActive: boolean) => {
+      AnimationPool.setActive(poolName, animationId, isActive);
     },
     
     // Expose frame count for debugging if needed

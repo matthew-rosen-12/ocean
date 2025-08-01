@@ -10,7 +10,7 @@ import {
   FinalScores,
   ANIMAL_SCALES,
 } from "shared/types";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import AnimalGraphic from "./AnimalGraphic";
 import { UI_Z_INDICES } from "shared/z-depths";
 import NPCGraphicWrapper from "./npc-graphics/NPCGroupGraphicWrapper";
@@ -27,6 +27,7 @@ import { AnimationManagerProvider } from "../contexts/AnimationManagerContext";
 import { KeyboardMovementManager } from "./KeyboardMovementManager";
 import { FrameRateManager } from "./FrameRateManager";
 import { animalGraphicsCache } from "../utils/load-animal-svg";
+import { useViewportCulling } from "../hooks/useViewportCulling";
 // Extend Performance interface for Chrome's memory API
 declare global {
   interface Performance {
@@ -165,6 +166,13 @@ export default function Scene({
     users,
   });
 
+  // Viewport culling for performance optimization
+  const { isInViewport, getDistanceFromCamera } = useViewportCulling(
+    position, // Use player position as camera position
+    50, // View distance - adjust based on game needs
+    1.3 // Buffer factor to prevent pop-in
+  );
+
   // Prevent game from pausing when tab is hidden
   useVisibilityControl(onInactivityKick);
 
@@ -293,8 +301,40 @@ export default function Scene({
     [animalDimensions]
   );
 
+  // Filter users and NPCs based on viewport culling for performance
+  const visibleUsers = useMemo(() => {
+    return Array.from(users.values()).filter((user: UserInfo) => {
+      // Always render local player
+      if (user.id === myUser.id) return true;
+      // Render other users only if in viewport
+      return isInViewport(user.position);
+    });
+  }, [users, myUser.id, isInViewport]);
+
+  const visibleNPCGroups = useMemo(() => {
+    return Array.from(npcGroups.values()).filter((npcGroup: any) => {
+      // Always render NPCs captured by local player (they follow player)
+      if (npcGroup.captorId === myUser.id) return true;
+      // For other NPCs, check viewport visibility
+      return isInViewport(npcGroup.position);
+    });
+  }, [npcGroups, myUser.id, isInViewport]);
+
   // State for flash effect
   const [showFlash, setShowFlash] = useState(false);
+
+  // Optimized state setters using React 18 concurrent features
+  const setFlashOptimized = useCallback((value: boolean) => {
+    // Flash effects are low priority - use startTransition
+    React.startTransition(() => {
+      setShowFlash(value);
+    });
+  }, []);
+
+  const setTimesUpOptimized = useCallback((value: boolean) => {
+    // Times up text is high priority - update immediately
+    setShowTimesUpText(value);
+  }, []);
 
 
   // Component to set the canvas clear color to match the game background
@@ -362,8 +402,8 @@ export default function Scene({
           />
           <pointLight position={[-10, -10, -10]} decay={0} intensity={Math.PI} />
           {terrain.renderBackground()}
-          {/* Render all users with their NPCs */}
-          {Array.from(users.values()).map((user) => (
+          {/* Render only visible users for performance */}
+          {visibleUsers.map((user) => (
             <AnimalGraphic
               key={user.id}
               user={user}
@@ -373,24 +413,24 @@ export default function Scene({
             />
           ))}
 
-          {npcGroups.values()
-            .map((npcGroup) => (
-              <NPCGraphicWrapper
-                key={npcGroup.id}
-                npcGroup={npcGroup}
-                checkForCollision={checkForNPCGroupCollision}
-                pathData={paths.get(npcGroup.id)}
-                users={users}
-                allPaths={paths}
-                npcGroups={npcGroups}
-                myUserId={myUser.id}
-                animalDimensions={animalDimensions}
-                setPaths={setPaths}
-                setNpcGroups={setNpcGroups}
-                throwChargeCount={npcGroup.captorId === myUser.id ? currentThrowCount : undefined}
-                deletingNPCs={deletingNPCs}
-              />
-            ))}
+          {/* Render only visible NPCs for performance */}
+          {visibleNPCGroups.map((npcGroup) => (
+            <NPCGraphicWrapper
+              key={npcGroup.id}
+              npcGroup={npcGroup}
+              checkForCollision={checkForNPCGroupCollision}
+              pathData={paths.get(npcGroup.id)}
+              users={users}
+              allPaths={paths}
+              npcGroups={npcGroups}
+              myUserId={myUser.id}
+              animalDimensions={animalDimensions}
+              setPaths={setPaths}
+              setNpcGroups={setNpcGroups}
+              throwChargeCount={npcGroup.captorId === myUser.id ? currentThrowCount : undefined}
+              deletingNPCs={deletingNPCs}
+            />
+          ))}
 
           {/* Captured NPC group collision detection manager */}
           <CapturedNPCGroupCollisionManager
