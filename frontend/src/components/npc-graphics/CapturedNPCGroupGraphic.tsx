@@ -17,7 +17,6 @@ import {
   calculateNPCGroupPosition,
 } from "../../utils/npc-group-utils";
 import { getAnimalColor } from "../../utils/animal-colors";
-import { calculatePathPosition, handleNPCGroupReflectionForUser } from "../../utils/path-collision-utils";
 import { RENDER_ORDERS, Z_DEPTHS } from "shared/z-depths";
 // Constants for positioning
 
@@ -51,8 +50,6 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
   user,
   npcGroups,
   allPaths,
-  setPaths,
-  setNpcGroups,
   animalWidth,
   isLocalUser = false, // Default to false for non-local users
   users: _users, // Not used in this component anymore (handled by CapturedNPCGroupCollisionManager)
@@ -154,31 +151,6 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
 
 
 
-  const checkForPathNPCCollision = useCallback((npcGroup: NPCGroup, pathData: pathData) => {
-    if ((pathData.pathPhase !== PathPhase.THROWN && pathData.pathPhase !== PathPhase.RETURNING) || !animalWidth) return false;
-
-    // Check npc group collision with the path data, using npc group position and scale and path data calculated position
-    const currentPathPosition = calculatePathPosition(pathData, Date.now());
-    const npcGroupPosition = calculateNPCGroupPosition(
-      user,
-      animalWidth,
-      scaleFactor
-    );
-
-    // Collision detection removed - handled by CapturedNPCGroupCollisionManager
-    // const npcGroupRadius = scaleFactor;
-    // const distance = npcGroupPosition ? npcGroupPosition.distanceTo(currentPathPosition) : Infinity;
-    // if (distance < npcGroupRadius && group.fileNames.length > 0) {
-    //   handleNPCGroupReflectionForUser(npcGroup, pathData, currentPathPosition, group, user, animalWidth, setPaths, setNpcGroups);
-    //   return true;
-    // }
-
-    return false;
-  }, [animalWidth, user, scaleFactor, group, setPaths, setNpcGroups]);
-
-
-
-
   // Set initial position
   useMount(() => {
     // Start with initial position behind user
@@ -263,20 +235,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
         // Ensure the mesh scale remains consistent with the scaleFactor
         mesh.current.scale.set(scaleFactor, scaleFactor, 1);
       }
-      // Check for collision for local user only (bot collision handled in Scene.tsx)
-      if (isLocalUser) {
-        Array.from(allPaths.entries()).forEach(([_npcId, pathData]) => {
-          // Get the NPC group from the groups map using the ID
-          const pathNPCGroup = npcGroups.getByNpcGroupId(pathData.npcGroupId);
-          if (
-            (pathData.pathPhase === PathPhase.THROWN || pathData.pathPhase === PathPhase.RETURNING) &&
-            pathNPCGroup &&
-            pathNPCGroup.captorId !== group.captorId
-          ) {
-            checkForPathNPCCollision(pathNPCGroup, pathData);
-          }
-        });
-      }
+      
     };
 
     animationManager.registerAnimationCallback(callbackId, animationCallback);
@@ -284,7 +243,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     return () => {
       animationManager.unregisterAnimationCallback(callbackId);
     };
-  }, [animationManager, calculateTargetPosition, checkForPathNPCCollision, updatePositionWithTracking, isLocalUser, threeGroup, textureLoaded, user, group.fileNames.length, group.captorId, animalWidth, positionRef, mesh, scaleFactor, allPaths, npcGroups]);
+  }, [animationManager, calculateTargetPosition, updatePositionWithTracking, isLocalUser, threeGroup, textureLoaded, user, group.fileNames.length, group.captorId, animalWidth, positionRef, mesh, scaleFactor, allPaths, npcGroups]);
 
   // Final early return after all hooks are called
   if (!user || group.fileNames.length === 0 || !animalWidth) {
