@@ -38,10 +38,18 @@
             "types": "./dist/interaction-prompts.d.ts",
             "import": "./dist/interaction-prompts.mjs",
             "require": "./dist/interaction-prompts.js"
+        },
+        "./nickname-generator": {
+            "types": "./dist/nickname-generator.d.ts",
+            "import": "./dist/nickname-generator.mjs",
+            "require": "./dist/nickname-generator.js"
         }
     },
     "scripts": {
         "build": "tsup"
+    },
+    "dependencies": {
+        "unique-names-generator": "^4.7.1"
     },
     "devDependencies": {
         "tsup": "^8.5.0",

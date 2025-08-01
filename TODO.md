@@ -1,9 +1,10 @@
 - outline / number / text rendering depth
+- lag on new player join or new message
+
 - memory leaks of safari?? / on ec2??
 
-- lag on new player join or new message
 - duplicate collision fix got deleted(?)
-- sometimes bot doesn't emit from captured npc group on collision
+- sometimes bot doesn't emit from captured npc group on collision (just disappears)
 
 - better nicknames
 

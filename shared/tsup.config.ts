@@ -8,7 +8,8 @@ export default defineConfig({
     'animal-dimensions.ts',
     'background-types.ts',
     'interaction-types.ts',
-    'interaction-prompts.ts'
+    'interaction-prompts.ts',
+    'nickname-generator.ts'
   ],
   format: ['cjs', 'esm'],
   dts: true,

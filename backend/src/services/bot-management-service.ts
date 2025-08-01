@@ -1,4 +1,5 @@
 import { UserInfo, roomId, userId, NPCPhase, pathData, PathPhase, DIRECTION_OFFSET, ANIMAL_SCALES, NPCGroup } from "shared/types";
+import { generateBotNickname } from "shared/nickname-generator";
 import { addUserToRoom, getAllUsersInRoom } from "../state/users";
 import { getNPCGroupsfromMemory, setNPCGroupsInMemory } from "../state/npc-groups";
 import { getpathsfromMemory, setPathsInMemory } from "../state/paths";
@@ -148,26 +149,13 @@ export class BotManagementService {
       room: roomName,
       position: position,
       direction: { x: 0, y: 0 },
-      nickname: this.generateBotNickname(),
+      nickname: generateBotNickname(),
       isBot: true
     };
 
     return bot;
   }
 
-  /**
-   * Generate a random nickname for bots
-   */
-  private static generateBotNickname(): string {
-    const adjectives = ['Swift', 'Clever', 'Brave', 'Quick', 'Wild', 'Sneaky', 'Fierce', 'Agile'];
-    const nouns = ['Hunter', 'Explorer', 'Wanderer', 'Seeker', 'Ranger', 'Scout', 'Tracker', 'Roamer'];
-    
-    const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
-    const noun = nouns[Math.floor(Math.random() * nouns.length)];
-    const number = Math.floor(Math.random() * 99) + 1;
-    
-    return `${adjective}${noun}${number}`;
-  }
 
   /**
    * Check if a user is a bot

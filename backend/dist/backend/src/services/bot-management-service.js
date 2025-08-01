@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BotManagementService = void 0;
 const types_1 = require("shared/types");
+const nickname_generator_1 = require("shared/nickname-generator");
 const users_1 = require("../state/users");
 const npc_groups_1 = require("../state/npc-groups");
 const paths_1 = require("../state/paths");
@@ -108,21 +109,10 @@ class BotManagementService {
             room: roomName,
             position: position,
             direction: { x: 0, y: 0 },
-            nickname: this.generateBotNickname(),
+            nickname: (0, nickname_generator_1.generateBotNickname)(),
             isBot: true
         };
         return bot;
-    }
-    /**
-     * Generate a random nickname for bots
-     */
-    static generateBotNickname() {
-        const adjectives = ['Swift', 'Clever', 'Brave', 'Quick', 'Wild', 'Sneaky', 'Fierce', 'Agile'];
-        const nouns = ['Hunter', 'Explorer', 'Wanderer', 'Seeker', 'Ranger', 'Scout', 'Tracker', 'Roamer'];
-        const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
-        const noun = nouns[Math.floor(Math.random() * nouns.length)];
-        const number = Math.floor(Math.random() * 99) + 1;
-        return `${adjective}${noun}${number}`;
     }
     /**
      * Check if a user is a bot
