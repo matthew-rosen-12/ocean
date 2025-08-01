@@ -29,6 +29,15 @@ interface ServerToClientEvents {
         gameStartTime: number;
         gameDuration: number;
     }) => void;
+    "room-state": (data: {
+        terrainConfig: TerrainConfig;
+        gameTimer: {
+            gameStartTime: number;
+            gameDuration: number;
+        } | null;
+        paths: Map<npcGroupId, pathData> | null;
+        npcGroups: NPCGroupsBiMap | null;
+    }) => void;
     "npc-group-update": (data: {
         npcGroup: NPCGroup;
     }) => void;

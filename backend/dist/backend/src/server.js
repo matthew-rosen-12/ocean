@@ -98,27 +98,21 @@ exports.io.on("connection", (socket) => __awaiter(void 0, void 0, void 0, functi
             }
             // Send room state to the joining socket BEFORE adding user to room
             try {
-                // Send terrain configuration for this room
+                // Batch all room state into a single message to reduce frontend re-renders
                 const terrainConfig = (0, terrain_1.getTerrainConfig)(name);
-                typedSocket.emit("terrain-config", { terrainConfig });
-                // Send game timing information
                 const gameStartTime = (0, game_timer_1.getGameStartTime)(name);
-                if (gameStartTime) {
-                    typedSocket.emit("game-timer-info", {
+                const pathsData = (0, paths_1.getpathsfromMemory)(name);
+                const groupsData = (0, npc_groups_1.getNPCGroupsfromMemory)(name);
+                const roomState = {
+                    terrainConfig,
+                    gameTimer: gameStartTime ? {
                         gameStartTime,
                         gameDuration: game_timer_1.GAME_DURATION
-                    });
-                }
-                // Get existing paths
-                const pathsData = (0, paths_1.getpathsfromMemory)(name);
-                if (pathsData) {
-                    typedSocket.emit("all-paths", { paths: pathsData });
-                }
-                // Get existing NPC groups - send BEFORE users
-                const groupsData = (0, npc_groups_1.getNPCGroupsfromMemory)(name);
-                if (groupsData) {
-                    typedSocket.emit("all-npc-groups", { npcGroups: groupsData });
-                }
+                    } : null,
+                    paths: pathsData || null,
+                    npcGroups: groupsData || null
+                };
+                typedSocket.emit("room-state", roomState);
             }
             catch (error) {
                 console.error("Error sending room state to new user:", error);

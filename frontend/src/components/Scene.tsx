@@ -26,6 +26,7 @@ import CapturedNPCGroupCollisionManager from "./CapturedNPCGroupCollisionManager
 import { AnimationManagerProvider } from "../contexts/AnimationManagerContext";
 import { KeyboardMovementManager } from "./KeyboardMovementManager";
 import { FrameRateManager } from "./FrameRateManager";
+import { animalGraphicsCache } from "../utils/load-animal-svg";
 // Extend Performance interface for Chrome's memory API
 declare global {
   interface Performance {
@@ -196,6 +197,39 @@ export default function Scene({
     return () => clearTimeout(timer);
   }, [npcGroups, paths, myUser.id, users]);
 
+  // Preload common animal assets to prevent lag during player joins
+  useEffect(() => {
+    const preloadAnimalAssets = async () => {
+      // List of most common animals that need preloading
+      const commonAnimals = ['BEAR', 'WOLF', 'EAGLE', 'TIGER', 'PENGUIN', 'DOLPHIN', 'SNAKE', 'TURTLE'];
+      
+      // Preload animal data (not full graphics, just the JSON cache)
+      const preloadPromises = commonAnimals.map(async (animal) => {
+        try {
+          // Check if already cached
+          if (animalGraphicsCache.has(animal)) {
+            return;
+          }
+          
+          // Fetch the cached animal data to warm up the browser cache
+          const response = await fetch(`/animal-cache/${animal}.json`);
+          if (response.ok) {
+            await response.json(); // Parse but don't use, just to warm cache
+          }
+        } catch (error) {
+          // Silently fail preloading - not critical
+        }
+      });
+      
+      // Don't await - run in background
+      Promise.all(preloadPromises);
+    };
+    
+    // Delay preloading slightly to not interfere with initial render
+    const preloadTimer = setTimeout(preloadAnimalAssets, 500);
+    
+    return () => clearTimeout(preloadTimer);
+  }, []); // Run once on mount
 
   // Calculate current throw charge count with real-time updates
   const [currentThrowCount, setCurrentThrowCount] = useState(0);

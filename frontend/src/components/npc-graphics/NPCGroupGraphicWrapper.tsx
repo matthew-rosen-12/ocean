@@ -131,15 +131,22 @@ const NPCGraphicWrapper = ({
   return null;
 };
 export default React.memo(NPCGraphicWrapper, (prevProps, nextProps) => {
-  // Quick primitive checks first (fastest)
+  // Quick primitive checks first (fastest) - early exit for most common changes
   if (prevProps.npcGroup.id !== nextProps.npcGroup.id) return false;
-  if (prevProps.npcGroup.phase !== nextProps.npcGroup.phase) return false;
-  if (prevProps.npcGroup.captorId !== nextProps.npcGroup.captorId) return false;
   if (prevProps.myUserId !== nextProps.myUserId) return false;
   if (prevProps.throwChargeCount !== nextProps.throwChargeCount) return false;
   
-  // Check if NPC is being deleted (common change)
+  // Check if NPC is being deleted (common change during player joins)
   if (prevProps.deletingNPCs.has(prevProps.npcGroup.id) !== nextProps.deletingNPCs.has(nextProps.npcGroup.id)) return false;
+  
+  // Position comparison with threshold for performance (avoid re-renders for tiny movements)
+  const positionThreshold = 0.1;
+  if (Math.abs(prevProps.npcGroup.position.x - nextProps.npcGroup.position.x) > positionThreshold ||
+      Math.abs(prevProps.npcGroup.position.y - nextProps.npcGroup.position.y) > positionThreshold) return false;
+  
+  // Phase and captor changes (less frequent but important)
+  if (prevProps.npcGroup.phase !== nextProps.npcGroup.phase) return false;
+  if (prevProps.npcGroup.captorId !== nextProps.npcGroup.captorId) return false;
   
   // PathData comparison (important for rendering different graphics)
   const prevHasPath = !!prevProps.pathData;
@@ -152,7 +159,7 @@ export default React.memo(NPCGraphicWrapper, (prevProps, nextProps) => {
         prevProps.pathData!.pathPhase !== nextProps.pathData!.pathPhase) return false;
   }
   
-  // NPC group fileNames comparison (affects graphics)
+  // NPC group fileNames comparison (affects graphics) - short circuit if lengths differ
   if (prevProps.npcGroup.fileNames.length !== nextProps.npcGroup.fileNames.length) return false;
   for (let i = 0; i < prevProps.npcGroup.fileNames.length; i++) {
     if (prevProps.npcGroup.fileNames[i] !== nextProps.npcGroup.fileNames[i]) return false;
@@ -165,10 +172,11 @@ export default React.memo(NPCGraphicWrapper, (prevProps, nextProps) => {
     
     if (!prevUser !== !nextUser) return false;
     if (prevUser && nextUser) {
-      if (prevUser.position.x !== nextUser.position.x ||
-          prevUser.position.y !== nextUser.position.y ||
-          prevUser.direction.x !== nextUser.direction.x ||
-          prevUser.direction.y !== nextUser.direction.y) return false;
+      // Use position threshold for user movements too
+      if (Math.abs(prevUser.position.x - nextUser.position.x) > positionThreshold ||
+          Math.abs(prevUser.position.y - nextUser.position.y) > positionThreshold ||
+          Math.abs(prevUser.direction.x - nextUser.direction.x) > 0.01 ||
+          Math.abs(prevUser.direction.y - nextUser.direction.y) > 0.01) return false;
     }
   }
   

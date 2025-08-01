@@ -3,10 +3,6 @@
 
 - memory leaks of safari?? / on ec2??
 
-- duplicate collision fix got deleted(?)
-- sometimes bot doesn't emit from captured npc group on collision (just disappears)
-
-
 - code cleanup, git repo readme cleanup etc
 
 MIGHT EXPIRE

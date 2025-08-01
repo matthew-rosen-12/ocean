@@ -6,8 +6,10 @@ import { typedSocket } from "../socket";
 
 // Min distance before broadcasting position change
 const POSITION_THRESHOLD = 0.01;
-// Throttle duration in milliseconds
-const THROTTLE_MS = 100;
+// Base throttle duration in milliseconds
+const BASE_THROTTLE_MS = 100;
+// Max throttle duration (prevent getting too slow)
+const MAX_THROTTLE_MS = 300;
 
 interface UsePositionBroadcastProps {
   position: THREE.Vector3;
@@ -52,13 +54,17 @@ export function usePositionBroadcast({
     }
   }, [position, direction, myUser]);
 
-  // Throttle the broadcast function ONCE, not per render
+  // Dynamic throttle based on player count to reduce network congestion
   const throttledBroadcast = useMemo(() => {
-    return throttle(broadcastPosition, THROTTLE_MS, {
+    const playerCount = users.size;
+    // Increase throttle time as more players join (O(n²) network traffic reduction)
+    const dynamicThrottleMs = Math.min(BASE_THROTTLE_MS + (playerCount * 15), MAX_THROTTLE_MS);
+    
+    return throttle(broadcastPosition, dynamicThrottleMs, {
       leading: true,
       trailing: true,
     });
-  }, [broadcastPosition]);
+  }, [broadcastPosition, users.size]);
 
   // Effect to broadcast position/direction changes
   useEffect(() => {
