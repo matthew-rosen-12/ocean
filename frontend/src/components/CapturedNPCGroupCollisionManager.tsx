@@ -3,6 +3,10 @@ import { UserInfo, NPCGroupsBiMap, pathData, PathPhase } from "shared/types";
 import { useAnimationManagerContext } from "../contexts/AnimationManagerContext";
 import { getAssignedBots, checkForPathNPCCollisionForUser } from "../utils/path-collision-utils";
 
+// Module-level collision tracking that persists across component re-renders
+const globalRecentCollisions = new Set<string>();
+const globalProcessingCollisions = new Set<string>();
+
 interface CapturedNPCGroupCollisionManagerProps {
   myUser: UserInfo | undefined;
   users: Map<string, UserInfo>;
@@ -30,10 +34,10 @@ const CapturedNPCGroupCollisionManager: React.FC<CapturedNPCGroupCollisionManage
   const animationManager = useAnimationManagerContext();
   const collisionAnimationId = useRef<string>(`captured-group-collision-${myUser?.id || 'unknown'}`);
   
-  // Track recent collisions to prevent duplicate processing
+  // Track recent collisions to prevent duplicate processing (shared across all users)
   const recentCollisionsRef = useRef<Set<string>>(new Set());
   
-  // Track in-flight collision processing to prevent race conditions
+  // Track in-flight collision processing to prevent race conditions (shared across all users)
   const processingCollisionsRef = useRef<Set<string>>(new Set());
   
   // Track pending state updates for cleanup
@@ -105,16 +109,22 @@ const CapturedNPCGroupCollisionManager: React.FC<CapturedNPCGroupCollisionManage
             pathNPCGroup &&
             pathNPCGroup.captorId !== capturedGroup.captorId
           ) {
-            // Create unique collision key to prevent duplicate processing
+            // Create collision key using NPC group IDs - these should be stable during collision sequence
             const collisionKey = `${pathNPCGroup.id}-${capturedGroup.id}`;
             
+            // Debug: Log collision tracking state
+            const isRecent = globalRecentCollisions.has(collisionKey);
+            const isProcessing = globalProcessingCollisions.has(collisionKey);
+            console.log(`🔍 COLLISION CHECK: ${collisionKey}, recent: ${isRecent}, processing: ${isProcessing}, sizes: ${pathNPCGroup.fileNames.length}/${capturedGroup.fileNames.length}`);
+            
             // Skip if this collision was recently processed or is currently being processed
-            if (recentCollisionsRef.current.has(collisionKey) || processingCollisionsRef.current.has(collisionKey)) {
+            if (isRecent || isProcessing) {
+              console.log(`⏭️  SKIPPING: ${collisionKey}`);
               return;
             }
             
             // Mark collision as being processed to prevent race conditions
-            processingCollisionsRef.current.add(collisionKey);
+            globalProcessingCollisions.add(collisionKey);
             
             // Check for collision and if it occurs, mark as recent
             const collisionOccurred = checkForPathNPCCollisionForUser(
@@ -124,21 +134,25 @@ const CapturedNPCGroupCollisionManager: React.FC<CapturedNPCGroupCollisionManage
               userToCheck, 
               animalWidth, 
               wrappedSetPaths, 
-              wrappedSetNpcGroups
+              wrappedSetNpcGroups,
+              collisionKey
             );
             
             if (collisionOccurred) {
+              // Log ALL successful collisions to detect duplicates + WHO is processing it
+              console.log(`✅ COLLISION: ${collisionKey}, thrown size: ${pathNPCGroup.fileNames.length}, captured size: ${capturedGroup.fileNames.length}, emitting: ${Math.min(pathNPCGroup.fileNames.length, capturedGroup.fileNames.length)}, processor: ${myUser?.id}`);
+              
               // Mark this collision as recent to prevent duplicate processing
-              recentCollisionsRef.current.add(collisionKey);
+              globalRecentCollisions.add(collisionKey);
               setTimeout(() => {
-                recentCollisionsRef.current.delete(collisionKey);
-              }, 300); // 300ms debounce period
+                globalRecentCollisions.delete(collisionKey);
+              }, 500); // Standard debounce period
             }
             
-            // Remove from processing set after a brief delay to ensure state updates complete
+            // Remove from processing set after state updates complete (longer delay for emissions)
             setTimeout(() => {
-              processingCollisionsRef.current.delete(collisionKey);
-            }, 100);
+              globalProcessingCollisions.delete(collisionKey);
+            }, collisionOccurred ? 400 : 100); // Longer delay if collision occurred to prevent duplicate emissions
           }
         });
       });

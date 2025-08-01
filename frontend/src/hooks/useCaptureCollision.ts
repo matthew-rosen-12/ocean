@@ -153,8 +153,16 @@ export function useCaptureCollision({
           }
           return false;
         })()) ||
-        // Uncaptured NPCs can be captured if they're IDLE or PATH phase
-        (!npcGroup.captorId && (npcGroup.phase === NPCPhase.IDLE || npcGroup.phase === NPCPhase.PATH));
+        // Uncaptured NPCs can be captured if they're IDLE or PATH phase (includes emitted/fleeing NPCs)
+        // But add small delay for recently emitted NPCs to prevent immediate recapture race condition
+        (!npcGroup.captorId && (npcGroup.phase === NPCPhase.IDLE || npcGroup.phase === NPCPhase.PATH) && (() => {
+          const pathData = paths.get(npcGroup.id);
+          if (pathData && pathData.pathPhase === PathPhase.FLEEING) {
+            // Allow capture of fleeing NPCs after 100ms to prevent race condition
+            return (Date.now() - pathData.timestamp) > 100;
+          }
+          return true; // IDLE or other PATH phase NPCs can be captured immediately
+        })());
 
       if (canCapture && collided) {
         // Close enough to capture

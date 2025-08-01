@@ -165,12 +165,13 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
       scaleFactor
     );
 
-    const npcGroupRadius = scaleFactor;
-    const distance = npcGroupPosition ? npcGroupPosition.distanceTo(currentPathPosition) : Infinity;
-    if (distance < npcGroupRadius && group.fileNames.length > 0) {
-      handleNPCGroupReflectionForUser(npcGroup, pathData, currentPathPosition, group, user, animalWidth, setPaths, setNpcGroups);
-      return true;
-    }
+    // Collision detection removed - handled by CapturedNPCGroupCollisionManager
+    // const npcGroupRadius = scaleFactor;
+    // const distance = npcGroupPosition ? npcGroupPosition.distanceTo(currentPathPosition) : Infinity;
+    // if (distance < npcGroupRadius && group.fileNames.length > 0) {
+    //   handleNPCGroupReflectionForUser(npcGroup, pathData, currentPathPosition, group, user, animalWidth, setPaths, setNpcGroups);
+    //   return true;
+    // }
 
     return false;
   }, [animalWidth, user, scaleFactor, group, setPaths, setNpcGroups]);

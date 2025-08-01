@@ -86,6 +86,9 @@ export function calculatePathPosition(pathData: pathData, currentTime: number): 
   return position;
 }
 
+// Track processed emissions to make function idempotent
+const processedEmissions = new Set<string>();
+
 export function handleNPCGroupReflectionForUser(
   npcGroup: NPCGroup,
   pathData: pathData,
@@ -94,9 +97,25 @@ export function handleNPCGroupReflectionForUser(
   targetUser: UserInfo,
   animalWidth: number,
   setPaths: (paths: any) => void,
-  setNpcGroups: (npcGroups: any) => void
+  setNpcGroups: (npcGroups: any) => void,
+  collisionKey?: string
 ) {
   if ((pathData.pathPhase !== PathPhase.THROWN && pathData.pathPhase !== PathPhase.RETURNING)) return;
+
+  // Make function idempotent - only process each collision once
+  const emissionKey = collisionKey || `${npcGroup.id}-${capturedGroup.id}-${pathData.timestamp}`;
+  if (processedEmissions.has(emissionKey)) {
+    console.log(`🚫 SKIPPING duplicate emission: ${emissionKey}`);
+    return;
+  }
+  
+  processedEmissions.add(emissionKey);
+  console.log(`🎯 PROCESSING emission: ${emissionKey}`);
+  
+  // Clean up processed emissions after a delay
+  setTimeout(() => {
+    processedEmissions.delete(emissionKey);
+  }, 2000);
 
   // Calculate reflection direction (away from the group)
   const capturedGroupScale = calculateNPCGroupScale(capturedGroup.fileNames.length);
@@ -174,6 +193,7 @@ export function handleNPCGroupReflectionForUser(
   // Get the number of NPCs to emit based on thrown NPC group size
   const emittedNPCs: NPCGroup[] = [];
   const emissionCount = Math.min(npcGroup.fileNames.length, capturedGroup.fileNames.length);
+  console.log(`🎯 EMISSION: thrown=${npcGroup.fileNames.length}, captured=${capturedGroup.fileNames.length}, emitting=${emissionCount}`);
   
   // Calculate impact direction (where the thrown NPC hit from)
   const capturedGroupPosition = calculateNPCGroupPosition(targetUser, animalWidth, capturedGroupScale);
@@ -224,6 +244,8 @@ export function handleNPCGroupReflectionForUser(
     fileNames: remainingNPCs,
   }) : null;
 
+  console.log(`📦 CREATED ${emittedNPCs.length} emitted NPCs`);
+  
   if (emittedNPCs.length > 0) {
     // Send emission interaction to backend
     const interaction = createInteraction.emitted(
@@ -281,9 +303,11 @@ export function handleNPCGroupReflectionForUser(
       
       // Update or remove the original captured group
       if (restOfNPCsGroup) {
+        console.log(`🔄 UPDATING captured group: ${capturedGroup.fileNames.length} → ${restOfNPCsGroup.fileNames.length}`);
         newNpcGroups.setByNpcGroupId(restOfNPCsGroup.id, restOfNPCsGroup);
         currentTypedSocket.emit("update-npc-group", { npcGroup: restOfNPCsGroup });
       } else {
+        console.log(`🗑️  DELETING captured group (all NPCs emitted)`);
         // If no NPCs remain, delete the original group
         newNpcGroups.deleteByNpcGroupId(capturedGroup.id);
         currentTypedSocket.emit("update-npc-group", { npcGroup: new NPCGroup({ ...capturedGroup, fileNames: [] }) });
@@ -301,7 +325,8 @@ export function checkForPathNPCCollisionForUser(
   targetUser: UserInfo,
   animalWidth: number,
   setPaths: (paths: any) => void,
-  setNpcGroups: (npcGroups: any) => void
+  setNpcGroups: (npcGroups: any) => void,
+  collisionKey?: string
 ): boolean {
   if ((pathData.pathPhase !== PathPhase.THROWN && pathData.pathPhase !== PathPhase.RETURNING)) return false;
 
@@ -317,7 +342,7 @@ export function checkForPathNPCCollisionForUser(
   const npcGroupRadius = capturedGroupScale;
   const distance = npcGroupPosition ? npcGroupPosition.distanceTo(currentPathPosition) : Infinity;
   if (distance < npcGroupRadius && capturedGroup.fileNames.length > 0) {
-    handleNPCGroupReflectionForUser(npcGroup, pathData, currentPathPosition, capturedGroup, targetUser, animalWidth, setPaths, setNpcGroups);
+    handleNPCGroupReflectionForUser(npcGroup, pathData, currentPathPosition, capturedGroup, targetUser, animalWidth, setPaths, setNpcGroups, collisionKey);
     return true;
   }
 
