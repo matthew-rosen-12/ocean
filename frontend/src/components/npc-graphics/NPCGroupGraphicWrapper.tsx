@@ -61,6 +61,22 @@ const NPCGraphicWrapper = ({
     );
   }
 
+  // Check if this NPC should be rendered by GPU instancing instead
+  const shouldUseGPUInstancing = React.useMemo(() => {
+    // GPU instancing handles idle NPCs that are not captured by the local player
+    // and when there are many NPCs (threshold managed by InstancedNPCRenderer)
+    const totalNPCs = Array.from(npcGroups.values()).length;
+    const isLocalPlayerNPC = npcGroup.captorId === myUserId;
+    const isIdlePhase = npcGroup.phase === NPCPhase.IDLE;
+    
+    return totalNPCs >= 20 && !isLocalPlayerNPC && isIdlePhase;
+  }, [npcGroups, npcGroup.captorId, npcGroup.phase, myUserId]);
+
+  // Skip rendering if GPU instancing is handling this NPC
+  if (shouldUseGPUInstancing) {
+    return null;
+  }
+
   if (npcGroup.phase === NPCPhase.IDLE) {
     return (
       <IdleNPCGroupGraphic

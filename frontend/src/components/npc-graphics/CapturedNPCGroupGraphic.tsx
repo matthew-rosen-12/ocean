@@ -85,18 +85,12 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
   const lastUserDirection = useRef(new THREE.Vector2(user.direction.x, user.direction.y));
   const cachedTargetPosition = useRef<THREE.Vector3 | null>(null);
   
+  
   const MAX_DISTANCE_FROM_USER = 15.0; // Maximum allowed distance from user
   
-  // For local users, maintain smoothed user position
-  const smoothedUserPosition = useRef(new THREE.Vector2(user.position.x, user.position.y));
-  const smoothedUserDirection = useRef(new THREE.Vector2(user.direction.x, user.direction.y));
+  // Single position tracking system - no conflicting smoothing layers
   
-  // For remote users, maintain smoothed position to match AnimalGraphic interpolation
-  const remoteSmoothedPosition = useRef(new THREE.Vector2(user.position.x, user.position.y));
-  
-  // Position calculation is now handled uniformly by calculateTargetPosition with caching
-
-  // Export position and scale calculation functions for collision detection
+  // Simplified position calculation - remove conflicting smoothing layers
   const calculateTargetPosition = useCallback((): THREE.Vector3 => {
     if (!animalWidth) return new THREE.Vector3(0, 0, -10);
     
@@ -107,46 +101,16 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     const positionChanged = !lastUserPosition.current.equals(currentUserPosition);
     const directionChanged = !lastUserDirection.current.equals(currentUserDirection);
     
-    if (isLocalUser) {
-      // For local users, smooth the user position input first
-      const smoothingFactor = 0.2; // Higher = more smoothing
-      
-      smoothedUserPosition.current.x = smoothedUserPosition.current.x * smoothingFactor + user.position.x * (1 - smoothingFactor);
-      smoothedUserPosition.current.y = smoothedUserPosition.current.y * smoothingFactor + user.position.y * (1 - smoothingFactor);
-      
-      smoothedUserDirection.current.x = smoothedUserDirection.current.x * smoothingFactor + user.direction.x * (1 - smoothingFactor);
-      smoothedUserDirection.current.y = smoothedUserDirection.current.y * smoothingFactor + user.direction.y * (1 - smoothingFactor);
-      
-      // Update when user position/direction changes or no target exists
-      if (positionChanged || directionChanged || !cachedTargetPosition.current) {
-        // Use smoothed position for target calculation
-        const smoothedUser = {
-          ...user,
-          position: { x: smoothedUserPosition.current.x, y: smoothedUserPosition.current.y },
-          direction: { x: smoothedUserDirection.current.x, y: smoothedUserDirection.current.y }
-        };
-        
-        cachedTargetPosition.current = calculateNPCGroupPosition(smoothedUser, animalWidth, scaleFactor);
-        lastUserPosition.current.copy(currentUserPosition);
-        lastUserDirection.current.copy(currentUserDirection);
-      }
-    } else {
-      // For remote users, apply same smoothing as AnimalGraphic (lerpFactor: 0.1)
-      const remoteSmoothingFactor = 0.9; // Equivalent to lerpFactor 0.1
-      
-      remoteSmoothedPosition.current.x = remoteSmoothedPosition.current.x * remoteSmoothingFactor + user.position.x * (1 - remoteSmoothingFactor);
-      remoteSmoothedPosition.current.y = remoteSmoothedPosition.current.y * remoteSmoothingFactor + user.position.y * (1 - remoteSmoothingFactor);
-      
-      // Update when user position/direction changes
-      if (positionChanged || directionChanged || !cachedTargetPosition.current) {
-        cachedTargetPosition.current = calculateNPCGroupPosition(user, animalWidth, scaleFactor);
-        lastUserPosition.current.copy(currentUserPosition);
-        lastUserDirection.current.copy(currentUserDirection);
-      }
+    // Only recalculate when user position/direction changes or no target exists
+    if (positionChanged || directionChanged || !cachedTargetPosition.current) {
+      // Use direct user position - let smoothMove handle all interpolation
+      cachedTargetPosition.current = calculateNPCGroupPosition(user, animalWidth, scaleFactor);
+      lastUserPosition.current.copy(currentUserPosition);
+      lastUserDirection.current.copy(currentUserDirection);
     }
     
     return cachedTargetPosition.current || new THREE.Vector3(0, 0, -10);
-  }, [animalWidth, user, scaleFactor, isLocalUser]);
+  }, [animalWidth, user, scaleFactor]);
 
 
 
@@ -166,24 +130,18 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
   // Register animation callback with the AnimationManager
   useEffect(() => {
     const callbackId = animationId.current;
-    const animationCallback = (_state: unknown, _delta: number) => {
+    const animationCallback = (_state: unknown, delta: number) => {
       if (!threeGroup || !textureLoaded.current || !user || group.fileNames.length === 0 || !animalWidth) return;
+
 
       // Calculate target position with offset from user (now cached and only recalculated when needed)
       const targetPosition = calculateTargetPosition();
 
       // Check for collisions with path NPCs if we have the required props
 
-      // Both local and non-local users use smoothMove for nice interpolated following:
-      // - Local: interpolates towards target calculated from immediate user position
-      // - Non-local: interpolates towards target calculated from discrete socket user position
-      // For non-local users, we need SLOWER interpolation so NPC group lags behind
-      // the already-interpolated animal position
-      // Always interpolate toward target - don't stop when we get close
-      // The smoothMove function has its own minDistance check to prevent unnecessary updates
+      // Smooth movement interpolation
       const interpolationParams = isLocalUser
         ? {
-            // Local users: use pure lerp without constant speed switching to avoid jitter
             lerpFactor: .15,
             moveSpeed: 0.8,
             minDistance: 0.1,
@@ -203,13 +161,8 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
         interpolationParams
       );
       
-      // Apply distance cap - if too far from user, clamp to max distance
-      // For local users: use actual current position (not smoothed, since smoothed lags behind)
-      // For remote users: use smoothed position to match visual rendered position
-      const userPosition2D = isLocalUser 
-        ? new THREE.Vector2(user.position.x, user.position.y)
-        : new THREE.Vector2(remoteSmoothedPosition.current.x, remoteSmoothedPosition.current.y);
-      
+      // Apply distance cap - always use current user position for consistency
+      const userPosition2D = new THREE.Vector2(user.position.x, user.position.y);
       const npcPosition2D = new THREE.Vector2(newPosition.x, newPosition.y);
       const distanceFromUser = userPosition2D.distanceTo(npcPosition2D);
       
@@ -222,7 +175,10 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
       }
       
       updatePositionWithTracking(newPosition, "NPCGroup");
-      threeGroup.position.copy(positionRef.current);
+      
+      // Force immediate mesh position update to prevent jumpiness
+      threeGroup.position.copy(newPosition);
+      threeGroup.updateMatrixWorld(true);
 
 
       // Make a subtle oscillation to indicate this is a group

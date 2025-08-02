@@ -28,6 +28,7 @@ import { KeyboardMovementManager } from "./KeyboardMovementManager";
 import { FrameRateManager } from "./FrameRateManager";
 import { animalGraphicsCache } from "../utils/load-animal-svg";
 import { useViewportCulling } from "../hooks/useViewportCulling";
+import InstancedNPCRenderer from "./npc-graphics/InstancedNPCRenderer";
 // Extend Performance interface for Chrome's memory API
 declare global {
   interface Performance {
@@ -465,6 +466,15 @@ export default function Scene({
 
           {/* Frame rate monitoring for inactivity detection */}
           <FrameRateManager onInactivityKick={onInactivityKick} />
+          
+          {/* GPU-accelerated NPC rendering for large numbers of NPCs */}
+          <InstancedNPCRenderer
+            npcGroups={npcGroups}
+            myUserId={myUser.id}
+            enabled={true}
+            maxInstancesPerPool={500}
+            enableLOD={true}
+          />
         </AnimationManagerProvider>
       </Canvas>
 
