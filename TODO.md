@@ -1,5 +1,5 @@
 - outline / number / text rendering depth
-- lag on new player join or new message
+- lag on new player join or new message / npc group lag
 
 - memory leaks of safari?? / on ec2??
 
