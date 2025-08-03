@@ -29,7 +29,7 @@ interface NPCGraphicWrapperProps {
   throwChargeCount?: number;
   deletingNPCs: Set<string>;
   myUserPositionRef: React.MutableRefObject<THREE.Vector3>; // Always required
-  myUserRenderedRotationRef: React.MutableRefObject<number>; // Always required
+  myUserRenderedRotationRef?: React.MutableRefObject<number>; // Optional - not needed for lerped approach
 }
 
 const NPCGraphicWrapper = ({
