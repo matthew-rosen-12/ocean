@@ -32,6 +32,7 @@ function AnimalSprite({
   setAnimalDimensions,
   terrainBoundaries: _terrainBoundaries,
   onRemotePositionUpdate,
+  onLocalUserPositionUpdate,
 }: {
   animal: Animal;
   scale?: number;
@@ -45,6 +46,7 @@ function AnimalSprite({
   ) => void;
   terrainBoundaries?: TerrainBoundaries;
   onRemotePositionUpdate?: (position: [number, number, number]) => void;
+  onLocalUserPositionUpdate?: (position: THREE.Vector3) => void;
 }) {
   const animationManager = useAnimationManagerContext();
   const group = useMemo(() => new THREE.Group(), []);
@@ -252,6 +254,11 @@ function AnimalSprite({
       // Position handling - same for local and non-local
       group.position.copy(positionRef.current);
 
+      // Update shared position ref for local user NPCs
+      if (isLocalPlayer && onLocalUserPositionUpdate) {
+        onLocalUserPositionUpdate(positionRef.current);
+      }
+
       if (directionRef.current && directionRef.current.length() > 0.01) {
         setRotation(directionRef.current);
       }
@@ -336,6 +343,7 @@ function AnimalSprite({
     directionRef,
     isLocalPlayer,
     previousPosition,
+    onLocalUserPositionUpdate,
   ]);
 
   return <primitive object={group} />;
@@ -347,6 +355,7 @@ export default function AnimalGraphic({
   setAnimalDimensions,
   animalDimensions,
   terrainBoundaries: _terrainBoundaries,
+  onLocalUserPositionUpdate,
 }: {
   user: UserInfo;
   myUserId: string;
@@ -356,6 +365,7 @@ export default function AnimalGraphic({
   ) => void;
   animalDimensions?: { [animal: string]: { width: number; height: number } };
   terrainBoundaries?: TerrainBoundaries;
+  onLocalUserPositionUpdate?: (position: THREE.Vector3) => void;
 }) {
   
   // Calculate the highest point of the animal considering rotation and dimensions (memoized)
@@ -465,6 +475,7 @@ export default function AnimalGraphic({
         setAnimalDimensions={setAnimalDimensions}
         terrainBoundaries={_terrainBoundaries}
         onRemotePositionUpdate={isLocalPlayer ? undefined : setRemoteNicknamePosition}
+        onLocalUserPositionUpdate={onLocalUserPositionUpdate}
       />
       {/* Nickname */}
       {nicknameTextInfo && (

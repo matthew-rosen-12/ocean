@@ -10,7 +10,7 @@ import {
   FinalScores,
   ANIMAL_SCALES,
 } from "shared/types";
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import AnimalGraphic from "./AnimalGraphic";
 import { UI_Z_INDICES } from "shared/z-depths";
 import NPCGraphicWrapper from "./npc-graphics/NPCGroupGraphicWrapper";
@@ -148,6 +148,14 @@ export default function Scene({
     checkBoundaryCollision,
     cinematicActive
   );
+
+  // Create a shared position ref that will be updated by the local user's AnimalGraphic
+  const myUserPositionRef = useRef(new THREE.Vector3(position.x, position.y, position.z));
+  
+  // Function for AnimalGraphic to update the shared position ref in the same animation loop
+  const updateMyUserPositionRef = useCallback((newPosition: THREE.Vector3) => {
+    myUserPositionRef.current.copy(newPosition);
+  }, []);
 
   // Use collision detection hook
   const { checkForNPCGroupCollision } = useCaptureCollision({
@@ -411,6 +419,7 @@ export default function Scene({
               myUserId={myUser.id}
               setAnimalDimensions={setAnimalDimensionsCallback}
               animalDimensions={animalDimensions}
+              onLocalUserPositionUpdate={user.id === myUser.id ? updateMyUserPositionRef : undefined}
             />
           ))}
 
@@ -430,6 +439,7 @@ export default function Scene({
               setNpcGroups={setNpcGroups}
               throwChargeCount={npcGroup.captorId === myUser.id ? currentThrowCount : undefined}
               deletingNPCs={deletingNPCs}
+              myUserPositionRef={myUserPositionRef}
             />
           ))}
 

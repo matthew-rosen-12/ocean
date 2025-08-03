@@ -5,6 +5,7 @@ interface MovementOptions {
   moveSpeed?: number;
   minDistance?: number;
   useConstantSpeed?: boolean;
+  delta?: number; // Frame delta time for frame-rate independent movement
 }
 
 /**
@@ -24,6 +25,7 @@ export function smoothMove(
     moveSpeed = 0.1,
     minDistance = 0.01,
     useConstantSpeed = true,
+    delta = 1/60, // Default to 60fps if no delta provided
   } = options;
 
   // Standard linear interpolation (no wrapping)
@@ -38,8 +40,12 @@ export function smoothMove(
     return currentPosition;
   }
 
-  // Calculate LERP movement
-  const lerpPosition = currentPosition.clone().lerp(targetPosition, lerpFactor);
+  // Calculate delta-adjusted LERP factor for frame-rate independence
+  // Assume 60fps as baseline, adjust lerp factor based on actual frame time
+  const deltaAdjustedLerpFactor = Math.min(lerpFactor * (delta * 60), 1.0);
+  
+  // Calculate LERP movement with delta adjustment
+  const lerpPosition = currentPosition.clone().lerp(targetPosition, deltaAdjustedLerpFactor);
   const lerpDistance = currentPosition.distanceTo(lerpPosition);
 
   // If not using constant speed comparison, just return LERP result
@@ -47,8 +53,9 @@ export function smoothMove(
     return lerpPosition;
   }
 
-  // Calculate constant speed movement
-  const constantSpeedDistance = Math.min(moveSpeed, distance);
+  // Calculate delta-adjusted constant speed movement
+  const deltaAdjustedMoveSpeed = moveSpeed * (delta * 60);
+  const constantSpeedDistance = Math.min(deltaAdjustedMoveSpeed, distance);
 
   // Use whichever method moves us farther
   if (lerpDistance > constantSpeedDistance) {
