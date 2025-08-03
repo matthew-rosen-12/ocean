@@ -56,12 +56,6 @@ class BotManagementService {
             this.stopBotSpawning(roomName);
             return;
         }
-        // Check current user count
-        const currentUsers = (0, users_1.getAllUsersInRoom)(roomName);
-        if (currentUsers.size >= this.MAX_USERS_PER_ROOM) {
-            this.stopBotSpawning(roomName);
-            return;
-        }
         // Spawn a bot
         const bot = this.createBot(roomName);
         (0, users_1.addUserToRoom)(roomName, bot);
@@ -599,7 +593,6 @@ class BotManagementService {
 exports.BotManagementService = BotManagementService;
 BotManagementService.botSpawnTimers = new Map();
 BotManagementService.botMovementStates = new Map();
-BotManagementService.MAX_USERS_PER_ROOM = 8;
-BotManagementService.BOT_SPAWN_INTERVAL = 1000; // 5 seconds
-BotManagementService.INITIAL_SPAWN_DELAY = 5000; // 5 seconds after room creation
-BotManagementService.MAX_SPAWN_DURATION = 150000; // 30 seconds total
+BotManagementService.BOT_SPAWN_INTERVAL = 10000; // 1 second
+BotManagementService.INITIAL_SPAWN_DELAY = 10000; // 1 second after room creation
+BotManagementService.MAX_SPAWN_DURATION = 30000; // 30 seconds total

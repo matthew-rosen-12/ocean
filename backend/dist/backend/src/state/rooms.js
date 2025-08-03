@@ -59,7 +59,7 @@ const findRoomInMemory = () => {
         const ROOM_JOIN_WINDOW = 30 * 1000; // 30 seconds in milliseconds
         const activeRooms = rooms
             .filter((room) => {
-            if (!room || room.isActive === false || room.numUsers >= 8) {
+            if (!room || room.isActive === false || room.numUsers >= 4) {
                 return false;
             }
             // Check if room is less than 30 seconds old

@@ -172,8 +172,9 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
         framesToLookBack = 5; // Normal frames - compare with 5 frames ago
       }
       
+      // Only do velocity change detection for LOCAL users
       let isConsistentMovement = false;
-      if (positionHistory.current.length >= framesToLookBack + 1) {
+      if (isLocalUser && positionHistory.current.length >= framesToLookBack + 1) {
         const oldPosition = positionHistory.current[positionHistory.current.length - 1 - framesToLookBack];
         const oldDirection = directionHistory.current[directionHistory.current.length - 1 - framesToLookBack];
         
@@ -181,31 +182,58 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
         const positionChange = currentUserPosition.distanceTo(oldPosition);
         const directionChange = currentUserDirection.distanceTo(oldDirection);
         
-        // Check if movement is consistent
-        const isMoving = positionChange > 0.05; // Some movement over the frame span
-        const directionStable = directionChange == 0; // Direction hasn't changed much
+        // Check if user is rotating (any direction change means we should interpolate)
+        const isRotating = directionChange > 0.05; // Detect any significant rotation
+        const isMoving = positionChange > 0.01; // Higher threshold - need significant movement
+        const directionStable = directionChange < 0.1; // Much stricter - very small direction changes only
         
-        isConsistentMovement = isMoving && directionStable;
+        // Only consider consistent movement if NOT rotating AND moving significantly
+        isConsistentMovement = !isRotating && isMoving && directionStable;
+        
+        // Debug logging for rotation
+        if (isRotating || isMoving) {
+          console.log('Movement check:', {
+            positionChange: positionChange.toFixed(4),
+            directionChange: directionChange.toFixed(4),
+            isRotating,
+            isMoving,
+            directionStable,
+            consistentFrames: consistentMovementFrames.current,
+            isConsistentMovement,
+            isUsingDirect: isUsingDirectClampedPositioning.current
+          });
+        }
       }
       
-      if (isConsistentMovement) {
-        consistentMovementFrames.current++;
-      } else {
-        consistentMovementFrames.current = 0;
-        lastInterpolationTime.current = Date.now();
-        // Reset direct positioning when velocity changes
-        isUsingDirectClampedPositioning.current = false;
-        clampedDistance.current = null;
-      }
-      
-      // No need for separate tracking - using history arrays now
-
       // Calculate target position with offset from user (now cached and only recalculated when needed)
       const targetPosition = calculateTargetPosition();
+      
+      if (isLocalUser) {
+        if (isConsistentMovement) {
+          consistentMovementFrames.current++;
+          // Switch to direct positioning after 10 frames of consistent movement (harder to trigger)
+          if (consistentMovementFrames.current >= 10 && !isUsingDirectClampedPositioning.current) {
+            // Use the CURRENT NPC position distance to maintain smooth transition
+            const userPos2D = new THREE.Vector2(effectiveUserPosition.x, effectiveUserPosition.y);
+            const currentNPCPos2D = new THREE.Vector2(positionRef.current.x, positionRef.current.y);
+            clampedDistance.current = userPos2D.distanceTo(currentNPCPos2D);
+            isUsingDirectClampedPositioning.current = true;
+            console.log('Switching to direct positioning! Distance:', clampedDistance.current);
+          }
+        } else {
+          consistentMovementFrames.current = 0;
+          lastInterpolationTime.current = Date.now();
+          // Reset direct positioning when velocity changes
+          isUsingDirectClampedPositioning.current = false;
+          clampedDistance.current = null;
+          console.log('Switching back to interpolation');
+        }
+      }
 
       let newPosition: THREE.Vector3;
       
-      if (isUsingDirectClampedPositioning.current && clampedDistance.current !== null) {
+      // Only use direct positioning for LOCAL users, remote users always interpolate
+      if (isLocalUser && isUsingDirectClampedPositioning.current && clampedDistance.current !== null) {
         // Continue using direct positioning at the clamped distance
         const userPos2D = new THREE.Vector2(effectiveUserPosition.x, effectiveUserPosition.y);
         const targetPos2D = new THREE.Vector2(targetPosition.x, targetPosition.y);
@@ -214,11 +242,23 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
         newPosition = new THREE.Vector3(clampedPos2D.x, clampedPos2D.y, targetPosition.z);
       } else {
         // Use interpolation for direction changes and initial movement
-        const baseLocalParams = { lerpFactor: .15, moveSpeed: 0.8, minDistance: 0.1, useConstantSpeed: false };
-        const baseRemoteParams = { lerpFactor: 0.07, moveSpeed: 0.5, minDistance: 0.01, useConstantSpeed: true };
+        // Check if we're currently rotating for different parameters
+        const currentUserDirection = new THREE.Vector2(user.direction.x, user.direction.y);
+        
+        let isCurrentlyRotating = false;
+        if (positionHistory.current.length >= framesToLookBack + 1) {
+          const oldDirection = directionHistory.current[directionHistory.current.length - 1 - framesToLookBack];
+          const currentDirectionChange = currentUserDirection.distanceTo(oldDirection);
+          isCurrentlyRotating = currentDirectionChange > 0.05;
+        }
+        
+        // Much smoother parameters during rotation
+        const rotationParams = { lerpFactor: 0.02, moveSpeed: 0.1, minDistance: 0.1, useConstantSpeed: false };
+        const normalLocalParams = { lerpFactor: 0.05, moveSpeed: 0.3, minDistance: 0.1, useConstantSpeed: false };
+        const baseRemoteParams = { lerpFactor: 0.03, moveSpeed: 0.25, minDistance: 0.01, useConstantSpeed: true };
         
         const interpolationParams = isLocalUser
-          ? { ...baseLocalParams, delta }
+          ? (isCurrentlyRotating ? { ...rotationParams, delta } : { ...normalLocalParams, delta })
           : { ...baseRemoteParams, delta };
 
         const interpolatedPosition = smoothMove(
@@ -234,9 +274,11 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
         
         const distanceFromUser = userPos2D.distanceTo(interpolatedPos2D);
         if (distanceFromUser > maxDistance) {
-          // Clamping happened - switch to direct positioning and remember the clamped distance
-          isUsingDirectClampedPositioning.current = true;
-          clampedDistance.current = maxDistance;
+          // Clamping happened - only switch to direct positioning for LOCAL users if not already in direct mode
+          if (isLocalUser && !isUsingDirectClampedPositioning.current) {
+            isUsingDirectClampedPositioning.current = true;
+            clampedDistance.current = maxDistance;
+          }
           
           const directionToNPC = interpolatedPos2D.clone().sub(userPos2D).normalize();
           const clampedPos2D = userPos2D.clone().add(directionToNPC.multiplyScalar(maxDistance));
