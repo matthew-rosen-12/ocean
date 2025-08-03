@@ -183,13 +183,20 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
         framesToLookBack = 5; // Normal frames - compare with 5 frames ago
       }
       
-      // Simplified movement detection - check if user is moving consistently
+      // Movement detection - check if user is moving consistently without direction changes
       let isConsistentMovement = false;
       if (positionHistory.current.length >= framesToLookBack + 1) {
         const oldPosition = positionHistory.current[positionHistory.current.length - 1 - framesToLookBack];
+        const oldDirection = directionHistory.current[directionHistory.current.length - 1 - framesToLookBack];
+        const currentDirection = lerpedDirection.current;
+        
         const positionChange = currentUserPosition.distanceTo(oldPosition);
+        const directionChange = currentDirection.distanceTo(oldDirection);
+        
         const isMoving = positionChange > 0.05; // Some movement over the frame span  
-        isConsistentMovement = isMoving;
+        const directionStable = directionChange < 0.1; // Direction is stable (lerped direction not changing much)
+        
+        isConsistentMovement = isMoving && directionStable;
       }
       
       if (isConsistentMovement) {
