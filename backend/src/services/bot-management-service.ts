@@ -33,10 +33,9 @@ interface BotMovementState {
 export class BotManagementService {
   private static botSpawnTimers: Map<roomId, BotSpawnTimer> = new Map();
   private static botMovementStates: Map<userId, BotMovementState> = new Map();
-  private static readonly MAX_USERS_PER_ROOM = 8;
-  private static readonly BOT_SPAWN_INTERVAL = 1000; // 5 seconds
-  private static readonly INITIAL_SPAWN_DELAY = 5000; // 5 seconds after room creation
-  private static readonly MAX_SPAWN_DURATION = 150000; // 30 seconds total
+  private static readonly BOT_SPAWN_INTERVAL = 10000; // 1 second
+  private static readonly INITIAL_SPAWN_DELAY = 10000; // 1 second after room creation
+  private static readonly MAX_SPAWN_DURATION = 30000; // 30 seconds total
 
   /**
    * Start bot spawning process for a room
@@ -80,13 +79,6 @@ export class BotManagementService {
     // return
     // Stop spawning if room is older than 30 seconds
     if (roomAge >= this.MAX_SPAWN_DURATION) {
-      this.stopBotSpawning(roomName);
-      return;
-    }
-
-    // Check current user count
-    const currentUsers = getAllUsersInRoom(roomName);
-    if (currentUsers.size >= this.MAX_USERS_PER_ROOM) {
       this.stopBotSpawning(roomName);
       return;
     }

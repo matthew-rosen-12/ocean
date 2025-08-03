@@ -274,6 +274,59 @@ export default function GuestLogin({
         setUsers(users);
       });
 
+      // Handle batched room state to reduce frontend re-renders
+      typedSocket.on("room-state", ({ terrainConfig, gameTimer, paths, npcGroups }: { 
+        terrainConfig: TerrainConfig, 
+        gameTimer: { gameStartTime: number; gameDuration: number } | null,
+        paths: Map<npcGroupId, pathData> | null,
+        npcGroups: NPCGroupsBiMap | null 
+      }) => {
+        // Batch all room state updates together using React 18 startTransition
+        React.startTransition(() => {
+          // Set terrain config
+          if (terrainConfig) {
+            setTerrainConfig(terrainConfig);
+          }
+
+          // Set game timer info
+          if (gameTimer) {
+            setGameStartTime(gameTimer.gameStartTime);
+            setGameDuration(gameTimer.gameDuration);
+          }
+
+          // Set paths
+          if (paths) {
+            setPaths(paths);
+            pathsRef.current = paths;
+          }
+
+          // Set NPC groups
+          if (npcGroups) {
+            const newNpcGroups = new NPCGroupsBiMap();
+
+            if (npcGroups instanceof NPCGroupsBiMap) {
+              const processedNPCGroups = new NPCGroupsBiMap(npcGroups);
+              setNPCGroups(processedNPCGroups);
+            } else {
+              // Handle case where it's deserialized as a plain object
+              const map2Data = (npcGroups as Record<string, unknown>).map2;
+
+              if (map2Data && Array.isArray(map2Data)) {
+                map2Data.forEach(([key, value]: [string, Record<string, unknown>]) => {
+                  newNpcGroups.setByNpcGroupId(key, value as unknown as NPCGroup);
+                });
+              } else if (map2Data && typeof map2Data === "object") {
+                Object.entries(map2Data).forEach(([key, value]) => {
+                  newNpcGroups.setByNpcGroupId(key, value as unknown as NPCGroup);
+                });
+              }
+
+              setNPCGroups(newNpcGroups);
+            }
+          }
+        });
+      });
+
       typedSocket.on("terrain-config", ({ terrainConfig }: { terrainConfig: TerrainConfig }) => {
         setTerrainConfig(terrainConfig);
       });

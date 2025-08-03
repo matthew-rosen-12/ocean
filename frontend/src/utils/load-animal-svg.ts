@@ -7,6 +7,7 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2";
 import { Z_DEPTHS, RENDER_ORDERS } from "shared/z-depths";
+import { svgWorkerManager } from "./SVGWorkerManager";
 
 export const animalGraphicsCache = new Map<
   string,
@@ -227,7 +228,41 @@ async function createTextureFromCachedSVG(cachedData: CachedAnimalData): Promise
   const textureWidth = cachedData.width * textureScaleFactor;
   const textureHeight = cachedData.height * textureScaleFactor;
 
-  // Create SVG element from cached data
+  // Try to use web worker for SVG processing if available
+  if (svgWorkerManager.isWorkersAvailable()) {
+    try {
+      const workerResult = await svgWorkerManager.processSVG(
+        cachedData.originalSvg,
+        cachedData.animalName,
+        textureScaleFactor
+      );
+      
+      if (workerResult.success && workerResult.svgDataUrl) {
+        // Create texture from worker-processed SVG
+        return new Promise((resolve, reject) => {
+          const loader = new THREE.TextureLoader();
+          loader.load(
+            workerResult.svgDataUrl,
+            (texture) => {
+              texture.flipY = false;
+              texture.colorSpace = THREE.SRGBColorSpace;
+              texture.minFilter = THREE.NearestFilter;
+              texture.magFilter = THREE.NearestFilter;
+              texture.generateMipmaps = false;
+              texture.needsUpdate = true;
+              resolve(texture);
+            },
+            undefined,
+            reject
+          );
+        });
+      }
+    } catch (workerError) {
+      console.warn('Worker SVG processing failed, falling back to main thread:', workerError);
+    }
+  }
+
+  // Fallback to main thread processing
   const parser = new DOMParser();
   const svgDoc = parser.parseFromString(cachedData.originalSvg, 'image/svg+xml');
   const svgElement = svgDoc.documentElement as unknown as SVGElement;
@@ -694,6 +729,133 @@ function setupUVCoordinates(
   console.log(
     `[UV MAPPING] Set up UV coordinates for ${positions.count} vertices`
   );
+}
+
+/**
+ * Batch load multiple animals using web workers for better performance
+ */
+export async function loadAnimalSVGBatch(
+  animals: Array<{
+    animal: Animal;
+    group: THREE.Group;
+    scale: number;
+    isLocalPlayer: boolean;
+    setAnimalDimensions: (animal: string, dimensions: { width: number; height: number }) => void;
+    positionRef: React.MutableRefObject<THREE.Vector3>;
+    directionRef: React.MutableRefObject<THREE.Vector3 | null>;
+    initialScale: React.MutableRefObject<THREE.Vector3 | null>;
+    previousRotation: React.MutableRefObject<number>;
+    targetRotation: React.MutableRefObject<number>;
+    svgLoaded: React.MutableRefObject<boolean>;
+    previousPosition: THREE.Vector3;
+    currentFlipState: React.MutableRefObject<number>;
+  }>
+): Promise<void[]> {
+  // First, try to load any cached data
+  const cachedLoads = animals.map(async (animalData) => {
+    const cachedData = await loadCachedAnimalData(animalData.animal);
+    return { ...animalData, cachedData };
+  });
+  
+  const animalDataWithCache = await Promise.all(cachedLoads);
+  
+  // Separate cached and non-cached animals
+  const cachedAnimals = animalDataWithCache.filter(data => data.cachedData);
+  const nonCachedAnimals = animalDataWithCache.filter(data => !data.cachedData);
+  
+  // Process cached animals immediately
+  const cachedPromises = cachedAnimals.map(async (data) => {
+    return loadAnimalSVG(
+      data.animal, data.group, data.scale, data.isLocalPlayer, 
+      data.setAnimalDimensions, data.positionRef, data.directionRef,
+      data.initialScale, data.previousRotation, data.targetRotation,
+      data.svgLoaded, data.previousPosition, data.currentFlipState
+    );
+  });
+  
+  // For non-cached animals, try to use worker batch processing
+  let nonCachedPromises: Promise<void>[] = [];
+  
+  if (nonCachedAnimals.length > 0 && svgWorkerManager.isWorkersAvailable()) {
+    try {
+      // Load SVG content for batch processing
+      const svgContents = await Promise.all(
+        nonCachedAnimals.map(async (data) => {
+          try {
+            const response = await fetch(`/public/animals/${data.animal}.svg`);
+            const svgContent = await response.text();
+            return { ...data, svgContent };
+          } catch (error) {
+            console.warn(`Failed to load SVG for ${data.animal}:`, error);
+            return { ...data, svgContent: null };
+          }
+        })
+      );
+      
+      // Filter out failed loads and prepare for batch processing
+      const validSVGs = svgContents.filter(data => data.svgContent);
+      
+      if (validSVGs.length > 0) {
+        // Use worker batch processing
+        const svgBatch = validSVGs.map(data => ({
+          svgContent: data.svgContent!,
+          animal: data.animal,
+          scale: 1, // Worker will scale, we'll handle final scaling later
+        }));
+        
+        const batchResults = await svgWorkerManager.processSVGBatch(svgBatch);
+        
+        // Process results and create final animal graphics
+        nonCachedPromises = validSVGs.map(async (data, index) => {
+          const workerResult = batchResults[index];
+          if (workerResult && workerResult.success) {
+            // Use worker result to speed up texture creation
+            // Fall through to regular loadAnimalSVG for now, but this could be optimized further
+          }
+          
+          return loadAnimalSVG(
+            data.animal, data.group, data.scale, data.isLocalPlayer,
+            data.setAnimalDimensions, data.positionRef, data.directionRef,
+            data.initialScale, data.previousRotation, data.targetRotation,
+            data.svgLoaded, data.previousPosition, data.currentFlipState
+          );
+        });
+      } else {
+        // All SVG loads failed, fall back to individual loading
+        nonCachedPromises = nonCachedAnimals.map(data => 
+          loadAnimalSVG(
+            data.animal, data.group, data.scale, data.isLocalPlayer,
+            data.setAnimalDimensions, data.positionRef, data.directionRef,
+            data.initialScale, data.previousRotation, data.targetRotation,
+            data.svgLoaded, data.previousPosition, data.currentFlipState
+          )
+        );
+      }
+    } catch (batchError) {
+      console.warn('Batch SVG processing failed, falling back to individual loading:', batchError);
+      nonCachedPromises = nonCachedAnimals.map(data =>
+        loadAnimalSVG(
+          data.animal, data.group, data.scale, data.isLocalPlayer,
+          data.setAnimalDimensions, data.positionRef, data.directionRef,
+          data.initialScale, data.previousRotation, data.targetRotation,
+          data.svgLoaded, data.previousPosition, data.currentFlipState
+        )
+      );
+    }
+  } else {
+    // No workers available, use individual loading
+    nonCachedPromises = nonCachedAnimals.map(data =>
+      loadAnimalSVG(
+        data.animal, data.group, data.scale, data.isLocalPlayer,
+        data.setAnimalDimensions, data.positionRef, data.directionRef,
+        data.initialScale, data.previousRotation, data.targetRotation,
+        data.svgLoaded, data.previousPosition, data.currentFlipState
+      )
+    );
+  }
+  
+  // Return all promises
+  return Promise.all([...cachedPromises, ...nonCachedPromises]);
 }
 
 export function loadAnimalSVG(

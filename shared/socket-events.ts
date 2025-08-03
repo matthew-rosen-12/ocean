@@ -13,6 +13,12 @@ export interface ServerToClientEvents {
     "all-paths": (data: { paths: Map<npcGroupId, pathData> }) => void;
     "terrain-config": (data: { terrainConfig: TerrainConfig }) => void;
     "game-timer-info": (data: { gameStartTime: number; gameDuration: number }) => void;
+    "room-state": (data: { 
+        terrainConfig: TerrainConfig, 
+        gameTimer: { gameStartTime: number; gameDuration: number } | null,
+        paths: Map<npcGroupId, pathData> | null,
+        npcGroups: NPCGroupsBiMap | null 
+    }) => void;
 
     "npc-group-update": (data: { npcGroup: NPCGroup }) => void;
     "npc-groups-bulk-update": (data: { npcGroups: NPCGroup[] }) => void;
