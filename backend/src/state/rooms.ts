@@ -83,7 +83,7 @@ export const findRoomInMemory = (): string => {
     const activeRooms = rooms
       .filter(
         (room): room is Room & { key: string } => {
-          if (!room || room.isActive === false || room.numUsers >= 8) {
+          if (!room || room.isActive === false || room.numUsers >= 4) {
             return false;
           }
           
