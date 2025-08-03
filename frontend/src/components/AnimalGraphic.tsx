@@ -33,6 +33,7 @@ function AnimalSprite({
   terrainBoundaries: _terrainBoundaries,
   onRemotePositionUpdate,
   onLocalUserPositionUpdate,
+  renderedRotationRef,
 }: {
   animal: Animal;
   scale?: number;
@@ -47,6 +48,7 @@ function AnimalSprite({
   terrainBoundaries?: TerrainBoundaries;
   onRemotePositionUpdate?: (position: [number, number, number]) => void;
   onLocalUserPositionUpdate?: (position: THREE.Vector3) => void;
+  renderedRotationRef?: React.MutableRefObject<number>;
 }) {
   const animationManager = useAnimationManagerContext();
   const group = useMemo(() => new THREE.Group(), []);
@@ -251,21 +253,17 @@ function AnimalSprite({
       // Skip if SVG isn't loaded yet
       if (!svgLoaded.current || !initialScale.current) return;
 
-      // Position handling - same for local and non-local
-      group.position.copy(positionRef.current);
+      // Position handling - direct for local, interpolated for remote
+      if (isLocalPlayer) {
+        // Local players: use direct position for responsive controls
+        group.position.copy(positionRef.current);
 
-      // Update shared position ref for local user NPCs
-      if (isLocalPlayer && onLocalUserPositionUpdate) {
-        onLocalUserPositionUpdate(positionRef.current);
-      }
-
-      if (directionRef.current && directionRef.current.length() > 0.01) {
-        setRotation(directionRef.current);
-      }
-
-      // Handle position interpolation for non-local players
-      if (!isLocalPlayer) {
-        // Apply smooth movement
+        // Update shared position ref for local user NPCs (use direct position)
+        if (onLocalUserPositionUpdate) {
+          onLocalUserPositionUpdate(positionRef.current);
+        }
+      } else {
+        // Apply smooth movement for remote players only
         previousPosition.copy(
           smoothMove(previousPosition.clone(), positionRef.current, {
             lerpFactor: 0.1,
@@ -282,6 +280,10 @@ function AnimalSprite({
         if (onRemotePositionUpdate) {
           onRemotePositionUpdate([previousPosition.x, previousPosition.y, previousPosition.z]);
         }
+      }
+
+      if (directionRef.current && directionRef.current.length() > 0.01) {
+        setRotation(directionRef.current);
       }
 
       // Rotation interpolation with faster non-local rotation
@@ -309,6 +311,11 @@ function AnimalSprite({
         }
 
         group.rotation.z = previousRotation.current;
+      }
+
+      // Update rendered rotation ref for external components
+      if (renderedRotationRef) {
+        renderedRotationRef.current = previousRotation.current;
       }
 
       // Handle Y scale flipping based on direction
@@ -356,6 +363,7 @@ export default function AnimalGraphic({
   animalDimensions,
   terrainBoundaries: _terrainBoundaries,
   onLocalUserPositionUpdate,
+  renderedRotationRef,
 }: {
   user: UserInfo;
   myUserId: string;
@@ -366,6 +374,7 @@ export default function AnimalGraphic({
   animalDimensions?: { [animal: string]: { width: number; height: number } };
   terrainBoundaries?: TerrainBoundaries;
   onLocalUserPositionUpdate?: (position: THREE.Vector3) => void;
+  renderedRotationRef?: React.MutableRefObject<number>;
 }) {
   
   // Calculate the highest point of the animal considering rotation and dimensions (memoized)
@@ -476,6 +485,7 @@ export default function AnimalGraphic({
         terrainBoundaries={_terrainBoundaries}
         onRemotePositionUpdate={isLocalPlayer ? undefined : setRemoteNicknamePosition}
         onLocalUserPositionUpdate={onLocalUserPositionUpdate}
+        renderedRotationRef={renderedRotationRef}
       />
       {/* Nickname */}
       {nicknameTextInfo && (

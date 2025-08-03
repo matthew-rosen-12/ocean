@@ -152,6 +152,9 @@ export default function Scene({
   // Create a shared position ref that will be updated by the local user's AnimalGraphic
   const myUserPositionRef = useRef(new THREE.Vector3(position.x, position.y, position.z));
   
+  // Create a shared rendered rotation ref that will be updated by the local user's AnimalGraphic
+  const myUserRenderedRotationRef = useRef(0);
+  
   // Function for AnimalGraphic to update the shared position ref in the same animation loop
   const updateMyUserPositionRef = useCallback((newPosition: THREE.Vector3) => {
     myUserPositionRef.current.copy(newPosition);
@@ -420,6 +423,7 @@ export default function Scene({
               setAnimalDimensions={setAnimalDimensionsCallback}
               animalDimensions={animalDimensions}
               onLocalUserPositionUpdate={user.id === myUser.id ? updateMyUserPositionRef : undefined}
+              renderedRotationRef={user.id === myUser.id ? myUserRenderedRotationRef : undefined}
             />
           ))}
 
@@ -440,6 +444,7 @@ export default function Scene({
               throwChargeCount={npcGroup.captorId === myUser.id ? currentThrowCount : undefined}
               deletingNPCs={deletingNPCs}
               myUserPositionRef={myUserPositionRef}
+              myUserRenderedRotationRef={myUserRenderedRotationRef}
             />
           ))}
 

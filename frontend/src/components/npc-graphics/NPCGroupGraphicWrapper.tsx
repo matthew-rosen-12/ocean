@@ -28,7 +28,8 @@ interface NPCGraphicWrapperProps {
   ) => void;
   throwChargeCount?: number;
   deletingNPCs: Set<string>;
-  myUserPositionRef?: React.MutableRefObject<THREE.Vector3>; // Add local user position ref
+  myUserPositionRef: React.MutableRefObject<THREE.Vector3>; // Always required
+  myUserRenderedRotationRef: React.MutableRefObject<number>; // Always required
 }
 
 const NPCGraphicWrapper = ({
@@ -46,6 +47,7 @@ const NPCGraphicWrapper = ({
   throwChargeCount,
   deletingNPCs,
   myUserPositionRef,
+  myUserRenderedRotationRef,
 }: NPCGraphicWrapperProps) => {
   // Check if this NPC is being deleted (show cloud animation)
   const isBeingDeleted = deletingNPCs.has(npcGroup.id);
@@ -142,7 +144,8 @@ const NPCGraphicWrapper = ({
         users={users}
         throwChargeCount={throwChargeCount}
         myUserId={myUserId}
-        userPositionRef={captorUser.id === myUserId ? myUserPositionRef : undefined}
+        userPositionRef={myUserPositionRef}
+        userRenderedRotationRef={myUserRenderedRotationRef}
       />
     );
   }
