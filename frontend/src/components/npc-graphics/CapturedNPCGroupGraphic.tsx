@@ -243,20 +243,27 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
         
         const distanceFromUser = userPos2D.distanceTo(interpolatedPos2D);
         if (distanceFromUser > maxDistance) {
-          // Distance needs clamping - check if lerped direction is close to actual direction
-          const targetDirection = new THREE.Vector2(user.direction.x, user.direction.y);
-          const directionDifference = lerpedDirection.current.distanceTo(targetDirection);
-          
-          if (directionDifference < 0.1) { // Lerped direction is close to actual - use direct positioning
-            isUsingDirectClampedPositioning.current = true;
-            clampedDistance.current = maxDistance;
+          if (isLocalUser) {
+            // Local user - check if lerped direction is close to actual direction for direct positioning
+            const targetDirection = new THREE.Vector2(user.direction.x, user.direction.y);
+            const directionDifference = lerpedDirection.current.distanceTo(targetDirection);
             
-            const targetPos2D = new THREE.Vector2(targetPosition.x, targetPosition.y);
-            const directionToNPC = targetPos2D.clone().sub(userPos2D).normalize();
-            const clampedPos2D = userPos2D.clone().add(directionToNPC.multiplyScalar(maxDistance));
-            newPosition = new THREE.Vector3(clampedPos2D.x, clampedPos2D.y, interpolatedPosition.z);
+            if (directionDifference < 0.01) { // Lerped direction is close to actual - use direct positioning
+              isUsingDirectClampedPositioning.current = true;
+              clampedDistance.current = maxDistance;
+              
+              const targetPos2D = new THREE.Vector2(targetPosition.x, targetPosition.y);
+              const directionToNPC = targetPos2D.clone().sub(userPos2D).normalize();
+              const clampedPos2D = userPos2D.clone().add(directionToNPC.multiplyScalar(maxDistance));
+              newPosition = new THREE.Vector3(clampedPos2D.x, clampedPos2D.y, interpolatedPosition.z);
+            } else {
+              // Directions still differ - use interpolated clamping (smoother)
+              const directionToNPC = interpolatedPos2D.clone().sub(userPos2D).normalize();
+              const clampedPos2D = userPos2D.clone().add(directionToNPC.multiplyScalar(maxDistance));
+              newPosition = new THREE.Vector3(clampedPos2D.x, clampedPos2D.y, interpolatedPosition.z);
+            }
           } else {
-            // Directions still differ - use interpolated clamping (smoother)
+            // Remote user - always use interpolated clamping (never direct positioning)
             const directionToNPC = interpolatedPos2D.clone().sub(userPos2D).normalize();
             const clampedPos2D = userPos2D.clone().add(directionToNPC.multiplyScalar(maxDistance));
             newPosition = new THREE.Vector3(clampedPos2D.x, clampedPos2D.y, interpolatedPosition.z);
