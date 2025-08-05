@@ -183,14 +183,22 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
         framesToLookBack = 2; // Normal frames - compare with 5 frames ago
       }
       
-      // Movement detection - check if user is moving consistently
+      // Movement detection - check if user is moving consistently with stable direction
       let isConsistentMovement = false;
       if (positionHistory.current.length >= framesToLookBack + 1) {
         const oldPosition = positionHistory.current[positionHistory.current.length - 1 - framesToLookBack];
         const positionChange = currentUserPosition.distanceTo(oldPosition);
         const isMoving = positionChange > 0.05; // Some movement over the frame span  
         
-        isConsistentMovement = isMoving;
+        // For local users, also check if lerped direction has caught up to actual direction
+        let directionStable = true;
+        if (isLocalUser) {
+          const targetDirection = new THREE.Vector2(user.direction.x, user.direction.y);
+          const directionDifference = lerpedDirection.current.distanceTo(targetDirection);
+          directionStable = directionDifference < 0.5; // Lerped direction is close to actual
+        }
+        
+        isConsistentMovement = isMoving && directionStable;
       }
       
       if (isConsistentMovement) {
@@ -204,6 +212,10 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
         // Reset direct positioning when velocity changes
         isUsingDirectClampedPositioning.current = false;
         clampedDistance.current = null;
+      } else {
+          isUsingDirectClampedPositioning.current = true;
+          clampedDistance.current = 15.0;
+  
       }
 
       
@@ -243,31 +255,10 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
         
         const distanceFromUser = userPos2D.distanceTo(interpolatedPos2D);
         if (distanceFromUser > maxDistance) {
-          if (isLocalUser) {
-            // Local user - check if lerped direction is close to actual direction for direct positioning
-            const targetDirection = new THREE.Vector2(user.direction.x, user.direction.y);
-            const directionDifference = lerpedDirection.current.distanceTo(targetDirection);
-            
-            if (directionDifference < 0.01) { // Lerped direction is close to actual - use direct positioning
-              isUsingDirectClampedPositioning.current = true;
-              clampedDistance.current = maxDistance;
-              
-              const targetPos2D = new THREE.Vector2(targetPosition.x, targetPosition.y);
-              const directionToNPC = targetPos2D.clone().sub(userPos2D).normalize();
-              const clampedPos2D = userPos2D.clone().add(directionToNPC.multiplyScalar(maxDistance));
-              newPosition = new THREE.Vector3(clampedPos2D.x, clampedPos2D.y, interpolatedPosition.z);
-            } else {
-              // Directions still differ - use interpolated clamping (smoother)
-              const directionToNPC = interpolatedPos2D.clone().sub(userPos2D).normalize();
-              const clampedPos2D = userPos2D.clone().add(directionToNPC.multiplyScalar(maxDistance));
-              newPosition = new THREE.Vector3(clampedPos2D.x, clampedPos2D.y, interpolatedPosition.z);
-            }
-          } else {
-            // Remote user - always use interpolated clamping (never direct positioning)
-            const directionToNPC = interpolatedPos2D.clone().sub(userPos2D).normalize();
-            const clampedPos2D = userPos2D.clone().add(directionToNPC.multiplyScalar(maxDistance));
-            newPosition = new THREE.Vector3(clampedPos2D.x, clampedPos2D.y, interpolatedPosition.z);
-          }
+          // Always use interpolated clamping for consistency
+          const directionToNPC = interpolatedPos2D.clone().sub(userPos2D).normalize();
+          const clampedPos2D = userPos2D.clone().add(directionToNPC.multiplyScalar(maxDistance));
+          newPosition = new THREE.Vector3(clampedPos2D.x, clampedPos2D.y, interpolatedPosition.z);
         } else {
           newPosition = interpolatedPosition;
         }
