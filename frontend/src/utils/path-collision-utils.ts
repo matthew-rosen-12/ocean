@@ -105,12 +105,10 @@ export function handleNPCGroupReflectionForUser(
   // Make function idempotent - only process each collision once
   const emissionKey = collisionKey || `${npcGroup.id}-${capturedGroup.id}-${pathData.timestamp}`;
   if (processedEmissions.has(emissionKey)) {
-    console.log(`🚫 SKIPPING duplicate emission: ${emissionKey}`);
     return;
   }
   
   processedEmissions.add(emissionKey);
-  console.log(`🎯 PROCESSING emission: ${emissionKey}`);
   
   // Clean up processed emissions after a delay
   setTimeout(() => {
@@ -193,7 +191,6 @@ export function handleNPCGroupReflectionForUser(
   // Get the number of NPCs to emit based on thrown NPC group size
   const emittedNPCs: NPCGroup[] = [];
   const emissionCount = Math.min(npcGroup.fileNames.length, capturedGroup.fileNames.length);
-  console.log(`🎯 EMISSION: thrown=${npcGroup.fileNames.length}, captured=${capturedGroup.fileNames.length}, emitting=${emissionCount}`);
   
   // Calculate impact direction (where the thrown NPC hit from)
   const capturedGroupPosition = calculateNPCGroupPosition(targetUser, animalWidth, capturedGroupScale);
@@ -243,8 +240,6 @@ export function handleNPCGroupReflectionForUser(
     ...capturedGroup,
     fileNames: remainingNPCs,
   }) : null;
-
-  console.log(`📦 CREATED ${emittedNPCs.length} emitted NPCs`);
   
   if (emittedNPCs.length > 0) {
     // Send emission interaction to backend
@@ -303,11 +298,9 @@ export function handleNPCGroupReflectionForUser(
       
       // Update or remove the original captured group
       if (restOfNPCsGroup) {
-        console.log(`🔄 UPDATING captured group: ${capturedGroup.fileNames.length} → ${restOfNPCsGroup.fileNames.length}`);
         newNpcGroups.setByNpcGroupId(restOfNPCsGroup.id, restOfNPCsGroup);
         currentTypedSocket.emit("update-npc-group", { npcGroup: restOfNPCsGroup });
       } else {
-        console.log(`🗑️  DELETING captured group (all NPCs emitted)`);
         // If no NPCs remain, delete the original group
         newNpcGroups.deleteByNpcGroupId(capturedGroup.id);
         currentTypedSocket.emit("update-npc-group", { npcGroup: new NPCGroup({ ...capturedGroup, fileNames: [] }) });

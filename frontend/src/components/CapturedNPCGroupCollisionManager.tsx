@@ -115,11 +115,9 @@ const CapturedNPCGroupCollisionManager: React.FC<CapturedNPCGroupCollisionManage
             // Debug: Log collision tracking state
             const isRecent = globalRecentCollisions.has(collisionKey);
             const isProcessing = globalProcessingCollisions.has(collisionKey);
-            console.log(`🔍 COLLISION CHECK: ${collisionKey}, recent: ${isRecent}, processing: ${isProcessing}, sizes: ${pathNPCGroup.fileNames.length}/${capturedGroup.fileNames.length}`);
             
             // Skip if this collision was recently processed or is currently being processed
             if (isRecent || isProcessing) {
-              console.log(`⏭️  SKIPPING: ${collisionKey}`);
               return;
             }
             
@@ -140,7 +138,6 @@ const CapturedNPCGroupCollisionManager: React.FC<CapturedNPCGroupCollisionManage
             
             if (collisionOccurred) {
               // Log ALL successful collisions to detect duplicates + WHO is processing it
-              console.log(`✅ COLLISION: ${collisionKey}, thrown size: ${pathNPCGroup.fileNames.length}, captured size: ${capturedGroup.fileNames.length}, emitting: ${Math.min(pathNPCGroup.fileNames.length, capturedGroup.fileNames.length)}, processor: ${myUser?.id}`);
               
               // Mark this collision as recent to prevent duplicate processing
               globalRecentCollisions.add(collisionKey);

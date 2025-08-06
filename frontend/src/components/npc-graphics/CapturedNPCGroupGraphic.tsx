@@ -208,19 +208,43 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
       
       let newPosition: THREE.Vector3;
       const distanceFromUser = userPos2D.distanceTo(interpolatedPos2D);
+
+      // check if isUsingDirectClampedPosition should be set to false
+      if (isUsingDirectClampedPositioning.current) {
+        const positionStillChanging = positionHistory.current.length >= 2 && 
+        currentUserPosition.distanceTo(positionHistory.current[positionHistory.current.length - 2]) > 0.001;
+        const directionNotChanging = directionHistory.current.length >= 2 &&
+        targetDirection.distanceTo(directionHistory.current[directionHistory.current.length - 2]) < 0.5;
       
-      if (distanceFromUser > maxDistance) {
-        // Distance got clamped
+        if (!positionStillChanging || !directionNotChanging) {
+          // Either position stopped changing or direction changed - go back to interpolation
+          isUsingDirectClampedPositioning.current = false;
+        }
+      }
+
+      if (isUsingDirectClampedPositioning.current && isLocalUser) {
         const directionToNPC = interpolatedPos2D.clone().sub(userPos2D).normalize();
         const clampedPos2D = userPos2D.clone().add(directionToNPC.multiplyScalar(maxDistance));
         const clampedPosition = new THREE.Vector3(clampedPos2D.x, clampedPos2D.y, interpolatedPosition.z);
         
         // Check if lerped position is close to target position
+        console.log('using clamped')
+        
+        newPosition = clampedPosition;
+      }
+
+      
+      else if (distanceFromUser > maxDistance) {
+        // Distance got clamped
+        const directionToNPC = interpolatedPos2D.clone().sub(userPos2D).normalize();
+        const clampedPos2D = userPos2D.clone().add(directionToNPC.multiplyScalar(maxDistance));
+        const clampedPosition = new THREE.Vector3(clampedPos2D.x, clampedPos2D.y, interpolatedPosition.z);
+
         const distanceToTarget = clampedPosition.distanceTo(targetPosition);
         const isCloseToTarget = distanceToTarget < 5.0; // Close enough threshold
         
         // Start using direct positioning if lerped position is close to target and it's local user
-        if (isCloseToTarget && isLocalUser) {
+        if (isCloseToTarget) {
           isUsingDirectClampedPositioning.current = true;
         }
         
@@ -230,26 +254,6 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
         newPosition = interpolatedPosition;
       }
       
-      // If using direct positioning mode, override with direct calculation
-      if (isUsingDirectClampedPositioning.current && isLocalUser) {
-        // Check if we should stop direct positioning
-        const positionStillChanging = positionHistory.current.length >= 2 && 
-          currentUserPosition.distanceTo(positionHistory.current[positionHistory.current.length - 2]) > 0.01;
-        const directionNotChanging = directionHistory.current.length >= 2 &&
-          targetDirection.distanceTo(directionHistory.current[directionHistory.current.length - 2]) < 0.5;
-        
-        if (!positionStillChanging || !directionNotChanging) {
-          // Either position stopped changing or direction changed - go back to interpolation
-          isUsingDirectClampedPositioning.current = false;
-        } else {
-          // Continue using direct positioning at the clamped distance
-          console.log('direct positioning')
-          const targetPos2D = new THREE.Vector2(targetPosition.x, targetPosition.y);
-          const directionToNPC = targetPos2D.clone().sub(userPos2D).normalize();
-          const clampedPos2D = userPos2D.clone().add(directionToNPC.multiplyScalar(maxDistance));
-          newPosition = new THREE.Vector3(clampedPos2D.x, clampedPos2D.y, targetPosition.z);
-        }
-      }
       
       updatePositionWithTracking(newPosition, "NPCGroup");
       
