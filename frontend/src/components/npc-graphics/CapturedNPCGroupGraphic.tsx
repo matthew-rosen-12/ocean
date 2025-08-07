@@ -200,17 +200,24 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
       if (isLocalUser) {
         // Local user branch - complex positioning with frame counting and direct clamping
         frameCounter.current++;
-        if (frameCounter.current >= 10 && isUsingDirectClampedPositioning.current) {
+        if (frameCounter.current >= 4 && isUsingDirectClampedPositioning.current) {
           const positionStillChanging = positionHistory.current.length >= 2 && 
           currentUserPosition.distanceTo(positionHistory.current[positionHistory.current.length - 2]) > 0.001;
-          const directionNotChanging = directionHistory.current.length >= 2 &&
-          targetDirection.distanceTo(directionHistory.current[directionHistory.current.length - 2]) < .01;
+
         
-          if (!positionStillChanging || !directionNotChanging) {
+          if (!positionStillChanging) {
             // Either position stopped changing or direction changed - go back to interpolation
             isUsingDirectClampedPositioning.current = false;
           }
-          frameCounter.current = 5
+          frameCounter.current = 0
+        }
+
+        if (isUsingDirectClampedPositioning.current) {
+          const directionNotChanging = directionHistory.current.length >= 2 &&
+          targetDirection.distanceTo(directionHistory.current[directionHistory.current.length - 2]) < .01;
+          if (!directionNotChanging) {
+            isUsingDirectClampedPositioning.current = false;
+          }
         }
 
         if (isUsingDirectClampedPositioning.current) {
@@ -236,7 +243,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
             const clampedTargetPosition = clampPositionToMaxDistance(positionRef.current.clone(), userPos3D, maxDistance);
             
             const distanceToTarget = clampedPosition.distanceTo(clampedTargetPosition);
-            const isCloseToTarget = distanceToTarget < .05; // Close enough threshold
+            const isCloseToTarget = distanceToTarget < .04; // Close enough threshold
             
             // Start using direct positioning if lerped position is close to target
             if (isCloseToTarget) {

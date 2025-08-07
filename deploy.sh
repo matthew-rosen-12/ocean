@@ -104,6 +104,21 @@ deploy_env() {
     fi
 }
 
+# Deploy Nginx configuration
+deploy_nginx() {
+    log "Deploying Nginx configuration..."
+    
+    if [ -f "nginx.conf" ]; then
+        scp -i $SSH_KEY nginx.conf ${SERVER}:/tmp/nature-npc.conf || error "Failed to upload Nginx config"
+        ssh -i $SSH_KEY $SERVER "sudo cp /tmp/nature-npc.conf /etc/nginx/conf.d/nature-npc.conf" || error "Failed to install Nginx config"
+        ssh -i $SSH_KEY $SERVER "sudo nginx -t" || error "Nginx config syntax error"
+        ssh -i $SSH_KEY $SERVER "sudo systemctl reload nginx" || error "Failed to reload Nginx"
+        success "Nginx configuration deployed"
+    else
+        warning "No nginx.conf file found"
+    fi
+}
+
 # Show server status
 show_status() {
     log "Checking server status..."
@@ -140,6 +155,9 @@ main() {
         "env")
             deploy_env
             ;;
+        "nginx")
+            deploy_nginx
+            ;;
         "status")
             show_status
             ;;
@@ -148,16 +166,18 @@ main() {
             deploy_shared
             deploy_backend
             deploy_frontend
+            deploy_nginx
             success "Full deployment completed!"
             ;;
         *)
-            echo "Usage: $0 [frontend|backend|shared|env|status|full]"
+            echo "Usage: $0 [frontend|backend|shared|env|nginx|status|full]"
             echo ""
             echo "Commands:"
             echo "  frontend  - Deploy only frontend changes"
             echo "  backend   - Deploy backend (includes shared)"
             echo "  shared    - Deploy shared package (restarts backend)"
             echo "  env       - Deploy environment variables"
+            echo "  nginx     - Deploy Nginx configuration"
             echo "  status    - Show server status"
             echo "  full      - Deploy everything (default)"
             exit 1
