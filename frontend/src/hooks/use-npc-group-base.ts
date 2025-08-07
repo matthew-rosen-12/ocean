@@ -17,9 +17,6 @@ const materialCache = new Map<string, THREE.MeshBasicMaterial>();
 // Create a single shared loader
 const textureLoader = new THREE.TextureLoader();
 
-console.log(
-  `[NPC CACHE] Texture cache initialized, size: ${textureCache.size}`
-);
 
 // Use the specific debug flag
 const debug = DEBUG.NPC_MOVEMENT;

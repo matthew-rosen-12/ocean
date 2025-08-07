@@ -726,9 +726,6 @@ function setupUVCoordinates(
   geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
   geometry.attributes.uv.needsUpdate = true;
 
-  console.log(
-    `[UV MAPPING] Set up UV coordinates for ${positions.count} vertices`
-  );
 }
 
 /**

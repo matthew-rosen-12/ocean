@@ -45,7 +45,6 @@ class CanvasCache {
       this.cache.delete(key);
     });
 
-    console.log(`[CANVAS CACHE] Cleaned up ${toRemove.length} cached textures`);
   }
 
   getOrCreate(
@@ -85,7 +84,6 @@ class CanvasCache {
     texture.minFilter = THREE.LinearFilter;
     texture.magFilter = THREE.LinearFilter;
     
-    console.log(`[CANVAS CACHE] Created texture: ${key}, dimensions: ${canvas.width}x${canvas.height}`);
 
     // Cache the result
     const cached: CachedCanvas = {
@@ -100,8 +98,6 @@ class CanvasCache {
     if (this.cache.size > this.maxCacheSize) {
       this.cleanup();
     }
-
-    console.log(`[CANVAS CACHE] Created new texture: ${key} (${this.cache.size} total)`);
     
     return texture;
   }
@@ -120,7 +116,6 @@ class CanvasCache {
       cached.texture.dispose();
     });
     this.cache.clear();
-    console.log('[CANVAS CACHE] Cleared all cached textures');
   }
 
   // Get cache statistics

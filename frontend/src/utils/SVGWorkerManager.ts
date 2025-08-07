@@ -1,15 +1,7 @@
 /**
- * SVG Worker Manager for offloading SVG processing to web workers
- * Provides a pool of workers and intelligent task distribution
+ * SVG Processing Manager - Main thread only
+ * Simplified version without workers for better compatibility and performance
  */
-
-interface SVGProcessRequest {
-  svgContent: string;
-  animal: string;
-  scale: number;
-  color?: string;
-  requestId: string;
-}
 
 interface SVGProcessResult {
   requestId: string;
@@ -23,135 +15,15 @@ interface SVGProcessResult {
   error?: string;
 }
 
-interface BatchSVGRequest {
-  svgBatch: Omit<SVGProcessRequest, 'requestId'>[];
-  requestId: string;
-}
-
-type WorkerCallback = (result: SVGProcessResult) => void;
-type BatchCallback = (results: SVGProcessResult[]) => void;
-
 class SVGWorkerManager {
-  private workers: Worker[] = [];
-  private workerQueue: Worker[] = [];
-  private pendingRequests: Map<string, WorkerCallback> = new Map();
-  private pendingBatchRequests: Map<string, BatchCallback> = new Map();
-  private maxWorkers: number;
   private requestIdCounter = 0;
-
-  constructor(maxWorkers: number = navigator.hardwareConcurrency || 4) {
-    this.maxWorkers = Math.min(maxWorkers, 8); // Cap at 8 workers
-    this.initializeWorkers();
-  }
-
-  private initializeWorkers(): void {
-    for (let i = 0; i < this.maxWorkers; i++) {
-      try {
-        const worker = new Worker('/workers/svg-loader.js');
-        
-        worker.onmessage = (e) => {
-          this.handleWorkerMessage(e, worker);
-        };
-        
-        worker.onerror = (error) => {
-          console.error(`SVG Worker ${i} error:`, error);
-          this.handleWorkerError(worker);
-        };
-        
-        this.workers.push(worker);
-        this.workerQueue.push(worker);
-      } catch (error) {
-        console.warn('Failed to create SVG worker:', error);
-        // Fall back to fewer workers
-        break;
-      }
-    }
-    
-    if (this.workers.length === 0) {
-      console.warn('No SVG workers available - falling back to main thread processing');
-    }
-  }
-
-  private handleWorkerMessage(e: MessageEvent, worker: Worker): void {
-    const { type, data } = e.data;
-    
-    switch (type) {
-      case 'SVG_PROCESSED':
-        this.handleSingleSVGResult(data, worker);
-        break;
-        
-      case 'BATCH_SVG_PROCESSED':
-        this.handleBatchSVGResult(data, worker);
-        break;
-        
-      case 'WORKER_ERROR':
-        console.error('Worker reported error:', data);
-        this.returnWorkerToQueue(worker);
-        break;
-        
-      default:
-        console.warn('Unknown worker message type:', type);
-    }
-  }
-
-  private handleSingleSVGResult(data: SVGProcessResult, worker: Worker): void {
-    const callback = this.pendingRequests.get(data.requestId);
-    if (callback) {
-      callback(data);
-      this.pendingRequests.delete(data.requestId);
-    }
-    this.returnWorkerToQueue(worker);
-  }
-
-  private handleBatchSVGResult(data: { requestId: string; results: SVGProcessResult[] }, worker: Worker): void {
-    const callback = this.pendingBatchRequests.get(data.requestId);
-    if (callback) {
-      callback(data.results);
-      this.pendingBatchRequests.delete(data.requestId);
-    }
-    this.returnWorkerToQueue(worker);
-  }
-
-  private handleWorkerError(worker: Worker): void {
-    // Remove failed worker from queue and arrays
-    const workerIndex = this.workers.indexOf(worker);
-    if (workerIndex !== -1) {
-      this.workers.splice(workerIndex, 1);
-    }
-    
-    const queueIndex = this.workerQueue.indexOf(worker);
-    if (queueIndex !== -1) {
-      this.workerQueue.splice(queueIndex, 1);
-    }
-    
-    // Try to create a replacement worker
-    try {
-      const newWorker = new Worker('/workers/svg-loader.js');
-      newWorker.onmessage = (e) => this.handleWorkerMessage(e, newWorker);
-      newWorker.onerror = (error) => {
-        console.error('Replacement SVG worker error:', error);
-        this.handleWorkerError(newWorker);
-      };
-      
-      this.workers.push(newWorker);
-      this.workerQueue.push(newWorker);
-    } catch (error) {
-      console.warn('Failed to create replacement SVG worker:', error);
-    }
-  }
-
-  private returnWorkerToQueue(worker: Worker): void {
-    if (this.workers.includes(worker) && !this.workerQueue.includes(worker)) {
-      this.workerQueue.push(worker);
-    }
-  }
 
   private getNextRequestId(): string {
     return `svg-request-${++this.requestIdCounter}-${Date.now()}`;
   }
 
   /**
-   * Process a single SVG file
+   * Process a single SVG file on main thread
    */
   public processSVG(
     svgContent: string,
@@ -159,45 +31,11 @@ class SVGWorkerManager {
     scale: number = 1,
     color?: string
   ): Promise<SVGProcessResult> {
-    return new Promise((resolve, reject) => {
-      // If no workers available, fall back to main thread
-      if (this.workers.length === 0) {
-        this.processSVGMainThread(svgContent, animal, scale, color)
-          .then(resolve)
-          .catch(reject);
-        return;
-      }
-
-      const requestId = this.getNextRequestId();
-      const worker = this.workerQueue.shift();
-      
-      if (!worker) {
-        // No workers available right now, queue the request
-        setTimeout(() => {
-          this.processSVG(svgContent, animal, scale, color)
-            .then(resolve)
-            .catch(reject);
-        }, 10);
-        return;
-      }
-
-      this.pendingRequests.set(requestId, (result) => {
-        if (result.success) {
-          resolve(result);
-        } else {
-          reject(new Error(result.error || 'SVG processing failed'));
-        }
-      });
-
-      worker.postMessage({
-        type: 'PROCESS_SVG',
-        data: { svgContent, animal, scale, color, requestId }
-      });
-    });
+    return this.processSVGMainThread(svgContent, animal, scale, color);
   }
 
   /**
-   * Process multiple SVGs in batch for better efficiency
+   * Process multiple SVGs in batch on main thread
    */
   public processSVGBatch(
     svgBatch: Array<{
@@ -207,49 +45,15 @@ class SVGWorkerManager {
       color?: string;
     }>
   ): Promise<SVGProcessResult[]> {
-    return new Promise((resolve, reject) => {
-      // If no workers available, fall back to main thread
-      if (this.workers.length === 0) {
-        Promise.all(
-          svgBatch.map(({ svgContent, animal, scale = 1, color }) =>
-            this.processSVGMainThread(svgContent, animal, scale, color)
-          )
-        ).then(resolve).catch(reject);
-        return;
-      }
-
-      const requestId = this.getNextRequestId();
-      const worker = this.workerQueue.shift();
-      
-      if (!worker) {
-        // No workers available, queue the request
-        setTimeout(() => {
-          this.processSVGBatch(svgBatch)
-            .then(resolve)
-            .catch(reject);
-        }, 10);
-        return;
-      }
-
-      this.pendingBatchRequests.set(requestId, resolve);
-
-      worker.postMessage({
-        type: 'BATCH_PROCESS_SVGS',
-        data: {
-          svgBatch: svgBatch.map(({ svgContent, animal, scale = 1, color }) => ({
-            svgContent,
-            animal,
-            scale,
-            color
-          })),
-          requestId
-        }
-      });
-    });
+    return Promise.all(
+      svgBatch.map(({ svgContent, animal, scale = 1, color }) =>
+        this.processSVGMainThread(svgContent, animal, scale, color)
+      )
+    );
   }
 
   /**
-   * Fallback to main thread processing when workers aren't available
+   * Main thread SVG processing
    */
   private async processSVGMainThread(
     svgContent: string,
@@ -306,19 +110,19 @@ class SVGWorkerManager {
       };
       
     } catch (error) {
-      throw new Error(`Main thread SVG processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`SVG processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
-   * Check if workers are available and healthy
+   * Check if workers are available (always false since workers are disabled)
    */
   public isWorkersAvailable(): boolean {
-    return this.workers.length > 0;
+    return false;
   }
 
   /**
-   * Get worker pool statistics
+   * Get processing statistics
    */
   public getStats(): {
     totalWorkers: number;
@@ -327,24 +131,18 @@ class SVGWorkerManager {
     pendingBatchRequests: number;
   } {
     return {
-      totalWorkers: this.workers.length,
-      availableWorkers: this.workerQueue.length,
-      pendingRequests: this.pendingRequests.size,
-      pendingBatchRequests: this.pendingBatchRequests.size
+      totalWorkers: 0,
+      availableWorkers: 0,
+      pendingRequests: 0,
+      pendingBatchRequests: 0
     };
   }
 
   /**
-   * Cleanup all workers
+   * Cleanup (no-op since no workers to terminate)
    */
   public terminate(): void {
-    this.workers.forEach(worker => {
-      worker.terminate();
-    });
-    this.workers = [];
-    this.workerQueue = [];
-    this.pendingRequests.clear();
-    this.pendingBatchRequests.clear();
+    // Nothing to cleanup
   }
 }
 

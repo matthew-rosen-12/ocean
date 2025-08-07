@@ -105,7 +105,11 @@ export function useCaptureCollision({
   const checkForNPCGroupCollision = useCallback(
     (npcGroup: NPCGroup, npcGroupPosition?: THREE.Vector3, isLocalUser: boolean = true) => {
       // Get the animal dimensions for dynamic thresholds
-      const dimensions = animalDimensions[myUser.animal]!;
+      const dimensions = animalDimensions[myUser.animal];
+      if (!dimensions) {
+        // Animal dimensions not loaded yet, skip collision check
+        return false;
+      }
 
       // Calculate rotations for both objects
       const userRotation = Math.atan2(myUser.direction.y, myUser.direction.x);
