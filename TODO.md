@@ -1,7 +1,6 @@
 - outline / number / text rendering depth
 
-- memory leaks of safari?? / on ec2??
-- once again try to fix npc group following
+- memory leaks of safari?? / on ec2?? / final check
 
 - code cleanup, git repo readme cleanup etc
 
