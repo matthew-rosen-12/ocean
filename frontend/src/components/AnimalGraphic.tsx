@@ -34,6 +34,7 @@ function AnimalSprite({
   onRemotePositionUpdate,
   onLocalUserPositionUpdate,
   renderedRotationRef,
+  targetPositionRef,
 }: {
   animal: Animal;
   scale?: number;
@@ -49,6 +50,7 @@ function AnimalSprite({
   onRemotePositionUpdate?: (position: [number, number, number]) => void;
   onLocalUserPositionUpdate?: (position: THREE.Vector3) => void;
   renderedRotationRef?: React.MutableRefObject<number>;
+  targetPositionRef?: React.MutableRefObject<THREE.Vector3>;
 }) {
   const animationManager = useAnimationManagerContext();
   const group = useMemo(() => new THREE.Group(), []);
@@ -263,9 +265,10 @@ function AnimalSprite({
           onLocalUserPositionUpdate(positionRef.current);
         }
       } else {
-        // Apply smooth movement for remote players only
+        // Apply smooth movement for remote players only (use targetPosition instead of positionRef)
+        const targetPos = targetPositionRef ? targetPositionRef.current : positionRef.current;
         previousPosition.copy(
-          smoothMove(previousPosition.clone(), positionRef.current, {
+          smoothMove(previousPosition.clone(), targetPos, {
             lerpFactor: 0.1,
             moveSpeed: MOVE_SPEED,
             minDistance: 0.01,
@@ -459,9 +462,18 @@ export default function AnimalGraphic({
     new THREE.Vector3(user.direction.x, user.direction.y, 0)
   );
 
+  // Separate target position for remote players to prevent double lurch
+  const targetPosition = useRef(new THREE.Vector3(user.position.x, user.position.y, user.position.z ?? 0));
+
   // Update refs when user data changes
   useEffect(() => {
-    positionRef.current.set(user.position.x, user.position.y, user.position.z ?? 0);
+    if (isLocalPlayer) {
+      // For local players, update position ref directly for responsive controls
+      positionRef.current.set(user.position.x, user.position.y, user.position.z ?? 0);
+    } else {
+      // For remote players, only update the target position (not positionRef)
+      targetPosition.current.set(user.position.x, user.position.y, user.position.z ?? 0);
+    }
 
     // Update direction ref if direction exists, preserving z=0
     if (user.direction) {
@@ -470,7 +482,7 @@ export default function AnimalGraphic({
       }
       directionRef.current.set(user.direction.x, user.direction.y, 0);
     }
-  }, [user.position.x, user.position.y, user.position.z, user.direction]);
+  }, [user.position.x, user.position.y, user.position.z, user.direction, isLocalPlayer]);
 
   return (
     <>
@@ -486,6 +498,7 @@ export default function AnimalGraphic({
         onRemotePositionUpdate={isLocalPlayer ? undefined : setRemoteNicknamePosition}
         onLocalUserPositionUpdate={onLocalUserPositionUpdate}
         renderedRotationRef={renderedRotationRef}
+        targetPositionRef={isLocalPlayer ? undefined : targetPosition}
       />
       {/* Nickname */}
       {nicknameTextInfo && (

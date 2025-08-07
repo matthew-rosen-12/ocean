@@ -88,7 +88,7 @@ export function usePositionBroadcast({
     
     return throttle(broadcastPosition, dynamicThrottleMs, {
       leading: true,
-      trailing: true,
+      trailing: false,
     });
   }, [broadcastPosition, users.size]);
 

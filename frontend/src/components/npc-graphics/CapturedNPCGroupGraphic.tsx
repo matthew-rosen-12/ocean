@@ -283,9 +283,8 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
       
       updatePositionWithTracking(newPosition, "NPCGroup");
       
-      // Force immediate mesh position update to prevent jumpiness
+      // Set position directly without forcing matrix update (avoid double rendering)
       threeGroup.position.copy(newPosition);
-      threeGroup.updateMatrixWorld(true);
 
 
       // Make a subtle oscillation to indicate this is a group
