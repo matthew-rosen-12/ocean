@@ -38,14 +38,6 @@ const clampPositionToMaxDistance = (
   return new THREE.Vector3(clampedPos2D.x, clampedPos2D.y, position.z);
 };
 
-const getClampedInterpolatedPosition = (
-  interpolatedPosition: THREE.Vector3,
-  userPosition: THREE.Vector3,
-  maxDistance: number
-): THREE.Vector3 => {
-  return clampPositionToMaxDistance(interpolatedPosition, userPosition, maxDistance);
-};
-
 
 
 interface CapturedNPCGroupGraphicProps {
@@ -124,7 +116,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
   const directionHistory = useRef<THREE.Vector2[]>([]);
   const maxHistoryFrames = 20; // Maximum frames to track
   const isUsingDirectClampedPositioning = useRef(false);
-  
+  const frameCounter = useRef(0);
   
   // Single position tracking system - no conflicting smoothing layers
   
@@ -216,7 +208,8 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
       let newPosition: THREE.Vector3;
 
       // check if isUsingDirectClampedPosition should be set to false
-      if (isUsingDirectClampedPositioning.current) {
+      frameCounter.current++;
+      if (frameCounter.current >= 5 && isUsingDirectClampedPositioning.current) {
         const positionStillChanging = positionHistory.current.length >= 2 && 
         currentUserPosition.distanceTo(positionHistory.current[positionHistory.current.length - 2]) > 0.001;
         const directionNotChanging = directionHistory.current.length >= 2 &&
@@ -226,6 +219,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
           // Either position stopped changing or direction changed - go back to interpolation
           isUsingDirectClampedPositioning.current = false;
         }
+        frameCounter.current = 5
       }
 
 
@@ -253,12 +247,13 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
         if (distanceFromUser > maxDistance) {
           // Distance got clamped
           const userPos3D = new THREE.Vector3(effectiveUserPosition.x, effectiveUserPosition.y, effectiveUserPosition.z);
-          const clampedPosition = getClampedInterpolatedPosition(interpolatedPosition, userPos3D, maxDistance);
-          const clampedTargetPosition = clampPositionToMaxDistance(targetPosition, userPos3D, maxDistance);
+          const clampedPosition = clampPositionToMaxDistance(interpolatedPosition, userPos3D, maxDistance);
+          const clampedTargetPosition = clampPositionToMaxDistance(positionRef.current.clone(), userPos3D, maxDistance);
           
           const distanceToTarget = clampedPosition.distanceTo(clampedTargetPosition);
-          const isCloseToTarget = distanceToTarget < 5; // Close enough threshold
+          const isCloseToTarget = distanceToTarget < .3; // Close enough threshold
           
+          console.log(distanceToTarget)
           // Start using direct positioning if lerped position is close to target and it's local user
           if (isCloseToTarget) {
             isUsingDirectClampedPositioning.current = true;
