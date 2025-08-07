@@ -1,6 +1,6 @@
 - outline / number / text rendering depth
 
-- memory leaks of safari?? / on ec2?? / final check
+- memory leaks of safari?? / on ec2?? / final check that this works / avoid having to refresh cache
 
 - code cleanup, git repo readme cleanup etc
 
