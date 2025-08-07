@@ -236,7 +236,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
             const clampedTargetPosition = clampPositionToMaxDistance(positionRef.current.clone(), userPos3D, maxDistance);
             
             const distanceToTarget = clampedPosition.distanceTo(clampedTargetPosition);
-            const isCloseToTarget = distanceToTarget < .1; // Close enough threshold
+            const isCloseToTarget = distanceToTarget < .05; // Close enough threshold
             
             // Start using direct positioning if lerped position is close to target
             if (isCloseToTarget) {
