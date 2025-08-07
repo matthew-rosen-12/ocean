@@ -209,7 +209,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
 
       // check if isUsingDirectClampedPosition should be set to false
       frameCounter.current++;
-      if (frameCounter.current >= 5 && isUsingDirectClampedPositioning.current) {
+      if (frameCounter.current >= 10 && isUsingDirectClampedPositioning.current) {
         const positionStillChanging = positionHistory.current.length >= 2 && 
         currentUserPosition.distanceTo(positionHistory.current[positionHistory.current.length - 2]) > 0.001;
         const directionNotChanging = directionHistory.current.length >= 2 &&
