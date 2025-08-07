@@ -45,24 +45,14 @@ interface CapturedNPCGroupGraphicProps {
   user: UserInfo;
   npcGroups: NPCGroupsBiMap;
   allPaths: Map<string, pathData>;
-  setPaths: (
-    paths:
-      | Map<string, pathData>
-      | ((prev: Map<string, pathData>) => Map<string, pathData>)
-  ) => void;
-  setNpcGroups: (
-    npcGroups:
-      | NPCGroupsBiMap
-      | ((prev: NPCGroupsBiMap) => NPCGroupsBiMap)
-  ) => void;
   animalWidth: number | undefined;
-  isLocalUser: boolean; // Add flag to distinguish local vs non-local users
-  terrainBoundaries?: TerrainBoundaries; // Add terrain boundaries for wrapping
-  users: Map<string, UserInfo>; // All users for getting group positions
+  isLocalUser: boolean;
+  terrainBoundaries?: TerrainBoundaries;
+  users: Map<string, UserInfo>;
   throwChargeCount: number | undefined;
-  myUserId: string; // Current user ID for render order logic
-  userPositionRef: React.MutableRefObject<THREE.Vector3>; // Always required
-  userRenderedRotationRef?: React.MutableRefObject<number>; // Not needed for lerped approach but kept for compatibility
+  myUserId: string;
+  userPositionRef: React.MutableRefObject<THREE.Vector3>;
+  userRenderedRotationRef?: React.MutableRefObject<number>;
 }
 
 const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
@@ -71,7 +61,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
   npcGroups,
   allPaths,
   animalWidth,
-  isLocalUser = false, // Default to false for non-local users
+  isLocalUser = false,
   users: _users, // Not used in this component anymore (handled by CapturedNPCGroupCollisionManager)
   throwChargeCount,
   userPositionRef,

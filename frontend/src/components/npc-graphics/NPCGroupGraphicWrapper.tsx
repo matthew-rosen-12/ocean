@@ -136,8 +136,6 @@ const NPCGraphicWrapper = ({
         user={captorUser}
         npcGroups={npcGroups}
         allPaths={allPaths}
-        setPaths={setPaths}
-        setNpcGroups={_setNpcGroups}
         animalWidth={animalWidth}
         isLocalUser={captorUser.id === myUserId}
         terrainBoundaries={terrainBoundaries}

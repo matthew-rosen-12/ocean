@@ -262,7 +262,7 @@ function getNPCFilenames() {
         "frederick_douglass.png",
         "girl_with_a_pearl_earring.png",
         "hermes.png",
-        "isaac_netwon.png",
+        "isaac_newton.png",
         "jane_austen.png",
         "jim_thorpe.png",
         "julia_codesido.png",

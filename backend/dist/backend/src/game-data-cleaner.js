@@ -20,7 +20,6 @@ function clearAllGameData(roomName) {
         // Clear users in the room
         const roomUsersData = (0, users_1.getAllUsersInRoom)(roomName);
         if (roomUsersData && roomUsersData.size > 0) {
-            const userCount = roomUsersData.size;
             const userIds = Array.from(roomUsersData.keys());
             userIds.forEach(userId => {
                 (0, users_1.removeUserFromRoom)(roomName, userId);
@@ -29,14 +28,12 @@ function clearAllGameData(roomName) {
         // Clear NPC groups in the room
         const roomNpcGroups = (0, npc_groups_1.getNPCGroupsfromMemory)(roomName);
         if (roomNpcGroups && roomNpcGroups.values().length > 0) {
-            const npcGroupCount = roomNpcGroups.values().length;
             // Clear by setting an empty NPCGroupsBiMap
             (0, npc_groups_1.setNPCGroupsInMemory)(roomName, new types_1.NPCGroupsBiMap());
         }
         // Clear paths in the room
         const roomPaths = (0, paths_1.getpathsfromMemory)(roomName);
         if (roomPaths && roomPaths.size > 0) {
-            const pathCount = roomPaths.size;
             // Clear by setting an empty Map
             (0, paths_1.setPathsInMemory)(roomName, new Map());
         }
@@ -55,11 +52,9 @@ function clearAllGameDataGlobally() {
     try {
         // Get all room names and clear each room individually
         const allRooms = (0, rooms_1.getAllRoomsfromMemory)();
-        let totalCleared = 0;
         allRooms.forEach(roomName => {
             try {
                 clearAllGameData(roomName);
-                totalCleared++;
             }
             catch (error) {
                 console.error(`Error clearing room ${roomName}:`, error);

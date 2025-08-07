@@ -104,7 +104,7 @@ class GameTicker {
     // Increment counters
     this.botUpdateCounter++;
     
-    // Reset spawn check counter
+    // Reset spawn check counter if reached interval
     if (this.spawnCheckCounter >= this.SPAWN_CHECK_INTERVAL) {
       this.spawnCheckCounter = 0;
     }
