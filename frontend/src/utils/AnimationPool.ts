@@ -136,6 +136,19 @@ export class AnimationPool {
       this.executePoolAnimations(poolName, state, delta);
     });
   }
+
+  /**
+   * Clean up all pools and global state
+   */
+  static dispose(): void {
+    this.pools.clear();
+    this.registeredPools.clear();
+    
+    // Clean up global state
+    if (typeof globalThis !== 'undefined') {
+      delete (globalThis as any).__animationPools;
+    }
+  }
 }
 
 // Add pool statistics to window for debugging

@@ -30,6 +30,9 @@ import {
 import { preloadFonts } from "./utils/font-preloader";
 import { throttle } from "lodash";
 import { typedSocket, getSocket } from "./socket";
+import { canvasCache } from "./utils/canvas-cache";
+import { AnimationPool } from "./utils/AnimationPool";
+import { disposeAnimalCaches } from "./utils/load-animal-svg";
 
 function App() {
   const [myUser, setMyUser] = useState<UserInfo | null>(null);
@@ -83,6 +86,11 @@ function App() {
 
   // Handle return to login from inactivity kick
   const handleReturnToLoginFromInactivity = useCallback(() => {
+    // Clean up memory leaks by disposing of caches
+    canvasCache.dispose();
+    AnimationPool.dispose();
+    disposeAnimalCaches();
+    
     // Batch all state resets together using React 18 automatic batching
     React.startTransition(() => {
       setKickedForInactivity(false);
@@ -104,6 +112,22 @@ function App() {
     preloadFonts();
   }, []);
 
+  // Global cleanup on page unload to prevent memory leaks
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      canvasCache.dispose();
+      AnimationPool.dispose();
+      disposeAnimalCaches();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // Also cleanup when component unmounts
+      handleBeforeUnload();
+    };
+  }, []);
+
   // Generate terrain configuration
   const terrain = serverTerrainConfig
     ? createTerrainFromServer(serverTerrainConfig)
@@ -115,6 +139,11 @@ function App() {
     if (socket) {
       socket.disconnect();
     }
+    
+    // Clean up memory leaks by disposing of caches
+    canvasCache.dispose();
+    AnimationPool.dispose();
+    disposeAnimalCaches();
     
     // Batch all state resets together using React 18 automatic batching
     React.startTransition(() => {

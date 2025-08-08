@@ -32,6 +32,40 @@ const svgDataCache = new Map<
 const textureCache = new Map<string, THREE.Texture>();
 const outlineGeometryCache = new Map<string, { geometry: THREE.BufferGeometry; outlineShape: THREE.Shape | null }>();
 
+// Cleanup function to dispose of all cached resources
+export function disposeAnimalCaches(): void {
+  // Dispose of animal graphics cache
+  animalGraphicsCache.forEach((cached) => {
+    if (cached.texture) {
+      cached.texture.dispose();
+    }
+    if (cached.geometry) {
+      cached.geometry.dispose();
+    }
+    if (cached.outlineLineGeometry) {
+      cached.outlineLineGeometry.dispose();
+    }
+  });
+  animalGraphicsCache.clear();
+
+  // Dispose of texture cache
+  textureCache.forEach((texture) => {
+    texture.dispose();
+  });
+  textureCache.clear();
+
+  // Dispose of outline geometry cache
+  outlineGeometryCache.forEach((cached) => {
+    if (cached.geometry) {
+      cached.geometry.dispose();
+    }
+  });
+  outlineGeometryCache.clear();
+
+  // Clear SVG data cache
+  svgDataCache.clear();
+}
+
 // File-based cache data structure
 interface CachedAnimalData {
   animalName: string;

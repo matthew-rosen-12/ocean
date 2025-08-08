@@ -20,10 +20,11 @@ class CanvasCache {
   private cache = new Map<string, CachedCanvas>();
   private maxCacheSize = 20; // Limit cache size to prevent memory issues
   private readonly cleanupInterval = 60000; // 1 minute
+  private cleanupTimer: NodeJS.Timeout | null = null;
 
   constructor() {
     // Periodic cleanup of unused textures
-    setInterval(() => this.cleanup(), this.cleanupInterval);
+    this.cleanupTimer = setInterval(() => this.cleanup(), this.cleanupInterval);
   }
 
   private generateKey(params: CacheKey): string {
@@ -116,6 +117,15 @@ class CanvasCache {
       cached.texture.dispose();
     });
     this.cache.clear();
+  }
+
+  // Dispose of cache and cleanup timer
+  dispose(): void {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
+    this.clear();
   }
 
   // Get cache statistics
