@@ -18,6 +18,14 @@ export default defineConfig({
   build: {
     commonjsOptions: {
       include: [/shared/, /node_modules/]
+    },
+    rollupOptions: {
+      output: {
+        // Ensure all assets get hashed filenames for cache busting
+        assetFileNames: 'assets/[name]-[hash][extname]',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js'
+      }
     }
   }
 });
