@@ -379,6 +379,13 @@ export default function AnimalGraphic({
   onLocalUserPositionUpdate?: (position: THREE.Vector3) => void;
   renderedRotationRef?: React.MutableRefObject<number>;
 }) {
+  // Create position ref as Vector3
+  const isLocalPlayer = myUserId === user.id;
+
+  // State to track rendered rotation for remote users (for smooth nickname positioning)
+  const [remoteRenderedRotation, setRemoteRenderedRotation] = useState(
+    isLocalPlayer ? 0 : Math.atan2(user.direction.y, user.direction.x)
+  );
   
   // Calculate the highest point of the animal considering rotation and dimensions (memoized)
   const highestPoint = useMemo(() => {
@@ -446,8 +453,7 @@ export default function AnimalGraphic({
       outlineColor: outlineColor
     };
   }, [user, highestPoint]);
-  // Create position ref as Vector3
-  const isLocalPlayer = myUserId === user.id;
+
   const positionRef = useRef(
     new THREE.Vector3(user.position.x, user.position.y, user.position.z ?? 0)
   );
@@ -473,8 +479,7 @@ export default function AnimalGraphic({
     } else {
       // For remote players, only update the target position (not positionRef)
       targetPosition.current.set(user.position.x, user.position.y, user.position.z ?? 0);
-      // Also update remote nickname position immediately so it shows on initial render
-      setRemoteNicknamePosition([user.position.x, user.position.y, user.position.z ?? 0]);
+      // Don't update remoteNicknamePosition here - let the animation callback handle it
     }
 
     // Update direction ref if direction exists, preserving z=0
@@ -485,6 +490,14 @@ export default function AnimalGraphic({
       directionRef.current.set(user.direction.x, user.direction.y, 0);
     }
   }, [user.position.x, user.position.y, user.position.z, user.direction, isLocalPlayer]);
+
+  // Ensure remote nickname position is initialized for new users (only on user ID change)
+  useEffect(() => {
+    if (!isLocalPlayer) {
+      setRemoteNicknamePosition([user.position.x, user.position.y, user.position.z ?? 0]);
+      setRemoteRenderedRotation(Math.atan2(user.direction.y, user.direction.x));
+    }
+  }, [user.id, isLocalPlayer]); // Only trigger on user ID or local player change, not position changes
 
   return (
     <>
@@ -497,7 +510,13 @@ export default function AnimalGraphic({
         user={user}
         setAnimalDimensions={setAnimalDimensions}
         terrainBoundaries={_terrainBoundaries}
-        onRemotePositionUpdate={isLocalPlayer ? undefined : setRemoteNicknamePosition}
+        onRemotePositionUpdate={isLocalPlayer ? undefined : (pos) => {
+          setRemoteNicknamePosition(pos);
+          // Also update rendered rotation for smooth nickname positioning
+          if (renderedRotationRef?.current !== undefined) {
+            setRemoteRenderedRotation(renderedRotationRef.current);
+          }
+        }}
         onLocalUserPositionUpdate={onLocalUserPositionUpdate}
         renderedRotationRef={renderedRotationRef}
         targetPositionRef={isLocalPlayer ? undefined : targetPosition}
