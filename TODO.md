@@ -5,4 +5,4 @@ ssl certificate
 GROQ API key
 domain
 
-check AWS costs, monitor website up, test redeploy works
+check AWS costs (on cadence), monitor website up (on cadence)
