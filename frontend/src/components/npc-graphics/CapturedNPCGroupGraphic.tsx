@@ -93,8 +93,8 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
   // Reference for smooth movement interpolation (non-local users)
   const previousPosition = useMemo(() => new THREE.Vector3(), []);
   
-  // For remote users: track interpolated user position (like AnimalGraphic does)
-  const remoteUserInterpolatedPosition = useRef(new THREE.Vector3(user.position.x, user.position.y, user.position.z));
+  // For remote users: track smoothed position for distance calculations (like HEAD~55)
+  const remoteSmoothedPosition = useRef(new THREE.Vector2(user.position.x, user.position.y));
   
   // Lerped direction for smooth rotation - starts with current user direction
   const lerpedDirection = useRef(new THREE.Vector2(user.direction.x, user.direction.y));
@@ -117,10 +117,10 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
   const calculateTargetPosition = useCallback((): THREE.Vector3 => {
     if (!animalWidth) return new THREE.Vector3(0, 0, -10);
     
-    // Use position ref for local users, interpolated position for remote users
+    // Use position ref for local users, raw user.position for remote users (like HEAD~55)
     const effectiveUserPosition = isLocalUser 
       ? userPositionRef.current 
-      : remoteUserInterpolatedPosition.current;
+      : user.position;
     const currentUserPosition = new THREE.Vector2(effectiveUserPosition.x, effectiveUserPosition.y);
     const currentUserDirection = lerpedDirection.current.clone();
     
@@ -164,24 +164,15 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     const animationCallback = (_state: unknown, delta: number) => {
       if (!threeGroup || !textureLoaded.current || !user || group.fileNames.length === 0 || !animalWidth) return;
 
-      // For remote users, interpolate user position (like AnimalGraphic does)
+      // For remote users, smooth the position for distance calculations (like HEAD~55)
       if (!isLocalUser) {
-        const targetUserPosition = new THREE.Vector3(user.position.x, user.position.y, user.position.z);
-        remoteUserInterpolatedPosition.current.copy(
-          smoothMove(remoteUserInterpolatedPosition.current.clone(), targetUserPosition, {
-            lerpFactor: 0.2,
-            moveSpeed: 0.5, // Same as MOVE_SPEED in AnimalGraphic
-            minDistance: 0.01,
-            useConstantSpeed: true,
-          })
-        );
+        const remoteSmoothingFactor = 0.9; // Equivalent to lerpFactor 0.1
+        remoteSmoothedPosition.current.x = remoteSmoothedPosition.current.x * remoteSmoothingFactor + user.position.x * (1 - remoteSmoothingFactor);
+        remoteSmoothedPosition.current.y = remoteSmoothedPosition.current.y * remoteSmoothingFactor + user.position.y * (1 - remoteSmoothingFactor);
       }
 
       // Get current user position
-      const effectiveUserPosition = isLocalUser 
-        ? userPositionRef.current 
-        : remoteUserInterpolatedPosition.current;
-      const currentUserPosition = new THREE.Vector2(effectiveUserPosition.x, effectiveUserPosition.y);
+      const currentUserPosition = new THREE.Vector2(user.position.x, user.position.y);
       
       // Lerp the user direction for smooth rotation
       const targetDirection = new THREE.Vector2(user.direction.x, user.direction.y);
@@ -252,13 +243,13 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
             targetPosition,
             interpolationParams
           );
-          const userPos2D = new THREE.Vector2(effectiveUserPosition.x, effectiveUserPosition.y);
+          const userPos2D = new THREE.Vector2(userPositionRef.current.x, userPositionRef.current.y);
           const interpolatedPos2D = new THREE.Vector2(interpolatedPosition.x, interpolatedPosition.y);
           const distanceFromUser = userPos2D.distanceTo(interpolatedPos2D);
 
           if (distanceFromUser > maxDistance) {
             // Distance got clamped
-            const userPos3D = new THREE.Vector3(effectiveUserPosition.x, effectiveUserPosition.y, effectiveUserPosition.z);
+            const userPos3D = new THREE.Vector3(userPositionRef.current.x, userPositionRef.current.y, userPositionRef.current.z);
             const clampedPosition = clampPositionToMaxDistance(interpolatedPosition, userPos3D, maxDistance);
             const clampedTargetPosition = clampPositionToMaxDistance(positionRef.current.clone(), userPos3D, maxDistance);
             
@@ -283,13 +274,14 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
           targetPosition,
           interpolationParams
         );
-        const userPos2D = new THREE.Vector2(effectiveUserPosition.x, effectiveUserPosition.y);
+        // For remote users, use smoothed position to match visual rendered position (like HEAD~55)
+        const userPos2D = remoteSmoothedPosition.current;
         const interpolatedPos2D = new THREE.Vector2(interpolatedPosition.x, interpolatedPosition.y);
         const distanceFromUser = userPos2D.distanceTo(interpolatedPos2D);
 
         if (distanceFromUser > maxDistance) {
           // Distance needs clamping - just clamp, no frame counting or direct positioning
-          const userPos3D = new THREE.Vector3(effectiveUserPosition.x, effectiveUserPosition.y, effectiveUserPosition.z);
+          const userPos3D = new THREE.Vector3(remoteSmoothedPosition.current.x, remoteSmoothedPosition.current.y, 0);
           newPosition = clampPositionToMaxDistance(interpolatedPosition, userPos3D, maxDistance);
         } else {
           // No clamping needed - use interpolated position
