@@ -473,6 +473,8 @@ export default function AnimalGraphic({
     } else {
       // For remote players, only update the target position (not positionRef)
       targetPosition.current.set(user.position.x, user.position.y, user.position.z ?? 0);
+      // Also update remote nickname position immediately so it shows on initial render
+      setRemoteNicknamePosition([user.position.x, user.position.y, user.position.z ?? 0]);
     }
 
     // Update direction ref if direction exists, preserving z=0
