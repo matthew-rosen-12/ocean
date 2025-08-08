@@ -33,8 +33,10 @@ declare const RENDER_ORDERS: {
     readonly LOCAL_CAPTURED_NPC_GROUP_GOLD_OUTLINE: 61;
     readonly LOCAL_CAPTURED_NPC_GROUP_OUTLINE: 62;
     readonly LOCAL_CAPTURED_NPC_GROUP: 63;
+    readonly REMOTE_ANIMAL_NICKNAME: 90;
     readonly LOCAL_ANIMAL_OUTLINE: 100;
     readonly LOCAL_ANIMAL_GRAPHIC: 101;
+    readonly LOCAL_ANIMAL_NICKNAME: 102;
 };
 /**
  * The final, calculated z-depth values to be used for object positions.
@@ -54,6 +56,7 @@ declare const Z_DEPTHS: {
     readonly IDLE_NPC_GROUP_GOLD_OUTLINE: number;
     readonly REMOTE_ANIMAL_GRAPHIC: number;
     readonly REMOTE_ANIMAL_OUTLINE: number;
+    readonly REMOTE_ANIMAL_NICKNAME: number;
     readonly REMOTE_CAPTURED_NPC_GROUP: number;
     readonly REMOTE_CAPTURED_NPC_GROUP_OUTLINE: number;
     readonly REMOTE_CAPTURED_NPC_GROUP_GOLD_OUTLINE: number;
@@ -71,6 +74,7 @@ declare const Z_DEPTHS: {
     readonly LOCAL_CAPTURED_NPC_GROUP_GOLD_OUTLINE: number;
     readonly LOCAL_ANIMAL_GRAPHIC: number;
     readonly LOCAL_ANIMAL_OUTLINE: number;
+    readonly LOCAL_ANIMAL_NICKNAME: number;
 };
 /**
  * Standard CSS z-index values for HTML UI elements that overlay the canvas.

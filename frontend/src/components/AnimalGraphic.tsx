@@ -518,7 +518,7 @@ export default function AnimalGraphic({
           position={[
             (isLocalPlayer ? user.position.x : remoteNicknamePosition[0]) + nicknameTextInfo.position[0],
             (isLocalPlayer ? user.position.y : remoteNicknamePosition[1]) + nicknameTextInfo.position[1],
-            (isLocalPlayer ? Z_DEPTHS.LOCAL_ANIMAL_GRAPHIC : Z_DEPTHS.REMOTE_ANIMAL_GRAPHIC) + 0.05
+            (isLocalPlayer ? Z_DEPTHS.LOCAL_ANIMAL_NICKNAME + .2 : Z_DEPTHS.REMOTE_ANIMAL_NICKNAME + .2)
           ]}
           fontSize={nicknameTextInfo.fontSize}
           color={nicknameTextInfo.color}
@@ -529,7 +529,7 @@ export default function AnimalGraphic({
           outlineColor={nicknameTextInfo.outlineColor}
           outlineOpacity={1.0}
           fillOpacity={1.0}
-          renderOrder={isLocalPlayer ? RENDER_ORDERS.LOCAL_ANIMAL_GRAPHIC : RENDER_ORDERS.REMOTE_ANIMAL_GRAPHIC}
+          renderOrder={isLocalPlayer ? RENDER_ORDERS.LOCAL_ANIMAL_NICKNAME: RENDER_ORDERS.REMOTE_ANIMAL_NICKNAME}
         >
           {nicknameTextInfo.text}
         </Text>

@@ -53,9 +53,13 @@ export const RENDER_ORDERS = {
   LOCAL_CAPTURED_NPC_GROUP_OUTLINE: 62,
   LOCAL_CAPTURED_NPC_GROUP: 63,
   
+  // Remote animal nicknames (above remote animals, below local player)
+  REMOTE_ANIMAL_NICKNAME: 90,
+  
   // Local player animal (draw last - on top)
   LOCAL_ANIMAL_OUTLINE: 100,
   LOCAL_ANIMAL_GRAPHIC: 101,
+  LOCAL_ANIMAL_NICKNAME: 102,
 } as const;
 
 
@@ -109,6 +113,7 @@ export const Z_DEPTHS = {
   // Remote animals
   REMOTE_ANIMAL_GRAPHIC: calculateZDepth(RENDER_ORDERS.REMOTE_ANIMAL_GRAPHIC),
   REMOTE_ANIMAL_OUTLINE: calculateZDepth(RENDER_ORDERS.REMOTE_ANIMAL_OUTLINE),
+  REMOTE_ANIMAL_NICKNAME: calculateZDepth(RENDER_ORDERS.REMOTE_ANIMAL_NICKNAME),
   
   // Captured NPC groups - remote players
   REMOTE_CAPTURED_NPC_GROUP: calculateZDepth(RENDER_ORDERS.REMOTE_CAPTURED_NPC_GROUP),
@@ -138,6 +143,7 @@ export const Z_DEPTHS = {
   // Local player animal (closest to camera)
   LOCAL_ANIMAL_GRAPHIC: calculateZDepth(RENDER_ORDERS.LOCAL_ANIMAL_GRAPHIC),
   LOCAL_ANIMAL_OUTLINE: calculateZDepth(RENDER_ORDERS.LOCAL_ANIMAL_OUTLINE),
+  LOCAL_ANIMAL_NICKNAME: calculateZDepth(RENDER_ORDERS.LOCAL_ANIMAL_NICKNAME),
 } as const;
 
 
