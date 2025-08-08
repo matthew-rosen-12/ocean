@@ -382,10 +382,6 @@ export default function AnimalGraphic({
   // Create position ref as Vector3
   const isLocalPlayer = myUserId === user.id;
 
-  // State to track rendered rotation for remote users (for smooth nickname positioning)
-  const [remoteRenderedRotation, setRemoteRenderedRotation] = useState(
-    isLocalPlayer ? 0 : Math.atan2(user.direction.y, user.direction.x)
-  );
   
   // Calculate the highest point of the animal considering rotation and dimensions (memoized)
   const highestPoint = useMemo(() => {
@@ -495,7 +491,6 @@ export default function AnimalGraphic({
   useEffect(() => {
     if (!isLocalPlayer) {
       setRemoteNicknamePosition([user.position.x, user.position.y, user.position.z ?? 0]);
-      setRemoteRenderedRotation(Math.atan2(user.direction.y, user.direction.x));
     }
   }, [user.id, isLocalPlayer]); // Only trigger on user ID or local player change, not position changes
 
@@ -512,10 +507,6 @@ export default function AnimalGraphic({
         terrainBoundaries={_terrainBoundaries}
         onRemotePositionUpdate={isLocalPlayer ? undefined : (pos) => {
           setRemoteNicknamePosition(pos);
-          // Also update rendered rotation for smooth nickname positioning
-          if (renderedRotationRef?.current !== undefined) {
-            setRemoteRenderedRotation(renderedRotationRef.current);
-          }
         }}
         onLocalUserPositionUpdate={onLocalUserPositionUpdate}
         renderedRotationRef={renderedRotationRef}
