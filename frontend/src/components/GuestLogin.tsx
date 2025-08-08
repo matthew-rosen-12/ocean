@@ -250,7 +250,14 @@ export default function GuestLogin({
       const authResponse = await fetch("/api/auth", {
         method: "POST",
       });
-      const { user, token } = await authResponse.json();
+      const { user: userWithoutNickname, token } = await authResponse.json();
+
+
+      // Use the provided nickname or default
+      const nickname = finalNickname || "Guest";
+
+      const user = { ...userWithoutNickname, nickname };
+
       const socket = getSocket(token);
       socket.connect();
 
@@ -259,7 +266,13 @@ export default function GuestLogin({
       // Join room after connection is established
       socket.on("connect", () => {
         typedSocket.emit("join-room", { name: user.room });
+        typedSocket.emit("update-user", { user: user });
       });
+
+      // Set my user first with nickname
+      setMyUser(user);
+      myUserRef.current = user;
+      setUsers(new Map([[user.id, user]]));
 
       // Set up socket event handlers
       typedSocket.on("user-joined", ({ user }: { user: UserInfo }) => {
@@ -271,7 +284,17 @@ export default function GuestLogin({
       });
 
       typedSocket.on("all-users", ({ users }: { users: Map<userId, UserInfo> }) => {
-        setUsers(users);
+        // Preserve local user's nickname when receiving all users
+        if (myUserRef.current?.nickname) {
+          const usersMap = new Map(users);
+          const localUser = usersMap.get(myUserRef.current.id);
+          if (localUser) {
+            usersMap.set(myUserRef.current.id, { ...localUser, nickname: myUserRef.current.nickname });
+          }
+          setUsers(usersMap);
+        } else {
+          setUsers(users);
+        }
       });
 
       // Handle batched room state to reduce frontend re-renders
@@ -561,15 +584,6 @@ export default function GuestLogin({
           captureFunction(winnerUserId);
         }
       });
-
-      // Use the provided nickname or default
-      const nickname = finalNickname || "Guest";
-
-      const userWithNickname = { ...user, nickname };
-
-      setMyUser(userWithNickname);
-      myUserRef.current = userWithNickname;
-      setUsers(new Map([[user.id, userWithNickname]]));
     } catch {
       // Login failed
     } finally {
