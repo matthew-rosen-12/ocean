@@ -1,6 +1,5 @@
 - code cleanup
     - scan for sensitive info
-    - scan for unnecessary comments (referring to development work)
     - scan for files that should be git ignored
     - refractor etc
 - git repo readme cleanup etc
@@ -8,4 +7,4 @@
     - (fix and proofread README)
     - add screenshots or screen recording
 - check check
-    - debug captured npc group for remote player sometimes disappears on prod
+    - debug captured npc group for remote player sometimes disappears on prod - maybe messages are getting dropped and need to be sent twice? (probably not)

@@ -70,6 +70,9 @@ deploy_shared() {
     scp -i $SSH_KEY -r dist/ ${SERVER}:${SERVER_PATH}/shared/ || error "Failed to deploy shared dist"
     scp -i $SSH_KEY package.json ${SERVER}:${SERVER_PATH}/shared/ || error "Failed to deploy shared package.json"
     
+    log "Installing/updating shared dependencies..."
+    ssh -i $SSH_KEY $SERVER "cd ${SERVER_PATH}/shared && npm install --omit=dev" || error "Failed to install shared dependencies"
+    
     success "Shared package deployed"
     cd ..
 }
@@ -84,9 +87,18 @@ deploy_backend() {
     
     log "Deploying backend files to server..."
     scp -i $SSH_KEY -r dist/ ${SERVER}:${SERVER_PATH}/backend/ || error "Failed to deploy backend dist"
+    scp -i $SSH_KEY package.json ${SERVER}:${SERVER_PATH}/backend/ || error "Failed to deploy backend package.json"
+    
+    log "Installing/updating backend dependencies..."
+    ssh -i $SSH_KEY $SERVER "cd ${SERVER_PATH}/backend && npm install --omit=dev" || error "Failed to install backend dependencies"
+    
+    log "Setting up shared module resolution..."
+    ssh -i $SSH_KEY $SERVER "cd ${SERVER_PATH}/shared/dist && ln -sf . shared" || warning "Shared symlink may already exist"
     
     log "Restarting backend service..."
-    ssh -i $SSH_KEY $SERVER "pm2 restart nature-npc-backend" || error "Failed to restart backend"
+    # Delete and recreate to ensure proper working directory and environment
+    ssh -i $SSH_KEY $SERVER "pm2 delete nature-npc-backend 2>/dev/null || true"
+    ssh -i $SSH_KEY $SERVER "cd ${SERVER_PATH}/backend && NODE_PATH=${SERVER_PATH}/shared/dist pm2 start dist/backend/src/server.js --name nature-npc-backend" || error "Failed to start backend"
     
     success "Backend deployed and restarted"
     cd ..
@@ -113,7 +125,7 @@ deploy_env() {
     
     if [ -f "backend/.env" ]; then
         scp -i $SSH_KEY backend/.env ${SERVER}:${SERVER_PATH}/backend/ || error "Failed to deploy .env file"
-        ssh -i $SSH_KEY $SERVER "pm2 restart nature-npc-backend" || error "Failed to restart backend after env update"
+        ssh -i $SSH_KEY $SERVER "pm2 restart nature-npc-backend --update-env" || error "Failed to restart backend after env update"
         success "Environment variables deployed"
     else
         warning "No .env file found in backend/"
@@ -133,6 +145,19 @@ deploy_nginx() {
     else
         warning "No nginx.conf file found"
     fi
+}
+
+# Initialize fresh server (run once for new instances)
+init_server() {
+    log "Initializing fresh server..."
+    
+    log "Creating directory structure..."
+    ssh -i $SSH_KEY $SERVER "mkdir -p ${SERVER_PATH}/{shared,backend,frontend}" || error "Failed to create directories"
+    
+    log "Setting up file permissions for nginx..."
+    ssh -i $SSH_KEY $SERVER "chmod +x \$(dirname ${SERVER_PATH}) && chmod -R +r ${SERVER_PATH} && find ${SERVER_PATH} -type d -exec chmod +x {} +" || warning "Permission setup had issues"
+    
+    success "Server initialized - you can now run full deployment"
 }
 
 # Show server status
@@ -177,6 +202,9 @@ main() {
         "status")
             show_status
             ;;
+        "init")
+            init_server
+            ;;
         "full")
             log "Starting full deployment..."
             deploy_shared
@@ -186,7 +214,7 @@ main() {
             success "Full deployment completed!"
             ;;
         *)
-            echo "Usage: $0 [frontend|backend|shared|env|nginx|status|full]"
+            echo "Usage: $0 [frontend|backend|shared|env|nginx|status|init|full]"
             echo ""
             echo "Commands:"
             echo "  frontend  - Deploy only frontend changes"
@@ -195,6 +223,7 @@ main() {
             echo "  env       - Deploy environment variables"
             echo "  nginx     - Deploy Nginx configuration"
             echo "  status    - Show server status"
+            echo "  init      - Initialize fresh server (run once for new instances)"
             echo "  full      - Deploy everything (default)"
             exit 1
             ;;

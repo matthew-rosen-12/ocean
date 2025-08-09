@@ -20,3 +20,6 @@ frontend-dist.tar.gz
 
 # IDE settings
 .vscode/
+
+# Secret documentation
+secret-*.md

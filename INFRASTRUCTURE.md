@@ -20,7 +20,7 @@
 - **Instance Type**: t3.small (for build performance)
 - **AMI**: Amazon Linux 2023 (Node.js 18+ compatibility)
 - **Region**: us-east-1
-- **Elastic IP**: [Configured via environment variables]
+- **Public IP**: [Configured via environment variables]
 - **SSH Key**: [Configured via environment variables]
 
 ### Security Groups
@@ -70,7 +70,7 @@
 ### SSL Certificate Management
 ```bash
 # Certificate installation
-sudo certbot --nginx -d nature-vs-npc.com --email your-email@example.com
+sudo certbot --nginx -d nature-vs-npc.com --email [your-email]
 
 # Auto-renewal (enabled)
 sudo systemctl enable certbot-renew.timer
@@ -163,6 +163,16 @@ npm run status
 - **Nginx Logs**: `/var/log/nginx/access.log` and `/var/log/nginx/error.log`
 - **Certbot Logs**: `/var/log/letsencrypt/letsencrypt.log`
 
+### Common Deployment Issues
+- **502 Bad Gateway**: Backend not running or dependencies missing
+  - Solution: Check PM2 status, reinstall backend dependencies
+- **Permission Denied**: Nginx cannot access application files  
+  - Solution: Run `chmod +x $(dirname path) && chmod -R +r path`
+- **Module Not Found**: Shared package imports not resolving
+  - Solution: Ensure symlink exists in shared/dist directory
+- **PM2 Restart Failed**: Process doesn't exist on fresh server
+  - Solution: Deploy script will auto-start if restart fails
+
 ## Cost Estimate
 
 ### Monthly AWS Costs (Low Traffic)
@@ -184,11 +194,21 @@ npm run status
 - **Application Data**: Stateless application, no persistent data
 
 ### Recovery Procedure
-1. Launch new EC2 instance
-2. Install required software (Node.js, PM2, Nginx, Certbot)
-3. Deploy latest code using deployment scripts
-4. Configure SSL certificate
-5. Update DNS if IP address changes
+1. Launch new EC2 instance with security groups configured
+2. Install required software: `Node.js 18+, PM2, Nginx, Certbot, Git`
+3. Initialize server: `./deploy.sh init`
+4. Deploy application: `./deploy.sh full`
+5. Configure SSL certificate with Certbot
+6. Update DNS A record if IP address changes
+
+### Deployment Dependencies
+- **Node.js**: Version 18+ required for backend execution
+- **PM2**: Process manager for Node.js applications
+- **Nginx**: Web server and reverse proxy
+- **Certbot**: SSL certificate management
+- **Git**: Version control (used by deployment scripts)
+- **File Permissions**: Nginx must have read access to application files
+- **Shared Module Resolution**: Symlink required for TypeScript module imports
 
 ## Future Improvements
 
