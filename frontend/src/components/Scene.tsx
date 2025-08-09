@@ -1,4 +1,3 @@
-// nature_v_npc/app/components/Scene.tsx
 "use client";
 import { Canvas, useThree } from "@react-three/fiber";
 import {
@@ -103,8 +102,6 @@ export default function Scene({
     _dimensions: { width: number; height: number }
   ): THREE.Vector3 => {
     const newPosition = position.clone().add(change);
-
-    // Use a simple buffer distance from the center
 
     // Check boundaries and clamp position
     let adjustedX = newPosition.x;

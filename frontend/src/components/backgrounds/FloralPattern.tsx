@@ -260,7 +260,6 @@ export default function FloralPattern({
     link.click();
   };
 
-  // Add to window for debugging (remove in production)
   if (typeof window !== "undefined") {
     (window as any).downloadFloralPattern = downloadPattern;
   }

@@ -191,7 +191,6 @@ const InstancedNPCRenderer: React.FC<InstancedNPCRendererProps> = ({
     };
   }, [shouldUseInstancing, npcGroups, myUserId, animationManager, enableLOD]);
 
-  // Debug info (remove in production)
   useEffect(() => {
     if (!shouldUseInstancing) return;
 

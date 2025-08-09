@@ -480,7 +480,6 @@ export default function CosmicPattern({
     link.click();
   };
 
-  // Add to window for debugging (remove in production)
   if (typeof window !== "undefined") {
     (window as any).downloadCosmicPattern = downloadPattern;
   }

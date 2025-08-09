@@ -22,7 +22,6 @@ router.post('/generate-from-interaction', async (req, res) => {
   }
 });
 
-// Legacy route for backward compatibility (plain string prompts)
 router.post('/generate', async (req, res) => {
   try {
     const { interaction } = req.body;
