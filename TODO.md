@@ -1,8 +1,6 @@
 - code cleanup
     - refractor, consistent naming etc
 - git repo readme cleanup etc
-    - move gameplay section up
-    - (fix and proofread README)
     - add screenshots or screen recording
 - check check
     - debug captured npc group for remote player sometimes disappears on prod - maybe messages are getting dropped and need to be sent twice? (probably not)

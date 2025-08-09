@@ -1,22 +1,26 @@
 # Nature vs NPC
 
-A real-time io-style game where players compete to control animals to capture groups of NPCs
+A real-time IO-style multiplayer game where players control animals and compete to capture NPCs in a 2D game world.
 
 ## Play the Game
 
 **[Play Now at nature-vs-npc.com](https://nature-vs-npc.com)**
 
-## Game Overview
-
-Nature vs NPC is a multiplayer game that combines real-time strategy with animal control mechanics. Players choose from 12 different animals and compete against other players and bots to capture groups of historical NPCs (Non-Player Characters) in a shared 2D game world.
-
 ### Key Features
 
 - **Real-time Multiplayer**: Compete with other players in a shared 2D game world
-- **Animal Selection**: Choose from 12 unique animals including dolphins, wolves, tigers, eagles, and more
+- **Animal Characters**: Control one of 12 unique animals including dolphins, wolves, tigers, eagles, and more
 - **Historical NPCs**: Encounter famous historical figures like Leonardo da Vinci, Cleopatra, Napoleon, and others
 - **2D Graphics**: Immersive Three.js-powered 2D rendering with smooth animations
-- **Live Chat**: NPCs send messages in chat
+- **NPC Chat**: NPCs send messages in chat
+
+## How to Play
+
+1. Visit [nature-vs-npc.com](https://nature-vs-npc.com)
+2. Move your animal around using WASD or arrow keys
+4. Find and capture groups of NPCs by moving over them
+5. Throw NPCs with space bar to capture more NPCs
+6. The player with the most captured NPCs when the 90-second timer runs out wins!
 
 ## Technology Stack
 
@@ -42,7 +46,7 @@ Nature vs NPC is a multiplayer game that combines real-time strategy with animal
 The game features custom graphics for animals and NPCs:
 
 - **Animals**: 12 unique animal sprites generated from SVGs
-- **NPCs**: 16-bit pixel style portraits of 36+ historical figures
+- **NPCs**: 16-bit pixel style portraits of 40 historical figures
 - **Backgrounds**: Procedurally generated patterns and terrains
 
 ## Deployment
@@ -50,14 +54,6 @@ The game features custom graphics for animals and NPCs:
 The game is deployed on AWS infrastructure with:
 
 - **EC2 Instance**: t3.small running Amazon Linux 2023
-
-## How to Play
-
-1. Visit [nature-vs-npc.com](https://nature-vs-npc.com)
-2. Move around the world using WASD or arrow keys
-4. Find and capture groups of NPCs by getting close to them
-5. Throw NPCs with space bar to capture more NPCs
-6. Compete with other players for the highest score!
 
 ## License
 
