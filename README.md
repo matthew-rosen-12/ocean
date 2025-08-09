@@ -6,6 +6,10 @@ A real-time IO-style multiplayer game where players control animals and compete 
 
 **[Play Now at nature-vs-npc.com](https://nature-vs-npc.com)**
 
+![Login Screen](screenshot-login.png)
+![Gameplay in Action](screenshot-action.png)
+![Game Over Screen](screenshot-game-over.png)
+
 ### Key Features
 
 - **Real-time Multiplayer**: Compete with other players in a shared 2D game world
@@ -21,6 +25,7 @@ A real-time IO-style multiplayer game where players control animals and compete 
 4. Find and capture groups of NPCs by moving over them
 5. Throw NPCs with space bar to capture more NPCs
 6. The player with the most captured NPCs when the 90-second timer runs out wins!
+
 
 ## Technology Stack
 
