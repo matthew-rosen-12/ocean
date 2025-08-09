@@ -1,10 +1,9 @@
 - code cleanup
+    - scan for sensitive info
+    - scan for unnecessary comments (referring to development work)
+    - refractor etc
 - git repo readme cleanup etc
     - move gameplay section up
-    - add screenshot or screen recording
+    - (fix and proofread README)
+    - add screenshots or screen recording
 - check check
-
-MIGHT EXPIRE
-ssl certificate
-GROQ API key
-domain

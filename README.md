@@ -30,7 +30,7 @@ Nature vs NPC is a multiplayer game that combines real-time strategy with animal
 - **Runtime**: Node.js with Express
 - **Language**: TypeScript
 - **WebSockets**: Socket.io
-- **AI Integration**: GROQ for NPC conversations
+- **AI Integration**: GROQ for NPC messages
 
 ### Infrastructure
 - **Deployment**: AWS EC2
@@ -39,11 +39,11 @@ Nature vs NPC is a multiplayer game that combines real-time strategy with animal
 
 ## 🎨 Game Assets
 
-The game features custom SVG graphics for animals and NPCs:
+The game features custom graphics for animals and NPCs:
 
-- **Animals**: 12 unique animal sprites with custom scaling and orientations
-- **NPCs**: High-quality portraits of 36+ historical figures
-- **Backgrounds**: Procedurally generated patterns and terrain
+- **Animals**: 12 unique animal sprites generated from SVGs
+- **NPCs**: 16-bit pixel style portraits of 36+ historical figures
+- **Backgrounds**: Procedurally generated patterns and terrains
 
 ## 🌐 Deployment
 
