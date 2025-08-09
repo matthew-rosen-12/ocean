@@ -1,7 +1,5 @@
 - code cleanup
-    - scan for sensitive info
-    - scan for files that should be git ignored
-    - refractor etc
+    - refractor, consistent naming etc
 - git repo readme cleanup etc
     - move gameplay section up
     - (fix and proofread README)

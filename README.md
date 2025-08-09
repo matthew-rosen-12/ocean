@@ -1,12 +1,12 @@
-# 🌿 Nature vs NPC
+# Nature vs NPC
 
 A real-time io-style game where players compete to control animals to capture groups of NPCs
 
-## 🎮 Play the Game
+## Play the Game
 
 **[Play Now at nature-vs-npc.com](https://nature-vs-npc.com)**
 
-## 🎯 Game Overview
+## Game Overview
 
 Nature vs NPC is a multiplayer game that combines real-time strategy with animal control mechanics. Players choose from 12 different animals and compete against other players and bots to capture groups of historical NPCs (Non-Player Characters) in a shared 2D game world.
 
@@ -18,7 +18,7 @@ Nature vs NPC is a multiplayer game that combines real-time strategy with animal
 - **2D Graphics**: Immersive Three.js-powered 2D rendering with smooth animations
 - **Live Chat**: NPCs send messages in chat
 
-## 🛠 Technology Stack
+## Technology Stack
 
 ### Frontend
 - **Framework**: React 18 with TypeScript
@@ -37,7 +37,7 @@ Nature vs NPC is a multiplayer game that combines real-time strategy with animal
 - **Web Server**: Nginx (reverse proxy + static files)
 - **Domain**: Custom domain with Cloudflare DNS
 
-## 🎨 Game Assets
+## Game Assets
 
 The game features custom graphics for animals and NPCs:
 
@@ -45,13 +45,13 @@ The game features custom graphics for animals and NPCs:
 - **NPCs**: 16-bit pixel style portraits of 36+ historical figures
 - **Backgrounds**: Procedurally generated patterns and terrains
 
-## 🌐 Deployment
+## Deployment
 
 The game is deployed on AWS infrastructure with:
 
 - **EC2 Instance**: t3.small running Amazon Linux 2023
 
-## 🎮 How to Play
+## How to Play
 
 1. Visit [nature-vs-npc.com](https://nature-vs-npc.com)
 2. Move around the world using WASD or arrow keys
@@ -59,14 +59,14 @@ The game is deployed on AWS infrastructure with:
 5. Throw NPCs with space bar to capture more NPCs
 6. Compete with other players for the highest score!
 
-## 📝 License
+## License
 
 ISC License
 
-## 🤝 Contributing
+## Contributing
 
 This is a personal project. Feel free to fork and experiment!
 
 ---
 
-*Built with ❤️ using React, Three.js, Node.js, and deployed on AWS*
+*Built using React, Three.js, Node.js, and deployed on AWS*
