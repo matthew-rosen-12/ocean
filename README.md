@@ -1,6 +1,6 @@
 # Nature vs NPC
 
-A real-time IO-style multiplayer game where players control animals and compete to capture NPCs in a 2D game world.
+A real-time IO-style multiplayer game where players control animals and compete to capture NPCs in a 2D game world
 
 ## Play the Game
 
