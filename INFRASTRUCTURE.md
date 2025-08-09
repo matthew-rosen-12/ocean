@@ -20,8 +20,8 @@
 - **Instance Type**: t3.small (for build performance)
 - **AMI**: Amazon Linux 2023 (Node.js 18+ compatibility)
 - **Region**: us-east-1
-- **Elastic IP**: 54.84.59.218
-- **SSH Key**: `~/.ssh/nature-npc-key.pem`
+- **Elastic IP**: [Configured via environment variables]
+- **SSH Key**: [Configured via environment variables]
 
 ### Security Groups
 - **SSH (port 22)**: Restricted to specific IPs
@@ -62,7 +62,7 @@
 
 ### Domain Configuration
 - **Domain**: nature-vs-npc.com (purchased through Cloudflare)
-- **DNS**: Cloudflare A record pointing to 54.84.59.218
+- **DNS**: Cloudflare A record pointing to server IP
 - **SSL Certificate**: Let's Encrypt (auto-renewing)
 - **Certificate Expiry**: 2025-10-26
 - **Cloudflare SSL Mode**: Full (strict)
@@ -70,7 +70,7 @@
 ### SSL Certificate Management
 ```bash
 # Certificate installation
-sudo certbot --nginx -d nature-vs-npc.com --email matthewhrosen@gmail.com
+sudo certbot --nginx -d nature-vs-npc.com --email your-email@example.com
 
 # Auto-renewal (enabled)
 sudo systemctl enable certbot-renew.timer

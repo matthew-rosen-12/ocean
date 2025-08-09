@@ -5,10 +5,26 @@
 
 set -e  # Exit on any error
 
-# Configuration
-SERVER="ec2-user@54.84.59.218"
-SSH_KEY="~/.ssh/nature-npc-key.pem"
-SERVER_PATH="/home/ec2-user/nature-npc"
+# Load environment variables from .env file if it exists
+if [ -f ".env" ]; then
+    export $(grep -v '^#' .env | xargs)
+fi
+
+# Configuration - Load from environment variables
+SERVER="${DEPLOY_SERVER:-ec2-user@your-server-ip}"
+SSH_KEY="${DEPLOY_SSH_KEY:-~/.ssh/your-key.pem}"
+SERVER_PATH="${DEPLOY_SERVER_PATH:-/home/ec2-user/nature-npc}"
+
+# Check required environment variables
+if [ "$SERVER" = "ec2-user@your-server-ip" ] || [ "$SSH_KEY" = "~/.ssh/your-key.pem" ]; then
+    echo "⚠️  Please set deployment environment variables:"
+    echo "   export DEPLOY_SERVER='ec2-user@your-server-ip'"
+    echo "   export DEPLOY_SSH_KEY='~/.ssh/your-key.pem'"
+    echo "   export DEPLOY_SERVER_PATH='/home/ec2-user/nature-npc'"
+    echo ""
+    echo "Or create a .env file in the project root with these variables."
+    exit 1
+fi
 
 # Colors for output
 RED='\033[0;31m'

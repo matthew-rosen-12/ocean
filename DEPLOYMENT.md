@@ -1,5 +1,20 @@
 # Deployment Guide
 
+## Setup
+
+First, configure your deployment environment variables:
+
+```bash
+# Option 1: Set environment variables
+export DEPLOY_SERVER='ec2-user@your-server-ip'
+export DEPLOY_SSH_KEY='~/.ssh/your-key.pem'  
+export DEPLOY_SERVER_PATH='/home/ec2-user/nature-npc'
+
+# Option 2: Create .env file from template
+cp .env.example .env
+# Edit .env with your actual values
+```
+
 ## Quick Start
 
 ### Deploy everything:
@@ -60,8 +75,8 @@ npm run status
 ## Troubleshooting
 
 ### If deployment fails:
-1. Check your SSH key exists: `ls ~/.ssh/nature-npc-key.pem`
-2. Test SSH connection: `ssh -i ~/.ssh/nature-npc-key.pem ec2-user@54.84.59.218`
+1. Check your SSH key exists: `ls $DEPLOY_SSH_KEY`
+2. Test SSH connection: `ssh -i $DEPLOY_SSH_KEY $DEPLOY_SERVER`
 3. Check server status: `./deploy.sh status`
 
 ### Common issues:
@@ -71,9 +86,9 @@ npm run status
 
 ## Server Details
 
-- **Server**: `ec2-user@54.84.59.218`
-- **SSH Key**: `~/.ssh/nature-npc-key.pem`
-- **Server Path**: `/home/ec2-user/nature-npc/`
+- **Server**: Configured via `DEPLOY_SERVER` environment variable
+- **SSH Key**: Configured via `DEPLOY_SSH_KEY` environment variable  
+- **Server Path**: Configured via `DEPLOY_SERVER_PATH` environment variable
 - **Domain**: https://nature-vs-npc.com
 - **Backend Process**: `nature-npc-backend` (PM2)
 
