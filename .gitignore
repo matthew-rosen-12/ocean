@@ -9,6 +9,10 @@ build/
 *.log
 .DS_Store
 
+# Generated files
+animal-cache/
+token-usage.json
+
 # Deployment artifacts
 *-dist.tar.gz
 backend-dist.tar.gz

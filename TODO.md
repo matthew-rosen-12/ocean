@@ -1,6 +1,7 @@
 - code cleanup
     - scan for sensitive info
     - scan for unnecessary comments (referring to development work)
+    - scan for files that should be git ignored
     - refractor etc
 - git repo readme cleanup etc
     - move gameplay section up
