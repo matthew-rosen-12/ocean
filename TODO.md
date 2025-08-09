@@ -8,3 +8,4 @@
     - (fix and proofread README)
     - add screenshots or screen recording
 - check check
+    - debug captured npc group for remote player sometimes disappears on prod
