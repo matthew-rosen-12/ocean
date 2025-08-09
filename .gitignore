@@ -8,3 +8,11 @@ dist/
 build/
 *.log
 .DS_Store
+
+# Deployment artifacts
+*-dist.tar.gz
+backend-dist.tar.gz
+frontend-dist.tar.gz
+
+# IDE settings
+.vscode/
