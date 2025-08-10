@@ -8,35 +8,16 @@ import {
 } from "shared/types";
 import * as THREE from "three";
 import { useAnimationManagerContext } from "../../contexts/AnimationManagerContext";
-import { smoothMove } from "../../utils/movement";
 import { useNPCGroupBase, useMount } from "../../hooks/use-npc-group-base";
 import { TerrainBoundaries } from "../../utils/terrain";
-import {
-  calculateNPCGroupScale,
-  calculateNPCGroupPosition,
-} from "../../utils/npc-group-utils";
+import { calculateNPCGroupScale } from "../../utils/npc-group-utils";
 import { getAnimalColor } from "../../utils/animal-colors";
 import { RENDER_ORDERS, Z_DEPTHS } from "shared/z-depths";
-// Constants for positioning
-
-// Helper functions for position clamping
-const clampPositionToMaxDistance = (
-  position: THREE.Vector3,
-  userPosition: THREE.Vector3,
-  maxDistance: number
-): THREE.Vector3 => {
-  const userPos2D = new THREE.Vector2(userPosition.x, userPosition.y);
-  const pos2D = new THREE.Vector2(position.x, position.y);
-  const distance = userPos2D.distanceTo(pos2D);
-  
-  if (distance <= maxDistance) {
-    return position.clone();
-  }
-  
-  const direction = pos2D.clone().sub(userPos2D).normalize();
-  const clampedPos2D = userPos2D.clone().add(direction.multiplyScalar(maxDistance));
-  return new THREE.Vector3(clampedPos2D.x, clampedPos2D.y, position.z);
-};
+import { 
+  RemoteUserPositioning, 
+  LocalUserPositioning,
+  POSITIONING_CONFIG
+} from "./captured-npc-positioning";
 
 
 
@@ -58,8 +39,8 @@ interface CapturedNPCGroupGraphicProps {
 const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
   group,
   user,
-  npcGroups,
-  allPaths,
+  npcGroups: _npcGroups,
+  allPaths: _allPaths,
   animalWidth,
   isLocalUser = false,
   users: _users, // Not used in this component anymore (handled by CapturedNPCGroupCollisionManager)
@@ -90,73 +71,28 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
   } = useNPCGroupBase(group, user, undefined, throwChargeCount, isLocalUser);
 
 
+  // Initialize positioning systems
+  const positioningSystem = useMemo(() => {
+    if (isLocalUser) {
+      return new LocalUserPositioning(user);
+    } else {
+      return new RemoteUserPositioning(user);
+    }
+  }, [isLocalUser, user.id]); // Only recreate if user type changes or user changes
+  
   // Reference for smooth movement interpolation (non-local users)
   const previousPosition = useMemo(() => new THREE.Vector3(), []);
   
-  // For remote users, we need to calculate target position from lerped position in animation loop
-  // Don't memoize since we need to use the interpolated position
-  
-  // For remote users: track interpolated position to match AnimalGraphic rendering
-  const remoteAnimalPosition = useRef(new THREE.Vector3(user.position.x, user.position.y, user.position.z || 0));
-  
-  // Lerped direction for smooth rotation - starts with current user direction
-  const lerpedDirection = useRef(new THREE.Vector2(user.direction.x, user.direction.y));
-  
-  // Track last known user position and direction to detect changes
-  const lastUserPosition = useRef(new THREE.Vector2(user.position.x, user.position.y));
-  const lastUserDirection = useRef(new THREE.Vector2(user.direction.x, user.direction.y));
-  const cachedTargetPosition = useRef<THREE.Vector3 | null>(null);
-  
-  // Track velocity changes over multiple frames for smart positioning
-  const positionHistory = useRef<THREE.Vector2[]>([]);
-  const directionHistory = useRef<THREE.Vector2[]>([]);
-  const maxHistoryFrames = 20; // Maximum frames to track
-  const isUsingDirectClampedPositioning = useRef(false);
-  const frameCounter = useRef(0);
-  
-  // Single position tracking system - no conflicting smoothing layers
-  
-  // Position calculation - simple for remote, complex for local
+  // Position calculation using positioning systems
   const calculateTargetPosition = useCallback((): THREE.Vector3 => {
     if (!animalWidth) return new THREE.Vector3(0, 0, -10);
     
-    // For remote users, calculate target from lerped position and direction
     if (!isLocalUser) {
-      const userForCalculation = {
-        ...user,
-        position: { 
-          x: remoteAnimalPosition.current.x, 
-          y: remoteAnimalPosition.current.y, 
-          z: remoteAnimalPosition.current.z 
-        },
-        direction: { x: lerpedDirection.current.x, y: lerpedDirection.current.y }
-      };
-      return calculateNPCGroupPosition(userForCalculation, animalWidth, scaleFactor);
+      return (positioningSystem as RemoteUserPositioning).calculateTargetPosition(user, animalWidth, scaleFactor);
+    } else {
+      return (positioningSystem as LocalUserPositioning).calculateTargetPosition(user, userPositionRef, animalWidth, scaleFactor);
     }
-    
-    // For local users, use the complex real-time calculation
-    const effectiveUserPosition = userPositionRef.current;
-    const currentUserPosition = new THREE.Vector2(effectiveUserPosition.x, effectiveUserPosition.y);
-    const currentUserDirection = lerpedDirection.current.clone();
-    
-    const positionChanged = !lastUserPosition.current.equals(currentUserPosition);
-    const directionChanged = !lastUserDirection.current.equals(currentUserDirection);
-    
-    // Only recalculate when user position/direction changes or no target exists
-    if (positionChanged || directionChanged || !cachedTargetPosition.current) {
-      // Create a user-like object with the effective position and lerped direction for calculation
-      const userForCalculation = {
-        ...user,
-        position: { x: effectiveUserPosition.x, y: effectiveUserPosition.y, z: effectiveUserPosition.z },
-        direction: { x: currentUserDirection.x, y: currentUserDirection.y }
-      };
-        cachedTargetPosition.current = calculateNPCGroupPosition(userForCalculation, animalWidth, scaleFactor);
-      lastUserPosition.current.copy(currentUserPosition);
-      lastUserDirection.current.copy(currentUserDirection);
-    }
-    
-    return cachedTargetPosition.current || new THREE.Vector3(0, 0, -10);
-  }, [animalWidth, user, scaleFactor, userPositionRef, isLocalUser]);
+  }, [animalWidth, user, scaleFactor, userPositionRef, isLocalUser, positioningSystem]);
 
 
 
@@ -179,148 +115,47 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     const animationCallback = (_state: unknown, delta: number) => {
       if (!threeGroup || !textureLoaded.current || !user || group.fileNames.length === 0 || !animalWidth) return;
 
-      // For remote users, interpolate animal position to match AnimalGraphic rendering
+      // Update positioning system interpolations
       if (!isLocalUser) {
-        const targetAnimalPosition = new THREE.Vector3(user.position.x, user.position.y, user.position.z || 0);
-        remoteAnimalPosition.current.copy(
-          smoothMove(remoteAnimalPosition.current.clone(), targetAnimalPosition, {
-            lerpFactor: 0.1,
-            moveSpeed: 0.5,
-            minDistance: 0.01,
-            useConstantSpeed: true,
-          })
+        (positioningSystem as RemoteUserPositioning).updateInterpolatedPosition(user, delta);
+      } else {
+        const currentUserPosition = new THREE.Vector2(user.position.x, user.position.y);
+        const targetDirection = new THREE.Vector2(user.direction.x, user.direction.y);
+        
+        (positioningSystem as LocalUserPositioning).updateHistory(currentUserPosition, targetDirection);
+        (positioningSystem as LocalUserPositioning).updateLerpedDirection(targetDirection);
+      }
+            
+      // Calculate target position
+      const targetPosition = calculateTargetPosition();
+      
+      // Calculate new position using positioning system
+      let newPosition: THREE.Vector3;
+      
+      if (isLocalUser) {
+        const currentUserPosition = new THREE.Vector2(user.position.x, user.position.y);
+        const targetDirection = new THREE.Vector2(user.direction.x, user.direction.y);
+        
+        newPosition = (positioningSystem as LocalUserPositioning).calculateNewPosition(
+          positionRef.current,
+          targetPosition,
+          userPositionRef,
+          currentUserPosition,
+          targetDirection,
+          delta
+        );
+      } else {
+        newPosition = (positioningSystem as RemoteUserPositioning).calculateNewPosition(
+          positionRef.current,
+          targetPosition,
+          delta
         );
       }
-
-      // Get current user position
-      const currentUserPosition = new THREE.Vector2(user.position.x, user.position.y);
-      
-      // Lerp the user direction for smooth rotation
-      const targetDirection = new THREE.Vector2(user.direction.x, user.direction.y);
-      const directionLerpSpeed = 0.15; // Adjust this for rotation smoothness
-      lerpedDirection.current.lerp(targetDirection, directionLerpSpeed);
-
-      // Update position and direction history using lerped direction
-      positionHistory.current.push(currentUserPosition.clone());
-      directionHistory.current.push(targetDirection.clone());
-      
-      // Keep only the last N frames
-      if (positionHistory.current.length > maxHistoryFrames) {
-        positionHistory.current.shift();
-        directionHistory.current.shift();
-      }
-            
-      // Calculate target position with offset from user (now cached and only recalculated when needed)
-      const targetPosition = calculateTargetPosition();
-
-      // No need for separate tracking - using history arrays now
-
-      // Use standard interpolation first
-      const localParams = { lerpFactor: 0.08, moveSpeed: 0.4, minDistance: 0.1, useConstantSpeed: false };
-      const remoteParams = { lerpFactor: 0.15, moveSpeed: 0.3, minDistance: 0.01, useConstantSpeed: true };
-      
-      const interpolationParams = isLocalUser
-        ? { ...localParams, delta }
-        : { ...remoteParams, delta };
-      
-      // Apply distance clamping to interpolated position
-
-      const maxDistance = 15.0; // Maximum allowed distance from user
-      
-      let newPosition: THREE.Vector3;
-
-      if (isLocalUser) {
-        // Local user branch - complex positioning with frame counting and direct clamping
-        frameCounter.current++;
-        if (frameCounter.current >= 4 && isUsingDirectClampedPositioning.current) {
-          const positionStillChanging = positionHistory.current.length >= 2 && 
-          currentUserPosition.distanceTo(positionHistory.current[positionHistory.current.length - 2]) > 0.001;
-
-        
-          if (!positionStillChanging) {
-            // Either position stopped changing or direction changed - go back to interpolation
-            isUsingDirectClampedPositioning.current = false;
-          }
-          frameCounter.current = 0
-        }
-
-        if (isUsingDirectClampedPositioning.current) {
-          const directionNotChanging = directionHistory.current.length >= 2 &&
-          targetDirection.distanceTo(directionHistory.current[directionHistory.current.length - 2]) < .01;
-          if (!directionNotChanging) {
-            isUsingDirectClampedPositioning.current = false;
-          }
-        }
-
-        if (isUsingDirectClampedPositioning.current) {
-          const directionToNPC = targetPosition.clone().sub(userPositionRef.current).normalize();
-          const clampedPos2D = userPositionRef.current.clone().add(directionToNPC.multiplyScalar(maxDistance));
-          const clampedPosition = new THREE.Vector3(clampedPos2D.x, clampedPos2D.y, 0);
-          
-          newPosition = clampedPosition;
-        } else {
-          const interpolatedPosition = smoothMove(
-            positionRef.current.clone(),
-            targetPosition,
-            interpolationParams
-          );
-          const userPos2D = new THREE.Vector2(userPositionRef.current.x, userPositionRef.current.y);
-          const interpolatedPos2D = new THREE.Vector2(interpolatedPosition.x, interpolatedPosition.y);
-          const distanceFromUser = userPos2D.distanceTo(interpolatedPos2D);
-
-          if (distanceFromUser > maxDistance) {
-            // Distance got clamped
-            const userPos3D = new THREE.Vector3(userPositionRef.current.x, userPositionRef.current.y, userPositionRef.current.z);
-            const clampedPosition = clampPositionToMaxDistance(interpolatedPosition, userPos3D, maxDistance);
-            const clampedTargetPosition = clampPositionToMaxDistance(positionRef.current.clone(), userPos3D, maxDistance);
-            
-            const distanceToTarget = clampedPosition.distanceTo(clampedTargetPosition);
-            const isCloseToTarget = distanceToTarget < .03; // Close enough threshold
-            
-            // Start using direct positioning if lerped position is close to target
-            if (isCloseToTarget) {
-              isUsingDirectClampedPositioning.current = true;
-            }
-            
-            newPosition = clampedPosition;
-          } else {
-            // No clamping needed - use interpolated position
-            newPosition = interpolatedPosition;
-          }
-        }
-      } else {
-        // Remote user branch - simple interpolation with distance clamping
-        // Check if position needs updating
-        if (!positionRef.current.equals(targetPosition)) {
-          const interpolatedPosition = smoothMove(
-            positionRef.current.clone(),
-            targetPosition,
-            interpolationParams
-          );
-          
-          // Apply distance clamping for remote users using interpolated animal position
-          const animalPos2D = new THREE.Vector2(remoteAnimalPosition.current.x, remoteAnimalPosition.current.y);
-          const interpolatedPos2D = new THREE.Vector2(interpolatedPosition.x, interpolatedPosition.y);
-          const distanceFromAnimal = animalPos2D.distanceTo(interpolatedPos2D);
-
-          if (distanceFromAnimal > maxDistance) {
-            // Distance needs clamping - clamp to max distance from interpolated animal position
-            newPosition = clampPositionToMaxDistance(interpolatedPosition, remoteAnimalPosition.current, maxDistance);
-          } else {
-            // No clamping needed - use interpolated position
-            newPosition = interpolatedPosition;
-          }
-        } else {
-          newPosition = positionRef.current.clone();
-        }
-      }
-
       
       updatePositionWithTracking(newPosition, "NPCGroup");
       
       // Set position directly without forcing matrix update (avoid double rendering)
       threeGroup.position.copy(newPosition);
-
 
       // Make a subtle oscillation to indicate this is a group
       const time = Date.now() / 1000;
@@ -332,7 +167,6 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
         // Ensure the mesh scale remains consistent with the scaleFactor
         mesh.current.scale.set(scaleFactor, scaleFactor, 1);
       }
-      
     };
 
     animationManager.registerAnimationCallback(callbackId, animationCallback);
@@ -340,7 +174,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     return () => {
       animationManager.unregisterAnimationCallback(callbackId);
     };
-  }, [animationManager, calculateTargetPosition, updatePositionWithTracking, isLocalUser, threeGroup, textureLoaded, user, group.fileNames.length, group.captorId, animalWidth, positionRef, mesh, scaleFactor, allPaths, npcGroups, userPositionRef]);
+  }, [animationManager, calculateTargetPosition, updatePositionWithTracking, isLocalUser, threeGroup, textureLoaded, user, group.fileNames.length, group.captorId, animalWidth, positionRef, mesh, scaleFactor, positioningSystem, userPositionRef]);
 
   // Final early return after all hooks are called
   if (!user || group.fileNames.length === 0 || !animalWidth) {
