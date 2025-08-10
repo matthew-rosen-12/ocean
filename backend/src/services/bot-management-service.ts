@@ -33,7 +33,7 @@ interface BotMovementState {
 export class BotManagementService {
   private static botSpawnTimers: Map<roomId, BotSpawnTimer> = new Map();
   private static botMovementStates: Map<userId, BotMovementState> = new Map();
-  private static readonly BOT_SPAWN_INTERVAL = 10000; // 1 second
+  private static readonly BOT_SPAWN_INTERVAL = 10000; // 10 second
   private static readonly INITIAL_SPAWN_DELAY = 10000; // 1 second after room creation
   private static readonly MAX_SPAWN_DURATION = 30000; // 30 seconds total
 

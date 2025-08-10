@@ -1,11 +1,14 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { generateUserNickname } from "shared/nickname-generator";
 
 // Cookie utility functions
 const setCookie = (name: string, value: string, days: number = 365) => {
   const expires = new Date();
   expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+  const isSecure = window.location.protocol === 'https:';
+  const secureFlag = isSecure ? ';Secure' : '';
+  const sameSiteFlag = isSecure ? ';SameSite=Strict' : ';SameSite=Lax';
+  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/${secureFlag}${sameSiteFlag}`;
 };
 
 const getCookie = (name: string): string | null => {
@@ -51,6 +54,14 @@ export default function NicknameInput({ onSubmit, loading = false, className = "
     setInitialized(true);
   }, []);
 
+  const getFinalNickname = useCallback(() => {
+    if (userHasTyped) {
+      const trimmedNickname = nickname.trim();
+      return trimmedNickname || suggestedNickname;
+    }
+    return suggestedNickname;
+  }, [userHasTyped, nickname, suggestedNickname]);
+
   // Set cursor to beginning whenever we're in suggestion mode
   useEffect(() => {
     if (!userHasTyped && inputRef.current && nickname === "") {
@@ -64,7 +75,7 @@ export default function NicknameInput({ onSubmit, loading = false, className = "
       const currentNickname = getFinalNickname();
       onNicknameChange(currentNickname);
     }
-  }, [nickname, suggestedNickname, userHasTyped, initialized, onNicknameChange]);
+  }, [nickname, suggestedNickname, userHasTyped, initialized, onNicknameChange, getFinalNickname]);
 
   const handleNicknameFocus = () => {
     if (!userHasTyped && inputRef.current) {
@@ -138,14 +149,6 @@ export default function NicknameInput({ onSubmit, loading = false, className = "
         setUserHasTyped(false);
       }
     }
-  };
-
-  const getFinalNickname = () => {
-    if (userHasTyped) {
-      const trimmedNickname = nickname.trim();
-      return trimmedNickname || suggestedNickname;
-    }
-    return suggestedNickname;
   };
 
   const handleSubmit = () => {
