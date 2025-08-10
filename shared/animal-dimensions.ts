@@ -30,10 +30,10 @@ const ANIMAL_BASE_DIMENSIONS: { [animal: string]: AnimalDimensions } = {
  * Multiplies base dimensions by animal scale
  */
 export function getAnimalDimensions(animal: string, scale: number = 1.0): AnimalDimensions {
-  const baseDimensions = ANIMAL_BASE_DIMENSIONS[animal] || { width: 4.0, height: 4.0 };
+  const baseDimensions = ANIMAL_BASE_DIMENSIONS[animal];
   return {
-    width: baseDimensions.width * scale,
-    height: baseDimensions.height * scale
+    width: baseDimensions.width * scale * 1.1,
+    height: baseDimensions.height * scale * 1.1
   };
 }
 

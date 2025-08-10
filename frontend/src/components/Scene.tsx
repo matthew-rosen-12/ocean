@@ -9,6 +9,7 @@ import {
   FinalScores,
   ANIMAL_SCALES,
 } from "shared/types";
+import { getAnimalDimensions } from "shared/animal-dimensions";
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import AnimalGraphic from "./AnimalGraphic";
 import { UI_Z_INDICES } from "shared/z-depths";
@@ -89,9 +90,6 @@ export default function Scene({
   const [cinematicActive, setCinematicActive] = useState(false);
   const [showTimesUpText, setShowTimesUpText] = useState(false);
 
-  const [animalDimensions, setAnimalDimensions] = useState<{
-    [animal: string]: { width: number; height: number };
-  }>({});
 
 
   // Helper function to check simple center-based collision with terrain boundaries
@@ -141,7 +139,6 @@ export default function Scene({
     setPaths,
     setNpcGroups,
     terrain,
-    animalDimensions,
     checkBoundaryCollision,
     cinematicActive
   );
@@ -164,7 +161,6 @@ export default function Scene({
     paths,
     setPaths,
     setNpcGroups,
-    animalDimensions,
   });
 
   // Use position broadcast hook
@@ -297,18 +293,6 @@ export default function Scene({
     return () => cancelAnimationFrame(animationId);
   }, [spaceStartTime, npcGroups, myUser.id]);
 
-  const setAnimalDimensionsCallback = useCallback(
-    (animal: string, dimensions: { width: number; height: number }) => {
-      if (!animalDimensions[animal]) {
-        // Create a new object to ensure React detects the change
-        setAnimalDimensions((prev) => ({
-          ...prev,
-          [animal]: dimensions,
-        }));
-      }
-    },
-    [animalDimensions]
-  );
 
   // Filter users and NPCs based on viewport culling for performance
   const visibleUsers = useMemo(() => {
@@ -414,8 +398,6 @@ export default function Scene({
               key={user.id}
               user={user}
               myUserId={myUser.id}
-              setAnimalDimensions={setAnimalDimensionsCallback}
-              animalDimensions={animalDimensions}
               onLocalUserPositionUpdate={user.id === myUser.id ? updateMyUserPositionRef : undefined}
               renderedRotationRef={user.id === myUser.id ? myUserRenderedRotationRef : undefined}
             />
@@ -432,7 +414,6 @@ export default function Scene({
               allPaths={paths}
               npcGroups={npcGroups}
               myUserId={myUser.id}
-              animalDimensions={animalDimensions}
               setPaths={setPaths}
               setNpcGroups={setNpcGroups}
               throwChargeCount={npcGroup.captorId === myUser.id ? currentThrowCount : undefined}
@@ -450,7 +431,6 @@ export default function Scene({
             allPaths={paths}
             setPaths={setPaths}
             setNpcGroups={setNpcGroups}
-            animalDimensions={animalDimensions}
           />
           
           {/* Keyboard movement manager */}
@@ -468,7 +448,6 @@ export default function Scene({
             setPaths={setPaths}
             setNpcGroups={setNpcGroups}
             terrain={terrain}
-            animalDimensions={animalDimensions}
             checkBoundaryCollision={checkBoundaryCollision}
             inputDisabled={cinematicActive}
           />

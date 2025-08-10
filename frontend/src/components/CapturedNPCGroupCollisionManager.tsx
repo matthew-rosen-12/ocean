@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useCallback } from "react";
-import { UserInfo, NPCGroupsBiMap, pathData, PathPhase } from "shared/types";
+import { UserInfo, NPCGroupsBiMap, pathData, PathPhase, ANIMAL_SCALES } from "shared/types";
+import { getAnimalDimensions } from "shared/animal-dimensions";
 import { useAnimationManagerContext } from "../contexts/AnimationManagerContext";
 import { getAssignedBots, checkForPathNPCCollisionForUser } from "../utils/path-collision-utils";
 
@@ -18,7 +19,6 @@ interface CapturedNPCGroupCollisionManagerProps {
   setNpcGroups: (
     npcGroups: NPCGroupsBiMap | ((prev: NPCGroupsBiMap) => NPCGroupsBiMap)
   ) => void;
-  animalDimensions: { [animal: string]: { width: number; height: number } };
 }
 
 // This component needs to be inside the Canvas to use AnimationManager
@@ -29,7 +29,6 @@ const CapturedNPCGroupCollisionManager: React.FC<CapturedNPCGroupCollisionManage
   allPaths,
   setPaths,
   setNpcGroups,
-  animalDimensions,
 }) => {
   const animationManager = useAnimationManagerContext();
   const collisionAnimationId = useRef<string>(`captured-group-collision-${myUser?.id || 'unknown'}`);
@@ -92,8 +91,8 @@ const CapturedNPCGroupCollisionManager: React.FC<CapturedNPCGroupCollisionManage
     const usersToCheck = [myUser, ...assignedBots]; // Check both local user and assigned bots
     
     usersToCheck.forEach(userToCheck => {
-      const animalWidth = animalDimensions[userToCheck.animal]?.width;
-      if (!animalWidth) return;
+      const animalDimensions = getAnimalDimensions(userToCheck.animal, ANIMAL_SCALES[userToCheck.animal]);
+      const animalWidth = animalDimensions.width;
 
       // Find captured NPC groups for this user (or bot)
       const capturedGroups = Array.from(npcGroups.values()).filter(
@@ -154,7 +153,7 @@ const CapturedNPCGroupCollisionManager: React.FC<CapturedNPCGroupCollisionManage
         });
       });
     });
-  }, [myUser, users, npcGroups, allPaths, animalDimensions, wrappedSetPaths, wrappedSetNpcGroups]);
+  }, [myUser, users, npcGroups, allPaths, wrappedSetPaths, wrappedSetNpcGroups]);
 
   // Register captured NPC group collision detection with AnimationManager
   useEffect(() => {

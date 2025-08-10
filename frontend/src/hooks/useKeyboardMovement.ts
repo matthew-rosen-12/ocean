@@ -6,7 +6,9 @@ import {
   UserInfo,
   NPCGroupsBiMap,
   DIRECTION_OFFSET,
+  ANIMAL_SCALES,
 } from "shared/types";
+import { getAnimalDimensions } from "shared/animal-dimensions";
 import * as THREE from "three";
 import { useMount } from "./use-npc-group-base";
 import { pathNPCGroup } from "../utils/npc-throwing";
@@ -28,7 +30,6 @@ export function useKeyboardMovement(
       | ((prev: NPCGroupsBiMap) => NPCGroupsBiMap)
   ) => void,
   terrain: TerrainConfig,
-  animalDimensions: { [animal: string]: { width: number; height: number } },
   checkBoundaryCollision: (
     position: THREE.Vector3,
     change: THREE.Vector3,
@@ -148,21 +149,9 @@ export function useKeyboardMovement(
     // Apply boundary constraints with rotated bounding box
     if (change.x !== 0 || change.y !== 0) {
       setPosition((current) => {
-        // Get animal dimensions
-        const dimensions = animalDimensions[myUser.animal];
-        if (!dimensions) {
-          // Fallback to simple position blocking if dimensions not available
-          const newPosition = current.clone().add(change);
-          newPosition.x = Math.max(
-            terrain.boundaries.minX,
-            Math.min(terrain.boundaries.maxX, newPosition.x)
-          );
-          newPosition.y = Math.max(
-            terrain.boundaries.minY,
-            Math.min(terrain.boundaries.maxY, newPosition.y)
-          );
-          return newPosition;
-        }
+        // Get animal dimensions using deterministic calculation
+        const animalScale = ANIMAL_SCALES[myUser.animal as keyof typeof ANIMAL_SCALES] || 1.0;
+        const dimensions = getAnimalDimensions(myUser.animal, animalScale);
 
         // Calculate current rotation based on direction
         const currentRotation = Math.atan2(newDirection.y, newDirection.x);

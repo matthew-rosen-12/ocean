@@ -1,5 +1,6 @@
 import React, { useMemo, useEffect, useRef, useState } from "react";
 import { UserInfo, Animal, ANIMAL_SCALES, ANIMAL_ORIENTATION } from "shared/types";
+import { getAnimalDimensions } from "shared/animal-dimensions";
 import * as THREE from "three";
 import { useAnimationManagerContext } from "../contexts/AnimationManagerContext";
 import { Text } from "@react-three/drei";
@@ -29,7 +30,6 @@ function AnimalSprite({
   directionRef,
   isLocalPlayer,
   user,
-  setAnimalDimensions,
   terrainBoundaries: _terrainBoundaries,
   onRemotePositionUpdate,
   onLocalUserPositionUpdate,
@@ -42,10 +42,6 @@ function AnimalSprite({
   directionRef: React.MutableRefObject<THREE.Vector3 | null>;
   isLocalPlayer: boolean;
   user: UserInfo;
-  setAnimalDimensions: (
-    animal: string,
-    dimensions: { width: number; height: number }
-  ) => void;
   terrainBoundaries?: TerrainBoundaries;
   onRemotePositionUpdate?: (position: [number, number, number]) => void;
   onLocalUserPositionUpdate?: (position: THREE.Vector3) => void;
@@ -107,13 +103,7 @@ function AnimalSprite({
       const normalizeScale = 5 / maxDim;
       group.scale.multiplyScalar(normalizeScale * scale);
 
-      // Measure and set width and height
-      const scaledBox = new THREE.Box3().setFromObject(group);
-      const scaledSize = scaledBox.getSize(new THREE.Vector3());
-      setAnimalDimensions(animal, {
-        width: scaledSize.x,
-        height: scaledSize.y,
-      });
+      // No need to set dimensions - they're calculated deterministically
 
       // Apply orientation
       const orientation = ANIMAL_ORIENTATION[animal] || {
@@ -165,7 +155,6 @@ function AnimalSprite({
       group,
       scale,
       isLocalPlayer,
-      setAnimalDimensions,
       positionRef,
       directionRef,
       initialScale,
@@ -362,19 +351,12 @@ function AnimalSprite({
 export default function AnimalGraphic({
   user,
   myUserId,
-  setAnimalDimensions,
-  animalDimensions,
   terrainBoundaries: _terrainBoundaries,
   onLocalUserPositionUpdate,
   renderedRotationRef,
 }: {
   user: UserInfo;
   myUserId: string;
-  setAnimalDimensions: (
-    animal: string,
-    dimensions: { width: number; height: number }
-  ) => void;
-  animalDimensions?: { [animal: string]: { width: number; height: number } };
   terrainBoundaries?: TerrainBoundaries;
   onLocalUserPositionUpdate?: (position: THREE.Vector3) => void;
   renderedRotationRef?: React.MutableRefObject<number>;
@@ -385,10 +367,7 @@ export default function AnimalGraphic({
   
   // Calculate the highest point of the animal considering rotation and dimensions (memoized)
   const highestPoint = useMemo(() => {
-    const dimensions = animalDimensions?.[user.animal as Animal];
-    if (!dimensions) {
-      return 3.0; // Fallback distance if dimensions not available
-    }
+    const dimensions = getAnimalDimensions(user.animal as Animal, ANIMAL_SCALES[user.animal as Animal]);
 
     const { width, height } = dimensions;
     
@@ -434,7 +413,7 @@ export default function AnimalGraphic({
     
     // Add padding above the highest point
     return maxY + 1.5;
-  }, [animalDimensions, user.animal, user.direction]);
+  }, [user.animal, user.direction]);
 
   // Get text info for nickname (memoized)
   const nicknameTextInfo = useMemo(() => {
@@ -503,7 +482,6 @@ export default function AnimalGraphic({
         directionRef={directionRef}
         isLocalPlayer={isLocalPlayer}
         user={user}
-        setAnimalDimensions={setAnimalDimensions}
         terrainBoundaries={_terrainBoundaries}
         onRemotePositionUpdate={isLocalPlayer ? undefined : (pos) => {
           setRemoteNicknamePosition(pos);

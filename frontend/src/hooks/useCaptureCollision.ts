@@ -1,7 +1,7 @@
 import { useCallback } from "react";
-import { NPCGroup, NPCPhase, PathPhase, UserInfo, NPCGroupsBiMap, npcGroupId, pathData, ANIMAL_ORIENTATION } from "shared/types";
+import { NPCGroup, NPCPhase, PathPhase, UserInfo, NPCGroupsBiMap, npcGroupId, pathData, ANIMAL_ORIENTATION, ANIMAL_SCALES } from "shared/types";
 import { createInteraction } from "shared/interaction-prompts";
-import { checkRotatedBoundingBoxCollision } from "shared/animal-dimensions";
+import { checkRotatedBoundingBoxCollision, getAnimalDimensions } from "shared/animal-dimensions";
 import * as THREE from "three";
 import { typedSocket } from "../socket";
 
@@ -15,7 +15,6 @@ interface UseCaptureCollisionProps {
   setNpcGroups: (
     value: NPCGroupsBiMap | ((prev: NPCGroupsBiMap) => NPCGroupsBiMap)
   ) => void;
-  animalDimensions: { [animal: string]: { width: number; height: number } };
 }
 
 export function useCaptureCollision({
@@ -24,7 +23,6 @@ export function useCaptureCollision({
   paths,
   setPaths,
   setNpcGroups,
-  animalDimensions,
 }: UseCaptureCollisionProps) {
   
   const handleNPCGroupCollision = useCallback(
@@ -105,11 +103,7 @@ export function useCaptureCollision({
   const checkForNPCGroupCollision = useCallback(
     (npcGroup: NPCGroup, npcGroupPosition?: THREE.Vector3, isLocalUser: boolean = true) => {
       // Get the animal dimensions for dynamic thresholds
-      const dimensions = animalDimensions[myUser.animal];
-      if (!dimensions) {
-        // Animal dimensions not loaded yet, skip collision check
-        return false;
-      }
+      const dimensions = getAnimalDimensions(myUser.animal, ANIMAL_SCALES[myUser.animal]);
 
       // Calculate rotations for both objects
       const userRotation = Math.atan2(myUser.direction.y, myUser.direction.x);
@@ -175,7 +169,7 @@ export function useCaptureCollision({
       }
       return false;
     },
-    [animalDimensions, myUser.animal, myUser.position.x, myUser.position.y, myUser.direction.x, myUser.direction.y, myUser.id, paths, handleNPCGroupCollision]
+    [myUser.animal, myUser.position.x, myUser.position.y, myUser.direction.x, myUser.direction.y, myUser.id, paths, handleNPCGroupCollision]
   );
 
   return {

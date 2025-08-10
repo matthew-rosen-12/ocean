@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { useAnimationManagerContext } from '../contexts/AnimationManagerContext';
 import * as THREE from 'three';
-import { Direction, UserInfo, NPCGroupsBiMap, pathData, npcGroupId, DIRECTION_OFFSET } from 'shared/types';
+import { Direction, UserInfo, NPCGroupsBiMap, pathData, npcGroupId, DIRECTION_OFFSET, ANIMAL_SCALES } from 'shared/types';
+import { getAnimalDimensions } from 'shared/animal-dimensions';
 import { pathNPCGroup } from '../utils/npc-throwing';
 import { TerrainConfig } from '../utils/terrain';
 
@@ -22,7 +23,6 @@ interface KeyboardMovementManagerProps {
   setPaths: (paths: Map<npcGroupId, pathData>) => void;
   setNpcGroups: (value: NPCGroupsBiMap | ((prev: NPCGroupsBiMap) => NPCGroupsBiMap)) => void;
   terrain: TerrainConfig;
-  animalDimensions: { [animal: string]: { width: number; height: number } };
   checkBoundaryCollision: (
     position: THREE.Vector3,
     change: THREE.Vector3,
@@ -46,7 +46,6 @@ export const KeyboardMovementManager: React.FC<KeyboardMovementManagerProps> = (
   setPaths,
   setNpcGroups,
   terrain,
-  animalDimensions,
   checkBoundaryCollision,
   inputDisabled,
 }) => {
@@ -110,32 +109,19 @@ export const KeyboardMovementManager: React.FC<KeyboardMovementManagerProps> = (
     // Apply boundary constraints with rotated bounding box
     if (change.x !== 0 || change.y !== 0) {
       // Get animal dimensions
-      const dimensions = animalDimensions[myUser.animal];
-      if (!dimensions) {
-        // Fallback to simple position blocking if dimensions not available
-        const newPosition = position.clone().add(change);
-        newPosition.x = Math.max(
-          terrain.boundaries.minX,
-          Math.min(terrain.boundaries.maxX, newPosition.x)
-        );
-        newPosition.y = Math.max(
-          terrain.boundaries.minY,
-          Math.min(terrain.boundaries.maxY, newPosition.y)
-        );
-        setPosition(newPosition);
-      } else {
-        // Calculate current rotation based on direction
-        const currentRotation = Math.atan2(newDirection.y, newDirection.x);
+      const dimensions = getAnimalDimensions(myUser.animal, ANIMAL_SCALES[myUser.animal]);
+      
+      // Calculate current rotation based on direction
+      const currentRotation = Math.atan2(newDirection.y, newDirection.x);
 
-        // Use rotated bounding box collision detection
-        const newPosition = checkBoundaryCollision(
-          position,
-          change,
-          currentRotation,
-          dimensions
-        );
-        setPosition(newPosition);
-      }
+      // Use rotated bounding box collision detection
+      const newPosition = checkBoundaryCollision(
+        position,
+        change,
+        currentRotation,
+        dimensions
+      );
+      setPosition(newPosition);
       setDirection(newDirection);
     }
   };
@@ -160,7 +146,6 @@ export const KeyboardMovementManager: React.FC<KeyboardMovementManagerProps> = (
     position,
     setPosition,
     setDirection,
-    animalDimensions,
     myUser.animal,
     terrain.boundaries,
     checkBoundaryCollision,

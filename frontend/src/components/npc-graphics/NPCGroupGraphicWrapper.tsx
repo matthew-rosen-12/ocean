@@ -17,7 +17,6 @@ interface NPCGraphicWrapperProps {
   allPaths?: Map<string, pathData>; // All active paths for NPC-to-NPC collision
   npcGroups: NPCGroupsBiMap; // NPC groups for collision with groups
   myUserId: string; // Current user ID
-  animalDimensions: { [animal: string]: { width: number; height: number } }; // Animal dimensions for scaling
   setPaths?: (
     paths:
       | Map<string, pathData>
@@ -41,7 +40,6 @@ const NPCGraphicWrapper = ({
   allPaths,
   npcGroups,
   myUserId,
-  animalDimensions,
   setPaths,
   setNpcGroups: _setNpcGroups,
   throwChargeCount,
@@ -121,14 +119,11 @@ const NPCGraphicWrapper = ({
       return null;
     }
 
-    // Get animal width from dimensions, or calculate fallback if not loaded yet
-    let animalWidth = animalDimensions[captorUser.animal]?.width;
-    if (!animalWidth) {
-      // Calculate fallback dimensions using shared module
-      const animalScale = ANIMAL_SCALES[captorUser.animal as keyof typeof ANIMAL_SCALES] || 1.0;
-      const fallbackDimensions = getAnimalDimensions(captorUser.animal, animalScale);
-      animalWidth = fallbackDimensions.width;
-    }
+    // Always use deterministic fallback dimensions for consistent positioning across all clients
+    const animalScale = ANIMAL_SCALES[captorUser.animal as keyof typeof ANIMAL_SCALES] || 1.0;
+    const fallbackDimensions = getAnimalDimensions(captorUser.animal, animalScale);
+    const animalWidth = fallbackDimensions.width;
+    const isLocalUser = captorUser.id === myUserId;
     return (
       <CapturedNPCGroupGraphic
         key={npcGroup.id}
@@ -137,7 +132,7 @@ const NPCGraphicWrapper = ({
         npcGroups={npcGroups}
         allPaths={allPaths}
         animalWidth={animalWidth}
-        isLocalUser={captorUser.id === myUserId}
+        isLocalUser={isLocalUser}
         terrainBoundaries={terrainBoundaries}
         users={users}
         throwChargeCount={throwChargeCount}

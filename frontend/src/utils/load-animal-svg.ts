@@ -314,7 +314,6 @@ async function finishLoadingAnimal(
   group: THREE.Group,
   scale: number,
   isLocalPlayer: boolean,
-  setAnimalDimensions: (animal: string, dimensions: { width: number; height: number }) => void,
   positionRef: React.MutableRefObject<THREE.Vector3>,
   directionRef: React.MutableRefObject<THREE.Vector3 | null>,
   initialScale: React.MutableRefObject<THREE.Vector3 | null>,
@@ -406,14 +405,11 @@ async function finishLoadingAnimal(
     group.scale.x = -group.scale.x;
   }
 
-  // After scaling AND orientation, measure width and height
+  // After scaling AND orientation, measure width and height (for reference, but not stored)
   const scaledBox = new THREE.Box3().setFromObject(group);
   const scaledSize = scaledBox.getSize(new THREE.Vector3());
   
-  setAnimalDimensions(animal, {
-    width: scaledSize.x,
-    height: scaledSize.y,
-  });
+  // Dimensions are now calculated deterministically using getAnimalDimensions()
 
   // Store the initial scale AFTER applying orientation flips
   initialScale.current = group.scale.clone();
@@ -771,7 +767,6 @@ export async function loadAnimalSVGBatch(
     group: THREE.Group;
     scale: number;
     isLocalPlayer: boolean;
-    setAnimalDimensions: (animal: string, dimensions: { width: number; height: number }) => void;
     positionRef: React.MutableRefObject<THREE.Vector3>;
     directionRef: React.MutableRefObject<THREE.Vector3 | null>;
     initialScale: React.MutableRefObject<THREE.Vector3 | null>;
@@ -798,7 +793,7 @@ export async function loadAnimalSVGBatch(
   const cachedPromises = cachedAnimals.map(async (data) => {
     return loadAnimalSVG(
       data.animal, data.group, data.scale, data.isLocalPlayer, 
-      data.setAnimalDimensions, data.positionRef, data.directionRef,
+      data.positionRef, data.directionRef,
       data.initialScale, data.previousRotation, data.targetRotation,
       data.svgLoaded, data.previousPosition, data.currentFlipState
     );
@@ -846,7 +841,7 @@ export async function loadAnimalSVGBatch(
           
           return loadAnimalSVG(
             data.animal, data.group, data.scale, data.isLocalPlayer,
-            data.setAnimalDimensions, data.positionRef, data.directionRef,
+            data.positionRef, data.directionRef,
             data.initialScale, data.previousRotation, data.targetRotation,
             data.svgLoaded, data.previousPosition, data.currentFlipState
           );
@@ -856,7 +851,7 @@ export async function loadAnimalSVGBatch(
         nonCachedPromises = nonCachedAnimals.map(data => 
           loadAnimalSVG(
             data.animal, data.group, data.scale, data.isLocalPlayer,
-            data.setAnimalDimensions, data.positionRef, data.directionRef,
+            data.positionRef, data.directionRef,
             data.initialScale, data.previousRotation, data.targetRotation,
             data.svgLoaded, data.previousPosition, data.currentFlipState
           )
@@ -867,7 +862,7 @@ export async function loadAnimalSVGBatch(
       nonCachedPromises = nonCachedAnimals.map(data =>
         loadAnimalSVG(
           data.animal, data.group, data.scale, data.isLocalPlayer,
-          data.setAnimalDimensions, data.positionRef, data.directionRef,
+          data.positionRef, data.directionRef,
           data.initialScale, data.previousRotation, data.targetRotation,
           data.svgLoaded, data.previousPosition, data.currentFlipState
         )
@@ -878,7 +873,7 @@ export async function loadAnimalSVGBatch(
     nonCachedPromises = nonCachedAnimals.map(data =>
       loadAnimalSVG(
         data.animal, data.group, data.scale, data.isLocalPlayer,
-        data.setAnimalDimensions, data.positionRef, data.directionRef,
+        data.positionRef, data.directionRef,
         data.initialScale, data.previousRotation, data.targetRotation,
         data.svgLoaded, data.previousPosition, data.currentFlipState
       )
@@ -894,10 +889,6 @@ export function loadAnimalSVG(
   group: THREE.Group,
   scale: number,
   isLocalPlayer: boolean,
-  setAnimalDimensions: (
-    animal: string,
-    dimensions: { width: number; height: number }
-  ) => void,
   positionRef: React.MutableRefObject<THREE.Vector3>,
   directionRef: React.MutableRefObject<THREE.Vector3 | null>,
   initialScale: React.MutableRefObject<THREE.Vector3 | null>,
@@ -939,7 +930,7 @@ export function loadAnimalSVG(
         
         // Continue with the rest of the loading process using cached data
         await finishLoadingAnimal(
-          animal, group, scale, isLocalPlayer, setAnimalDimensions,
+          animal, group, scale, isLocalPlayer,
           positionRef, directionRef, initialScale, previousRotation,
           targetRotation, svgLoaded, previousPosition, currentFlipState,
           geometry, outlineShape, texture, minX, minY, finalWidth, finalHeight
@@ -979,7 +970,7 @@ export function loadAnimalSVG(
           
           // Continue with the rest of the loading process
           await finishLoadingAnimal(
-            animal, group, scale, isLocalPlayer, setAnimalDimensions,
+            animal, group, scale, isLocalPlayer,
             positionRef, directionRef, initialScale, previousRotation,
             targetRotation, svgLoaded, previousPosition, currentFlipState,
             geometry, outlineShape, texture, minX, minY, finalWidth, finalHeight
@@ -1093,10 +1084,7 @@ export function loadAnimalSVG(
           const scaledBox = new THREE.Box3().setFromObject(group);
           const scaledSize = scaledBox.getSize(new THREE.Vector3());
           
-          setAnimalDimensions(animal, {
-            width: scaledSize.x,
-            height: scaledSize.y,
-          });
+          // Dimensions are now calculated deterministically
 
           // Store the initial scale AFTER applying orientation flips
           initialScale.current = group.scale.clone();
