@@ -321,13 +321,10 @@ export default function Scene({
   }, [users, myUser.id, isInViewport]);
 
   const visibleNPCGroups = useMemo(() => {
-    return Array.from(npcGroups.values()).filter((npcGroup: any) => {
-      // Always render NPCs captured by local player (they follow player)
-      if (npcGroup.captorId === myUser.id) return true;
-      // For other NPCs, check viewport visibility
-      return isInViewport(npcGroup.position);
-    });
-  }, [npcGroups, myUser.id, isInViewport]);
+    // Render all NPCs - viewport culling was causing invisible captured NPCs
+    // The game area isn't large enough to need viewport optimization
+    return Array.from(npcGroups.values());
+  }, [npcGroups]);
 
   // State for flash effect
   const [showFlash, setShowFlash] = useState(false);
