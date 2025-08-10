@@ -8,6 +8,3 @@
     - timer sometimes starts at 0
 
 - bad to allow direct backend api access?
-- cookies for nickanme don't work on chrome
-- bots should be added if all players drop out
-- safari 'reload in less private mode if not rendering correctly'

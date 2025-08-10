@@ -9,6 +9,7 @@ import { getPathPosition } from "./path-service";
 import { setTimeout } from "timers";
 import { getTerrainConfig } from "../state/terrain";
 import { getUniqueAnimalForRoom } from "../initialization/user-info";
+import { MAX_USERS_PER_ROOM, incrementRoomUsersInMemory, getRoomDataInMemory } from "../state/rooms";
 
 interface BotSpawnTimer {
   roomName: roomId;
@@ -34,8 +35,8 @@ export class BotManagementService {
   private static botSpawnTimers: Map<roomId, BotSpawnTimer> = new Map();
   private static botMovementStates: Map<userId, BotMovementState> = new Map();
   private static readonly BOT_SPAWN_INTERVAL = 10000; // 10 second
-  private static readonly INITIAL_SPAWN_DELAY = 10000; // 1 second after room creation
-  private static readonly MAX_SPAWN_DURATION = 30000; // 30 seconds total
+  private static readonly INITIAL_SPAWN_DELAY = 10000; // 10 second after room creation
+  private static readonly MAX_BOTS_PER_ROOM = 2; // Max 2 bots ever in a room
 
   /**
    * Start bot spawning process for a room
@@ -74,18 +75,31 @@ export class BotManagementService {
    * Spawn a bot if conditions are met, then schedule next spawn
    */
   private static spawnBotIfNeeded(roomName: roomId, roomStartTime: number): void {
-    const currentTime = Date.now();
-    const roomAge = currentTime - roomStartTime;
-    // return
-    // Stop spawning if room is older than 30 seconds
-    if (roomAge >= this.MAX_SPAWN_DURATION) {
-      this.stopBotSpawning(roomName);
+    // Get room data to check the authoritative user count
+    const room = getRoomDataInMemory(roomName);
+    if (!room) {
+      return; // Room doesn't exist
+    }
+
+    // Get current users in the room to count bots
+    const allUsers = getAllUsersInRoom(roomName);
+    const botCount = Array.from(allUsers.values()).filter(user => this.isBot(user.id)).length;
+
+    // Check constraints:
+    // 1. Max 2 bots ever in the room
+    // 2. Total users (including bots) should not exceed room limit
+    if (botCount >= this.MAX_BOTS_PER_ROOM || room.numUsers >= MAX_USERS_PER_ROOM) {
+      // Schedule next attempt
+      this.scheduleNextSpawn(roomName, roomStartTime);
       return;
     }
 
     // Spawn a bot
     const bot = this.createBot(roomName);
     addUserToRoom(roomName, bot);
+    
+    // Increment room user count to keep state consistent
+    incrementRoomUsersInMemory(roomName);
     
     // Initialize bot movement state
     this.botMovementStates.set(bot.id, {
@@ -98,6 +112,13 @@ export class BotManagementService {
     emitToRoom(roomName, "user-joined", { user: bot });
     
     // Schedule next spawn
+    this.scheduleNextSpawn(roomName, roomStartTime);
+  }
+
+  /**
+   * Schedule next spawn attempt
+   */
+  private static scheduleNextSpawn(roomName: roomId, roomStartTime: number): void {
     const timerData = this.botSpawnTimers.get(roomName);
     if (timerData) {
       timerData.spawnCount++;

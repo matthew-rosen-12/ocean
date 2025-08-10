@@ -4,6 +4,8 @@ import { v4 as uuidv4 } from "uuid";
 import { NPCGroupsBiMap, roomId } from "shared/types";
 import { setNPCGroupsInMemory } from "./npc-groups";
 import { getTerrainConfig } from "./terrain";
+
+export const MAX_USERS_PER_ROOM = 4;
 export interface Room {
   name: string;
   numUsers: number;
@@ -15,7 +17,7 @@ export interface Room {
 const rooms: Map<roomId, Room> = new Map();
 
 // Room management functions
-const getRoomDataInMemory = (roomName: string): Room | null => {
+export const getRoomDataInMemory = (roomName: string): Room | null => {
   return rooms.get(roomName) || null;
 };
 
@@ -83,7 +85,7 @@ export const findRoomInMemory = (): string => {
     const activeRooms = rooms
       .filter(
         (room): room is Room & { key: string } => {
-          if (!room || room.isActive === false || room.numUsers >= 4) {
+          if (!room || room.isActive === false || room.numUsers >= MAX_USERS_PER_ROOM) {
             return false;
           }
           
@@ -111,7 +113,7 @@ export const findRoomInMemory = (): string => {
   }
 };
 
-const incrementRoomUsersInMemory = (
+export const incrementRoomUsersInMemory = (
   roomName: string
 ): void => {
   try {
