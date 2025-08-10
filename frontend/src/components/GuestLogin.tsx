@@ -253,7 +253,7 @@ export default function GuestLogin({
 
 
       // Use the provided nickname or default
-      const nickname = finalNickname || "Guest";
+      const nickname = finalNickname || "";
 
       const user = { ...userWithoutNickname, nickname };
 

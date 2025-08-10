@@ -14,8 +14,8 @@ export const POSITIONING_CONFIG = {
   CLOSE_TO_TARGET_THRESHOLD: 0.03,
   
   // Interpolation parameters
-  LOCAL_PARAMS: { lerpFactor: 0.08, moveSpeed: 0.4, minDistance: 0.01, useConstantSpeed: false },
-  REMOTE_PARAMS: { lerpFactor: 0.15, moveSpeed: 0.4, minDistance: 0.01, useConstantSpeed: false },
+  LOCAL_PARAMS: { lerpFactor: 0.08, moveSpeed: 0.4, minDistance: 0.1, useConstantSpeed: true },
+  REMOTE_PARAMS: { lerpFactor: 0.15, moveSpeed: 0.4, minDistance: 0.1, useConstantSpeed: true },
   
   // Remote user position lerping
   REMOTE_POSITION_PARAMS: { lerpFactor: 0.1, moveSpeed: 0.5, minDistance: 0.01, useConstantSpeed: false }
