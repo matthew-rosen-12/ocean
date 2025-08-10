@@ -1,7 +1,7 @@
 - code cleanup
-    - refractor, consistent naming etc
+    - refractor, consistent naming etc esp
 - git repo readme cleanup
 - check check
 
-- intermittent(?) bugs
-    - timer sometimes starts at 0
+- interpolate animal input less for remote captured npc group 
+- fix order of remote captured npc group size text - fix depths : /

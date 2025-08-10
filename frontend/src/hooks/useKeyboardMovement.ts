@@ -41,7 +41,7 @@ export function useKeyboardMovement(
   const [direction, setDirection] = useState<Direction>(initialDirection);
   const [keysPressed, setKeysPressed] = useState(new Set<string>());
   const [spaceStartTime, setSpaceStartTime] = useState<number | null>(null);
-  const animationFrameRef = useRef<number>();
+  const animationFrameRef = useRef<number | null>(null);
 
   const handleKeyDown = (event: KeyboardEvent) => {
     if (inputDisabled) return;

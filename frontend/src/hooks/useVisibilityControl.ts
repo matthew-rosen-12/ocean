@@ -5,7 +5,7 @@ import { useEffect, useRef } from 'react';
  * Works alongside frame rate monitoring for comprehensive inactivity detection
  */
 export function useVisibilityControl(onInactivityKick?: () => void) {
-  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const inactivityTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const clearInactivityTimer = () => {
@@ -20,7 +20,7 @@ export function useVisibilityControl(onInactivityKick?: () => void) {
       
       inactivityTimerRef.current = setTimeout(() => {
         onInactivityKick?.();
-      }, 30000); // 30 seconds
+      }, 30000) as unknown as number; // 30 seconds
     };
 
     const handleVisibilityChange = () => {

@@ -7,8 +7,8 @@ import { useEffect, useRef } from 'react';
 export function useFrameRateMonitor(onResourceThrottling?: () => void) {
   const lastFrameTimeRef = useRef<number>(Date.now());
   const frameCountRef = useRef<number>(0);
-  const animationFrameRef = useRef<number>();
-  const throttleTimeoutRef = useRef<NodeJS.Timeout>();
+  const animationFrameRef = useRef<number | null>(null);
+  const throttleTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     const checkFrameRate = () => {
@@ -33,7 +33,7 @@ export function useFrameRateMonitor(onResourceThrottling?: () => void) {
       throttleTimeoutRef.current = setTimeout(() => {
         
         onResourceThrottling?.();
-      }, 3000);
+      }, 3000) as unknown as number;
 
       // Continue monitoring
       animationFrameRef.current = requestAnimationFrame(checkFrameRate);

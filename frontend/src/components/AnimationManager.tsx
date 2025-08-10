@@ -19,7 +19,7 @@ export interface AnimationCallback {
 export function AnimationManager({ keyboardUpdateFn, frameRateCallback, animationCallbacks }: AnimationManagerProps) {
   const lastFrameTimeRef = useRef<number>(Date.now());
   const frameCountRef = useRef<number>(0);
-  const throttleTimeoutRef = useRef<NodeJS.Timeout>();
+  const throttleTimeoutRef = useRef<number | null>(null);
 
   useFrame((state, delta) => {
     const now = Date.now();
@@ -57,7 +57,7 @@ export function AnimationManager({ keyboardUpdateFn, frameRateCallback, animatio
         if (frameRateCallback) {
           frameRateCallback();
         }
-      }, 3000);
+      }, 3000) as unknown as number;
     }
   });
 

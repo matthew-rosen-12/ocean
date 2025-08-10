@@ -14,7 +14,7 @@ export interface AnimationCallback {
 export function useAnimationManager() {
   const lastFrameTimeRef = useRef<number>(Date.now());
   const frameCountRef = useRef<number>(0);
-  const throttleTimeoutRef = useRef<NodeJS.Timeout>();
+  const throttleTimeoutRef = useRef<number | null>(null);
   const keyboardUpdateFnRef = useRef<(() => void) | null>(null);
   const frameRateCallbackRef = useRef<(() => void) | null>(null);
   const animationCallbacksRef = useRef<Map<string, (state: any, delta: number) => void>>(new Map());
@@ -55,7 +55,7 @@ export function useAnimationManager() {
         if (frameRateCallbackRef.current) {
           frameRateCallbackRef.current();
         }
-      }, 3000);
+      }, 3000) as unknown as number;
     }
   });
 
@@ -84,7 +84,7 @@ export function useAnimationManager() {
       frameRateCallbackRef.current = null;
       if (throttleTimeoutRef.current) {
         clearTimeout(throttleTimeoutRef.current);
-        throttleTimeoutRef.current = undefined;
+        throttleTimeoutRef.current = null;
       }
     },
     
