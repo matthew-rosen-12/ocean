@@ -230,21 +230,20 @@ io.on("connection", async (socket) => {
           const userId = socket.data.user.id;
           // set npcs of this user's npc groups to IDLE
           const npcGroups = getNPCGroupsfromMemory(room);
-          const npcGroup = npcGroups.getByUserId(user.id);
+          const npcGroup = npcGroups.getByUserId(userId);
           if (npcGroup) {
             const updatedNPCGroup = new NPCGroup({
               ...npcGroup,
                 position: lastPosition,
                 phase: NPCPhase.IDLE,
+                captorId: undefined, // Clear captor ID so NPCs can flee
               });
             npcGroups.setByNpcGroupId(npcGroup.id, updatedNPCGroup);
             setNPCGroupsInMemory(room, npcGroups);
           }
-          // remove the user's npc groups from redis
-          removeNPCGroupInRoomInMemory(room, user.id);
 
           // Remove user from room memory
-          removeUserFromRoom(room, user.id);
+          removeUserFromRoom(room, userId);
 
           // Handle room users decrement
           decrementRoomUsersInMemory(room, socket.id);
