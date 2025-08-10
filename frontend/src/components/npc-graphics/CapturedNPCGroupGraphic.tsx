@@ -16,7 +16,6 @@ import { RENDER_ORDERS, Z_DEPTHS } from "shared/z-depths";
 import { 
   RemoteUserPositioning, 
   LocalUserPositioning,
-  POSITIONING_CONFIG
 } from "./captured-npc-positioning";
 
 

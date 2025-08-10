@@ -217,16 +217,31 @@ function processSVGFile(filePath, animalName) {
     }
   }
   
-  // Calculate actual bounds from points
+  // Calculate bounds from points and add consistent padding
   if (allPoints.length > 0) {
     const xs = allPoints.map(p => p[0]);
     const ys = allPoints.map(p => p[1]);
-    bounds = {
+    const pathBounds = {
       minX: Math.min(...xs),
       minY: Math.min(...ys),
       maxX: Math.max(...xs),
       maxY: Math.max(...ys)
     };
+    
+    // Add consistent padding around all sides
+    const padding = 50; // Adjust this value as needed
+    bounds = {
+      minX: pathBounds.minX - padding,
+      minY: pathBounds.minY - padding,
+      maxX: pathBounds.maxX + padding,
+      maxY: pathBounds.maxY + padding
+    };
+  } else {
+    // Fallback to viewBox if no paths found
+    if (viewBox) {
+      const [vbX, vbY, vbW, vbH] = viewBox.split(/\s+/).map(Number);
+      bounds = { minX: vbX, minY: vbY, maxX: vbX + vbW, maxY: vbY + vbH };
+    }
   }
   
   // Create outline from all points
@@ -261,21 +276,9 @@ function processSVGFile(filePath, animalName) {
     }
   }
   
-  // Check if viewBox needs fixing (content doesn't properly fill the viewBox)
-  const currentViewBox = svgRoot.getAttribute('viewBox');
-  if (currentViewBox) {
-    const [vbX, vbY, vbW, vbH] = currentViewBox.split(/\s+/).map(Number);
-    const contentW = bounds.maxX - bounds.minX;
-    const contentH = bounds.maxY - bounds.minY;
-    
-    // If content bounds don't match viewBox bounds, we need to fix it
-    const tolerance = 5; // Allow small differences
-    if (Math.abs(vbX - bounds.minX) > tolerance || 
-        Math.abs(vbY - bounds.minY) > tolerance ||
-        Math.abs(vbW - contentW) > tolerance || 
-        Math.abs(vbH - contentH) > tolerance) {
-      needsViewBoxFix = true;
-    }
+  // Always fix viewBox to match our calculated bounds with padding
+  if (allPoints.length > 0) {
+    needsViewBoxFix = true;
   }
   
   // Apply viewBox fix if needed

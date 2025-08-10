@@ -11,18 +11,18 @@ export interface AnimalDimensions {
 
 // Base dimension ratios derived from SVG bounds
 const ANIMAL_BASE_DIMENSIONS: { [animal: string]: AnimalDimensions } = {
-  BEAR: { width: 4.00, height: 4.00 },
-  BEE: { width: 4.00, height: 4.00 },
-  CUTTLEFISH: { width: 4.00, height: 2.00 },
-  DOLPHIN: { width: 4.00, height: 3.06 },
-  EAGLE: { width: 4.00, height: 2.24 },
-  PENGUIN: { width: 4.00, height: 7.83 },
-  SALAMANDER: { width: 4.00, height: 2.25 },
-  SNAKE: { width: 4.00, height: 3.47 },
-  TIGER: { width: 4.00, height: 2.67 },
-  TUNA: { width: 4.00, height: 1.74 },
-  TURTLE: { width: 4.00, height: 1.87 },
-  WOLF: { width: 4.00, height: 4.41 },
+  BEAR: { width: 5.00, height: 5.00 },
+  BEE: { width: 5.00, height: 4.54 },
+  CUTTLEFISH: { width: 5.00, height: 3.29 },
+  DOLPHIN: { width: 5.00, height: 4.11 },
+  EAGLE: { width: 5.00, height: 2.76 },
+  PENGUIN: { width: 2.89, height: 5.00 },
+  SALAMANDER: { width: 5.00, height: 2.85 },
+  SNAKE: { width: 5.00, height: 4.37 },
+  TIGER: { width: 5.00, height: 3.24 },
+  TUNA: { width: 5.00, height: 2.10 },
+  TURTLE: { width: 5.00, height: 2.39 },
+  WOLF: { width: 4.65, height: 5.00 },
 };
 
 /**
@@ -30,10 +30,10 @@ const ANIMAL_BASE_DIMENSIONS: { [animal: string]: AnimalDimensions } = {
  * Multiplies base dimensions by animal scale
  */
 export function getAnimalDimensions(animal: string, scale: number = 1.0): AnimalDimensions {
-  const baseDimensions = ANIMAL_BASE_DIMENSIONS[animal];
+  const baseDimensions = ANIMAL_BASE_DIMENSIONS[animal] || { width: 4.0, height: 4.0 };
   return {
-    width: baseDimensions.width * scale * 1.1,
-    height: baseDimensions.height * scale * 1.1
+    width: baseDimensions.width * scale,
+    height: baseDimensions.height * scale
   };
 }
 
@@ -170,16 +170,16 @@ function projectBoundingBox(
 
 // Original SVG bounds for reference
 export const ORIGINAL_SVG_BOUNDS = {
-  BEAR: { width: 1024.0, height: 1024.0, aspectRatio: 1.000 },
-  BEE: { width: 1024.0, height: 1024.0, aspectRatio: 1.000 },
-  CUTTLEFISH: { width: 500.0, height: 250.0, aspectRatio: 2.000 },
-  DOLPHIN: { width: 307.5, height: 235.2, aspectRatio: 1.308 },
-  EAGLE: { width: 1367.0, height: 766.0, aspectRatio: 1.785 },
-  PENGUIN: { width: 324.7, height: 635.9, aspectRatio: 0.511 },
-  SALAMANDER: { width: 1365.0, height: 768.0, aspectRatio: 1.777 },
-  SNAKE: { width: 2334.1, height: 2026.5, aspectRatio: 1.152 },
-  TIGER: { width: 1254.0, height: 836.0, aspectRatio: 1.500 },
-  TUNA: { width: 1552.0, height: 675.0, aspectRatio: 2.299 },
-  TURTLE: { width: 5059.9, height: 2367.0, aspectRatio: 2.138 },
-  WOLF: { width: 287.6, height: 317.1, aspectRatio: 0.907 },
+  BEAR: { width: 1048.1, height: 1049.1, aspectRatio: 0.999 },
+  BEE: { width: 1006.9, height: 914.4, aspectRatio: 1.101 },
+  CUTTLEFISH: { width: 530.9, height: 348.8, aspectRatio: 1.522 },
+  DOLPHIN: { width: 407.5, height: 335.2, aspectRatio: 1.216 },
+  EAGLE: { width: 1388.0, height: 766.5, aspectRatio: 1.811 },
+  PENGUIN: { width: 424.7, height: 735.9, aspectRatio: 0.577 },
+  SALAMANDER: { width: 1437.6, height: 819.8, aspectRatio: 1.753 },
+  SNAKE: { width: 2434.1, height: 2126.5, aspectRatio: 1.145 },
+  TIGER: { width: 1213.6, height: 785.5, aspectRatio: 1.545 },
+  TUNA: { width: 1542.2, height: 648.8, aspectRatio: 2.377 },
+  TURTLE: { width: 5159.9, height: 2467.0, aspectRatio: 2.092 },
+  WOLF: { width: 387.6, height: 417.1, aspectRatio: 0.929 },
 };
