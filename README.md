@@ -20,7 +20,7 @@ A real-time IO-style multiplayer game where players control animals and compete 
 
 ## How to Play
 
-1. Visit [nature-vs-npc.com](https://nature-vs-npc.com)
+1. Visit [nature-vs-npc.com](https://nature-vs-npc.com) (runs best in Safari browser)
 2. Move your animal around using WASD or arrow keys
 4. Find and capture groups of NPCs by moving over them
 5. Throw NPCs with space bar to capture more NPCs
@@ -58,7 +58,7 @@ The game features custom graphics for animals and NPCs:
 
 The game is deployed on AWS infrastructure with:
 
-- **EC2 Instance**: t3.small running Amazon Linux 2023
+- **EC2 Instance**: t3.small running Amazon Linux
 
 ## License
 
