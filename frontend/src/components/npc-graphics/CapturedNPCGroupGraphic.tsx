@@ -93,19 +93,8 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
   // Reference for smooth movement interpolation (non-local users)
   const previousPosition = useMemo(() => new THREE.Vector3(), []);
   
-  // Memoize target position calculation for remote users (like commit 1398881f)
-  const memoizedTargetPosition = useMemo(() => {
-    if (isLocalUser || !animalWidth) return null; // Don't memoize for local users
-    return calculateNPCGroupPosition(user, animalWidth, scaleFactor);
-  }, [
-    isLocalUser,
-    user.position.x,
-    user.position.y,
-    user.direction.x,
-    user.direction.y,
-    animalWidth,
-    scaleFactor,
-  ]);
+  // For remote users, we need to calculate target position from lerped position in animation loop
+  // Don't memoize since we need to use the interpolated position
   
   // For remote users: track interpolated position to match AnimalGraphic rendering
   const remoteAnimalPosition = useRef(new THREE.Vector3(user.position.x, user.position.y, user.position.z || 0));
@@ -131,9 +120,18 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
   const calculateTargetPosition = useCallback((): THREE.Vector3 => {
     if (!animalWidth) return new THREE.Vector3(0, 0, -10);
     
-    // For remote users, use simple memoized calculation (like commit 1398881f)
+    // For remote users, calculate target from lerped position and direction
     if (!isLocalUser) {
-      return memoizedTargetPosition || new THREE.Vector3(0, 0, -10);
+      const userForCalculation = {
+        ...user,
+        position: { 
+          x: remoteAnimalPosition.current.x, 
+          y: remoteAnimalPosition.current.y, 
+          z: remoteAnimalPosition.current.z 
+        },
+        direction: { x: lerpedDirection.current.x, y: lerpedDirection.current.y }
+      };
+      return calculateNPCGroupPosition(userForCalculation, animalWidth, scaleFactor);
     }
     
     // For local users, use the complex real-time calculation
@@ -158,7 +156,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
     }
     
     return cachedTargetPosition.current || new THREE.Vector3(0, 0, -10);
-  }, [animalWidth, user, scaleFactor, userPositionRef, isLocalUser, memoizedTargetPosition]);
+  }, [animalWidth, user, scaleFactor, userPositionRef, isLocalUser]);
 
 
 
@@ -219,7 +217,7 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
 
       // Use standard interpolation first
       const localParams = { lerpFactor: 0.08, moveSpeed: 0.4, minDistance: 0.1, useConstantSpeed: false };
-      const remoteParams = { lerpFactor: 0.07, moveSpeed: 0.3, minDistance: 0.01, useConstantSpeed: true };
+      const remoteParams = { lerpFactor: 0.15, moveSpeed: 0.3, minDistance: 0.01, useConstantSpeed: true };
       
       const interpolationParams = isLocalUser
         ? { ...localParams, delta }
