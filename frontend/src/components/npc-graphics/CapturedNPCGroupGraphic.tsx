@@ -152,6 +152,39 @@ const CapturedNPCGroupGraphic: React.FC<CapturedNPCGroupGraphicProps> = ({
         );
       }
       
+      // DEBUG: Log calculated positions for comparison
+      if (Math.random() < 0.02) { // Log occasionally to avoid spam
+        const userType = isLocalUser ? 'LOCAL' : 'REMOTE';
+        const actualUserPos = isLocalUser ? userPositionRef.current : (positioningSystem as RemoteUserPositioning).getInterpolatedPosition();
+        const actualUserDir = isLocalUser ? 
+          (positioningSystem as LocalUserPositioning).getLerpedDirection() : 
+          (positioningSystem as RemoteUserPositioning).getInterpolatedDirection();
+        
+        const debugInfo = {
+          userType,
+          userId: user.id,
+          userPosition: { x: Number(actualUserPos.x.toFixed(3)), y: Number(actualUserPos.y.toFixed(3)) },
+          userDirection: { x: Number(actualUserDir.x.toFixed(3)), y: Number(actualUserDir.y.toFixed(3)) },
+          targetPosition: { x: Number(targetPosition.x.toFixed(3)), y: Number(targetPosition.y.toFixed(3)) },
+          finalPosition: { x: Number(newPosition.x.toFixed(3)), y: Number(newPosition.y.toFixed(3)) },
+          animalWidth: Number(animalWidth.toFixed(3)),
+          scaleFactor: Number(scaleFactor.toFixed(3)),
+          rawUserPos: { x: Number(user.position.x.toFixed(3)), y: Number(user.position.y.toFixed(3)) },
+          rawUserDir: { x: Number(user.direction.x.toFixed(3)), y: Number(user.direction.y.toFixed(3)) }
+        };
+        
+        console.log(`DEBUG NPC Position:`, debugInfo);
+        
+        // Store for comparison - check if we have both local and remote for same scenario
+        if (!window.npcDebugData) window.npcDebugData = [];
+        window.npcDebugData.push({...debugInfo, timestamp: Date.now()});
+        
+        // Keep only recent entries
+        if (window.npcDebugData.length > 20) {
+          window.npcDebugData = window.npcDebugData.slice(-20);
+        }
+      }
+      
       updatePositionWithTracking(newPosition, "NPCGroup");
       
       // Set position directly without forcing matrix update (avoid double rendering)

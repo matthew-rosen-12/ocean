@@ -14,11 +14,11 @@ export const POSITIONING_CONFIG = {
   CLOSE_TO_TARGET_THRESHOLD: 0.03,
   
   // Interpolation parameters
-  LOCAL_PARAMS: { lerpFactor: 0.08, moveSpeed: 0.4, minDistance: 0.1, useConstantSpeed: false },
-  REMOTE_PARAMS: { lerpFactor: 0.15, moveSpeed: 0.3, minDistance: 0.01, useConstantSpeed: true },
+  LOCAL_PARAMS: { lerpFactor: 0.08, moveSpeed: 0.4, minDistance: 0.01, useConstantSpeed: false },
+  REMOTE_PARAMS: { lerpFactor: 0.15, moveSpeed: 0.4, minDistance: 0.01, useConstantSpeed: false },
   
   // Remote user position lerping
-  REMOTE_POSITION_PARAMS: { lerpFactor: 0.1, moveSpeed: 0.5, minDistance: 0.01, useConstantSpeed: true }
+  REMOTE_POSITION_PARAMS: { lerpFactor: 0.1, moveSpeed: 0.5, minDistance: 0.01, useConstantSpeed: false }
 } as const;
 
 // Helper functions

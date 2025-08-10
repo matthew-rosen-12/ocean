@@ -272,7 +272,7 @@ function AnimalSprite({
             lerpFactor: 0.1,
             moveSpeed: MOVE_SPEED,
             minDistance: 0.01,
-            useConstantSpeed: true,
+            useConstantSpeed: false,
           })
         );
 
