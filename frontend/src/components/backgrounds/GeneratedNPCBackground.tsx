@@ -30,7 +30,7 @@ export default function GeneratedNPCBackground({
       <div 
         className="fixed inset-0 pointer-events-none"
         style={{
-          background: 'linear-gradient(145deg, rgb(92, 103, 114), rgba(70, 85, 100, 0.9), rgba(50, 65, 90, 0.8))',
+          background: 'radial-gradient(ellipse 200% 200% at 50% 50%, rgba(37, 45, 79, 0.8), rgba(20, 25, 45, 0.9), rgba(10, 15, 25, 0.8))',
           zIndex: -9,
           width: '100%',
           height: '100%',
