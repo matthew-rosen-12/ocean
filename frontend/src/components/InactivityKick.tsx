@@ -33,7 +33,8 @@ export default function InactivityKick({ onReturnToLogin }: Props) {
               <h1 className="text-2xl font-bold mb-2 text-white drop-shadow-lg">
                 Removed Due to Inactivity
               </h1>
-              <p className="text-black mb-4">
+              <p className="text-white 
+     drop-shadow-lg mb-4">
                 You've been automatically removed from the game due to inactivity.
               </p>
             </div>

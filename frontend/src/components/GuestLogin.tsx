@@ -619,7 +619,7 @@ export default function GuestLogin({
               </p>
 
               <div className="mb-6">
-                <label htmlFor="nickname-desktop" className="block text-sm font-semibold text-black mb-3">
+                <label htmlFor="nickname-desktop" className="block text-sm font-semibold text-white drop-shadow-lg mb-3">
                   Choose your nickname
                 </label>
                 <div className="relative">
@@ -718,7 +718,7 @@ export default function GuestLogin({
               </p>
 
               <div className="mb-6">
-                <label htmlFor="nickname-mobile" className="block text-sm font-semibold text-black mb-3">
+                <label htmlFor="nickname-mobile" className="block text-sm font-semibold text-white drop-shadow-lg mb-3">
                   Choose your nickname
                 </label>
                 <div className="relative">
