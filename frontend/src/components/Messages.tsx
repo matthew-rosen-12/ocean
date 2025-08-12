@@ -133,28 +133,26 @@ export default function Messages({
     // Check if user was at bottom before this message arrived
     const shouldAutoScroll = wasAtBottomRef.current;
     
-    // Use requestAnimationFrame to ensure DOM has updated
-    requestAnimationFrame(() => {
-      if (messageContainerRef.current) {
-        if (shouldAutoScroll) {
-          // Ensure height is sufficient for latest message
-          ensureHeightForLatestMessage();
-          
-          // User was at bottom, auto-scroll to new message
-          setTimeout(() => {
-            if (messageContainerRef.current) {
-              messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
-              setHasNewMessage(false);
-              wasAtBottomRef.current = true; // Keep tracking as at bottom
-            }
-          }, 50); // Increased delay to work better with height transitions
-        } else {
-          // User was scrolled up, show new message indicator
-          setHasNewMessage(true);
+    if (shouldAutoScroll) {
+      // Ensure height is sufficient for latest message first
+      ensureHeightForLatestMessage();
+      
+      // Use a single requestAnimationFrame for smoother scrolling
+      requestAnimationFrame(() => {
+        if (messageContainerRef.current) {
+          messageContainerRef.current.scrollTo({
+            top: messageContainerRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+          setHasNewMessage(false);
+          wasAtBottomRef.current = true;
         }
-      }
-    });
-  }, [latestInteraction, latestAiResponse, messageHistory, ensureHeightForLatestMessage]);
+      });
+    } else {
+      // User was scrolled up, show new message indicator
+      setHasNewMessage(true);
+    }
+  }, [latestInteraction, latestAiResponse, messageHistory]);
 
   // Auto-resize when messages state changes (empty vs has messages)
   useEffect(() => {
@@ -166,16 +164,12 @@ export default function Messages({
   // Scroll to bottom function for the new message indicator
   const scrollToBottom = () => {
     if (messageContainerRef.current) {
-      // Ensure height is sufficient for latest message
-      ensureHeightForLatestMessage();
-      
-      setTimeout(() => {
-        if (messageContainerRef.current) {
-          messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
-          setHasNewMessage(false);
-          wasAtBottomRef.current = true; // Update tracking state
-        }
-      }, 50); // Increased delay to work better with height transitions
+      messageContainerRef.current.scrollTo({
+        top: messageContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+      setHasNewMessage(false);
+      wasAtBottomRef.current = true;
     }
   };
 
@@ -324,7 +318,10 @@ export default function Messages({
                 // Auto-scroll to bottom when uncollapsing
                 setTimeout(() => {
                   if (messageContainerRef.current) {
-                    messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
+                    messageContainerRef.current.scrollTo({
+                      top: messageContainerRef.current.scrollHeight,
+                      behavior: 'smooth'
+                    });
                     wasAtBottomRef.current = true;
                   }
                 }, 450); // Wait for height transition to complete (400ms + buffer)
