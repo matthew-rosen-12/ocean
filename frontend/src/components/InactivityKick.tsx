@@ -22,7 +22,7 @@ export default function InactivityKick({ onReturnToLogin }: Props) {
       
       {/* Main card with glassmorphism effect */}
       <div className="relative z-10 w-full max-w-md mx-4">
-        <div className="backdrop-blur-lg bg-white/20 border border-white/30 rounded-3xl shadow-2xl p-8 relative overflow-hidden">
+        <div className="backdrop-blur-lg bg-white/15 border border-white/30 rounded-3xl shadow-2xl p-8 relative overflow-hidden">
           {/* Subtle gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
           

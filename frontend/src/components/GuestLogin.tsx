@@ -601,7 +601,7 @@ export default function GuestLogin({
           <div
             className="
               w-[30rem]
-              backdrop-blur-lg bg-white/20
+              backdrop-blur-lg bg-white/15
               border border-white/30 rounded-3xl shadow-2xl
               p-8 relative overflow-hidden
             "
@@ -704,7 +704,7 @@ export default function GuestLogin({
       <div className="xl:hidden">
         {/* Main login card */}
         <div className="relative z-10 w-full max-w-md mx-4">
-          <div ref={mainCardRef} className="backdrop-blur-lg bg-white/20 border border-white/30 rounded-3xl shadow-2xl p-8 relative overflow-hidden">
+          <div ref={mainCardRef} className="backdrop-blur-lg bg-white/15 border border-white/30 rounded-3xl shadow-2xl p-8 relative overflow-hidden">
             {/* Subtle gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
 

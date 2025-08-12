@@ -55,7 +55,7 @@ export default function GameOverScreen({ finalScores, users, onReturnToLogin, wi
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
       <GeneratedNPCBackground />
-      <div className="backdrop-blur-lg bg-white/20 border border-white/30 rounded-3xl shadow-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto relative z-10">
+      <div className="backdrop-blur-lg bg-white/15 border border-white/30 rounded-3xl shadow-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto relative z-10">
         {/* Subtle gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none rounded-3xl"></div>
         
