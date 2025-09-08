@@ -636,7 +636,7 @@ export default function GuestLogin({
               <button
                 onClick={handleButtonClick}
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 px-8 rounded-2xl hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+                className="w-full bg-gradient-to-r from-blue-900 to-gray-900 text-white py-4 px-8 rounded-2xl hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
               >
                 {loading ? (
                   <span className="flex items-center justify-center">

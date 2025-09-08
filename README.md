@@ -12,7 +12,7 @@ A real-time IO-style multiplayer game where players control animals and compete 
 
 ### Key Features
 
-- **Real-time Multiplayer**: Compete with other players in a shared 2D game world
+- **Real-time Multiplayer**: Compete with other players in a shared 2D game world. Rooms support up to 3 players plust bots, and anyone joining within the same 30 seconds will be matched together
 - **Animal Characters**: Control one of 12 unique animals including dolphins, wolves, tigers, eagles, and more
 - **Historical NPCs**: Encounter famous historical figures like Leonardo da Vinci, Cleopatra, Napoleon, and others
 - **2D Graphics**: Immersive Three.js-powered 2D rendering with smooth animations
@@ -22,26 +22,28 @@ A real-time IO-style multiplayer game where players control animals and compete 
 
 1. Visit [nature-vs-npc.com](https://nature-vs-npc.com) (runs best in Safari browser)
 2. Move your animal around using WASD or arrow keys
-4. Find and capture groups of NPCs by moving over them
-5. Throw NPCs with space bar to capture more NPCs
-6. The player with the most captured NPCs when the 90-second timer runs out wins!
-
+3. Find and capture groups of NPCs by moving over them
+4. Throw NPCs with space bar to capture more NPCs
+5. The player with the most captured NPCs when the 90-second timer runs out wins!
 
 ## Technology Stack
 
 ### Frontend
+
 - **Framework**: React 18 with TypeScript
 - **3D Graphics**: Three.js with React Three Fiber
 - **Build Tool**: Vite
 - **Real-time Communication**: Socket.io Client
 
 ### Backend
+
 - **Runtime**: Node.js with Express
 - **Language**: TypeScript
 - **WebSockets**: Socket.io
 - **AI Integration**: GROQ for NPC messages
 
 ### Infrastructure
+
 - **Deployment**: AWS EC2
 - **Web Server**: Nginx (reverse proxy + static files)
 - **Domain**: Custom domain with Cloudflare DNS
@@ -70,4 +72,4 @@ This is a personal project. Feel free to fork and experiment!
 
 ---
 
-*Built using React, Three.js, Node.js, and deployed on AWS*
+_Built using React, Three.js, Node.js, and deployed on AWS_
