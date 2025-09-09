@@ -12,7 +12,7 @@ A real-time IO-style multiplayer game where players control animals and compete 
 
 ### Key Features
 
-- **Real-time Multiplayer**: Compete with other players in a shared 2D game world. Rooms support up to 3 players plust bots, and anyone joining within the same 30 seconds will be matched together
+- **Real-time Multiplayer**: Compete with other players in a shared 2D game world. Rooms support up to 3 players plus bots, and anyone joining within the same 30 seconds will be matched together
 - **Animal Characters**: Control one of 12 unique animals including dolphins, wolves, tigers, eagles, and more
 - **Historical NPCs**: Encounter famous historical figures like Leonardo da Vinci, Cleopatra, Napoleon, and others
 - **2D Graphics**: Immersive Three.js-powered 2D rendering with smooth animations
